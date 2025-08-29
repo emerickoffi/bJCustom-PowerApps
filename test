@@ -86,3 +86,39 @@ https://aka.ms/m365-dev-call-join
 
 
 https://teams.microsoft.com/dl/launcher/launcher.html?url=%2F_%23%2Fl%2Fmeetup-join%2F19%3Ameeting_MjBkM2M3ZDUtMGI5Zi00ZWU3LTk5YTctOTc3N2Q2ZTY2YzVl%40thread.v2%2F0%3Fcontext%3D%257b%2522Tid%2522%253a%252273da091f-a58d-405f-9015-9bd386425255%2522%252c%2522Oid%2522%253a%25227758baf3-7e55-4ed5-9ffb-d987c1019ad4%2522%257d%26anon%3Dtrue&type=meetup-join&deeplinkId=ac1b6f77-7714-417b-8ca7-57b65493be77&directDl=true&msLaunch=true&enableMobilePage=true&suppressPrompt=true
+
+
+
+
+------------------
+
+
+Requested_Date		
+Workspace_Requester		
+User_LOB_Function		
+Workspace_Name		
+FTO_Approver	
+Approved_Declined_Date		
+Need_Dedicated_Workspace_Approve		
+Need_Dedicated_Workspace		
+is_Workspace_For_Business_Purpose_Approve		
+is_Workspace_For_Business_Purpose		
+Data_Published_NOT_be_Restricted		
+Data_Published_NOT_be_Restricted_Approve		
+AD_Groups_Created_Approve		
+AD_Groups_Created		
+Is_PROD_UAT_Test_Environments_Approve		
+Is_PROD_UAT_Test_Environments		
+PowerBI_Developer_In_Your_Team_Approve		
+PowerBI_Developer_In_Your_Team	Yes/No	
+Does_TheWorkspace_name_Follow_thenamingconvention_Approve		
+Does_TheWorkspace_name_Follow_thenamingconvention		
+Does_TheUser_Rollupto_Finance_Approve		
+Does_TheUser_Rollupto_Finance		
+AllTheChecklistsAreMarked_Approve		
+AllTheChecklistsAreMarkedYes		
+AdditionalJusticiation_Approve		
+AdditionalJustification		
+DeclinedReasons
+
+----
