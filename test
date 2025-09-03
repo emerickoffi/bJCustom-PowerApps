@@ -125,3 +125,38 @@ DeclinedReasons
 
 
 {"elmType":"div","style":{"flex-wrap":"wrap","display":"flex"},"children":[{"elmType":"div","style":{"box-sizing":"border-box","padding":"4px 8px 5px 8px","overflow":"hidden","text-overflow":"ellipsis","display":"flex","border-radius":"16px","height":"24px","align-items":"center","white-space":"nowrap","margin":"4px 4px 4px 4px"},"attributes":{"class":{"operator":":","operands":[{"operator":"==","operands":["@currentField","Approved"]},"sp-css-backgroundColor-BgCornflowerBlue sp-field-fontSizeSmall sp-css-color-CornflowerBlueFont",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Declined"]},"sp-css-backgroundColor-BgMintGreen sp-field-fontSizeSmall sp-css-color-MintGreenFont",{"operator":":","operands":[{"operator":"==","operands":["@currentField",""]},"","sp-field-borderAllRegular sp-field-borderAllSolid sp-css-borderColor-neutralSecondary"]}]}]}},"children":[{"elmType":"span","style":{"overflow":"hidden","text-overflow":"ellipsis","padding":"0 3px"},"txtContent":"@currentField","attributes":{"class":{"operator":":","operands":[{"operator":"==","operands":["@currentField","Approved"]},"sp-field-fontSizeSmall sp-css-color-CornflowerBlueFont",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Declined"]},"sp-field-fontSizeSmall sp-css-color-MintGreenFont",{"operator":":","operands":[{"operator":"==","operands":["@currentField",""]},"",""]}]}]}}}]}],"templateId":"BgColorChoicePill"}
+
+
+
+
+----
+
+
+Title	Single line of text	
+Workspace_Name	Single line of text	
+Workspace_Owner	Person or Group	
+Ensure_Workspace_Segregation	Yes/No	
+Identity_Champion	Person or Group	
+NoOfReports	Single line of text	
+NoOfSemanticModels	Single line of text	
+NoOfDashboards	Single line of text	
+NoOfDataflows	Single line of text	
+NoOfNotebooks	Single line of text	
+NoOfPipelines	Single line of text	
+NoOfLakehouses	Single line of text	
+NoOfWarehouses	Single line of text	
+Others	Single line of text	
+Review_Dataset_Model_Sizes	Single line of text	
+Review_Refresh_Frequencies	Single line of text	
+Identity_Fabric_Features	Multiple lines of text	
+Review_Workspace_Capacity_Metrics	Single line of text	
+Approver1	Person or Group	
+Approver2	Person or Group	
+Status	Choice	
+RequestedDate	Date and Time	
+Modified	Date and Time	
+Created	Date and Time	
+Created By	Person or Group	
+Modified By	Person or Group
+
+----
