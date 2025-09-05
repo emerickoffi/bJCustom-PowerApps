@@ -1,0 +1,1123 @@
+Screens:
+  RequestScreen:
+    Properties:
+      LoadingSpinnerColor: =RGBA(56, 96, 178, 1)
+      OnVisible: =SetFocus(TextInputCanvas1)
+    Children:
+      - Canvas_NR_NewRequest:
+          Control: FluidGrid@2.3.0
+          Properties:
+            BorderThickness: =0
+            Height: =Parent.Height - Self.Y - 10 - 40
+            Width: =App.Width - Self.X
+            Y: =Rectangle1_1.Y+Rectangle1_1.Height+2
+          Children:
+            - dc_PartRequestSubmission:
+                Control: DataCard@1.0.2
+                Properties:
+                  Height: =0
+                  Width: =App.Width
+                  X: =0
+                  Y: =0
+                Children:
+                  - btn_NR_PartRequest:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        Align: =Align.Left
+                        BorderColor: =ColorFade(Self.Fill, -15%)
+                        BorderStyle: =BorderStyle.None
+                        BorderThickness: =0
+                        Color: =RGBA(255, 255, 255, 1)
+                        DisabledBorderColor: =RGBA(166, 166, 166, 1)
+                        DisplayMode: =DisplayMode.View
+                        Fill: =RGBA(0, 52, 83, 1)
+                        Font: ="Helvetica Neue"
+                        Height: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,30,40)
+                        HoverBorderColor: =ColorFade(Self.BorderColor, 20%)
+                        HoverColor: =RGBA(255, 255, 255, 1)
+                        HoverFill: =ColorFade(RGBA(56, 96, 178, 1), -20%)
+                        PaddingLeft: =10
+                        PressedBorderColor: =Self.Fill
+                        PressedColor: =Self.Fill
+                        PressedFill: =Self.Color
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Size: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,10,11.25)
+                        Text: ="Workspace Details"
+                        Width: =cont_RequestDetails.Width + 2
+                        X: =cont_RequestDetails.X - 1
+                        Y: '=lblRequestTypeHeader.Y + lblRequestTypeHeader.Height '
+                  - cont_RequestDetails:
+                      Control: GroupContainer@1.3.0
+                      Variant: ManualLayout
+                      Properties:
+                        BorderColor: =RGBA(0, 52, 83, 1)
+                        BorderStyle: =BorderStyle.None
+                        BorderThickness: =1
+                        ContentLanguage: =
+                        DropShadow: =DropShadow.None
+                        Height: =txtWorkspaceSegregation.Y + txtWorkspaceSegregation.Height + 20
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Width: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,App.Width-30,App.Width-100)
+                        X: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,10, 50)
+                        Y: =btn_NR_PartRequest.Y + btn_NR_PartRequest.Height
+                      Children:
+                        - lblWorkspaceName:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: =Font.'Open Sans'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,25,25)
+                              PaddingLeft: =If(varRequestType="View",5,0)
+                              Size: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,8,10)
+                              Text: ="Workspace Name"
+                              Width: =If(App.ActiveScreen.Size=1 || App.ActiveScreen.Size=2,Parent.Width,Parent.Width/3)
+                              X: =10
+                              Y: =10
+                        - lblWorkspaceSegregation:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              PaddingLeft: =lblWorkspaceName.PaddingLeft
+                              Size: =lblWorkspaceName.Size
+                              Text: ="Ensure Workspace Segregation"
+                              Width: =lblWorkspaceName.Width
+                              X: =lblWorkspaceName.X
+                              Y: =txtWorkspacename.Y+txtWorkspacename.Height+10
+                        - lblWorkspaceRequestor:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              PaddingLeft: =lblWorkspaceName.PaddingLeft
+                              Size: =lblWorkspaceName.Size
+                              Text: ="Workspace Requestor"
+                              Width: =lblWorkspaceName.Width
+                              X: =lblRequestDate.Width+lblRequestDate.X
+                              Y: =lblRequestDate.Y
+                        - cbWorkspaceRequestor:
+                            Control: Classic/ComboBox@2.4.0
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              ChevronBackground: =RGBA(0, 0, 0, 0)
+                              ChevronFill: =RGBA(0, 0, 0, 1)
+                              ChevronHoverBackground: =
+                              ChevronHoverFill: =RGBA(0, 0, 0, 1)
+                              Color: =RGBA(102, 102, 102, 1)
+                              DefaultSelectedItems: =varSelectedItem.Workspace_Owner
+                              DisplayFields: =["Claims"]
+                              DisplayMode: =txtWorkspacename.DisplayMode
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =0
+                              Font: ="Helvetica Neue"
+                              Height: =txtWorkspacename.Height
+                              HoverColor: =Self.Color
+                              HoverFill: =RGBA(237, 237, 237, 1)
+                              InputTextPlaceholder: =If(varRequestType="View","","Enter Backup Owner")
+                              IsSearchable: =false
+                              Items: =Choices(FDCMigrationRequests.Workspace_Owner)
+                              NoSelectionText: ="Select Workspace Requestor"
+                              OnChange: =
+                              PressedColor: =Self.Color
+                              PressedFill: =RGBA(0, 0, 0, 0)
+                              SearchFields: =["Claims"]
+                              SelectMultiple: =false
+                              SelectionColor: =RGBA(255, 255, 255, 1)
+                              SelectionFill: =RGBA(0, 52, 83, 1)
+                              SelectionTagFill: =
+                              Size: =lblWorkspaceName.Size
+                              Width: =txtWorkspacename.Width-10
+                              X: =lblWorkspaceRequestor.X
+                              Y: =txtWorkspacename.Y
+                        - lblRequestDate:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              PaddingLeft: =lblWorkspaceName.PaddingLeft
+                              Size: =lblWorkspaceName.Size
+                              Text: ="Request Date"
+                              Width: =lblWorkspaceName.Width
+                              X: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,lblWorkspaceName.X ,lblWorkspaceName.X + lblWorkspaceName.Width)
+                              Y: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,lblWorkspaceName.Y + lblWorkspaceName.Height + 10,lblWorkspaceName.Y)
+                        - txtWorkspaceSegregation:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.Workspace_Name
+                              DisplayMode: =txtWorkspacename.DisplayMode
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =txtWorkspacename.Height
+                              HintText: ="Enter workspace segregation"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =txtWorkspacename.Width
+                              X: =lblWorkspaceName.X
+                              Y: =lblWorkspaceSegregation.Y + lblWorkspaceSegregation.Height
+                        - txtWorkspacename:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.Workspace_Name
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,DisplayMode.Disabled)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =30
+                              HintText: ="Enter workspace name"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =Parent.Width/3-10
+                              X: =10
+                              Y: =lblWorkspaceName.Y+ lblWorkspaceName.Height+5
+                        - lblIdentityChampion:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              PaddingLeft: =lblWorkspaceName.PaddingLeft
+                              Size: =lblWorkspaceName.Size
+                              Text: ="Identity Champion"
+                              Width: =lblWorkspaceName.Width
+                              X: =lblRequestDate.X
+                              Y: =lblWorkspaceSegregation.Y
+                        - dtRequestedDate:
+                            Control: DatePicker@0.0.46
+                            Properties:
+                              Height: =txtWorkspacename.Height
+                              SelectedDate: =varSelectedItem.RequestedDate
+                              Width: =lblRequestDate.Width
+                              X: =lblRequestDate.X
+                              Y: =txtWorkspacename.Y
+                        - cbIdentityChampion:
+                            Control: Classic/ComboBox@2.4.0
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              ChevronBackground: =RGBA(0, 0, 0, 0)
+                              ChevronFill: =RGBA(0, 0, 0, 1)
+                              ChevronHoverBackground: =
+                              ChevronHoverFill: =RGBA(0, 0, 0, 1)
+                              Color: =RGBA(102, 102, 102, 1)
+                              DefaultSelectedItems: =varSelectedItem.Identity_Champion
+                              DisplayFields: =["DisplayName"]
+                              DisplayMode: =txtWorkspacename.DisplayMode
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =0
+                              Font: ="Helvetica Neue"
+                              Height: =txtWorkspacename.Height
+                              HoverColor: =Self.Color
+                              HoverFill: =RGBA(237, 237, 237, 1)
+                              InputTextPlaceholder: =If(varRequestType="View","","Enter Backup Owner")
+                              IsSearchable: =false
+                              Items: =Choices(WorkspaceRequests.Workspace_Requester)
+                              NoSelectionText: ="Select identity champion"
+                              OnChange: =
+                              PressedColor: =Self.Color
+                              PressedFill: =RGBA(0, 0, 0, 0)
+                              SearchFields: =["Email"]
+                              SelectMultiple: =false
+                              SelectionColor: =RGBA(255, 255, 255, 1)
+                              SelectionFill: =RGBA(0, 52, 83, 1)
+                              SelectionTagFill: =
+                              Size: =lblWorkspaceName.Size
+                              Width: =txtWorkspacename.Width-10
+                              X: =lblRequestDate.X
+                              Y: =txtWorkspaceSegregation.Y
+                        - TextInputCanvas1:
+                            Control: TextInput@0.0.54
+                            Properties:
+                              Height: =3
+                              Y: =-3
+                  - img_NR_HeaderLogo:
+                      Control: Image@2.2.3
+                      Properties:
+                        BorderColor: =RGBA(0, 18, 107, 1)
+                        Height: =10
+                        Image: =
+                        ImagePosition: =ImagePosition.Fill
+                        Width: =Parent.Width+If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,30,5)
+                        X: =1
+                  - lblRequestTypeHeader:
+                      Control: Label@2.5.1
+                      Properties:
+                        BorderColor: =RGBA(0, 18, 107, 1)
+                        Color: =RGBA(255, 255, 255, 1)
+                        Font: =Font.'Open Sans'
+                        Height: =5//img_NR_HeaderLogo.Height
+                        PaddingLeft: =10+If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,15,5)
+                        Size: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,10,12)
+                        Text: =Switch(varRequestType,"New","New Request","Edit","Edit Request","View","View Request","Approval","Approval Action")
+                        Width: =img_NR_HeaderLogo.Width
+                        X: =img_NR_HeaderLogo.X
+                        Y: =img_NR_HeaderLogo.Y
+                  - Cont_Buttons:
+                      Control: GroupContainer@1.3.0
+                      Variant: ManualLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Height: =50
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Width: =cont_RequestDetails.Width
+                        X: =cont_RequestDetails.X
+                        Y: =cont_Checklist_1.Y+cont_Checklist_1.Height+10
+                      Children:
+                        - btn_NR_Approve:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              AutoDisableOnSelect: =false
+                              BorderColor: =ColorFade(Self.Fill, -15%)
+                              BorderThickness: =0
+                              Color: =RGBA(255, 255, 255, 1)
+                              DisabledBorderColor: =RGBA(166, 166, 166, 1)
+                              Fill: =VarChevronColor
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Normal
+                              Height: =If(App.ActiveScreen.Size=1 || App.ActiveScreen.Size=2|| App.ActiveScreen.Size=3,30,35)
+                              HoverBorderColor: =ColorFade(Self.BorderColor, 20%)
+                              HoverColor: =RGBA(255, 255, 255, 1)
+                              HoverFill: =Self.Fill
+                              OnSelect: |
+                                =//Set loading variable into true
+
+                                UpdateContext(
+                                    {
+                                        VarRequestStatus: "Approved",
+                                        VarPopup: true,
+                                        VarSuccessPopupMessage: "Are you sure you want to approve the Request?"
+                                    }
+                                );
+                              PressedBorderColor: =Self.Fill
+                              PressedFill: =Self.Fill
+                              RadiusBottomLeft: =5
+                              RadiusBottomRight: =5
+                              RadiusTopLeft: =5
+                              RadiusTopRight: =5
+                              Size: =If(App.ActiveScreen.Size=1 || App.ActiveScreen.Size=2 || App.ActiveScreen.Size=3,Varfontsize-1,Varfontsize+1)
+                              Text: ="Approve"
+                              Tooltip: ="Click to Submit the data"
+                              Visible: =varRequestType="Approval" && varSelectedItem.Status.Value = "Submitted"
+                              Width: =If(App.ActiveScreen.Size=1 ,60, App.ActiveScreen.Size=2,80,100)
+                              X: =Parent.Width - Self.Width - 15
+                              Y: =5
+                        - btn_NR_Reject:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              AutoDisableOnSelect: =false
+                              BorderColor: =Self.Color
+                              Color: =RGBA(0, 133, 173, 1)
+                              DisabledBorderColor: =VarfontColor
+                              DisabledColor: =VarfontColor
+                              DisplayMode: |-
+                                =/*If(NewRequestForm.Valid && If(cb_NR_ItemType.Selected.Value <> "General Idea", !IsBlank(cb_NR_HelpNeededBox1A) && !IsBlank(cb_NR_HelpNeededBox2A) && !IsBlank(cb_NR_HelpNeededBox2A) && !IsBlank(txt_NR_HelpNeededBox2B) && CountIf(CollHiddenFailureCauseIDDetails,IsBlank(Title)||IsBlank('Targeted Capability'))=0,CountIf(CollHiddenFailureCauseIDDetails,IsBlank(Title))=0),DisplayMode.Edit,DisplayMode.Disabled)*/
+                                DisplayMode.Edit
+                              Fill: =RGBA(0, 0, 0, 0)
+                              Font: =Font.'Open Sans'
+                              FontWeight: =FontWeight.Bold
+                              Height: =If(App.ActiveScreen.Size=1 || App.ActiveScreen.Size=2|| App.ActiveScreen.Size=3,30,35)
+                              HoverBorderColor: =ColorFade(Self.BorderColor, 20%)
+                              HoverColor: =RGBA(255,255,255,1)
+                              HoverFill: =Self.Color
+                              OnSelect: "=//Set loading variable into true\nUpdateContext(\n    {\n        VarRequestStatus: \"Rejected\",\n        VarPopup: true,\n        VarSuccessPopupMessage: \"Please provide reason for rejecting the Request.\"\n    }\n);\n "
+                              PressedBorderColor: =Self.Color
+                              PressedColor: =RGBA(255,255,255,1)
+                              PressedFill: =Self.Color
+                              RadiusBottomLeft: =5
+                              RadiusBottomRight: =5
+                              RadiusTopLeft: =5
+                              RadiusTopRight: =5
+                              Size: =If(App.ActiveScreen.Size=1 || App.ActiveScreen.Size=2 || App.ActiveScreen.Size=3,Varfontsize-1,Varfontsize+1)
+                              Text: ="Reject"
+                              Tooltip: ="Click to Save the data"
+                              Visible: =varRequestType="Approval" && varSelectedItem.Status.Value = "Submitted"
+                              Width: =If(App.ActiveScreen.Size=1 ,60, App.ActiveScreen.Size=2,80,100)
+                              X: =btnSubmit.X
+                              Y: =5
+                        - btnSubmit:
+                            Control: Button@0.0.45
+                            Properties:
+                              BasePaletteColor: =RGBA(249, 83, 109, 1)
+                              Icon: ="Save"
+                              OnSelect: "=//Set loading variable into true\nSet(\n    VarLoading,\n    true\n);\nIf(\n    IsBlank(varSelectedItem),\n    Patch(\n        FDCMigrationRequests,\n        Defaults(FDCMigrationRequests),\n        {\n            Workspace_Name: txtWorkspacename.Text,\n            Workspace_Owner: cbWorkspaceRequestor.Selected,\n            RequestedDate: dtRequestedDate.SelectedDate,\n            Ensure_Workspace_Segregation:true,// txtWorkspaceSegregation.Text,\n            Identity_Champion: cbIdentityChampion.Selected,\n            NoOfReports: txtNoOfReports.Text,\n            \nNoOfSemanticModels: txtNoOfSemanticModels.Text,\nNoOfDashboards: txtNoOfDashboards.Text,\nNoOfDataflows: txtNoOfDataflows.Text,\nNoOfNotebooks: txtNoOfNotebooks.Text,\nNoOfPipelines: txtNoOfPipelines.Text,\nNoOfLakehouses: txtNoOfLakehouses.Text,\nNoOfWarehouses: txtNoOfWarehouses.Text,\nOthers: txtOthers.Text,\nIdentity_Fabric_Features:txtIdentityFabricFeatures.Text,Review_Dataset_Model_Sizes:txtReviewDatasetModelsizes.Text,Review_Refresh_Frequencies:txtReviewRefreshFrequencies.Text,Review_Workspace_Capacity_Metrics:txtReviewWorkspaceCapacityMetrics.Text,\n            Status: {Value: \"Submitted\"},\n            Title: Year(Now()) & \"00\" & Last(FDCMigrationRequests).ID + 1\n        }\n    ),\n    Patch(\n        WorkspaceRequests,\n        {ID: varSelectedItem.ID},\n        {Status: {Value: \"Submitted\"}}\n    )\n);\nUpdateContext(\n    {\n        VarSuccessPopupMessage: \"Your request has been successfully submitted.\",\n        VarPopupConfirmation: true\n    }\n);\nSet(\n    VarLoading,\n    false\n);\n"
+                              Text: ="Submit"
+                              Visible: =If(varRequestType="New",true,false)
+                              X: =Parent.Width - Self.Width - 15
+                              Y: =8
+                        - ButtonCanvas3:
+                            Control: Button@0.0.45
+                            Properties:
+                              BasePaletteColor: =RGBA(189, 178, 176, 1)
+                              Icon: ="ArrowLeft"
+                              OnSelect: |+
+                                =
+                                Navigate(DashboardScreen,ScreenTransition.CoverRight);
+                              Text: ="Back"
+                              X: = If(varRequestType<>"View", 20, Parent.Width - Self.Width - 15)
+                              Y: =5
+                        - btnUpdate:
+                            Control: Button@0.0.45
+                            Properties:
+                              BasePaletteColor: =RGBA(249, 83, 109, 1)
+                              Icon: ="Save"
+                              OnSelect: "=//Set loading variable into true\nSet(\n    VarLoading,\n    true\n);\n\n//Validation\nIf(1=1,UpdateContext({ctxValid:false}),UpdateContext({ctxValid:true}));\nIf(ctxValid, \n/*Patch(\n    FDCMigrationRequests,\n    {ID: varSelectedItem.ID},\n    {\n        Status: {Value: rgCheckApprovalStatus.Selected.Value},\n        Approved_Declined_Date:Now(),\n        Need_Dedicated_Workspace:If(rgCheck1.Selected.Value=\"Yes\",true,false),\n        Need_Dedicated_Workspace_Approve:If(rgCheckApprove1.Selected.Value=\"Yes\",true,false),\n        is_Workspace_For_Business_Purpose:If(rgCheck2.Selected.Value=\"Yes\",true,false),\n        is_Workspace_For_Business_Purpose_Approve:If(rgCheckApprove2.Selected.Value=\"Yes\",true,false),Data_Published_NOT_be_Restricted:If(rgCheck3.Selected.Value=\"Yes\",true,false),Data_Published_NOT_be_Restricted_Approve:If(rgCheckApprove3.Selected.Value=\"Yes\",true,false),AD_Groups_Created:If(rgCheck4.Selected.Value=\"Yes\",true,false),AD_Groups_Created_Approve:If(rgCheckApprove4.Selected.Value=\"Yes\",true,false),Is_PROD_UAT_Test_Environments:If(rgCheck5.Selected.Value=\"Yes\",true,false),Is_PROD_UAT_Test_Environments_Approve:If(rgCheckApprove5.Selected.Value=\"Yes\",true,false),PowerBI_Developer_In_Your_Team:If(rgCheck6.Selected.Value=\"Yes\",true,false),PowerBI_Developer_In_Your_Team_Approve:If(rgCheckApprove6.Selected.Value=\"Yes\",true,false),Does_TheWorkspace_name_Follow_thenamingconvention:If(rgCheck7.Selected.Value=\"Yes\",true,false),Does_TheWorkspace_name_Follow_thenamingconvention_Approve:If(rgCheckApprove7.Selected.Value=\"Yes\",true,false),Does_TheUser_Rollupto_Finance:If(rgCheck8.Selected.Value=\"Yes\",true,false),Does_TheUser_Rollupto_Finance_Approve:If(rgCheckApprove8.Selected.Value=\"Yes\",true,false),AllTheChecklistsAreMarkedYes:If(rgcheckAllAbove.Selected.Value=\"Yes\",true,false),AllTheChecklistsAreMarked_Approve:{Value:rgCheckApprovalStatus.Selected.Value},AdditionalJustification:txtNoOfReports.Text,DeclinedReasons:txtIdentityFabricFeatures.Text\n        \n    }\n);*/\nUpdateContext(\n    {\n        VarSuccessPopupMessage: \"Your request has been successfully submitted.\",\n        VarPopupConfirmation: true\n    }\n);\n,UpdateContext(\n    {\n        VarSuccessPopupMessage: \"Please fill all the required fields.\",\n        VarPopupConfirmation: true\n    }\n); );\n\nSet(\n    VarLoading,\n    false\n);\n"
+                              Text: ="Update"
+                              Visible: =If(varRequestType="Edit",true,false)
+                              X: =Parent.Width - Self.Width - 15
+                              Y: =btnSubmit.Y
+                        - btnSubmit_1:
+                            Control: Button@0.0.45
+                            Properties:
+                              BasePaletteColor: =RGBA(5, 102, 178, 1)
+                              Icon: ="Save"
+                              OnSelect: |
+                                =//Set loading variable into true
+                                Set(
+                                    VarLoading,
+                                    true
+                                );
+                                If(
+                                    IsBlank(varSelectedItem),
+                                    Patch(
+                                        FDCMigrationRequests,
+                                        Defaults(FDCMigrationRequests),
+                                        {
+                                            Workspace_Name: txtWorkspacename.Text,
+                                            Workspace_Owner: cbWorkspaceRequestor.Selected,
+                                            RequestedDate: dtRequestedDate.SelectedDate,
+                                            Ensure_Workspace_Segregation: true,
+                                            // txtWorkspaceSegregation.Text,
+                                            Identity_Champion: cbIdentityChampion.Selected,
+                                            NoOfReports: txtNoOfReports.Text,
+                                            NoOfSemanticModels: txtNoOfSemanticModels.Text,
+                                            NoOfDashboards: txtNoOfDashboards.Text,
+                                            NoOfDataflows: txtNoOfDataflows.Text,
+                                            NoOfNotebooks: txtNoOfNotebooks.Text,
+                                            NoOfPipelines: txtNoOfPipelines.Text,
+                                            NoOfLakehouses: txtNoOfLakehouses.Text,
+                                            NoOfWarehouses: txtNoOfWarehouses.Text,
+                                            Others: txtOthers.Text,
+                                            Identity_Fabric_Features: txtIdentityFabricFeatures.Text,
+                                            Review_Dataset_Model_Sizes: txtReviewDatasetModelsizes.Text,
+                                            Review_Refresh_Frequencies: txtReviewRefreshFrequencies.Text,
+                                            Review_Workspace_Capacity_Metrics: txtReviewWorkspaceCapacityMetrics.Text,
+                                            Status: {Value: "Draft"},
+                                            Title: Year(Now()) & "00" & Last(FDCMigrationRequests).ID + 1
+                                        }
+                                    ),
+                                    Patch(
+                                        FDCMigrationRequests,
+                                        {ID: varSelectedItem.ID},
+                                        {
+                                            Workspace_Name: txtWorkspacename.Text,
+                                            Workspace_Owner: cbWorkspaceRequestor.Selected,
+                                            RequestedDate: dtRequestedDate.SelectedDate,
+                                            Ensure_Workspace_Segregation: true,
+                                            // txtWorkspaceSegregation.Text,
+                                            Identity_Champion: cbIdentityChampion.Selected,
+                                            NoOfReports: txtNoOfReports.Text,
+                                            NoOfSemanticModels: txtNoOfSemanticModels.Text,
+                                            NoOfDashboards: txtNoOfDashboards.Text,
+                                            NoOfDataflows: txtNoOfDataflows.Text,
+                                            NoOfNotebooks: txtNoOfNotebooks.Text,
+                                            NoOfPipelines: txtNoOfPipelines.Text,
+                                            NoOfLakehouses: txtNoOfLakehouses.Text,
+                                            NoOfWarehouses: txtNoOfWarehouses.Text,
+                                            Others: txtOthers.Text,
+                                            Identity_Fabric_Features: txtIdentityFabricFeatures.Text,
+                                            Review_Dataset_Model_Sizes: txtReviewDatasetModelsizes.Text,
+                                            Review_Refresh_Frequencies: txtReviewRefreshFrequencies.Text,
+                                            Review_Workspace_Capacity_Metrics: txtReviewWorkspaceCapacityMetrics.Text
+                                        }
+                                    )
+                                );
+                                UpdateContext(
+                                    {
+                                        VarSuccessPopupMessage: "Your request has been successfully saved.",
+                                        VarPopupConfirmation: true
+                                    }
+                                );
+                                Set(
+                                    VarLoading,
+                                    false
+                                );
+                              Text: ="Save As Draft"
+                              Visible: =btnSubmit.Visible
+                              Width: =140
+                              X: =btnSubmit.X - Self.Width - 15
+                              Y: =btnSubmit.Y
+                  - Checklist:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        Align: =Align.Left
+                        BorderColor: =ColorFade(Self.Fill, -15%)
+                        BorderStyle: =BorderStyle.None
+                        BorderThickness: =0
+                        Color: =RGBA(255, 255, 255, 1)
+                        DisabledBorderColor: =RGBA(166, 166, 166, 1)
+                        DisplayMode: =DisplayMode.View
+                        Fill: =RGBA(0, 52, 83, 1)
+                        Font: ="Helvetica Neue"
+                        Height: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,30,40)
+                        HoverBorderColor: =ColorFade(Self.BorderColor, 20%)
+                        HoverColor: =RGBA(255, 255, 255, 1)
+                        HoverFill: =ColorFade(RGBA(56, 96, 178, 1), -20%)
+                        PaddingLeft: =10
+                        PressedBorderColor: =Self.Fill
+                        PressedColor: =Self.Fill
+                        PressedFill: =Self.Color
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Size: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,10,11.25)
+                        Text: ="Inventory Workspace"
+                        Width: =cont_RequestDetails.Width + 2
+                        X: =cont_RequestDetails.X - 1
+                        Y: =cont_RequestDetails.Y+cont_RequestDetails.Height
+                  - cont_Checklist:
+                      Control: GroupContainer@1.3.0
+                      Variant: ManualLayout
+                      Properties:
+                        BorderColor: =RGBA(0, 52, 83, 1)
+                        BorderStyle: =BorderStyle.None
+                        BorderThickness: =1
+                        ContentLanguage: =
+                        DropShadow: =DropShadow.None
+                        Height: =txtOthers.Y+txtOthers.Height+15
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Width: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,App.Width-30,App.Width-100)
+                        X: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,10, 50)
+                        Y: =Checklist.Y+Checklist.Height
+                      Children:
+                        - lblAdditionalJustification:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              Size: =lblRequestDate.Size
+                              Text: ="No Of Reports"
+                              Width: =lblWorkspaceName.Width
+                              X: =10
+                              Y: =10
+                        - txtNoOfReports:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.NoOfReports
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblAdditionalJustification.Height
+                              HintText: ="Enter no of reports"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =lblAdditionalJustification.Width
+                              X: =lblAdditionalJustification.X
+                              Y: =lblAdditionalJustification.Y+ lblAdditionalJustification.Height+5
+                        - lblAdditionalJustification_1:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              Size: =lblRequestDate.Size
+                              Text: ="No Of Semantic Models"
+                              Width: =lblWorkspaceName.Width
+                              X: =lblAdditionalJustification.X+lblAdditionalJustification.Width
+                              Y: =lblAdditionalJustification.Y
+                        - txtNoOfSemanticModels:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.NoOfSemanticModels
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblAdditionalJustification.Height
+                              HintText: ="Enter no of semantic models"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =lblAdditionalJustification_1.Width-10
+                              X: =txtNoOfReports.X+txtNoOfReports.Width+5
+                              Y: =txtNoOfReports.Y
+                        - lblAdditionalJustification_2:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              Size: =lblRequestDate.Size
+                              Text: ="No Of Dashboards"
+                              Width: =lblWorkspaceName.Width-20
+                              X: =lblAdditionalJustification_1.X+lblAdditionalJustification_1.Width
+                              Y: =lblAdditionalJustification.Y
+                        - txtNoOfDashboards:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.NoOfDashboards
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblAdditionalJustification.Height
+                              HintText: ="Enter no of dashboards"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =lblAdditionalJustification.Width-20
+                              X: =lblAdditionalJustification_1.X+lblAdditionalJustification_1.Width
+                              Y: =txtNoOfReports.Y
+                        - lblNoOfReports:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              Size: =lblRequestDate.Size
+                              Text: ="No Of Dataflows"
+                              Width: =lblWorkspaceName.Width
+                              X: =lblAdditionalJustification.X
+                              Y: =txtNoOfReports.Y+txtNoOfReports.Height+10
+                        - txtNoOfDataflows:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.NoOfDataflows
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblNoOfReports.Height
+                              HintText: ="Enter no of dataflows"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =lblNoOfReports.Width
+                              X: =txtNoOfReports.X
+                              Y: =lblNoOfReports.Y+lblNoOfReports.Height+5
+                        - lblAdditionalJustification_4:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              Size: =lblRequestDate.Size
+                              Text: ="No Of Notebooks"
+                              Width: =lblWorkspaceName.Width
+                              X: =lblAdditionalJustification_1.X
+                              Y: =lblNoOfReports.Y
+                        - txtNoOfNotebooks:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.NoOfNotebooks
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblNoOfReports.Height
+                              HintText: ="Enter no of lakehouses"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =lblAdditionalJustification_4.Width-10
+                              X: =txtNoOfSemanticModels.X
+                              Y: =txtNoOfDataflows.Y
+                        - lblAdditionalJustification_5:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              Size: =lblRequestDate.Size
+                              Text: ="No Of Pipelines"
+                              Width: =lblAdditionalJustification_2.Width
+                              X: =lblAdditionalJustification_2.X
+                              Y: =lblNoOfReports.Y
+                        - txtNoOfPipelines:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.NoOfPipelines
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblNoOfReports.Height
+                              HintText: ="Enter no of pipelines"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =lblNoOfReports.Width-20
+                              X: =txtNoOfDashboards.X
+                              Y: =txtNoOfDataflows.Y
+                        - lblNoOfReports_1:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              Size: =lblRequestDate.Size
+                              Text: ="No Of Lakehouses"
+                              Width: =lblWorkspaceName.Width
+                              X: =lblAdditionalJustification.X
+                              Y: =txtNoOfDataflows.Y+txtNoOfDataflows.Height+10
+                        - txtNoOfLakehouses:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.NoOfLakehouses
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblNoOfReports_1.Height
+                              HintText: ="Enter no of lakehouses"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =lblNoOfReports_1.Width
+                              X: =txtNoOfReports.X
+                              Y: =lblNoOfReports_1.Y+lblNoOfReports_1.Height+5
+                        - lblAdditionalJustification_6:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              Size: =lblRequestDate.Size
+                              Text: ="No Of Warehouses"
+                              Width: =lblWorkspaceName.Width
+                              X: =lblAdditionalJustification_1.X
+                              Y: =lblNoOfReports_1.Y
+                        - txtNoOfWarehouses:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.NoOfWarehouses
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblNoOfReports_1.Height
+                              HintText: ="Enter No of Warehouses"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =lblAdditionalJustification_6.Width-10
+                              X: =txtNoOfSemanticModels.X
+                              Y: =txtNoOfLakehouses.Y
+                        - lblAdditionalJustification_7:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              Size: =lblRequestDate.Size
+                              Text: ="Others"
+                              Width: =lblAdditionalJustification_2.Width
+                              X: =lblAdditionalJustification_2.X
+                              Y: =lblNoOfReports_1.Y
+                        - txtOthers:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.Others
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblNoOfReports_1.Height
+                              HintText: ="Enter Others"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =lblNoOfReports_1.Width-20
+                              X: =txtNoOfDashboards.X
+                              Y: =txtNoOfLakehouses.Y
+                  - lblStatusValue:
+                      Control: Label@2.5.1
+                      Properties:
+                        BorderColor: =RGBA(0, 18, 107, 1)
+                        Color: =RGBA(255, 255, 255, 1)
+                        Font: =Font.'Open Sans'
+                        FontWeight: =FontWeight.Semibold
+                        Size: =11
+                        Text: |-
+                          ="Status: "&varSelectedItem.Status.Value
+                        Width: =200
+                        X: =btn_NR_PartRequest.Width-Self.Width-10
+                        Y: =btn_NR_PartRequest.Y
+                  - Checklist_1:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        Align: =Align.Left
+                        BorderColor: =ColorFade(Self.Fill, -15%)
+                        BorderStyle: =BorderStyle.None
+                        BorderThickness: =0
+                        Color: =RGBA(255, 255, 255, 1)
+                        DisabledBorderColor: =RGBA(166, 166, 166, 1)
+                        DisplayMode: =DisplayMode.View
+                        Fill: =RGBA(0, 52, 83, 1)
+                        Font: ="Helvetica Neue"
+                        Height: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,30,40)
+                        HoverBorderColor: =ColorFade(Self.BorderColor, 20%)
+                        HoverColor: =RGBA(255, 255, 255, 1)
+                        HoverFill: =ColorFade(RGBA(56, 96, 178, 1), -20%)
+                        PaddingLeft: =10
+                        PressedBorderColor: =Self.Fill
+                        PressedColor: =Self.Fill
+                        PressedFill: =Self.Color
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Size: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,10,11.25)
+                        Text: ="Evaluate Workspace usage - FTO"
+                        Width: =cont_RequestDetails.Width + 2
+                        X: =cont_RequestDetails.X - 1
+                        Y: =cont_Checklist.Y+cont_Checklist.Height
+                  - cont_Checklist_1:
+                      Control: GroupContainer@1.3.0
+                      Variant: ManualLayout
+                      Properties:
+                        BorderColor: =RGBA(0, 52, 83, 1)
+                        BorderStyle: =BorderStyle.None
+                        BorderThickness: =1
+                        ContentLanguage: =
+                        DropShadow: =DropShadow.None
+                        Height: =txtIdentityFabricFeatures.Y+txtIdentityFabricFeatures.Height+15
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Width: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,App.Width-30,App.Width-100)
+                        X: =If(App.ActiveScreen.Size=1 ||App.ActiveScreen.Size=2,10, 50)
+                        Y: =Checklist_1.Y+Checklist_1.Height
+                      Children:
+                        - lblIdentityFabricFeatures_1:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =30
+                              Size: =lblRequestDate.Size
+                              Text: ="Identity Fabric Features"
+                              Width: =450
+                              X: =10
+                              Y: =txtReviewDatasetModelsizes.Y+txtReviewDatasetModelsizes.Height+5
+                        - txtIdentityFabricFeatures:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.Identity_Fabric_Features
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblWorkspaceName.Height*3
+                              HintText: ="Enter identity fabric features"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              Mode: =TextMode.MultiLine
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =Parent.Width-Self.X-10
+                              X: =10
+                              Y: =lblIdentityFabricFeatures_1.Y+ lblIdentityFabricFeatures_1.Height+5
+                        - lblNoOfReports_5:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              Size: =lblRequestDate.Size
+                              Text: ="Review Dataset Model Sizes"
+                              Width: =lblWorkspaceName.Width
+                              X: =10
+                              Y: =10
+                        - txtReviewDatasetModelsizes:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.NoOfLakehouses
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblNoOfReports_5.Height
+                              HintText: ="Enter review dataset model sizes"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =lblNoOfReports_5.Width-10
+                              X: =lblNoOfReports_5.X
+                              Y: =lblNoOfReports_5.Y+lblNoOfReports_5.Height+5
+                        - lblAdditionalJustification_16:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              Size: =lblRequestDate.Size
+                              Text: ="Review Refresh Frequencies"
+                              Width: =lblWorkspaceName.Width
+                              X: =lblNoOfReports_5.X+lblNoOfReports_5.Width
+                              Y: =lblNoOfReports_5.Y
+                        - txtReviewRefreshFrequencies:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.NoOfWarehouses
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblNoOfReports_5.Height
+                              HintText: ="Enter review refresh frequencies"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =lblAdditionalJustification_16.Width-10
+                              X: =lblAdditionalJustification_16.X
+                              Y: =txtReviewDatasetModelsizes.Y
+                        - lblAdditionalJustification_17:
+                            Control: Label@2.5.1
+                            Properties:
+                              BorderColor: =RGBA(0, 18, 107, 1)
+                              Font: ="Helvetica Neue"
+                              FontWeight: =FontWeight.Semibold
+                              Height: =lblWorkspaceName.Height
+                              Size: =lblRequestDate.Size
+                              Text: ="Review Workspace Capacity Metrics"
+                              Width: =lblAdditionalJustification_16.Width
+                              X: =lblAdditionalJustification_16.X+lblAdditionalJustification_16.Width+5
+                              Y: =lblNoOfReports_5.Y
+                        - txtReviewWorkspaceCapacityMetrics:
+                            Control: Classic/TextInput@2.3.2
+                            Properties:
+                              BorderColor: =RGBA(193, 193, 193, 1)
+                              BorderThickness: =1
+                              Color: =RGBA(102, 102, 102, 1)
+                              Default: =varSelectedItem.Others
+                              DisplayMode: =If(varRequestType="New",DisplayMode.Edit,lblWorkspaceName.DisplayMode)
+                              FocusedBorderColor: =Color.Transparent
+                              FocusedBorderThickness: =2
+                              Font: ="Helvetica Neue"
+                              Height: =lblNoOfReports_5.Height
+                              HintText: ="Enter review workspace capacity metrics"
+                              HoverBorderColor: =Self.BorderColor
+                              HoverColor: =Self.Color
+                              HoverFill: =Self.Fill
+                              PaddingLeft: =5
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Size: =lblWorkspaceName.Size
+                              Width: =lblNoOfReports_5.Width-20
+                              X: =lblAdditionalJustification_17.X
+                              Y: =txtReviewDatasetModelsizes.Y
+                  - TextCanvas1:
+                      Control: Text@0.0.51
+                      Properties:
+                        Visible: =false
+                        X: =1
+      - Rectangle1_1:
+          Control: Rectangle@2.3.0
+          Properties:
+            BorderColor: =RGBA(0, 18, 107, 1)
+            Fill: =RGBA(168, 0, 0, 1)
+            Height: =40
+            Width: =1366
+      - lblFinanceWorkspaceRequest:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Center
+            BorderColor: =RGBA(0, 18, 107, 1)
+            Color: =RGBA(255, 255, 255, 1)
+            Font: =Font.'Open Sans'
+            FontWeight: =FontWeight.Bold
+            Text: ="FTO - Finance - Workspace Request "
+            Width: =340
+            X: =App.Width/2-Self.Width/2
+      - cmp_Success_1:
+          Control: CanvasComponent
+          ComponentName: cmp_Success
+          Properties:
+            ButtonFill: =RGBA(0, 0, 0, 1)
+            FooterColor: =RGBA(0, 0, 0, 1)
+            HeaderIcon: =
+            HeaderText: =If(!ctxValid,"Warning","Success")
+            Height: =App.Height
+            OkOnselect: |-
+              =UpdateContext({VarPopupConfirmation:false});
+              If(ctxValid,
+              Navigate(DashboardScreen,ScreenTransition.Cover););
+            PopUpMessage: =VarSuccessPopupMessage
+            Visible: =VarPopupConfirmation
+            Width: =App.Width
+      - cmp_Loading_1:
+          Control: CanvasComponent
+          ComponentName: cmp_Loading
+          Properties:
+            Fill: =RGBA(255, 255, 255, 1)
+            Height: =App.Height
+            Visible: =VarLoading
+            Width: =App.Width
