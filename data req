@@ -1,1 +1,17 @@
 
+Patch(
+    DrSeries,
+    Defaults(DrSeries),
+    {
+        DocketNumber: ddDocketNumber.Selected,
+        RequestDueDate: dpRequestDueDate.SelectedDate,
+        DateReceived: dpDateReceived.SelectedDate,
+        SeriesRange: txtSeriesRange.Text,
+        SerieType: ddSerieType.Selected,
+        Requestor: ddRequestor.Selected,
+        DateRequestReceived: dpDateRequestReceived.SelectedDate,
+        DocketNumberTitle: txtDocketNumberTitle.Text,
+        Title: txtTitle.Text
+    }
+);
+Notify("Record saved successfully", NotificationType.Success)
