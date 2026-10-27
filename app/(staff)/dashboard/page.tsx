@@ -169,14 +169,14 @@ export default async function DashboardPage() {
       <section aria-labelledby="homes-heading" className="flex flex-col gap-5">
         <SectionHeading
           id="homes-heading"
-          title="Homes in progress"
-          description="Most recently updated projects"
+          title="Project Portfolio"
+          description="Your construction projects at every stage."
           action={
             <Link
               href="/projects"
               className="group flex items-center gap-1.5 text-sm font-medium text-primary"
             >
-              All projects
+              View All Projects
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </Link>
           }
