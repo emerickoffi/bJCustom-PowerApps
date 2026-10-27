@@ -193,13 +193,23 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
                 const days = r.current ? daysUntil(r.current.due_on) : null
                 return (
                   <tr key={r.id} className="hover:bg-muted/40">
-                    <td className="px-5 py-3.5">
-                      <Link href={`/projects/${r.project_id}/warranty`} className="font-medium hover:text-primary">
-                        {r.projects?.name ?? 'Project'}
-                      </Link>
-                      {r.projects?.project_number && (
-                        <div className="text-xs text-muted-foreground">{r.projects.project_number}</div>
-                      )}
+                    <td className="max-w-xs px-5 py-3.5">
+                      <div className="flex min-w-0 items-baseline gap-2 whitespace-nowrap">
+                        <Link
+                          href={`/projects/${r.project_id}/warranty`}
+                          className="truncate font-semibold text-foreground hover:text-primary"
+                        >
+                          {r.projects?.name ?? 'Project'}
+                        </Link>
+                        {r.projects?.project_number && (
+                          <>
+                            <span aria-hidden="true" className="shrink-0 text-muted-foreground">
+                              ·
+                            </span>
+                            <span className="shrink-0 text-xs text-muted-foreground">{r.projects.project_number}</span>
+                          </>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-3.5">{r.current?.stage_label ?? WARRANTY_STAGE_LABELS[r.stage]}</td>
                     <td className="px-5 py-3.5 tabular-nums">{formatDate(r.start_date)}</td>
