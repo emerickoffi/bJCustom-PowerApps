@@ -1,10 +1,6 @@
 import { cn } from '@/lib/utils'
-import {
-  CLIENT_STATUS_LABELS,
-  PROJECT_STATUS_LABELS,
-  type ClientStatus,
-  type ProjectStatus,
-} from '@/lib/domain'
+import { CLIENT_STATUS_LABELS, type ClientStatus, type ProjectStatus } from '@/lib/domain'
+import { ProjectStatusBanner } from '@/components/shared/project-status-banner'
 
 type Tone = 'neutral' | 'sage' | 'primary' | 'solid' | 'warning' | 'danger' | 'champagne'
 
@@ -16,22 +12,6 @@ const TONE: Record<Tone, { pill: string; dot: string }> = {
   warning: { pill: 'bg-champagne-soft text-warning ring-warning/15', dot: 'bg-warning' },
   danger: { pill: 'bg-destructive/8 text-destructive ring-destructive/15', dot: 'bg-destructive' },
   champagne: { pill: 'bg-champagne-soft text-champagne-foreground ring-champagne/25', dot: 'bg-champagne' },
-}
-
-const PROJECT_TONE: Record<ProjectStatus, Tone> = {
-  lead: 'neutral',
-  consultation: 'neutral',
-  planning: 'sage',
-  estimating: 'sage',
-  awaiting_approval: 'warning',
-  preconstruction: 'sage',
-  under_construction: 'solid',
-  final_inspection: 'primary',
-  punch_list: 'primary',
-  substantially_complete: 'primary',
-  completed: 'champagne',
-  on_hold: 'warning',
-  cancelled: 'danger',
 }
 
 const CLIENT_TONE: Record<ClientStatus, Tone> = {
@@ -65,12 +45,9 @@ export function StatusPill({
   )
 }
 
+/** Compact project status used in tables and small references; shares colors with ProjectStatusBanner. */
 export function ProjectStatusBadge({ status, className }: { status: ProjectStatus; className?: string }) {
-  return (
-    <StatusPill tone={PROJECT_TONE[status]} className={className}>
-      {PROJECT_STATUS_LABELS[status]}
-    </StatusPill>
-  )
+  return <ProjectStatusBanner status={status} compact className={className} />
 }
 
 export function ClientStatusBadge({ status, className }: { status: ClientStatus; className?: string }) {

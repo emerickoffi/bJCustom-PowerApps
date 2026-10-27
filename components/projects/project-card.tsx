@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { CalendarDays, MapPin, UserRound } from 'lucide-react'
-import { ProjectStatusBadge } from '@/components/shared/status-badge'
+import { ProjectStatusBanner } from '@/components/shared/project-status-banner'
 import { ProgressBar } from '@/components/shared/progress'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/format'
@@ -51,6 +51,7 @@ export function ProjectCard({ project, className }: { project: ProjectCardData; 
         className,
       )}
     >
+      <ProjectStatusBanner status={project.status} />
       <div className="relative aspect-[16/9] overflow-hidden">
         {project.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- signed storage URLs are short-lived
@@ -63,9 +64,6 @@ export function ProjectCard({ project, className }: { project: ProjectCardData; 
           <ArchitecturalPlaceholder className="size-full" label="No site photos yet" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-brand-deep/80 via-brand-deep/10 to-transparent" />
-        <div className="absolute left-4 top-4">
-          <ProjectStatusBadge status={project.status} className="bg-white/95 ring-white/40" />
-        </div>
         <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3 text-white">
           <div className="flex min-w-0 flex-col gap-0.5">
             <span className="font-mono text-[0.7rem] text-white/70">{project.project_number}</span>
