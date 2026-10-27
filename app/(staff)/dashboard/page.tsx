@@ -9,10 +9,12 @@ import { StatCard } from '@/components/dashboard/stat-card'
 import { PipelineOverview } from '@/components/dashboard/pipeline-overview'
 import { RecentActivity } from '@/components/dashboard/recent-activity'
 import { NotificationsCard } from '@/components/walkthroughs/notifications-card'
-import { ProjectCard } from '@/components/projects/project-card'
+import { CompactProjectCard } from '@/components/dashboard/compact-project-card'
 import { ProgressRing } from '@/components/shared/progress'
 import { ACTIVE_PROJECT_STATUSES, type ProjectStatus } from '@/lib/domain'
-import { PROJECT_SUMMARY_COLUMNS, getProfileNames, type ProjectSummary } from '@/lib/queries'
+import { PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
+import { getOrgFeatures } from '@/lib/features'
+import { getDashboardCardDetails } from '@/lib/dashboard-cards'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
 
 export const metadata: Metadata = { title: 'Dashboard' }
@@ -45,7 +47,7 @@ export default async function DashboardPage() {
       .eq('status', 'lead'),
     supabase
       .from('projects')
-      .select(PROJECT_SUMMARY_COLUMNS)
+      .select(`${PROJECT_SUMMARY_COLUMNS}, completion_date`)
       .eq('organization_id', orgId)
       .is('archived_at', null)
       .order('updated_at', { ascending: false })
@@ -73,10 +75,11 @@ export default async function DashboardPage() {
   const manager = canManage(session.role)
   const firstName = session.fullName?.split(' ')[0]
 
-  const recent = (recentRes.data ?? []) as unknown as ProjectSummary[]
-  const [managerNames, photos] = await Promise.all([
-    getProfileNames(recent.map((p) => p.project_manager_id)),
+  const recent = (recentRes.data ?? []) as unknown as (ProjectSummary & { completion_date: string | null })[]
+  const features = await getOrgFeatures(orgId)
+  const [photos, cardDetails] = await Promise.all([
     getProjectCoverPhotos(recent.map((p) => p.id)),
+    getDashboardCardDetails(orgId, recent, features),
   ])
 
   return (
@@ -179,15 +182,16 @@ export default async function DashboardPage() {
           }
         />
         {recent.length ? (
-          <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {recent.map((p) => (
-              <ProjectCard
+              <CompactProjectCard
                 key={p.id}
                 project={{
                   ...p,
-                  clientName: p.primary_client ? `${p.primary_client.first_name} ${p.primary_client.last_name}` : null,
-                  managerName: p.project_manager_id ? (managerNames.get(p.project_manager_id) ?? null) : null,
+                  completion_date: p.completion_date ?? null,
                   photoUrl: photos.get(p.id) ?? null,
+                  details: cardDetails.get(p.id)!,
+                  warrantyEnabled: features.warranty,
                 }}
               />
             ))}
