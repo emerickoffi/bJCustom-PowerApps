@@ -1,0 +1,23 @@
+import type { Metadata } from 'next'
+import { requireManager } from '@/lib/session'
+import { createClientAction } from '@/app/actions/clients'
+import { PageHeader } from '@/components/shared/page-header'
+import { ClientForm } from '@/components/clients/client-form'
+import { UserRoundPlus as UserRoundPlusIcon } from 'lucide-react'
+
+export const metadata: Metadata = { title: 'New client' }
+
+export default async function NewClientPage() {
+  await requireManager()
+  return (
+    <div className="flex w-full max-w-4xl flex-col gap-6">
+      <PageHeader icon={UserRoundPlusIcon}
+        backHref="/clients"
+        backLabel="Clients"
+        title="Create client"
+        description="Add the homeowner's contact details and mailing address. A client number is assigned automatically when you save."
+      />
+      <ClientForm action={createClientAction} submitLabel="Create client" cancelHref="/clients" />
+    </div>
+  )
+}

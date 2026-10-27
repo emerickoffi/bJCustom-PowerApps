@@ -1,0 +1,226 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { ShieldCheck, ShieldCheck as ShieldCheckIcon } from 'lucide-react'
+import { requireStaff } from '@/lib/session'
+import { requireFeature } from '@/lib/features'
+import { createClient } from '@/lib/supabase/server'
+import { formatDate } from '@/lib/format'
+import { PageHeader, EmptyState } from '@/components/shared/page-header'
+import { RunWarrantyButton } from '@/components/warranty/run-warranty-button'
+import { WARRANTY_STAGE_LABELS, daysUntil, type WarrantyStage } from '@/components/warranty/stage'
+import { cn } from '@/lib/utils'
+
+export const metadata: Metadata = { title: 'Warranty' }
+
+const FILTERS: { value: WarrantyStage | 'all'; label: string }[] = [
+  { value: 'all', label: 'All active' },
+  { value: 'monitoring', label: 'Monitoring' },
+  { value: 'completed', label: 'Open claims' },
+  { value: 'ready_to_archive', label: 'Ready to archive' },
+  { value: 'archived', label: 'Archived' },
+]
+
+type Row = {
+  id: string
+  project_id: string
+  stage: WarrantyStage
+  start_date: string
+  projects: { name: string; project_number: string | null } | null
+  current: { coverage_name: string; stage_label: string; due_on: string } | null
+}
+
+export default async function WarrantyPage({ searchParams }: { searchParams: Promise<{ stage?: string }> }) {
+  const session = await requireStaff()
+  await requireFeature(session.organizationId, 'warranty')
+  const { stage } = await searchParams
+  const filter = FILTERS.some((f) => f.value === stage) ? (stage as WarrantyStage | 'all') : 'all'
+
+  const supabase = await createClient()
+  let query = supabase
+    .from('project_warranties')
+    .select(
+      'id, project_id, stage, start_date, projects(name, project_number), current:warranty_milestones!project_warranties_current_milestone_fk(coverage_name, stage_label, due_on)',
+    )
+    .order('start_date', { ascending: false })
+    .limit(200)
+  query = filter === 'all' ? query.neq('stage', 'archived') : query.eq('stage', filter)
+  const [{ data }, { data: tasks }, { data: claimRows }] = await Promise.all([
+    query,
+    supabase
+      .from('warranty_followup_tasks')
+      .select('id, project_id, status, projects(name)')
+      .neq('status', 'sent')
+      .order('created_at')
+      .limit(20),
+    supabase.from('warranty_claims').select('project_id').neq('status', 'closed').limit(1000),
+  ])
+  const rows = (data ?? []) as unknown as Row[]
+  const openClaims = new Map<string, number>()
+  for (const c of (claimRows ?? []) as { project_id: string }[]) {
+    openClaims.set(c.project_id, (openClaims.get(c.project_id) ?? 0) + 1)
+  }
+  const openTasks = (tasks ?? []) as unknown as { id: string; project_id: string; status: string; projects: { name: string } | null }[]
+
+  return (
+    <div className="flex flex-col gap-8">
+      <PageHeader icon={ShieldCheckIcon}
+        title="Warranty"
+        description="Warranties start automatically on the official completion date. Coverage periods run concurrently: Year 1 workmanship, Year 2 systems, Year 10 structural."
+        actions={session.role === 'org_admin' ? <RunWarrantyButton /> : null}
+      />
+
+      {openTasks.length > 0 && (
+        <section aria-labelledby="followups" className="surface flex flex-col gap-3 p-5">
+          <h2 id="followups" className="font-serif text-lg font-semibold">
+            Anniversary cards to send
+          </h2>
+          <ul className="flex flex-col divide-y">
+            {openTasks.map((t) => (
+              <li key={t.id} className="flex items-center justify-between gap-4 py-2.5 text-sm">
+                <Link href={`/projects/${t.project_id}/warranty`} className="font-medium hover:text-primary">
+                  {t.projects?.name ?? 'Project'}
+                </Link>
+                <span className="text-muted-foreground">{t.status === 'prepared' ? 'Prepared' : 'To do'}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <nav aria-label="Filter warranties" className="flex flex-wrap gap-2">
+        {FILTERS.map((f) => (
+          <Link
+            key={f.value}
+            href={f.value === 'all' ? '/warranty' : `/warranty?stage=${f.value}`}
+            aria-current={filter === f.value ? 'page' : undefined}
+            className={cn(
+              'flex min-h-11 items-center rounded-full border px-3.5 text-sm font-medium transition-colors md:min-h-0 md:py-1.5',
+              filter === f.value ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted',
+            )}
+          >
+            {f.label}
+          </Link>
+        ))}
+      </nav>
+
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={ShieldCheck}
+          title={filter === 'all' ? 'No warranties yet' : 'No warranties in this stage'}
+          description={
+            filter === 'all'
+              ? 'Coverage starts automatically after an authorized builder marks a project Completed. Its warranty will appear here with every coverage period scheduled.'
+              : 'No warranties are currently in this stage. Choose another filter to see the rest.'
+          }
+          action={
+            filter === 'all' ? (
+              <Link
+                href="/projects"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-card px-3.5 text-sm font-medium text-foreground transition-colors hover:bg-sage hover:text-primary"
+              >
+                Go to Projects
+              </Link>
+            ) : undefined
+          }
+        />
+      ) : (
+        <>
+        <ul className="flex flex-col gap-3 md:hidden" aria-label="Warranties">
+          {rows.map((r) => {
+            const days = r.current ? daysUntil(r.current.due_on) : null
+            const claims = openClaims.get(r.project_id) ?? 0
+            const soon = days !== null && days <= 30
+            return (
+              <li key={r.id} className="surface flex flex-col gap-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-col">
+                    <span className="break-words font-medium text-foreground">{r.projects?.name ?? 'Project'}</span>
+                    {r.projects?.project_number && (
+                      <span className="font-mono text-xs text-muted-foreground">{r.projects.project_number}</span>
+                    )}
+                  </div>
+                  <span className="shrink-0 rounded-full bg-sage px-2.5 py-1 text-xs font-medium text-primary">
+                    {r.current?.stage_label ?? WARRANTY_STAGE_LABELS[r.stage]}
+                  </span>
+                </div>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div className="flex flex-col gap-0.5">
+                    <dt className="text-xs text-muted-foreground">Started</dt>
+                    <dd className="tabular-nums">{formatDate(r.start_date)}</dd>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <dt className="text-xs text-muted-foreground">Open claims</dt>
+                    <dd className={cn('tabular-nums', claims > 0 && 'font-medium text-warning')}>{claims}</dd>
+                  </div>
+                  <div className="col-span-2 flex flex-col gap-0.5">
+                    <dt className="text-xs text-muted-foreground">Next milestone</dt>
+                    <dd className={cn(soon && 'font-medium text-warning')}>
+                      {r.current ? (
+                        <>
+                          <span className="block">{r.current.coverage_name}</span>
+                          <span className="tabular-nums">{formatDate(r.current.due_on)}</span>
+                          {days !== null && <span className="text-muted-foreground">{` · ${days} days`}</span>}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">All periods ended</span>
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+                <Link
+                  href={`/projects/${r.project_id}/warranty`}
+                  className="flex h-11 items-center justify-center rounded-lg border bg-card text-sm font-medium transition-colors hover:bg-sage hover:text-primary"
+                >
+                  View details
+                  <span className="sr-only">{` for ${r.projects?.name ?? 'project'}`}</span>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+        <div className="surface hidden overflow-x-auto md:block">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-border bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th scope="col" className="px-5 py-3 font-medium">Project</th>
+                <th scope="col" className="px-5 py-3 font-medium">Stage</th>
+                <th scope="col" className="px-5 py-3 font-medium">Started</th>
+                <th scope="col" className="px-5 py-3 font-medium">Next milestone</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {rows.map((r) => {
+                const days = r.current ? daysUntil(r.current.due_on) : null
+                return (
+                  <tr key={r.id} className="hover:bg-muted/40">
+                    <td className="px-5 py-3.5">
+                      <Link href={`/projects/${r.project_id}/warranty`} className="font-medium hover:text-primary">
+                        {r.projects?.name ?? 'Project'}
+                      </Link>
+                      {r.projects?.project_number && (
+                        <div className="text-xs text-muted-foreground">{r.projects.project_number}</div>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">{r.current?.stage_label ?? WARRANTY_STAGE_LABELS[r.stage]}</td>
+                    <td className="px-5 py-3.5 tabular-nums">{formatDate(r.start_date)}</td>
+                    <td className="px-5 py-3.5">
+                      {r.current ? (
+                        <span className={cn(days !== null && days <= 30 && 'font-medium text-warning')}>
+                          {`${r.current.coverage_name} · ${formatDate(r.current.due_on)}`}
+                          {days !== null && <span className="text-muted-foreground">{` (${days} days)`}</span>}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">All periods ended</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        </>
+      )}
+    </div>
+  )
+}
