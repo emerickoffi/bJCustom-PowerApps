@@ -1,21 +1,54 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { AlertTriangle, CalendarClock, CalendarRange, ListChecks, CalendarDays as CalendarDaysIcon } from 'lucide-react'
+import {
+  AlertTriangle,
+  CalendarClock,
+  CalendarDays as CalendarDaysIcon,
+  CalendarRange,
+  CircleAlert,
+  ListChecks,
+} from 'lucide-react'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getStaffMembers } from '@/lib/queries'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { ProjectFilter } from '@/components/schedule/project-filter'
-import { PortfolioTimeline } from '@/components/schedule/portfolio-timeline'
-import { ActivityStatusBadge } from '@/components/schedule/schedule-badges'
+import { ScheduleBoard, type BoardGroup } from '@/components/schedule/schedule-board'
 import { InitializeScheduleButton } from '@/components/schedule/schedule-controls'
-import { ACTIVITY_COLUMNS, isOverdue, todayIso, type ScheduleActivity } from '@/lib/schedule'
+import {
+  ACTIVITY_COLUMNS,
+  findDateConflicts,
+  isOverdue,
+  todayIso,
+  type ScheduleActivity,
+  type ScheduleDependency,
+} from '@/lib/schedule'
+import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { formatDate } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Schedule' }
 
 type Activity = ScheduleActivity & { project_id: string }
-type ProjectRow = { id: string; name: string; progress_percent: number | null }
+type ProjectRow = {
+  id: string
+  name: string
+  project_number: string | null
+  status: ProjectStatus
+  progress_percent: number | null
+  completion_date: string | null
+}
+
+/** Order used to pick a sensible default project: actively building first. */
+const DEFAULT_PRIORITY: ProjectStatus[] = [
+  'under_construction',
+  'final_inspection',
+  'punch_list',
+  'substantially_complete',
+  'preconstruction',
+]
+
+const UPCOMING_DAYS = 14
 
 function addDays(iso: string, days: number) {
   const d = new Date(`${iso}T00:00:00`)
@@ -23,113 +56,218 @@ function addDays(iso: string, days: number) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function dateRange(start: string | null, end: string | null) {
-  if (!start && !end) return '—'
-  return `${start ? formatDate(start) : '—'} – ${end ? formatDate(end) : '—'}`
-}
+const isOpen = (a: Pick<ScheduleActivity, 'status'>) => a.status !== 'completed' && a.status !== 'skipped'
 
 export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ project?: string }> }) {
   const session = await requireStaff()
   const { project: projectParam } = await searchParams
   const supabase = await createClient()
 
-  const [{ data: projectData }, staff] = await Promise.all([
+  const [{ data: projectData }, { data: activityData }, staff] = await Promise.all([
     supabase
       .from('projects')
-      .select('id, name, progress_percent')
+      .select('id, name, project_number, status, progress_percent, completion_date')
       .eq('organization_id', session.organizationId)
+      .is('archived_at', null)
       .order('name'),
-    getStaffMembers(session.organizationId),
+    supabase
+      .from('schedule_activities')
+      .select(`${ACTIVITY_COLUMNS}, project_id`)
+      .eq('organization_id', session.organizationId)
+      .order('sort_order')
+      .order('created_at')
+      .limit(5000),
+    getStaffMembers(session.organizationId, ['org_admin', 'project_manager', 'builder_staff']),
   ])
   const projects = (projectData ?? []) as ProjectRow[]
-  const selected = projects.find((p) => p.id === projectParam) ?? null
+  const allActivities = (activityData ?? []) as unknown as Activity[]
 
-  let activityQuery = supabase
-    .from('schedule_activities')
-    .select(`${ACTIVITY_COLUMNS}, project_id`)
-    .eq('organization_id', session.organizationId)
-    .order('sort_order')
-  if (selected) activityQuery = activityQuery.eq('project_id', selected.id)
-  const { data: activityData } = await activityQuery
-  const activities = (activityData ?? []) as unknown as Activity[]
+  const activityCount = new Map<string, number>()
+  for (const a of allActivities) activityCount.set(a.project_id, (activityCount.get(a.project_id) ?? 0) + 1)
 
-  const projectName = new Map(projects.map((p) => [p.id, p.name]))
-  const nameFor = (uid: string | null) => {
-    if (!uid) return null
-    const m = staff.find((s) => s.user_id === uid)
-    return m ? m.full_name || m.email || 'Team member' : null
-  }
+  const defaultProject =
+    DEFAULT_PRIORITY.flatMap((s) => projects.filter((p) => p.status === s && activityCount.has(p.id)))[0] ??
+    projects.find((p) => activityCount.has(p.id)) ??
+    projects[0] ??
+    null
 
-  const today = todayIso()
-  const horizon = addDays(today, 14)
-  const overdue = activities
-    .filter((a) => isOverdue(a, today))
-    .sort((a, b) => (a.planned_end ?? '').localeCompare(b.planned_end ?? ''))
-  const upcoming = activities
-    .filter(
-      (a) =>
-        a.status !== 'completed' &&
-        a.status !== 'skipped' &&
-        a.planned_start &&
-        a.planned_start >= today &&
-        a.planned_start <= horizon,
-    )
-    .sort((a, b) => a.planned_start!.localeCompare(b.planned_start!))
-  const inProgress = activities.filter((a) => a.status === 'in_progress').length
-
+  const showAll = projectParam === 'all' || !defaultProject
+  const selected = showAll ? null : (projects.find((p) => p.id === projectParam) ?? defaultProject)
   const visibleProjects = selected ? [selected] : projects
-  const timelineRows = visibleProjects.map((p) => ({
-    id: p.id,
-    name: p.name,
-    activities: activities.filter((a) => a.project_id === p.id),
-  }))
-  const unscheduled = visibleProjects.filter((p) => !activities.some((a) => a.project_id === p.id))
-  const listed = [...activities].sort(
-    (a, b) =>
-      (projectName.get(a.project_id) ?? '').localeCompare(projectName.get(b.project_id) ?? '') ||
-      a.sort_order - b.sort_order,
+  const visibleIds = new Set(visibleProjects.map((p) => p.id))
+  const activities = allActivities.filter((a) => visibleIds.has(a.project_id))
+
+  const { data: depData } = visibleIds.size
+    ? await supabase
+        .from('schedule_dependencies')
+        .select('id, predecessor_id, successor_id, project_id')
+        .in('project_id', [...visibleIds])
+    : { data: [] }
+  const dependencies = (depData ?? []) as (ScheduleDependency & { project_id: string })[]
+
+  const groups: BoardGroup[] = visibleProjects
+    .map((p) => ({
+      project: { id: p.id, name: p.name, statusLabel: PROJECT_STATUS_LABELS[p.status] ?? p.status },
+      activities: activities.filter((a) => a.project_id === p.id),
+      dependencies: dependencies.filter((d) => d.project_id === p.id),
+    }))
+    .filter((g) => g.activities.length > 0)
+  const conflictIds = groups.flatMap((g) =>
+    findDateConflicts(g.activities, g.dependencies).flatMap((c) => [c.predecessor.id, c.successor.id]),
   )
+  const unscheduled = visibleProjects.filter((p) => !activityCount.has(p.id))
+
+  const staffOptions = staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))
+  const projectName = new Map(projects.map((p) => [p.id, p.name]))
   const manager = canManage(session.role)
 
+  const today = todayIso()
+  const horizon = addDays(today, UPCOMING_DAYS)
+  const overdue = activities.filter((a) => isOverdue(a, today))
+  const inProgress = activities.filter((a) => a.status === 'in_progress')
+  const notScheduled = activities.filter((a) => !a.planned_start && !a.planned_end).length
+  const upcoming = activities
+    .filter(isOpen)
+    .map((a) => ({ a, on: [a.planned_start, a.planned_end].find((d) => d && d >= today && d <= horizon) ?? null }))
+    .filter((x): x is { a: Activity; on: string } => x.on !== null)
+    .sort((x, y) => x.on.localeCompare(y.on))
+
+  // Report-only: projects whose recorded status disagrees with their schedule records.
+  const inconsistencies = visibleProjects
+    .filter((p) => p.status === 'completed')
+    .map((p) => {
+      const list = allActivities.filter((a) => a.project_id === p.id)
+      return { project: p, total: list.length, open: list.filter(isOpen).length, dated: list.filter((a) => a.planned_start || a.planned_end).length }
+    })
+    .filter((x) => x.total > 0 && x.open > 0)
+
+  const metrics = [
+    { label: 'Total activities', value: activities.length, icon: ListChecks, hint: notScheduled ? `${notScheduled} not scheduled` : 'All scheduled' },
+    { label: 'In progress', value: inProgress.length, icon: CalendarRange, hint: inProgress.length ? null : 'None underway' },
+    { label: 'Overdue', value: overdue.length, icon: AlertTriangle, hint: 'Past planned finish', alert: overdue.length > 0 },
+    { label: 'Upcoming', value: upcoming.length, icon: CalendarClock, hint: `Next ${UPCOMING_DAYS} days` },
+  ]
+
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader icon={CalendarDaysIcon}
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        icon={CalendarDaysIcon}
         eyebrow="Workspace"
         title="Schedule"
-        description="Construction activities across every project you can access. Updates here and in each project's tracker share the same records."
-        actions={<ProjectFilter projects={projects.map(({ id, name }) => ({ id, name }))} />}
+        description={
+          selected
+            ? `Construction activities for ${selected.name}. Changes here update the same records as the project tracker.`
+            : 'All projects, grouped by project. Changes here update the same records as each project tracker.'
+        }
+        actions={
+          <ProjectFilter
+            value={selected ? selected.id : 'all'}
+            projects={projects.map((p) => ({
+              id: p.id,
+              name: p.name,
+              meta: activityCount.has(p.id) ? PROJECT_STATUS_LABELS[p.status] : 'No schedule',
+            }))}
+          />
+        }
       />
 
-      <section aria-label="Schedule summary" className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {[
-          { label: 'Activities', value: activities.length, icon: ListChecks },
-          { label: 'In progress', value: inProgress, icon: CalendarRange },
-          { label: 'Overdue', value: overdue.length, icon: AlertTriangle, alert: overdue.length > 0 },
-          { label: 'Starting in 14 days', value: upcoming.length, icon: CalendarClock },
-        ].map((s) => (
-          <div key={s.label} className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
-            <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <s.icon className={s.alert ? 'size-4 text-destructive' : 'size-4'} aria-hidden="true" />
-              {s.label}
+      {selected && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          {selected.project_number && <span className="font-medium tabular-nums text-foreground">{selected.project_number}</span>}
+          <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
+            {PROJECT_STATUS_LABELS[selected.status]}
+          </span>
+          <Link href={`/projects/${selected.id}/schedule`} className="font-medium text-primary hover:underline">
+            Open project tracker
+          </Link>
+        </div>
+      )}
+
+      <section aria-label="Schedule summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {metrics.map((m) => (
+          <div key={m.label} className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4">
+            <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <m.icon className={cn('size-4', m.alert && 'text-destructive')} aria-hidden="true" />
+              {m.label}
             </span>
-            <span className={`font-serif text-3xl font-semibold tabular-nums ${s.alert ? 'text-destructive' : 'text-foreground'}`}>
-              {s.value}
+            <span className={cn('font-serif text-2xl font-semibold tabular-nums sm:text-3xl', m.alert ? 'text-destructive' : 'text-foreground')}>
+              {m.value}
             </span>
+            {m.hint && <span className="text-xs text-muted-foreground">{m.hint}</span>}
           </div>
         ))}
       </section>
 
-      {unscheduled.length > 0 && (
-        <section className="flex flex-col gap-3 rounded-xl border border-dashed border-border bg-muted/30 p-5">
-          <h2 className="text-sm font-semibold text-foreground">Progress not configured</h2>
-          <p className="text-sm text-muted-foreground">
-            These projects have no construction schedule yet, so completion can&apos;t be calculated. Initializing adds the
-            standard milestones as not started. Nothing is marked complete automatically.
-          </p>
+      {inconsistencies.map(({ project, total, open, dated }) => (
+        <div
+          key={project.id}
+          role="status"
+          className="flex gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm"
+        >
+          <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning-foreground" aria-hidden="true" />
+          <div className="flex flex-col gap-1">
+            <p className="font-semibold text-foreground">{`${project.name}: status and schedule disagree`}</p>
+            <p className="text-muted-foreground">
+              {`This project is marked Completed${project.completion_date ? ` (${formatDate(project.completion_date)})` : ''}, but ${open} of ${total} schedule activities are still open${dated === 0 ? ' and none have planned dates' : ''}. Recorded progress is ${Math.round(Number(project.progress_percent ?? 0))}%. Nothing was changed automatically. Update the activities or the project status to reconcile them.`}
+            </p>
+          </div>
+        </div>
+      ))}
+
+      {upcoming.length > 0 && (
+        <section aria-labelledby="upcoming-heading" className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
+          <h2 id="upcoming-heading" className="text-sm font-semibold text-foreground">
+            {`Upcoming in the next ${UPCOMING_DAYS} days`}
+          </h2>
+          <ul className="flex flex-col divide-y divide-border">
+            {upcoming.slice(0, 6).map(({ a, on }) => (
+              <li key={a.id} className="flex items-center justify-between gap-3 py-2">
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm font-medium text-foreground">{a.name}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {selected ? a.phase : `${projectName.get(a.project_id)} · ${a.phase}`}
+                  </span>
+                </span>
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  {`${on === a.planned_start ? 'Starts' : 'Due'} ${formatDate(on)}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {groups.length > 0 ? (
+        <ScheduleBoard
+          key={selected?.id ?? 'all'}
+          mode={selected ? 'project' : 'all'}
+          groups={groups}
+          staffOptions={staffOptions}
+          conflictIds={conflictIds}
+          canManage={manager}
+        />
+      ) : selected ? (
+        <EmptyState
+          icon={CalendarDaysIcon}
+          title="No schedule activities yet"
+          description={`${selected.name} has no construction schedule, so progress can't be calculated. Initializing adds the standard milestones as not started. Nothing is marked complete automatically.`}
+          action={manager ? <InitializeScheduleButton projectId={selected.id} label="Initialize Construction Schedule" /> : undefined}
+        />
+      ) : (
+        <EmptyState
+          icon={CalendarDaysIcon}
+          title="No schedule activities yet"
+          description="None of your projects have a construction schedule yet."
+        />
+      )}
+
+      {!selected && unscheduled.length > 0 && (
+        <section className="flex flex-col gap-2 rounded-xl border border-dashed border-border bg-muted/30 p-4">
+          <h2 className="text-sm font-semibold text-foreground">{`Projects without a schedule (${unscheduled.length})`}</h2>
           <ul className="flex flex-col divide-y divide-border">
             {unscheduled.map((p) => (
-              <li key={p.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <Link href={`/projects/${p.id}/schedule`} className="text-sm font-medium text-foreground hover:text-primary">
+              <li key={p.id} className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                <Link href={`/schedule?project=${p.id}`} className="text-sm font-medium text-foreground hover:text-primary">
                   {p.name}
                 </Link>
                 {manager && <InitializeScheduleButton projectId={p.id} label="Initialize Construction Schedule" />}
@@ -138,147 +276,6 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
           </ul>
         </section>
       )}
-
-      <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5">
-        <h2 className="font-serif text-xl font-semibold text-foreground">Construction timeline</h2>
-        <PortfolioTimeline rows={timelineRows} />
-      </section>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ActivityPanel
-          title="Overdue milestones"
-          empty="Nothing is overdue."
-          items={overdue}
-          projectName={projectName}
-          dateLabel={(a) => `Due ${formatDate(a.planned_end!)}`}
-          tone="alert"
-        />
-        <ActivityPanel
-          title="Upcoming activities"
-          empty="Nothing scheduled to start in the next 14 days."
-          items={upcoming}
-          projectName={projectName}
-          dateLabel={(a) => `Starts ${formatDate(a.planned_start!)}`}
-        />
-      </div>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="font-serif text-xl font-semibold text-foreground">Schedule list</h2>
-        {listed.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-            No schedule activities yet.
-          </p>
-        ) : (
-          <>
-            <div className="hidden overflow-x-auto rounded-xl border border-border bg-card md:block">
-              <table className="w-full text-sm">
-                <thead className="border-b border-border bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th scope="col" className="px-4 py-3 font-medium">Activity</th>
-                    {!selected && <th scope="col" className="px-4 py-3 font-medium">Project</th>}
-                    <th scope="col" className="px-4 py-3 font-medium">Planned</th>
-                    <th scope="col" className="px-4 py-3 font-medium">Actual</th>
-                    <th scope="col" className="px-4 py-3 font-medium">Assigned</th>
-                    <th scope="col" className="px-4 py-3 font-medium">Progress</th>
-                    <th scope="col" className="px-4 py-3 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {listed.map((a) => (
-                    <tr key={a.id} className={isOverdue(a, today) ? 'bg-destructive/5' : undefined}>
-                      <td className="px-4 py-3">
-                        <Link href={`/projects/${a.project_id}/schedule`} className="font-medium text-foreground hover:text-primary">
-                          {a.name}
-                        </Link>
-                        <div className="text-xs text-muted-foreground">{a.phase}</div>
-                      </td>
-                      {!selected && <td className="px-4 py-3 text-muted-foreground">{projectName.get(a.project_id)}</td>}
-                      <td className="whitespace-nowrap px-4 py-3 tabular-nums">{dateRange(a.planned_start, a.planned_end)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 tabular-nums">{dateRange(a.actual_start, a.actual_end)}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{nameFor(a.assigned_to) ?? 'Unassigned'}</td>
-                      <td className="px-4 py-3 tabular-nums">{`${Math.round(Number(a.percent_complete))}%`}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <ActivityStatusBadge status={a.status} />
-                          {isOverdue(a, today) && <span className="text-xs font-medium text-destructive">Overdue</span>}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <ul className="flex flex-col gap-3 md:hidden">
-              {listed.map((a) => (
-                <li key={a.id} className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 flex-col">
-                      <Link href={`/projects/${a.project_id}/schedule`} className="font-medium text-foreground">
-                        {a.name}
-                      </Link>
-                      <span className="text-xs text-muted-foreground">{`${projectName.get(a.project_id) ?? ''} · ${a.phase}`}</span>
-                    </div>
-                    <ActivityStatusBadge status={a.status} />
-                  </div>
-                  <dl className="grid grid-cols-2 gap-2 text-xs">
-                    <div><dt className="text-muted-foreground">Planned</dt><dd>{dateRange(a.planned_start, a.planned_end)}</dd></div>
-                    <div><dt className="text-muted-foreground">Actual</dt><dd>{dateRange(a.actual_start, a.actual_end)}</dd></div>
-                    <div><dt className="text-muted-foreground">Assigned</dt><dd>{nameFor(a.assigned_to) ?? 'Unassigned'}</dd></div>
-                    <div><dt className="text-muted-foreground">Progress</dt><dd>{`${Math.round(Number(a.percent_complete))}%`}</dd></div>
-                  </dl>
-                  {isOverdue(a, today) && <span className="text-xs font-medium text-destructive">Overdue</span>}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </section>
     </div>
-  )
-}
-
-function ActivityPanel({
-  title,
-  empty,
-  items,
-  projectName,
-  dateLabel,
-  tone,
-}: {
-  title: string
-  empty: string
-  items: Activity[]
-  projectName: Map<string, string>
-  dateLabel: (a: Activity) => string
-  tone?: 'alert'
-}) {
-  return (
-    <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
-      <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-        {title}
-        <span className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${tone === 'alert' && items.length ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>
-          {items.length}
-        </span>
-      </h2>
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{empty}</p>
-      ) : (
-        <ul className="flex flex-col divide-y divide-border">
-          {items.slice(0, 8).map((a) => (
-            <li key={a.id} className="flex items-center justify-between gap-3 py-2.5">
-              <div className="flex min-w-0 flex-col">
-                <Link href={`/projects/${a.project_id}/schedule`} className="truncate text-sm font-medium text-foreground hover:text-primary">
-                  {a.name}
-                </Link>
-                <span className="truncate text-xs text-muted-foreground">{projectName.get(a.project_id)}</span>
-              </div>
-              <span className={`shrink-0 text-xs tabular-nums ${tone === 'alert' ? 'text-destructive' : 'text-muted-foreground'}`}>
-                {dateLabel(a)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   )
 }
