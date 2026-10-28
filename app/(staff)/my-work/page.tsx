@@ -124,7 +124,6 @@ export default async function MyWorkPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        tone="sage"
         icon={CalendarCheck2}
         title="My Work"
         description="Your assigned projects, upcoming activities, and items needing attention."

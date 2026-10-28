@@ -14,7 +14,6 @@ export default async function NewClientPage() {
   return (
     <div className="flex w-full max-w-4xl flex-col gap-6">
       <PageHeader icon={UserRoundPlusIcon}
-        tone="sage"
         backHref="/clients"
         backLabel="Clients"
         title="Create client"

@@ -99,7 +99,7 @@ export function ProjectNav({
       <div
         data-project-tabs
         className={cn(
-          'sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 -mx-4 -mt-3 border-b border-transparent bg-background/95 px-4 py-2 backdrop-blur-sm transition-[border-color,box-shadow] sm:top-[calc(4rem+env(safe-area-inset-top))] sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10',
+          'sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 -mx-4 -mt-3 border-b border-transparent bg-background px-4 py-2 transition-[border-color,box-shadow] sm:top-[calc(4rem+env(safe-area-inset-top))] sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10',
           stuck && 'border-border shadow-[0_6px_12px_-10px_rgb(0_0_0/0.25)]',
         )}
       >

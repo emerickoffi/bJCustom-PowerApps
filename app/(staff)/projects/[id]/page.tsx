@@ -80,8 +80,10 @@ function DetailField({
 }) {
   return (
     <div className="flex min-w-0 items-start gap-3">
-      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#F8F7F3] text-primary ring-1 ring-inset ring-[#E2E8E2]">
+        <Icon className="size-4" aria-hidden="true" />
+      </span>
+      <div className="flex min-w-0 flex-col gap-0.5 pt-px">
         <dt className="text-xs text-muted-foreground">{label}</dt>
         <dd className={value ? 'break-words text-sm font-medium text-foreground' : 'text-sm text-muted-foreground'}>{value ?? empty}</dd>
         {action}
@@ -347,6 +349,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             icon={House}
             title="Project details"
             subtitle="Property and construction information."
+            variant="identity"
           >
             <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
               <DetailField
@@ -415,7 +418,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             {(historyRes.data ?? []).length === 0 ? (
               <p className="text-sm text-muted-foreground">No status changes recorded yet.</p>
             ) : (
-              <ol className="relative flex flex-col gap-6 before:absolute before:bottom-3 before:left-[0.4375rem] before:top-3 before:w-px before:bg-border">
+              <ol className="relative flex flex-col gap-5 before:absolute before:bottom-4 before:left-[0.4375rem] before:top-4 before:w-px before:bg-[#E2E8E2]">
                 {(historyRes.data ?? []).map((entry, index) => (
                   <li key={entry.id} className="relative flex flex-col gap-1.5 pl-8">
                     <span
@@ -426,8 +429,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                       }
                       aria-hidden="true"
                     />
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
-                      <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-foreground">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                      <p className="flex flex-wrap items-center gap-1.5 text-sm font-semibold leading-5 text-foreground">
                         {entry.from_status ? (
                           <>
                             <span className="text-muted-foreground">{PROJECT_STATUS_LABELS[entry.from_status as ProjectStatus]}</span>
@@ -438,11 +441,16 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                           `Created as ${PROJECT_STATUS_LABELS[entry.to_status as ProjectStatus]}`
                         )}
                       </p>
-                      <time dateTime={entry.created_at} className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      <time
+                        dateTime={entry.created_at}
+                        className="shrink-0 text-xs leading-5 tabular-nums text-muted-foreground sm:min-w-36 sm:text-right"
+                      >
                         {formatDateTime(entry.created_at)}
                       </time>
                     </div>
-                    {entry.note && <p className="text-sm leading-relaxed text-muted-foreground">{entry.note}</p>}
+                    {entry.note && (
+                      <p className="rounded-lg bg-[#F8F7F3] px-3 py-2 text-sm leading-relaxed text-foreground/80">{entry.note}</p>
+                    )}
                     <span className="text-xs text-muted-foreground">{`By ${nameFor(entry.changed_by) ?? 'System'}`}</span>
                   </li>
                 ))}

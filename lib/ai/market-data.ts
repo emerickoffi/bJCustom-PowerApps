@@ -61,34 +61,72 @@ export const US_STATES: Record<string, string> = {
   VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
 }
 
-/** Common Texas markets, so a city-only question still resolves to its state's data. */
-const CITY_STATE: Record<string, string> = {
-  dallas: 'TX', 'fort worth': 'TX', houston: 'TX', austin: 'TX', 'san antonio': 'TX', plano: 'TX', frisco: 'TX',
-  mckinney: 'TX', arlington: 'TX', denton: 'TX', 'el paso': 'TX', waco: 'TX', tyler: 'TX', lubbock: 'TX',
+export type KnownPlace = { city?: string | null; state?: string | null }
+
+export type ResolvedLocation = {
+  city: string | null
+  stateCode: string | null
+  /** Most specific place the user asked about, e.g. "Cedar Hill, Texas". */
+  label: string
+  /** Most specific level any connected series covers for this place. */
+  dataLevel: 'state' | 'national'
+  note: string | null
 }
 
-export type ResolvedLocation = { stateCode: string | null; label: string; note: string | null }
+const NATIONAL_WORDS = /^(us|usa|u\.s\.?|united states|america|national|nationwide|the country)$/i
+const LOCAL_WORDS = /^(our|my|the|this|local|here|nearby|around here|in our)?\s*(area|region|market|city|town|local|here)?$/i
 
-/** Maps free text like "Dallas", "Dallas, TX", or "Texas" to a state; anything else is national. */
-export function resolveLocation(text: string | null | undefined): ResolvedLocation {
-  const raw = (text ?? '').trim()
-  if (!raw || /^(us|usa|u\.s\.|united states|national|nationwide)$/i.test(raw)) {
-    return { stateCode: null, label: 'United States', note: null }
+function toStateCode(text: string): string | null {
+  const t = text.trim().replace(/\.$/, '')
+  if (/^[A-Za-z]{2}$/.test(t) && US_STATES[t.toUpperCase()]) return t.toUpperCase()
+  const lower = t.toLowerCase()
+  return Object.entries(US_STATES).find(([, name]) => name.toLowerCase() === lower)?.[0] ?? null
+}
+
+const titleCase = (s: string) => s.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase())
+
+/**
+ * Splits free text into city and state without a city list: "Cedar Hill, TX", "Cedar Hill Texas", "Texas", "TX".
+ * A bare city name, or a phrase like "our area", uses the known company/project place only when it matches.
+ */
+export function resolveLocation(text: string | null | undefined, known: KnownPlace = {}): ResolvedLocation {
+  const raw = (text ?? '').trim().slice(0, 80)
+  const knownState = known.state ? toStateCode(known.state) : null
+  const knownCity = known.city?.trim() || null
+  const build = (city: string | null, stateCode: string | null, note: string | null = null): ResolvedLocation => {
+    if (!stateCode) return { city: null, stateCode: null, label: 'United States', dataLevel: 'national', note }
+    const state = US_STATES[stateCode]
+    return {
+      city,
+      stateCode,
+      label: city ? `${city}, ${state}` : state,
+      dataLevel: 'state',
+      note:
+        note ??
+        (city
+          ? `No city or metro-area series is connected for ${city}; the closest available geography is ${state} statewide, and other indicators are national.`
+          : null),
+    }
   }
-  const lower = raw.toLowerCase()
-  const code = raw.match(/(?:^|[\s,])([A-Z]{2})$/)?.[1] ?? (/^[A-Za-z]{2}$/.test(raw) ? raw.toUpperCase() : null)
-  const byName = Object.entries(US_STATES).find(([, name]) => new RegExp(`\\b${name.toLowerCase()}\\b`).test(lower))?.[0]
-  const byCity = Object.entries(CITY_STATE).find(([city]) => new RegExp(`\\b${city}\\b`).test(lower))?.[1]
-  const stateCode = (code && US_STATES[code] ? code : null) ?? byName ?? byCity ?? null
-  if (!stateCode) {
-    return { stateCode: null, label: 'United States', note: `"${raw.slice(0, 60)}" could not be matched to a U.S. state; national data is shown.` }
+
+  if (NATIONAL_WORDS.test(raw)) return build(null, null)
+  if (!raw || LOCAL_WORDS.test(raw)) {
+    return knownState ? build(knownCity ? titleCase(knownCity) : null, knownState) : build(null, null, 'No company or project location is on file; national data is shown.')
   }
-  const cityLevel = Boolean(byCity) || /,/.test(raw)
-  return {
-    stateCode,
-    label: US_STATES[stateCode],
-    note: cityLevel ? `City or metro-level series are not connected; ${US_STATES[stateCode]} statewide data is the closest available.` : null,
-  }
+
+  const whole = toStateCode(raw)
+  if (whole) return build(null, whole)
+
+  const comma = raw.match(/^(.+?),\s*([A-Za-z .]+)$/)
+  const trailing = Object.entries(US_STATES)
+    .map(([code, name]) => raw.match(new RegExp(`^(.+?)\\s+(${name}|${code})$`, 'i')) && { code, city: raw.replace(new RegExp(`\\s+(${name}|${code})$`, 'i'), '') })
+    .find(Boolean)
+  const city = comma ? comma[1] : trailing ? trailing.city : raw
+  const stateCode = comma ? toStateCode(comma[2]) : trailing ? trailing.code : null
+  if (stateCode) return build(titleCase(city), stateCode)
+
+  if (knownState && knownCity && knownCity.toLowerCase() === city.toLowerCase()) return build(titleCase(city), knownState)
+  return build(null, null, `The state for "${city}" was not given, so national data is shown. Ask which state if local data matters.`)
 }
 
 export function seriesFor(topic: MarketTopic, stateCode: string | null): SeriesDef[] {
@@ -158,11 +196,24 @@ export type MarketSeriesResult = {
   stale: boolean
 }
 
+type Status = 'ok' | 'partial' | 'unavailable'
+
 export type MarketIntelligence = {
-  status: 'ok' | 'partial' | 'unavailable'
-  topic: MarketTopic
+  status: Status
+  /** Present when nothing could be fetched because the data provider is not set up. */
+  configuration: 'not_configured' | null
+  topics: MarketTopic[]
   timeframe: MarketTimeframe
-  geography: { requested: string | null; resolved: string; note: string | null }
+  geography: {
+    requested: string | null
+    location: string
+    city: string | null
+    state: string | null
+    /** Each series also carries its own geography label; never call national values local. */
+    best_data_level: 'state' | 'national'
+    note: string | null
+  }
+  categories: { topic: MarketTopic; status: Status; series_ids: string[] }[]
   series: MarketSeriesResult[]
   unavailable: string[]
   notes: string[]
@@ -232,41 +283,103 @@ async function loadSeries(def: SeriesDef, timeframe: MarketTimeframe, deps: Mark
   }
 }
 
+/** Every indicator category, used when the user asks for a general market briefing. */
+export const BRIEFING_TOPICS: MarketTopic[] = ['housing_activity', 'building_permits', 'materials', 'labor', 'interest_rates']
+
+const MAX_SERIES = 8
+const CONCURRENCY = 4
+
+async function mapLimited<T, R>(items: T[], limit: number, run: (item: T) => Promise<R>): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(items.length)
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++
+      try {
+        results[i] = { status: 'fulfilled', value: await run(items[i]) }
+      } catch (reason) {
+        results[i] = { status: 'rejected', reason }
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
+}
+
+const rollup = (ok: number, failed: number): Status => (!ok ? 'unavailable' : failed ? 'partial' : 'ok')
+
+/**
+ * One bounded server-side operation for several categories: the location is resolved once, shared series
+ * are fetched once, at most CONCURRENCY requests run at a time, and one failed series never hides the rest.
+ */
 export async function getConstructionMarketIntelligence(
-  request: { topic: MarketTopic; location?: string | null; timeframe?: MarketTimeframe | null },
+  request: { topics: MarketTopic[]; location?: string | null; timeframe?: MarketTimeframe | null },
   deps: MarketDeps,
+  known: KnownPlace = {},
 ): Promise<MarketIntelligence> {
+  const topics = [...new Set(request.topics.length ? request.topics : BRIEFING_TOPICS)]
   const timeframe = request.timeframe ?? 'last_12_months'
-  const location = resolveLocation(request.location)
+  const location = resolveLocation(request.location, known)
+  const wantsNews = topics.includes('construction_news')
+  const indicatorTopics = topics.filter((t) => t !== 'construction_news')
+  const newsNote = 'No news or web-search provider is connected, so no articles or headlines were retrieved. Do not summarize news from memory.'
   const base = {
-    topic: request.topic,
+    topics,
     timeframe,
-    geography: { requested: request.location ?? null, resolved: location.label, note: location.note },
+    geography: {
+      requested: request.location ?? null,
+      location: location.label,
+      city: location.city,
+      state: location.stateCode ? US_STATES[location.stateCode] : null,
+      best_data_level: location.dataLevel,
+      note: location.note,
+    },
     retrieved_at: deps.today,
   }
-  if (request.topic === 'construction_news') {
-    return { ...base, status: 'unavailable', series: [], unavailable: ['construction news'], notes: [
-      'No news or web-search provider is connected to this application, so current news could not be verified. Do not summarize news from memory.',
-      'Indicators for housing activity, permits, materials prices, labor, and mortgage rates are available on request.',
-    ] }
-  }
-  if (!deps.apiKey?.trim()) {
-    return { ...base, status: 'unavailable', series: [], unavailable: ['FRED market data'], notes: [
-      'Live market data is not configured (FRED_API_KEY is not set), so current conditions could not be verified. Do not present general knowledge as current data.',
-    ] }
+  const newsCategory = wantsNews ? [{ topic: 'construction_news' as const, status: 'unavailable' as const, series_ids: [] }] : []
+
+  if (!indicatorTopics.length || !deps.apiKey?.trim()) {
+    const notConfigured = indicatorTopics.length > 0
+    return {
+      ...base,
+      status: 'unavailable',
+      configuration: notConfigured ? 'not_configured' : null,
+      categories: [...indicatorTopics.map((topic) => ({ topic, status: 'unavailable' as const, series_ids: [] })), ...newsCategory],
+      series: [],
+      unavailable: [...indicatorTopics, ...(wantsNews ? ['construction_news'] : [])],
+      notes: [
+        ...(notConfigured
+          ? ['Live market indicators are not connected for this workspace yet, so current conditions could not be verified. Do not present general knowledge as current data.']
+          : []),
+        ...(wantsNews ? [newsNote] : []),
+      ],
+    }
   }
 
-  const defs = seriesFor(request.topic, location.stateCode).slice(0, 3)
-  const settled = await Promise.allSettled(defs.map((d) => loadSeries(d, timeframe, deps)))
-  const series = settled.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))
+  const byTopic = new Map(indicatorTopics.map((t) => [t, seriesFor(t, location.stateCode)]))
+  const defs = [...new Map([...byTopic.values()].flat().map((d) => [d.id, d])).values()].slice(0, MAX_SERIES)
+  const settled = await mapLimited(defs, CONCURRENCY, (d) => loadSeries(d, timeframe, deps))
+  const loaded = new Map(settled.flatMap((r) => (r.status === 'fulfilled' ? [[r.value.series_id, r.value] as const] : [])))
+  const series = [...loaded.values()]
   const unavailable = settled.flatMap((r, i) => (r.status === 'rejected' ? [defs[i].title] : []))
+  const categories = [
+    ...indicatorTopics.map((topic) => {
+      const ids = (byTopic.get(topic) ?? []).map((d) => d.id).filter((id) => defs.some((d) => d.id === id))
+      const ok = ids.filter((id) => loaded.has(id))
+      return { topic, status: rollup(ok.length, ids.length - ok.length), series_ids: ok }
+    }),
+    ...newsCategory,
+  ]
   return {
     ...base,
-    status: !series.length ? 'unavailable' : unavailable.length ? 'partial' : 'ok',
+    status: rollup(series.length, unavailable.length + (wantsNews ? 1 : 0)),
+    configuration: null,
+    categories,
     series,
-    unavailable,
+    unavailable: [...unavailable, ...(wantsNews ? ['construction_news'] : [])],
     notes: [
-      ...MARKET_NOTES,
+      MARKET_NOTES[0],
+      ...(wantsNews ? [newsNote] : []),
       ...(series.length ? [] : ['The market data provider did not respond, so current conditions could not be verified.']),
       ...(series.some((s) => s.stale) ? ['Some series are stale: their latest observation is older than usual for their release schedule.'] : []),
     ],

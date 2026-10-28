@@ -73,7 +73,6 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={ShieldCheckIcon}
-        tone="sage"
         title="Warranty"
         description="Warranties start automatically on the official completion date. Coverage periods run concurrently: Year 1 workmanship, Year 2 systems, Year 10 structural."
         actions={session.role === 'org_admin' ? <RunWarrantyButton /> : null}

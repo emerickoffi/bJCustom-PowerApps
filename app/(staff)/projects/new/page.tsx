@@ -44,7 +44,6 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
   return (
     <div className="flex flex-col gap-6">
       <PageHeader icon={FolderPlusIcon}
-        tone="sage"
         backHref="/projects"
         backLabel="Projects"
         title="New project"

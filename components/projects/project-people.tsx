@@ -10,6 +10,7 @@ import {
 } from '@/app/actions/projects'
 import { PROJECT_CLIENT_RELATIONSHIP_LABELS } from '@/lib/domain'
 import { ActionButton, InlineActionForm } from '@/components/shared/inline-action'
+import { ConfirmActionButton } from '@/components/shared/confirm-action-button'
 import { SelectField } from '@/components/shared/form-field'
 import { SubmitButton } from '@/components/shared/form-message'
 import { cn } from '@/lib/utils'
@@ -146,9 +147,12 @@ export function ProjectClientsPanel({
                   )}
                 </div>
                 {canEdit && !isPrimary && (
-                  <ActionButton
+                  <ConfirmActionButton
                     label="Remove"
-                    confirmMessage="Remove this client from the project?"
+                    title="Remove contact?"
+                    description={`Are you sure you want to remove ${name} from this project?`}
+                    warning="This action will remove the contact's association with this project. Review any related portal access before proceeding."
+                    confirmLabel="Remove contact"
                     action={() => removeProjectClientAction(projectId, link.id)}
                   />
                 )}
