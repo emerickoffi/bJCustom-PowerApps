@@ -21,35 +21,17 @@ import { BaselineForm, InitializeScheduleButton, OptionalActivitiesPanel } from 
 import { ProgressBar } from '@/components/schedule/schedule-badges'
 import {
   ACTIVITY_COLUMNS,
-  ACTIVITY_STATUS_LABELS,
-  EVENT_FIELD_LABELS,
   findDateConflicts,
   isOverdue,
-  type ActivityStatus,
   type ScheduleActivity,
   type ScheduleDependency,
 } from '@/lib/schedule'
-import { formatAddress, formatDate, formatDateTime } from '@/lib/format'
+import { formatAddress, formatDate } from '@/lib/format'
+import { RECENT_HISTORY_LIMIT, presentEvent } from '@/lib/activity-history'
+import { fetchRecentHistory, getOrgTimeZone } from '@/lib/activity-history-server'
+import { ActivityHistoryCard } from '@/components/schedule/activity-history-card'
 
 export const metadata: Metadata = { title: 'Schedule' }
-
-type Change = { from: unknown; to: unknown }
-
-function describeChange(field: string, change: Change, nameFor: (id: string | null) => string | null) {
-  const fmt = (v: unknown) => {
-    if (v === null || v === undefined || v === '') return '—'
-    if (field === 'status') return ACTIVITY_STATUS_LABELS[v as ActivityStatus] ?? String(v)
-    if (field === 'assigned_to') return nameFor(String(v)) ?? '—'
-    if (field === 'percent_complete') return `${Math.round(Number(v))}%`
-    if (field === 'is_published') return v ? 'Yes' : 'No'
-    if (field.endsWith('_start') || field.endsWith('_end')) return formatDate(String(v))
-    if (field === 'internal_notes' || field === 'delay_reason' || field === 'public_note') return 'updated'
-    return String(v)
-  }
-  const label = EVENT_FIELD_LABELS[field] ?? field
-  if (field === 'internal_notes' || field === 'public_note') return `${label} updated`
-  return `${label}: ${fmt(change.from)} → ${fmt(change.to)}`
-}
 
 function KpiCard({
   icon: Icon,
@@ -119,15 +101,11 @@ export default async function SchedulePage({
   if (!project) notFound()
 
   const manager = canManage(session.role)
-  const [activitiesRes, depsRes, eventsRes, baselinesRes, staff] = await Promise.all([
+  const [activitiesRes, depsRes, recentHistory, timeZone, baselinesRes, staff] = await Promise.all([
     supabase.from('schedule_activities').select(ACTIVITY_COLUMNS).eq('project_id', id).order('sort_order').order('created_at'),
     supabase.from('schedule_dependencies').select('id, predecessor_id, successor_id').eq('project_id', id),
-    supabase
-      .from('schedule_activity_events')
-      .select('id, activity_name, event_type, actor_id, changes, created_at')
-      .eq('project_id', id)
-      .order('created_at', { ascending: false })
-      .limit(40),
+    fetchRecentHistory(supabase, id, RECENT_HISTORY_LIMIT),
+    getOrgTimeZone(supabase, session.organizationId),
     supabase
       .from('schedule_baselines')
       .select('id, version, name, notes, snapshot, created_by, created_at')
@@ -293,36 +271,15 @@ export default async function SchedulePage({
           />
 
           <div className="grid gap-8 xl:grid-cols-[1fr_22rem]">
-            <section aria-labelledby="schedule-history" className="flex flex-col gap-4">
-              <h2 id="schedule-history" className="font-serif text-lg font-semibold text-foreground">
-                Change history
-              </h2>
-              <ol className="flex flex-col rounded-xl border bg-card">
-                {(eventsRes.data ?? []).map((e) => {
-                  const changes = Object.entries((e.changes ?? {}) as Record<string, Change>)
-                  return (
-                    <li key={e.id} className="flex flex-col gap-1 border-b p-4 last:border-b-0">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-foreground">
-                          {e.event_type === 'created' ? `Added ${e.activity_name}` : e.event_type === 'deleted' ? `Removed ${e.activity_name}` : e.activity_name}
-                        </span>
-                        <time dateTime={e.created_at} className="text-xs text-muted-foreground">
-                          {formatDateTime(e.created_at)}
-                        </time>
-                      </div>
-                      {changes.length > 0 && (
-                        <ul className="flex flex-col gap-0.5 text-sm text-muted-foreground">
-                          {changes.map(([field, change]) => (
-                            <li key={field}>{describeChange(field, change, nameFor)}</li>
-                          ))}
-                        </ul>
-                      )}
-                      <span className="text-xs text-muted-foreground">{`By ${nameFor(e.actor_id) ?? 'System'}`}</span>
-                    </li>
-                  )
-                })}
-              </ol>
-            </section>
+            <div className="min-w-0">
+              <ActivityHistoryCard
+                events={recentHistory.events.map((e) => presentEvent(e, nameFor, timeZone))}
+                failed={recentHistory.failed}
+                project={{ id: project.id, name: project.name, project_number: project.project_number }}
+                actorOptions={staffOptions}
+                canExport={manager}
+              />
+            </div>
 
             <aside className="flex flex-col gap-4">
               {manager && (
