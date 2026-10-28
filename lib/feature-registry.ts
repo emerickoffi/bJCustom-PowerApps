@@ -14,6 +14,7 @@ export type FeatureKey =
   | 'invoices'
   | 'payments'
   | 'quickbooks'
+  | 'ai_assistant'
 
 export type FeatureGroup = 'Project workflow' | 'Homeowner experience' | 'After completion' | 'Finance'
 
@@ -51,6 +52,7 @@ export const FEATURES: FeatureDefinition[] = [
   { key: 'warranty', label: 'Warranty management', description: 'Starts the 1-2-10 warranty automatically when a project is Completed, with milestone reminders, claims, and anniversary follow-ups.', defaultEnabled: true, requires: [], group: 'After completion', available: true, disableNote: 'Warranty pages, claims, and reminders pause. Coverage dates and open claims are kept and resume when you turn it back on.', configHref: '/warranty', configLabel: 'Open warranty' },
   { key: 'invoices', label: 'Invoices', description: 'Draft, issue, and track invoices and progress draws, record payments, and share invoices in the homeowner portal.', defaultEnabled: false, requires: [], group: 'Finance', available: true, disableNote: 'Invoices are hidden from staff and homeowners. Every invoice, payment, and number is kept.', configHref: '/invoices', configLabel: 'Open invoices' },
   { key: 'payments', label: 'Online payments', description: 'Collect homeowner payments online.', defaultEnabled: false, requires: ['estimates'], group: 'Finance', available: false },
+  { key: 'ai_assistant', label: 'B & J AI Assistant', description: 'A construction copilot for project overviews, schedule reviews, and homeowner update drafts you review before sending.', defaultEnabled: false, requires: [], group: 'Project workflow', available: false, setupRequired: true, setupNote: 'Setup Required — no AI provider is connected and the feature is not yet registered in the database, so this switch stays locked. The assistant UI is visible in preview environments only.' },
   { key: 'quickbooks', label: 'QuickBooks Online', description: 'Send approved estimates to QuickBooks.', defaultEnabled: false, requires: ['estimates'], group: 'Finance', available: false, setupRequired: true, setupNote: 'Setup Required — API credentials missing. The connection and send-to-QuickBooks steps are still in development, so this switch stays locked.', configHref: '/settings/integrations', configLabel: 'Open integrations' },
 ]
 

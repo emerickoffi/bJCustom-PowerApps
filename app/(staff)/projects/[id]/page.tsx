@@ -13,6 +13,7 @@ import { DetailList } from '@/components/shared/page-header'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { ProgressRing } from '@/components/shared/progress'
 import { StatusChanger } from '@/components/projects/status-changer'
+import { AssistantProjectScope } from '@/components/assistant/assistant-context'
 import { ProjectWalkthroughsPanel } from '@/components/walkthroughs/project-walkthroughs-panel'
 import { ProjectEstimatesPanel } from '@/components/estimates/project-estimates-panel'
 import { ProjectSchedulePanel } from '@/components/schedule/project-schedule-panel'
@@ -105,6 +106,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="flex flex-col gap-8">
+      <AssistantProjectScope
+        project={{ id: project.id, name: project.name, number: project.project_number ?? null, statusLabel: PROJECT_STATUS_LABELS[status] }}
+      />
       <Link
         href="/projects"
         className="flex w-fit items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
