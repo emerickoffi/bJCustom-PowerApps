@@ -12,7 +12,6 @@ import { DocumentUploadButton } from '@/components/documents/document-upload-but
 import { CategoryNav, DocumentFiltersForm, DocumentPagination, browseHref, type BrowseParams } from '@/components/documents/document-browse'
 import { countArchivedDocuments, countSignedDocuments, getCategoryCounts, listDocuments } from '@/lib/document-queries'
 import { getPeopleNames } from '@/lib/people'
-import { isDocumentCategory } from '@/lib/documents'
 
 export const metadata: Metadata = { title: 'Project documents' }
 
@@ -90,7 +89,7 @@ export default async function ProjectDocumentsPage({
             {stats}
           </>
         }
-        actions={canUpload ? <DocumentUploadButton projectId={id} canShare={manager} defaultCategory={isDocumentCategory(sp.category) ? sp.category : undefined} /> : null}
+        actions={canUpload ? <DocumentUploadButton projectId={id} canShare={manager} /> : null}
       />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">

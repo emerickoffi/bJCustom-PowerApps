@@ -95,6 +95,40 @@ export function validateDocumentFile(file: { name: string; size: number; type: s
   return null
 }
 
+export function isCategoryForScope(scope: DocumentScope, value: string | undefined | null): value is AnyDocumentCategory {
+  return scope === 'company' ? isCompanyDocumentCategory(value) : isDocumentCategory(value)
+}
+
+export const UPLOAD_FIELD_MESSAGES = {
+  file: 'Please select a valid file.',
+  project: 'Please select a project.',
+  name: 'Document name is required.',
+  category: 'Please select a document category.',
+} as const
+
+export type UploadField = keyof typeof UPLOAD_FIELD_MESSAGES
+export type UploadFieldErrors = Partial<Record<UploadField, string>>
+
+/** Required-field rules shared by the Company Library and project document uploads. New versions keep their saved name and category. */
+export function validateUploadFields(input: {
+  scope: DocumentScope
+  file: { name: string; size: number; type: string } | null
+  isVersion: boolean
+  requiresProject: boolean
+  projectId: string
+  name: string
+  category: string
+}): UploadFieldErrors {
+  const errors: UploadFieldErrors = {}
+  if (!input.file || validateDocumentFile(input.file)) errors.file = UPLOAD_FIELD_MESSAGES.file
+  if (input.requiresProject && !input.projectId) errors.project = UPLOAD_FIELD_MESSAGES.project
+  if (!input.isVersion) {
+    if (!input.name.trim()) errors.name = UPLOAD_FIELD_MESSAGES.name
+    if (!isCategoryForScope(input.scope, input.category)) errors.category = UPLOAD_FIELD_MESSAGES.category
+  }
+  return errors
+}
+
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
 export const DOCUMENT_PATH_PATTERN = new RegExp(`^library/(${UUID})/(${UUID})/(${UUID})/(${UUID})\\.(pdf|png|jpg|webp)$`)
 
