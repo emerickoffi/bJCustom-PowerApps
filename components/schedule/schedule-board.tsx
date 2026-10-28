@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ActivityEditor } from '@/components/schedule/activity-editor'
 import { ScheduleTimeline } from '@/components/schedule/schedule-views'
 import { PortfolioTimeline } from '@/components/schedule/portfolio-timeline'
+import { ScheduleActivityList, plannedRange } from '@/components/schedule/schedule-activity-list'
 import { ActivityStatusBadge, ProgressBar } from '@/components/schedule/schedule-badges'
 import { isOverdue, todayIso, type ScheduleActivity, type ScheduleDependency } from '@/lib/schedule'
 import { formatDate } from '@/lib/format'
@@ -26,19 +27,6 @@ const VIEWS: { value: View; label: string; icon: typeof Layers }[] = [
   { value: 'timeline', label: 'Timeline', icon: GanttChart },
   { value: 'list', label: 'List', icon: List },
 ]
-
-function plannedRange(a: Pick<ScheduleActivity, 'planned_start' | 'planned_end'>) {
-  if (!a.planned_start && !a.planned_end) return 'Not scheduled'
-  if (a.planned_start && a.planned_end && a.planned_start !== a.planned_end)
-    return `${formatDate(a.planned_start)} – ${formatDate(a.planned_end)}`
-  return formatDate(a.planned_end ?? a.planned_start)
-}
-
-function actualRange(a: Pick<ScheduleActivity, 'actual_start' | 'actual_end'>) {
-  if (!a.actual_start && !a.actual_end) return '—'
-  if (a.actual_start && a.actual_end) return `${formatDate(a.actual_start)} – ${formatDate(a.actual_end)}`
-  return a.actual_end ? `Finished ${formatDate(a.actual_end)}` : `Started ${formatDate(a.actual_start)}`
-}
 
 function groupByPhase(activities: ScheduleActivity[]) {
   const order: string[] = []
@@ -215,19 +203,7 @@ export function ScheduleBoard({
         ))}
 
       {view === 'list' && (
-        <div className="flex flex-col gap-4">
-          {groups.map((g) => (
-            <div key={g.project.id} className="flex flex-col gap-2">
-              {mode === 'all' && (
-                <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  {g.project.name}
-                  <span className="text-xs font-normal text-muted-foreground">{`${g.activities.length} activities`}</span>
-                </h3>
-              )}
-              <ActivityTable activities={g.activities} nameFor={nameFor} onSelect={open(g.project.id)} today={today} />
-            </div>
-          ))}
-        </div>
+        <ScheduleActivityList mode={mode} groups={groups} nameFor={nameFor} onSelect={open} today={today} canManage={canManage} />
       )}
 
       {editingGroup && (
@@ -428,107 +404,6 @@ function StageList({
           </div>
         )
       })}
-    </div>
-  )
-}
-
-function ActivityTable({
-  activities,
-  nameFor,
-  onSelect,
-  today,
-}: {
-  activities: ScheduleActivity[]
-  nameFor: (id: string | null) => string | null
-  onSelect: (a: ScheduleActivity) => void
-  today: string
-}) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <table className="hidden w-full text-sm lg:table">
-        <thead className="border-b border-border bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th scope="col" className="px-4 py-2.5 font-medium">Activity</th>
-            <th scope="col" className="px-4 py-2.5 font-medium">Stage</th>
-            <th scope="col" className="px-4 py-2.5 font-medium">Assigned</th>
-            <th scope="col" className="px-4 py-2.5 font-medium">Planned</th>
-            <th scope="col" className="px-4 py-2.5 font-medium">Actual</th>
-            <th scope="col" className="w-36 px-4 py-2.5 font-medium">Progress</th>
-            <th scope="col" className="px-4 py-2.5 font-medium">Status</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {activities.map((a) => {
-            const late = isOverdue(a, today)
-            return (
-              <tr key={a.id} className={cn('transition-colors hover:bg-[#F8F7F3]', late && 'bg-[#FDE8E7]/40 hover:bg-[#FDE8E7]/70')}>
-                <td className="px-4 py-2.5">
-                  <button
-                    type="button"
-                    onClick={() => onSelect(a)}
-                    className="flex items-center gap-1.5 rounded text-left font-medium text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {a.activity_type === 'milestone' && <Diamond className="size-3.5 shrink-0 fill-primary text-primary" aria-label="Milestone" />}
-                    {a.name}
-                  </button>
-                  {late && <span className="text-xs font-medium text-destructive">Overdue</span>}
-                </td>
-                <td className="px-4 py-2.5 text-muted-foreground">{a.phase}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{nameFor(a.assigned_to) ?? 'Unassigned'}</td>
-                <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-muted-foreground">{plannedRange(a)}</td>
-                <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-muted-foreground">{actualRange(a)}</td>
-                <td className="px-4 py-2.5">
-                  <ProgressBar value={Number(a.percent_complete)} label={`${a.name} progress`} status={a.status} overdue={late} />
-                </td>
-                <td className="px-4 py-2.5">
-                  <ActivityStatusBadge status={a.status} />
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-      <ul className="divide-y divide-border lg:hidden">
-        {activities.map((a) => (
-          <li key={a.id}>
-            <button
-              type="button"
-              onClick={() => onSelect(a)}
-              className={cn(
-                'flex w-full flex-col gap-2 p-4 text-left transition-colors hover:bg-[#F8F7F3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32]',
-                isOverdue(a, today) && 'bg-[#FDE8E7]/40',
-              )}
-            >
-              <span className="flex items-start justify-between gap-3">
-                <span className="flex min-w-0 flex-col">
-                  <span className="font-medium text-foreground">{a.name}</span>
-                  <span className="text-xs text-muted-foreground">{a.phase}</span>
-                </span>
-                <ActivityStatusBadge status={a.status} />
-              </span>
-              <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-                <div className="flex flex-col">
-                  <dt className="text-muted-foreground">Planned</dt>
-                  <dd className="text-foreground">{plannedRange(a)}</dd>
-                </div>
-                <div className="flex flex-col">
-                  <dt className="text-muted-foreground">Actual</dt>
-                  <dd className="text-foreground">{actualRange(a)}</dd>
-                </div>
-                <div className="flex flex-col">
-                  <dt className="text-muted-foreground">Assigned</dt>
-                  <dd className="text-foreground">{nameFor(a.assigned_to) ?? 'Unassigned'}</dd>
-                </div>
-                <div className="flex flex-col">
-                  <dt className="text-muted-foreground">Progress</dt>
-                  <dd className="text-foreground tabular-nums">{`${Math.round(Number(a.percent_complete))}%`}</dd>
-                </div>
-              </dl>
-              {isOverdue(a, today) && <span className="text-xs font-medium text-destructive">Overdue</span>}
-            </button>
-          </li>
-        ))}
-      </ul>
     </div>
   )
 }
