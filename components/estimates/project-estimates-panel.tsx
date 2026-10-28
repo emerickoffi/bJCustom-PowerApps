@@ -1,10 +1,12 @@
 import Link from 'next/link'
-import { Calculator, Plus } from 'lucide-react'
+import { Calculator, Plus, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/server'
 import { formatCentsExact, type EstimateStatus } from '@/lib/estimates'
 import { formatDate } from '@/lib/format'
 import { EstimateStatusBadge } from '@/components/estimates/estimate-status-badge'
+import { OverviewSection } from '@/components/projects/overview-section'
+import { cn } from '@/lib/utils'
 
 type Row = {
   id: string
@@ -17,6 +19,23 @@ type Row = {
   land_cost_cents: number | null
   decision_at: string | null
   created_at: string
+}
+
+function varianceMessage(hasBudget: boolean, hasApproved: boolean, variance: number | null) {
+  if (variance !== null) return variance > 0 ? 'Over budget' : variance < 0 ? 'Within budget' : 'On budget'
+  if (hasBudget) return 'An approved construction estimate is required to calculate the budget variance.'
+  if (hasApproved) return 'A project budget is required to calculate the budget variance.'
+  return 'A project budget and an approved construction estimate are required to calculate the budget variance.'
+}
+
+function SummaryCard({ label, value, note, valueClassName }: { label: string; value: string; note?: string; valueClassName?: string }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-xl border bg-[#F8F7F3] p-4">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className={cn('break-words font-serif text-xl font-semibold tabular-nums text-foreground', valueClassName)}>{value}</dd>
+      {note && <p className="text-xs leading-relaxed text-muted-foreground">{note}</p>}
+    </div>
+  )
 }
 
 export async function ProjectEstimatesPanel({
@@ -42,15 +61,17 @@ export async function ProjectEstimatesPanel({
   const approved = rows
     .filter((r) => r.status === 'approved')
     .sort((a, b) => (b.decision_at ?? '').localeCompare(a.decision_at ?? ''))[0]
-  const variance = approved && budgetCents !== null ? approved.construction_total_cents - budgetCents : null
+  const hasBudget = budgetCents !== null
+  const variance = approved && hasBudget ? approved.construction_total_cents - budgetCents : null
 
   return (
-    <section aria-labelledby="estimates-heading" className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="estimates-heading" className="font-serif text-lg font-semibold text-foreground">
-          Estimates &amp; Budget
-        </h2>
-        <div className="flex flex-wrap gap-2">
+    <OverviewSection
+      id="estimates-heading"
+      icon={Wallet}
+      title="Estimates & Budget"
+      subtitle="Approved construction cost compared with the project budget."
+      actions={
+        <>
           {estimates.length ? (
             <Button variant="outline" render={<Link href={`/estimates?project=${projectId}`} />} nativeButton={false}>
               <Calculator data-icon="inline-start" />
@@ -63,68 +84,44 @@ export async function ProjectEstimatesPanel({
               Create estimate
             </Button>
           ) : null}
-        </div>
-      </div>
-
-      <dl className="grid gap-3 sm:grid-cols-3">
-        <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">
-          <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Project budget</dt>
-          <dd className="font-serif text-xl font-semibold tabular-nums text-foreground">
-            {budgetCents !== null ? formatCentsExact(budgetCents) : 'Not set'}
-          </dd>
-        </div>
-        <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">
-          <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Approved construction estimate</dt>
-          <dd className="font-serif text-xl font-semibold tabular-nums text-foreground">
-            {approved ? formatCentsExact(approved.construction_total_cents) : 'None approved'}
-          </dd>
-          {approved ? (
-            <p className="text-xs text-muted-foreground">
-              {approved.estimate_number} rev {approved.revision}
-              {approved.land_cost_cents !== null ? ` · land ${formatCentsExact(approved.land_cost_cents)} tracked separately` : ''}
-            </p>
-          ) : null}
-        </div>
-        <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">
-          <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Estimate vs. budget</dt>
-          <dd
-            className={
-              variance === null
-                ? 'font-serif text-xl font-semibold text-muted-foreground'
-                : variance > 0
-                  ? 'font-serif text-xl font-semibold tabular-nums text-destructive'
-                  : 'font-serif text-xl font-semibold tabular-nums text-primary'
-            }
-          >
-            {variance === null ? '—' : `${variance > 0 ? '+' : ''}${formatCentsExact(variance)}`}
-          </dd>
-          <p className="text-xs text-muted-foreground">
-            {variance === null
-              ? 'Needs a budget and an approved estimate'
-              : variance > 0
-                ? 'Over budget'
-                : 'Within budget'}
-          </p>
-        </div>
+        </>
+      }
+    >
+      <dl className="grid gap-3 md:grid-cols-3">
+        <SummaryCard label="Project budget" value={hasBudget ? formatCentsExact(budgetCents) : 'Not set'} valueClassName={hasBudget ? undefined : 'text-muted-foreground'} />
+        <SummaryCard
+          label="Approved construction estimate"
+          value={approved ? formatCentsExact(approved.construction_total_cents) : 'None approved'}
+          valueClassName={approved ? undefined : 'text-muted-foreground'}
+          note={
+            approved
+              ? `${approved.estimate_number} rev ${approved.revision}${approved.land_cost_cents !== null ? ` · land ${formatCentsExact(approved.land_cost_cents)} tracked separately` : ''}`
+              : undefined
+          }
+        />
+        <SummaryCard
+          label="Estimate vs. budget"
+          value={variance === null ? 'Not available' : `${variance > 0 ? '+' : ''}${formatCentsExact(variance)}`}
+          valueClassName={variance === null ? 'text-base text-muted-foreground' : variance > 0 ? 'text-destructive' : 'text-primary'}
+          note={varianceMessage(hasBudget, Boolean(approved), variance)}
+        />
       </dl>
 
       {estimates.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          No estimates for this project yet.
-        </p>
+        <p className="text-sm text-muted-foreground">No estimates for this project yet.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+        <ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
           {estimates.slice(0, 5).map((e) => (
             <li key={e.id}>
-              <Link href={`/estimates/${e.id}`} className="flex flex-wrap items-center justify-between gap-3 p-4 hover:bg-muted/50">
+              <Link href={`/estimates/${e.id}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[#F8F7F3]">
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate font-medium text-foreground">{e.name}</span>
+                  <span className="truncate text-sm font-medium text-foreground">{e.name}</span>
                   <span className="font-mono text-xs text-muted-foreground">
                     {e.estimate_number} · Rev {e.revision} · {formatDate(e.created_at)}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="tabular-nums text-sm font-medium">{formatCentsExact(e.construction_total_cents)}</span>
+                  <span className="text-sm font-medium tabular-nums">{formatCentsExact(e.construction_total_cents)}</span>
                   <EstimateStatusBadge status={e.status} />
                 </div>
               </Link>
@@ -132,6 +129,6 @@ export async function ProjectEstimatesPanel({
           ))}
         </ul>
       )}
-    </section>
+    </OverviewSection>
   )
 }
