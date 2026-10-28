@@ -18,10 +18,20 @@ import {
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/shared/form-field'
 import { SearchInput } from '@/components/shared/search-input'
-import { DOCUMENT_CATEGORIES, type DocumentCategory } from '@/lib/documents'
+import { DOCUMENT_CATEGORIES, categoriesFor, type DocumentCategory, type DocumentScope } from '@/lib/documents'
 import { cn } from '@/lib/utils'
 
-export type BrowseParams = { q?: string; category?: string; visibility?: string; archived?: string; page?: string }
+export type BrowseParams = {
+  q?: string
+  category?: string
+  visibility?: string
+  archived?: string
+  page?: string
+  project?: string
+  tab?: string
+}
+
+export type BrowseProjectOption = { id: string; label: string }
 
 export function browseHref(base: string, params: BrowseParams, patch: Partial<BrowseParams>) {
   const merged = { ...params, ...patch }
@@ -35,18 +45,35 @@ export function DocumentFiltersForm({
   params,
   showVisibility,
   showArchived,
+  scope = 'project',
+  projectOptions,
 }: {
   params: BrowseParams
   showVisibility: boolean
   showArchived: boolean
+  scope?: DocumentScope
+  /** When provided, adds a project filter limited to these (already authorized) projects. */
+  projectOptions?: BrowseProjectOption[]
 }) {
   return (
     <form role="search" className="flex flex-col gap-3 lg:flex-row lg:items-center">
+      {params.tab && <input type="hidden" name="tab" value={params.tab} />}
       <SearchInput key={params.q} id="q" label="Search documents" defaultValue={params.q ?? ''} placeholder="Search by document name" className="flex-1" />
+      {projectOptions && (
+        <>
+          <label htmlFor="project" className="sr-only">Project</label>
+          <NativeSelect id="project" name="project" defaultValue={params.project ?? ''} className="bg-card lg:w-64">
+            <option value="">All accessible projects</option>
+            {projectOptions.map((p) => (
+              <option key={p.id} value={p.id}>{p.label}</option>
+            ))}
+          </NativeSelect>
+        </>
+      )}
       <label htmlFor="category" className="sr-only">Category</label>
-      <NativeSelect id="category" name="category" defaultValue={params.category ?? ''} className="bg-card lg:w-64">
+      <NativeSelect id="category" name="category" defaultValue={params.category ?? ''} className="bg-card lg:w-56">
         <option value="">All categories</option>
-        {DOCUMENT_CATEGORIES.map((c) => (
+        {categoriesFor(scope).map((c) => (
           <option key={c.key} value={c.key}>{c.label}</option>
         ))}
       </NativeSelect>

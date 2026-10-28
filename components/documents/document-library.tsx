@@ -39,11 +39,12 @@ import {
   type DocumentVersionEntry,
 } from '@/app/actions/documents'
 import { DocumentUploadDialog } from '@/components/documents/document-upload-dialog'
-import { DOCUMENT_CATEGORIES, categoryLabel, fileTypeLabel, formatBytes, type DocumentCategory, type DocumentRow } from '@/lib/documents'
+import { categoriesFor, categoryLabel, fileTypeLabel, formatBytes, type AnyDocumentCategory, type DocumentRow } from '@/lib/documents'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-export type LibraryMode = 'project' | 'company' | 'portal'
+/** project: one project's files. company: project files across projects. library: Company Library (no project). */
+export type LibraryMode = 'project' | 'company' | 'library' | 'portal'
 
 type LibraryProps = {
   rows: DocumentRow[]
@@ -92,6 +93,8 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
   const [versionFor, setVersionFor] = useState<DocumentRow | null>(null)
   const [confirmArchive, setConfirmArchive] = useState<DocumentRow | null>(null)
   const staff = mode !== 'portal'
+  const showVisibility = staff && mode !== 'library'
+  const showProject = mode === 'company'
 
   function setPreview(doc: DocumentRow) {
     if (doc.current_version) setPreviewState({ doc, request: getDocumentFileUrl(doc.current_version.id, 'preview') })
@@ -152,7 +155,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
           {staff && canManage && (
             <>
               <DropdownMenuSeparator />
-              {!doc.archived_at && (
+              {!doc.archived_at && doc.scope === 'project' && (
                 <DropdownMenuItem
                   onClick={() =>
                     run(
@@ -196,13 +199,27 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
             {doc.name}
           </button>
           {doc.description && <p className="line-clamp-1 text-xs text-muted-foreground">{doc.description}</p>}
-          {mode === 'company' && doc.project && (
-            <Link href={`/projects/${doc.project.id}/documents`} className="w-fit text-xs text-muted-foreground hover:text-primary">
-              {[doc.project.project_number, doc.project.name].filter(Boolean).join(' · ')}
-            </Link>
+          {showProject && (
+            <p className="text-xs text-muted-foreground md:hidden">
+              <span className="font-medium text-foreground/70">Project: </span>
+              {projectLink(doc)}
+            </p>
           )}
         </div>
       </div>
+    )
+  }
+
+  function projectLink(doc: DocumentRow) {
+    if (!doc.project) return <span>Unavailable</span>
+    return (
+      <Link
+        href={`/projects/${doc.project.id}/documents`}
+        className="font-medium text-primary underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none"
+      >
+        {doc.project.name}
+        {doc.project.project_number && <span className="font-normal text-muted-foreground">{` · ${doc.project.project_number}`}</span>}
+      </Link>
     )
   }
 
@@ -214,8 +231,9 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
           <thead className="bg-[#F8F7F3] text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
             <tr>
               <th scope="col" className="px-4 py-3">Document</th>
+              {showProject && <th scope="col" className="px-4 py-3">Project</th>}
               <th scope="col" className="px-4 py-3">Category</th>
-              {staff && <th scope="col" className="px-4 py-3">Visibility</th>}
+              {showVisibility && <th scope="col" className="px-4 py-3">Visibility</th>}
               <th scope="col" className="px-4 py-3">Version</th>
               <th scope="col" className="px-4 py-3">{staff ? 'Updated' : 'Added'}</th>
               <th scope="col" className="w-12 px-4 py-3"><span className="sr-only">Actions</span></th>
@@ -225,8 +243,9 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
             {rows.map((doc) => (
               <tr key={doc.id} className="align-top transition-colors hover:bg-[#F8F7F3]/60">
                 <td className="max-w-md px-4 py-3">{nameCell(doc)}</td>
+                {showProject && <td className="max-w-56 px-4 py-3 text-sm">{projectLink(doc)}</td>}
                 <td className="px-4 py-3 text-muted-foreground">{categoryLabel(doc.category)}</td>
-                {staff && (
+                {showVisibility && (
                   <td className="px-4 py-3">
                     <VisibilityBadge visibility={doc.visibility} />
                   </td>
@@ -258,7 +277,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
               {actionsFor(doc)}
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 pl-12 text-xs text-muted-foreground">
-              {staff && <VisibilityBadge visibility={doc.visibility} />}
+              {showVisibility && <VisibilityBadge visibility={doc.visibility} />}
               <span>{categoryLabel(doc.category)}</span>
               <span>{`v${doc.current_version_number} · ${fileTypeLabel(doc.current_version?.content_type)} · ${formatBytes(doc.current_version?.size_bytes)}`}</span>
               <span>{formatDate(staff ? doc.updated_at : doc.current_version?.uploaded_at)}</span>
@@ -281,7 +300,8 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
       )}
       {staff && projectId === undefined && versionFor && (
         <DocumentUploadDialog
-          projectId={versionFor.project_id}
+          projectId={versionFor.project_id ?? undefined}
+          scope={versionFor.scope}
           open
           onOpenChange={(o) => !o && setVersionFor(null)}
           canShare={canManage}
@@ -463,7 +483,7 @@ function EditDialog({ doc, onClose }: { doc: DocumentRow | null; onClose: () => 
 function EditForm({ doc, onDone }: { doc: DocumentRow; onDone: () => void }) {
   const router = useRouter()
   const [name, setName] = useState(doc.name)
-  const [category, setCategory] = useState<DocumentCategory>(doc.category)
+  const [category, setCategory] = useState<AnyDocumentCategory>(doc.category)
   const [description, setDescription] = useState(doc.description ?? '')
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -495,8 +515,8 @@ function EditForm({ doc, onDone }: { doc: DocumentRow; onDone: () => void }) {
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="doc-edit-category" className="text-sm font-medium">Category</label>
-        <NativeSelect id="doc-edit-category" value={category} onChange={(e) => setCategory(e.target.value as DocumentCategory)}>
-          {DOCUMENT_CATEGORIES.map((c) => (
+        <NativeSelect id="doc-edit-category" value={category} onChange={(e) => setCategory(e.target.value as AnyDocumentCategory)}>
+          {categoriesFor(doc.scope).map((c) => (
             <option key={c.key} value={c.key}>{c.label}</option>
           ))}
         </NativeSelect>

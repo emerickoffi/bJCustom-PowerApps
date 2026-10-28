@@ -17,17 +17,43 @@ export const DOCUMENT_CATEGORIES = [
   { key: 'other', label: 'Other' },
 ] as const
 
+/** Company Library categories. Mirrors project_documents_scope_check. */
+export const COMPANY_DOCUMENT_CATEGORIES = [
+  { key: 'licenses', label: 'Company Licenses' },
+  { key: 'insurance', label: 'Insurance Certificates' },
+  { key: 'contract_templates', label: 'Contract Templates' },
+  { key: 'safety', label: 'Safety Procedures & Policies' },
+  { key: 'internal_forms', label: 'Internal Forms' },
+  { key: 'vendor_reference', label: 'Vendor Reference' },
+  { key: 'training', label: 'Training' },
+  { key: 'other', label: 'Other' },
+] as const
+
+export type DocumentScope = 'project' | 'company'
 export type DocumentCategory = (typeof DOCUMENT_CATEGORIES)[number]['key']
+export type CompanyDocumentCategory = (typeof COMPANY_DOCUMENT_CATEGORIES)[number]['key']
+export type AnyDocumentCategory = DocumentCategory | CompanyDocumentCategory
 export type DocumentVisibility = 'internal' | 'homeowner'
 
 export const DOCUMENT_CATEGORY_KEYS = DOCUMENT_CATEGORIES.map((c) => c.key) as [DocumentCategory, ...DocumentCategory[]]
+export const COMPANY_DOCUMENT_CATEGORY_KEYS = COMPANY_DOCUMENT_CATEGORIES.map((c) => c.key) as [CompanyDocumentCategory, ...CompanyDocumentCategory[]]
+
+export function categoriesFor(scope: DocumentScope): readonly { key: AnyDocumentCategory; label: string }[] {
+  return scope === 'company' ? COMPANY_DOCUMENT_CATEGORIES : DOCUMENT_CATEGORIES
+}
 
 export function categoryLabel(key: string): string {
-  return DOCUMENT_CATEGORIES.find((c) => c.key === key)?.label ?? 'Other'
+  return (
+    DOCUMENT_CATEGORIES.find((c) => c.key === key)?.label ?? COMPANY_DOCUMENT_CATEGORIES.find((c) => c.key === key)?.label ?? 'Other'
+  )
 }
 
 export function isDocumentCategory(value: string | undefined | null): value is DocumentCategory {
   return DOCUMENT_CATEGORIES.some((c) => c.key === value)
+}
+
+export function isCompanyDocumentCategory(value: string | undefined | null): value is CompanyDocumentCategory {
+  return COMPANY_DOCUMENT_CATEGORIES.some((c) => c.key === value)
 }
 
 /** Allowed upload types. The extension is part of the storage key and the database checks it against the stored content type. */
@@ -76,12 +102,19 @@ export function documentStoragePath(orgId: string, projectId: string, documentId
   return `library/${orgId}/${projectId}/${documentId}/${versionId}.${DOCUMENT_TYPES[contentType].ext}`
 }
 
+export const COMPANY_DOCUMENT_PATH_PATTERN = new RegExp(`^company/(${UUID})/(${UUID})/(${UUID})\\.(pdf|png|jpg|webp)$`)
+
+export function companyDocumentStoragePath(orgId: string, documentId: string, versionId: string, contentType: DocumentContentType) {
+  return `company/${orgId}/${documentId}/${versionId}.${DOCUMENT_TYPES[contentType].ext}`
+}
+
 export type DocumentRow = {
   id: string
-  project_id: string
+  project_id: string | null
+  scope: DocumentScope
   name: string
   description: string | null
-  category: DocumentCategory
+  category: AnyDocumentCategory
   visibility: DocumentVisibility
   current_version_number: number
   updated_at: string

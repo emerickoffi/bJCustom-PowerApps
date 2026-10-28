@@ -8,28 +8,34 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { NativeSelect } from '@/components/shared/form-field'
 import { createClient } from '@/lib/supabase/client'
-import { discardDocumentUpload, prepareDocumentUpload, registerDocumentVersion } from '@/app/actions/documents'
+import { discardDocumentUpload, prepareCompanyDocumentUpload, prepareDocumentUpload, registerDocumentVersion } from '@/app/actions/documents'
 import {
   DOCUMENT_ACCEPT,
-  DOCUMENT_CATEGORIES,
   DOCUMENT_TYPES_HINT,
   DOCUMENTS_BUCKET,
+  categoriesFor,
   formatBytes,
   validateDocumentFile,
-  type DocumentCategory,
+  type AnyDocumentCategory,
+  type DocumentScope,
 } from '@/lib/documents'
 import { cn } from '@/lib/utils'
 
 type NewVersionTarget = { documentId: string; name: string; currentVersion: number }
 
+export type UploadProjectOption = { id: string; label: string }
+
 type UploadDialogProps = {
-  projectId: string
+  /** Fixed target project. Omit with scope "project" to let the user choose from projectOptions. */
+  projectId?: string
+  scope?: DocumentScope
+  projectOptions?: UploadProjectOption[]
   open: boolean
   onOpenChange: (open: boolean) => void
   canShare: boolean
   /** When set, the dialog uploads the next version of this document instead of creating a new one. */
   version?: NewVersionTarget | null
-  defaultCategory?: DocumentCategory
+  defaultCategory?: AnyDocumentCategory
 }
 
 function displayNameFromFile(filename: string) {
@@ -54,13 +60,26 @@ function uploadWithProgress(path: string, file: File, token: string, onProgress:
   })
 }
 
-export function DocumentUploadDialog({ projectId, open, onOpenChange, canShare, version, defaultCategory }: UploadDialogProps) {
+export function DocumentUploadDialog({
+  projectId,
+  scope = 'project',
+  projectOptions,
+  open,
+  onOpenChange,
+  canShare,
+  version,
+  defaultCategory,
+}: UploadDialogProps) {
   const router = useRouter()
   const ids = useId()
   const inputRef = useRef<HTMLInputElement>(null)
+  const isCompany = scope === 'company'
+  const categories = categoriesFor(scope)
+  const choosesProject = !isCompany && !projectId && !version
   const [file, setFile] = useState<File | null>(null)
+  const [targetProject, setTargetProject] = useState('')
   const [name, setName] = useState('')
-  const [category, setCategory] = useState<DocumentCategory>(defaultCategory ?? 'other')
+  const [category, setCategory] = useState<AnyDocumentCategory>(defaultCategory ?? 'other')
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<'internal' | 'homeowner'>('internal')
   const [notes, setNotes] = useState('')
@@ -71,6 +90,7 @@ export function DocumentUploadDialog({ projectId, open, onOpenChange, canShare, 
 
   function reset() {
     setFile(null)
+    setTargetProject('')
     setName('')
     setCategory(defaultCategory ?? 'other')
     setDescription('')
@@ -95,6 +115,8 @@ export function DocumentUploadDialog({ projectId, open, onOpenChange, canShare, 
     if (!file) return setError('Choose a file to upload.')
     const problem = validateDocumentFile(file)
     if (problem) return setError(problem)
+    const resolvedProject = projectId ?? targetProject
+    if (choosesProject && !resolvedProject) return setError('Choose the project this document belongs to.')
     if (!version && !name.trim()) return setError('Enter a document name.')
 
     setBusy(true)
@@ -102,7 +124,9 @@ export function DocumentUploadDialog({ projectId, open, onOpenChange, canShare, 
     setProgress(0)
     let path: string | null = null
     try {
-      const prepared = await prepareDocumentUpload({ projectId, documentId: version?.documentId, contentType: file.type, size: file.size })
+      const prepared = isCompany
+        ? await prepareCompanyDocumentUpload({ documentId: version?.documentId, contentType: file.type, size: file.size })
+        : await prepareDocumentUpload({ projectId: resolvedProject, documentId: version?.documentId, contentType: file.type, size: file.size })
       if (!prepared.ok) throw new Error(prepared.error)
       path = prepared.data.path
 
@@ -121,7 +145,7 @@ export function DocumentUploadDialog({ projectId, open, onOpenChange, canShare, 
         name: version ? undefined : name.trim(),
         category: version ? undefined : category,
         description: version ? undefined : description.trim() || undefined,
-        visibility: version ? 'internal' : visibility,
+        visibility: version || isCompany ? 'internal' : visibility,
         revisionNotes: notes.trim() || undefined,
       })
       path = null
@@ -151,11 +175,15 @@ export function DocumentUploadDialog({ projectId, open, onOpenChange, canShare, 
     >
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-serif text-lg">{version ? 'Upload new version' : 'Upload document'}</DialogTitle>
+          <DialogTitle className="font-serif text-lg">
+            {version ? 'Upload new version' : isCompany ? 'Upload company document' : 'Upload project document'}
+          </DialogTitle>
           <DialogDescription>
             {version
               ? `${version.name} is on version ${version.currentVersion}. Earlier versions are kept in the history.`
-              : 'New documents are internal until you share them with the homeowner.'}
+              : isCompany
+                ? 'Company Library documents are internal and visible only to administrators and project managers. They are never shared with homeowners.'
+                : 'New documents are internal until you share them with the homeowner.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -215,6 +243,28 @@ export function DocumentUploadDialog({ projectId, open, onOpenChange, canShare, 
             <p className="text-xs text-muted-foreground">{DOCUMENT_TYPES_HINT}</p>
           </div>
 
+          {choosesProject && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={`${ids}-project`} className="text-sm font-medium">
+                Project
+              </label>
+              <NativeSelect
+                id={`${ids}-project`}
+                value={targetProject}
+                onChange={(e) => setTargetProject(e.target.value)}
+                disabled={busy}
+                required
+              >
+                <option value="">Choose a project</option>
+                {(projectOptions ?? []).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+          )}
+
           {!version && (
             <>
               <div className="flex flex-col gap-1.5">
@@ -231,7 +281,7 @@ export function DocumentUploadDialog({ projectId, open, onOpenChange, canShare, 
                   className="h-10 rounded-lg border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className={cn('grid gap-4', !isCompany && 'sm:grid-cols-2')}>
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor={`${ids}-category`} className="text-sm font-medium">
                     Category
@@ -239,16 +289,17 @@ export function DocumentUploadDialog({ projectId, open, onOpenChange, canShare, 
                   <NativeSelect
                     id={`${ids}-category`}
                     value={category}
-                    onChange={(e) => setCategory(e.target.value as DocumentCategory)}
+                    onChange={(e) => setCategory(e.target.value as AnyDocumentCategory)}
                     disabled={busy}
                   >
-                    {DOCUMENT_CATEGORIES.map((c) => (
+                    {categories.map((c) => (
                       <option key={c.key} value={c.key}>
                         {c.label}
                       </option>
                     ))}
                   </NativeSelect>
                 </div>
+                {!isCompany && (
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor={`${ids}-visibility`} className="text-sm font-medium">
                     Visibility
@@ -263,6 +314,7 @@ export function DocumentUploadDialog({ projectId, open, onOpenChange, canShare, 
                     {canShare && <option value="homeowner">Shared with homeowner</option>}
                   </NativeSelect>
                 </div>
+                )}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={`${ids}-description`} className="text-sm font-medium">
