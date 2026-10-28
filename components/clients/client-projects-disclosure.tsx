@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronRight, FolderKanban, House } from 'lucide-react'
+import { ChevronDown, ChevronRight, CircleAlert, FolderKanban, House } from 'lucide-react'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import type { ProjectStatus } from '@/lib/domain'
 import { cn } from '@/lib/utils'
@@ -17,10 +17,12 @@ export type ClientProject = {
 export function ClientProjectsDisclosure({
   clientName,
   projects,
+  failed = false,
   children,
 }: {
   clientName: string
   projects: ClientProject[]
+  failed?: boolean
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
@@ -75,7 +77,12 @@ export function ClientProjectsDisclosure({
       )}
 
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E2E8E2] bg-[#F8F7F3]/70 px-4 py-3 sm:gap-3 sm:px-5">
-        {count > 0 ? (
+        {failed ? (
+          <span role="alert" className="flex items-center gap-1.5 text-sm text-destructive">
+            <CircleAlert className="size-4" aria-hidden="true" />
+            Projects couldn&apos;t be loaded
+          </span>
+        ) : count > 0 ? (
           <button
             type="button"
             aria-expanded={open}
