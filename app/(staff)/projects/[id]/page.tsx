@@ -44,6 +44,7 @@ import {
 import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, type ProjectStatus } from '@/lib/domain'
 import { formatAddress, formatCents, formatDate, formatDateTime } from '@/lib/format'
 import { PROJECT_SECTION_ANCHORS } from '@/lib/project-nav'
+import { ProjectSectionScroll } from '@/components/projects/project-section-scroll'
 
 export const metadata: Metadata = { title: 'Project' }
 
@@ -164,6 +165,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="flex flex-col gap-8">
+      <ProjectSectionScroll />
       <AssistantProjectScope
         project={{ id: project.id, name: project.name, number: project.project_number ?? null, statusLabel: PROJECT_STATUS_LABELS[status] }}
       />
@@ -445,7 +447,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             </section>
           )}
           <ProjectClientsPanel projectId={project.id} links={links} clientOptions={clientOptions} canEdit={manager} />
-          <div id={PROJECT_SECTION_ANCHORS.team}>
+          <div id={PROJECT_SECTION_ANCHORS.team} className="scroll-mt-24">
             <ProjectTeamPanel
               projectId={project.id}
               managerName={nameFor(project.project_manager_id)}

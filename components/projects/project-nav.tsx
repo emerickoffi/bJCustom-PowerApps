@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getActiveProjectNavKey, type ProjectNavItem } from '@/lib/project-nav'
+import { getActiveProjectNavKey, getSectionIdFromHref, type ProjectNavItem } from '@/lib/project-nav'
+import { scrollToProjectSection } from '@/components/projects/project-section-scroll'
 
 export function ProjectNav({
   projectId,
@@ -20,6 +21,17 @@ export function ProjectNav({
   const pathname = usePathname()
   const activeKey = getActiveProjectNavKey(pathname, projectId, items)
   const overviewHref = items[0]?.href ?? `/projects/${projectId}`
+
+  // On the overview itself, scroll directly: a repeated hash click is otherwise a no-op in the router.
+  // From other tabs the Link navigates and ProjectSectionScroll handles the hash after mount.
+  function handleSectionClick(event: React.MouseEvent<HTMLAnchorElement>, href: string) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    const sectionId = getSectionIdFromHref(href)
+    if (!sectionId || activeKey !== 'overview') return
+    if (!scrollToProjectSection(sectionId)) return
+    event.preventDefault()
+    window.history.replaceState(window.history.state, '', href)
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -59,6 +71,7 @@ export function ProjectNav({
               <li key={item.key}>
                 <Link
                   href={item.href}
+                  onClick={(event) => handleSectionClick(event, item.href)}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
                     '-mb-px flex h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors',

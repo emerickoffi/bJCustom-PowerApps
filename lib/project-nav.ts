@@ -18,13 +18,26 @@ export type ProjectNavAccess = {
 
 // Anchors on the overview page; these must match the ids rendered by the overview panels.
 export const PROJECT_SECTION_ANCHORS = {
-  estimates: 'estimates-heading',
   team: 'project-team',
   walkthroughs: 'walkthroughs-heading',
 } as const
 
+const SECTION_IDS: readonly string[] = Object.values(PROJECT_SECTION_ANCHORS)
+
+export function isProjectSectionId(id: string) {
+  return SECTION_IDS.includes(id)
+}
+
 export function projectBasePath(projectId: string) {
   return `/projects/${encodeURIComponent(projectId)}`
+}
+
+// Returns the overview section id targeted by a nav href, or null for dedicated pages.
+export function getSectionIdFromHref(href: string): string | null {
+  const hashIndex = href.indexOf('#')
+  if (hashIndex === -1) return null
+  const id = decodeURIComponent(href.slice(hashIndex + 1))
+  return isProjectSectionId(id) ? id : null
 }
 
 export function getProjectNavItems(projectId: string, access: ProjectNavAccess): ProjectNavItem[] {
@@ -36,7 +49,8 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
     features.estimates && {
       key: 'estimates',
       label: 'Estimates',
-      href: `${base}#${PROJECT_SECTION_ANCHORS.estimates}`,
+      // Reuses the Estimates module's validated, organization-scoped project filter.
+      href: `/estimates?project=${encodeURIComponent(projectId)}`,
       activePrefix: null,
     },
     features.documents &&

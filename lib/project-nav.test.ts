@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { getActiveProjectNavKey, getProjectNavItems, type ProjectNavAccess } from './project-nav.ts'
+import { getActiveProjectNavKey, getProjectNavItems, getSectionIdFromHref, type ProjectNavAccess } from './project-nav.ts'
 
 const ID = '7f3c2a10-0000-4000-8000-000000000001'
 const BASE = `/projects/${ID}`
@@ -17,9 +17,11 @@ test('shows every tab in order when all features are on', () => {
   assert.deepEqual(keys(allOn), ['overview', 'schedule', 'estimates', 'documents', 'team', 'walkthroughs', 'warranty'])
 })
 
-test('every tab stays inside the current project', () => {
+test('every tab is scoped to the current project', () => {
   for (const item of getProjectNavItems(ID, allOn)) {
-    assert.ok(item.href === BASE || item.href.startsWith(`${BASE}/`) || item.href.startsWith(`${BASE}#`), item.href)
+    const inProject = item.href === BASE || item.href.startsWith(`${BASE}/`) || item.href.startsWith(`${BASE}#`)
+    const projectFiltered = item.href === `/estimates?project=${ID}`
+    assert.ok(inProject || projectFiltered, item.href)
   }
 })
 
@@ -41,9 +43,21 @@ test('shows Warranty only for completed projects', () => {
 
 test('section tabs link to overview anchors', () => {
   const items = getProjectNavItems(ID, allOn)
-  assert.equal(items.find((i) => i.key === 'estimates')?.href, `${BASE}#estimates-heading`)
   assert.equal(items.find((i) => i.key === 'team')?.href, `${BASE}#project-team`)
   assert.equal(items.find((i) => i.key === 'walkthroughs')?.href, `${BASE}#walkthroughs-heading`)
+})
+
+test('estimates tab opens the existing Estimates module filtered to the project', () => {
+  const items = getProjectNavItems(ID, allOn)
+  assert.equal(items.find((i) => i.key === 'estimates')?.href, `/estimates?project=${ID}`)
+})
+
+test('extracts only known overview section ids from hrefs', () => {
+  assert.equal(getSectionIdFromHref(`${BASE}#project-team`), 'project-team')
+  assert.equal(getSectionIdFromHref(`${BASE}#walkthroughs-heading`), 'walkthroughs-heading')
+  assert.equal(getSectionIdFromHref(`${BASE}#unknown`), null)
+  assert.equal(getSectionIdFromHref(`${BASE}/schedule`), null)
+  assert.equal(getSectionIdFromHref(`/estimates?project=${ID}`), null)
 })
 
 test('resolves the active tab from the pathname', () => {

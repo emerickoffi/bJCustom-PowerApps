@@ -30,7 +30,7 @@ export function OverviewSection({
           </span>
           <div className="flex min-w-0 flex-col gap-0.5">
             <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-              <h2 id={id} className="font-serif text-lg font-semibold leading-snug tracking-tight text-foreground">
+              <h2 id={id} className="scroll-mt-28 font-serif text-lg font-semibold leading-snug tracking-tight text-foreground">
                 {title}
               </h2>
               {meta}
