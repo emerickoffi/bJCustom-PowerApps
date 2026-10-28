@@ -47,6 +47,8 @@ export function DocumentFiltersForm({
   showArchived,
   scope = 'project',
   projectOptions,
+  counts,
+  className,
 }: {
   params: BrowseParams
   showVisibility: boolean
@@ -54,11 +56,15 @@ export function DocumentFiltersForm({
   scope?: DocumentScope
   /** When provided, adds a project filter limited to these (already authorized) projects. */
   projectOptions?: BrowseProjectOption[]
+  /** Category counts appended to the category options (used where the sidebar is hidden). */
+  counts?: Record<string, number> | null
+  className?: string
 }) {
+  const total = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : null
   return (
-    <form role="search" className="flex flex-col gap-3 lg:flex-row lg:items-center">
+    <form role="search" className={cn('flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center', className)}>
       {params.tab && <input type="hidden" name="tab" value={params.tab} />}
-      <SearchInput key={params.q} id="q" label="Search documents" defaultValue={params.q ?? ''} placeholder="Search by document name" className="flex-1" />
+      <SearchInput key={params.q} id="q" label="Search documents" defaultValue={params.q ?? ''} placeholder="Search by document name" className="min-w-0 md:min-w-56 md:flex-1" />
       {projectOptions && (
         <>
           <label htmlFor="project" className="sr-only">Project</label>
@@ -71,16 +77,16 @@ export function DocumentFiltersForm({
         </>
       )}
       <label htmlFor="category" className="sr-only">Category</label>
-      <NativeSelect id="category" name="category" defaultValue={params.category ?? ''} className="bg-card lg:w-56">
-        <option value="">All categories</option>
+      <NativeSelect key={`category-${params.category ?? ''}`} id="category" name="category" defaultValue={params.category ?? ''} className="bg-card md:w-52">
+        <option value="">{total === null ? 'All categories' : `All categories (${total})`}</option>
         {categoriesFor(scope).map((c) => (
-          <option key={c.key} value={c.key}>{c.label}</option>
+          <option key={c.key} value={c.key}>{counts && c.key in counts ? `${c.label} (${counts[c.key]})` : c.label}</option>
         ))}
       </NativeSelect>
       {showVisibility && (
         <>
           <label htmlFor="visibility" className="sr-only">Visibility</label>
-          <NativeSelect id="visibility" name="visibility" defaultValue={params.visibility ?? ''} className="bg-card lg:w-48">
+          <NativeSelect key={`visibility-${params.visibility ?? ''}`} id="visibility" name="visibility" defaultValue={params.visibility ?? ''} className="bg-card md:w-48">
             <option value="">Any visibility</option>
             <option value="internal">Internal only</option>
             <option value="homeowner">Shared with homeowner</option>
@@ -134,8 +140,11 @@ export function CategoryNav({
   const total = Object.values(counts).reduce((a, b) => a + b, 0)
   const items = [{ key: '', label: 'All documents', count: total }, ...DOCUMENT_CATEGORIES.map((c) => ({ key: c.key, label: c.label, count: counts[c.key] }))]
   return (
-    <nav aria-label="Document categories">
-      <ul className="flex gap-1.5 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+    <nav aria-labelledby="document-library-heading" className="rounded-xl border border-[#E2E8E2] bg-card p-2">
+      <h2 id="document-library-heading" className="px-3 pb-2 pt-2 font-serif text-base font-semibold text-foreground">
+        Library
+      </h2>
+      <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
         {items.map((item) => {
           const active = (params.category ?? '') === item.key
           return (

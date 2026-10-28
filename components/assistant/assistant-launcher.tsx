@@ -27,7 +27,7 @@ type Message =
   | { id: string; role: 'user'; text: string }
   | { id: string; role: 'assistant'; status: 'loading' }
   | { id: string; role: 'assistant'; status: 'error'; text: string }
-  | { id: string; role: 'assistant'; status: 'sample'; text: string; reviewDraft?: boolean }
+  | { id: string; role: 'assistant'; status: 'answer'; text: string; reviewDraft?: boolean }
 
 const QUICK_ACTIONS: { key: QuickActionKey; label: string; hint: string; icon: LucideIcon }[] = [
   { key: 'overview', label: 'Project Overview', hint: 'Status, progress, and open items', icon: FolderKanban },
@@ -36,30 +36,19 @@ const QUICK_ACTIONS: { key: QuickActionKey; label: string; hint: string; icon: L
   { key: 'warranty', label: 'Warranty Overview', hint: 'Open claims and due dates', icon: ShieldCheck },
 ]
 
-function scopeName(project: AssistantProject | null) {
-  return project ? project.name : 'your accessible projects'
-}
-
-function sampleFor(key: QuickActionKey, project: AssistantProject | null): { text: string; reviewDraft?: boolean } {
-  const scope = scopeName(project)
+function promptFor(key: QuickActionKey, project: AssistantProject | null) {
+  const scope = project ? `the ${project.name} project` : 'my active projects'
   switch (key) {
     case 'overview':
-      return {
-        text: `When connected, this is where a summary of ${scope} would appear: current status, construction progress, open punch list items, and the next milestones, drawn only from records you are allowed to see.`,
-      }
+      return `Give me an overview of ${scope}: current status, construction progress, open punch list items, and the next milestones.`
     case 'schedule':
-      return {
-        text: `When connected, the assistant would review the schedule for ${scope}, call out delayed or at-risk activities, and list what is coming up in the next two weeks.`,
-      }
+      return `Review the schedule for ${scope}. Call out delayed or at-risk activities and list what is coming up in the next two weeks.`
     case 'update':
-      return {
-        text: `Hi [Homeowner name],\n\nHere is this week's update on [Project]. [Progress summary]\n\nComing up next: [Upcoming work]\n\nPlease reach out with any questions.\n\n[Your name]`,
-        reviewDraft: true,
-      }
+      return project
+        ? `Draft a short weekly progress update for the homeowner of ${project.name}, based on recent progress and upcoming work.`
+        : 'Draft a short weekly progress update template I can send to a homeowner.'
     case 'warranty':
-      return {
-        text: `When connected, the assistant would summarize warranty coverage for ${scope}: open claims, items awaiting homeowner validation, and coverage end dates.`,
-      }
+      return `Summarize warranty status for ${scope}: open claims, items awaiting homeowner validation, and coverage dates.`
   }
 }
 
@@ -113,39 +102,64 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
   const [messages, setMessages] = useState<Message[]>([])
   const [draft, setDraft] = useState('')
   const logRef = useRef<HTMLDivElement>(null)
-  const timers = useRef<number[]>([])
+  const inFlight = useRef<AbortController | null>(null)
+  const busy = messages.some((m) => m.role === 'assistant' && m.status === 'loading')
 
-  useEffect(() => {
-    const pending = timers.current
-    return () => pending.forEach((t) => window.clearTimeout(t))
-  }, [])
+  useEffect(() => () => inFlight.current?.abort(), [])
 
   useEffect(() => {
     const el = logRef.current
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
   }, [messages])
 
-  function runSample(key: QuickActionKey) {
-    const action = QUICK_ACTIONS.find((a) => a.key === key)!
+  async function send(text: string, reviewDraft = false) {
+    const question = text.trim()
+    if (!configured || busy || !question) return
+
+    const history = messages
+      .filter((m): m is Extract<Message, { text: string }> => m.role === 'user' || m.status === 'answer')
+      .map((m) => ({ role: m.role, text: m.text }))
+      .slice(-10)
     const loadingId = nextId()
     setMessages((prev) => [
       ...prev,
-      { id: nextId(), role: 'user', text: action.label },
+      { id: nextId(), role: 'user', text: question },
       { id: loadingId, role: 'assistant', status: 'loading' },
     ])
-    const sample = sampleFor(key, project)
-    timers.current.push(
-      window.setTimeout(() => {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === loadingId ? { id: loadingId, role: 'assistant', status: 'sample', ...sample } : m)),
-        )
-      }, 650),
-    )
+    setDraft('')
+
+    const controller = new AbortController()
+    inFlight.current = controller
+    const settle = (next: Message) => setMessages((prev) => prev.map((m) => (m.id === loadingId ? next : m)))
+
+    try {
+      const res = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project?.id ?? null, messages: [...history, { role: 'user', text: question }] }),
+        signal: controller.signal,
+      })
+      const data = (await res.json().catch(() => null)) as { text?: string; error?: string } | null
+      if (!res.ok || !data?.text) {
+        settle({ id: loadingId, role: 'assistant', status: 'error', text: data?.error ?? 'The assistant could not answer right now. Please try again.' })
+        return
+      }
+      settle({ id: loadingId, role: 'assistant', status: 'answer', text: data.text, reviewDraft })
+    } catch {
+      if (controller.signal.aborted) return
+      settle({ id: loadingId, role: 'assistant', status: 'error', text: 'Network problem. Check your connection and try again.' })
+    } finally {
+      if (inFlight.current === controller) inFlight.current = null
+    }
+  }
+
+  function runQuickAction(key: QuickActionKey) {
+    void send(promptFor(key, project), key === 'update')
   }
 
   function resetConversation() {
-    timers.current.forEach((t) => window.clearTimeout(t))
-    timers.current = []
+    inFlight.current?.abort()
+    inFlight.current = null
     setMessages([])
     setDraft('')
   }
@@ -190,7 +204,7 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 focus-visible:outline-none"
       >
         {messages.length === 0 ? (
-          <WelcomeState project={project} onAction={runSample} />
+          <WelcomeState project={project} configured={configured} onAction={runQuickAction} />
         ) : (
           <ol className="flex flex-col gap-4">
             {messages.map((m) => (
@@ -202,7 +216,7 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
         )}
       </div>
 
-      <Composer configured={configured} draft={draft} onDraftChange={setDraft} />
+      <Composer configured={configured} busy={busy} draft={draft} onDraftChange={setDraft} onSend={() => void send(draft)} />
     </div>
   )
 }
@@ -226,7 +240,15 @@ function ContextBar({ project }: { project: AssistantProject | null }) {
   )
 }
 
-function WelcomeState({ project, onAction }: { project: AssistantProject | null; onAction: (k: QuickActionKey) => void }) {
+function WelcomeState({
+  project,
+  configured,
+  onAction,
+}: {
+  project: AssistantProject | null
+  configured: boolean
+  onAction: (k: QuickActionKey) => void
+}) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1.5">
@@ -243,7 +265,8 @@ function WelcomeState({ project, onAction }: { project: AssistantProject | null;
             key={key}
             type="button"
             onClick={() => onAction(key)}
-            className="flex min-h-24 flex-col items-start gap-2 rounded-xl border bg-card p-3 text-left shadow-xs transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            disabled={!configured}
+            className="flex min-h-24 flex-col items-start gap-2 rounded-xl border bg-card p-3 text-left shadow-xs transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-card"
           >
             <span className="flex size-8 items-center justify-center rounded-lg bg-sage text-primary">
               <Icon className="size-4" aria-hidden="true" />
@@ -256,17 +279,10 @@ function WelcomeState({ project, onAction }: { project: AssistantProject | null;
         ))}
       </div>
       <p className="rounded-lg border border-dashed bg-card/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-        Suggestions show sample responses for this UI preview. They are not live AI output and contain no project data.
+        Answers are AI-generated from records you can access and may be incomplete. The assistant is read-only: it never
+        sends, approves, or changes anything.
       </p>
     </div>
-  )
-}
-
-function SampleLabel() {
-  return (
-    <span className="inline-flex w-fit items-center gap-1 rounded-full bg-champagne-soft px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wide text-champagne-foreground">
-      Sample response · UI preview
-    </span>
   )
 }
 
@@ -306,10 +322,9 @@ function MessageBubble({ message }: { message: Message }) {
             {message.text}
           </div>
         )}
-        {message.status === 'sample' && (
+        {message.status === 'answer' && (
           <>
             <div className="flex flex-col gap-2 rounded-2xl rounded-tl-md border bg-card px-3.5 py-3">
-              <SampleLabel />
               <p className="whitespace-pre-wrap text-pretty text-sm leading-relaxed text-foreground">{message.text}</p>
             </div>
             <div className="flex items-center gap-1">
@@ -342,40 +357,44 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-/** Reserved slot for future suggested actions. Nothing here applies changes on its own. */
 function ReviewArea() {
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-dashed border-primary/30 bg-sage/30 p-3">
+    <div className="flex flex-col gap-1.5 rounded-xl border border-dashed border-primary/30 bg-sage/30 p-3">
       <span className="text-xs font-semibold text-foreground">Review before sending</span>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Drafts are never sent or applied automatically. Sending will require your explicit approval once the assistant is connected.
+        This draft was not sent. Copy it, fill in any placeholders, check every detail, and send it yourself from your
+        usual channel.
       </p>
-      <Button size="sm" variant="outline" disabled className="w-fit">
-        Send to homeowner
-      </Button>
     </div>
   )
 }
 
 function Composer({
   configured,
+  busy,
   draft,
   onDraftChange,
+  onSend,
 }: {
   configured: boolean
+  busy: boolean
   draft: string
   onDraftChange: (v: string) => void
+  onSend: () => void
 }) {
-  const canSend = configured && draft.trim().length > 0
+  const canSend = configured && !busy && draft.trim().length > 0
   return (
     <form
-      onSubmit={(e) => e.preventDefault()}
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (canSend) onSend()
+      }}
       className="border-t bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
     >
       {!configured && (
         <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
-          AI is not configured yet.
+          The AI provider is not reachable in this environment.
         </p>
       )}
       <div
@@ -395,7 +414,9 @@ function Composer({
           onKeyDown={(e) => {
             if (e.key !== 'Enter' || e.shiftKey || e.nativeEvent.isComposing || e.keyCode === 229) return
             e.preventDefault()
+            if (canSend) onSend()
           }}
+          maxLength={2000}
           disabled={!configured}
           placeholder={configured ? 'Ask about a project…' : 'Chat is unavailable until AI is configured'}
           className="max-h-32 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-base leading-snug outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed sm:text-sm"

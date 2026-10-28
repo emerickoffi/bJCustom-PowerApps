@@ -11,6 +11,7 @@ import { Sidebar, SIDEBAR_COOKIE } from '@/components/app/sidebar'
 import { MobileNav } from '@/components/app/mobile-nav'
 import { AssistantProvider } from '@/components/assistant/assistant-context'
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher'
+import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import {
   Breadcrumbs,
   HeaderSearch,
@@ -75,8 +76,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   const items = navForRole(session.role, features)
   const logo = <CompanyLogo brand={session.brand} priority />
   const homeLabel = `${session.brand.displayName} dashboard`
-  // Locked off in production until the feature is registered server-side; preview builds show the UI for review.
-  const showAssistant = features.ai_assistant || process.env.VERCEL_ENV !== 'production'
+  const showAssistant = features.ai_assistant
 
   return (
     <BrandStyle brand={session.brand}>
@@ -115,7 +115,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           <main className="mx-auto w-full max-w-[90rem] flex-1 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:py-8 lg:px-10 lg:py-10">{children}</main>
         </div>
       </div>
-      {showAssistant && <AssistantLauncher configured={false} />}
+      {showAssistant && <AssistantLauncher configured={getAssistantProviderConfig().configured} />}
       </AssistantProvider>
     </BrandStyle>
   )

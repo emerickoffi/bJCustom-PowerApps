@@ -116,7 +116,9 @@ function FeatureRow({
   const dependents = FEATURES.filter((f) => f.requires.includes(feature.key) && features[f.key])
   const blockedReason = !feature.available || feature.core
     ? null
-    : !enabled && missing.length
+    : !enabled && feature.setupRequired && feature.lockWhenSetupRequired
+      ? 'Finish setup before turning this on'
+      : !enabled && missing.length
       ? `Turn on ${missing.map(featureLabel).join(', ')} first`
       : enabled && dependents.length
         ? `Turn off ${dependents.map((d) => d.label).join(', ')} first`

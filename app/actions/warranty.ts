@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAdmin, requireStaff } from '@/lib/session'
 import { friendlyDbError, type ActionState } from '@/lib/action-state'
 import { FEATURES, type FeatureKey } from '@/lib/feature-registry'
+import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 
 const featureKeys = FEATURES.filter((f) => f.available && !f.core).map((f) => f.key) as [FeatureKey, ...FeatureKey[]]
 
@@ -13,6 +14,9 @@ export async function setFeatureAction(key: string, enabled: boolean): Promise<A
   const session = await requireAdmin()
   const parsed = z.enum(featureKeys).safeParse(key)
   if (!parsed.success) return { error: 'This feature cannot be changed yet.' }
+  if (enabled && parsed.data === 'ai_assistant' && !getAssistantProviderConfig().configured) {
+    return { error: 'Connect an AI provider before turning on the B & J AI Assistant.' }
+  }
 
   const supabase = await createClient()
   const { error } = await supabase

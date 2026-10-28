@@ -88,6 +88,23 @@ export async function getCategoryCounts(projectId: string, sharedOnly = false): 
   return counts
 }
 
+/** Active project documents whose latest signature request is completed, read through RLS. Null on error. */
+export async function countSignedDocuments(projectId: string): Promise<number | null> {
+  const supabase = await createClient()
+  const { data: docs, error } = await supabase.from('project_documents').select('id').eq('project_id', projectId).is('archived_at', null)
+  if (error) return null
+  if (!docs?.length) return 0
+  const { data: requests, error: reqError } = await supabase
+    .from('signature_requests')
+    .select('document_id, status, created_at')
+    .in('document_id', docs.map((d) => d.id))
+    .order('created_at', { ascending: false })
+  if (reqError) return null
+  const latest = new Map<string, string>()
+  for (const r of requests ?? []) if (!latest.has(r.document_id)) latest.set(r.document_id, r.status)
+  return [...latest.values()].filter((s) => s === 'completed').length
+}
+
 export async function countArchivedDocuments(projectId?: string, scope: DocumentScope = 'project'): Promise<number> {
   const supabase = await createClient()
   let query = supabase.from('project_documents').select('id', { count: 'exact', head: true }).eq('scope', scope).not('archived_at', 'is', null)
