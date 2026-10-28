@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ClientStatusBadge } from '@/components/shared/status-badge'
 import { COMMUNICATION_LABELS, CONTACT_RELATIONSHIP_LABELS } from '@/lib/domain'
 import type { ClientSummary } from '@/lib/queries'
+import { cn } from '@/lib/utils'
 
 export type DirectoryContact = {
   id: string
@@ -69,9 +70,14 @@ function ContactColumn({
   empty?: string
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-3 rounded-lg border border-border/70 bg-background/60 p-4">
-      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <Icon className="size-3.5" aria-hidden="true" />
+    <div
+      className={cn(
+        'flex min-w-0 flex-col rounded-lg border p-4',
+        empty ? 'gap-1.5 border-dashed border-[#D5DED5] bg-transparent' : 'gap-3 border-[#E2E8E2] bg-[#F8F7F3]',
+      )}
+    >
+      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#64756D]">
+        <Icon className="size-3.5 text-[#174D32]/70" aria-hidden="true" />
         {label}
       </span>
       {empty ? (
@@ -110,11 +116,11 @@ export function ClientCard({
     : null
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
-      <header className="flex items-start justify-between gap-3 p-4 pb-3 sm:flex-wrap sm:p-5 sm:pb-4">
+    <article className="flex flex-col overflow-hidden rounded-xl border border-[#E2E8E2] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)] transition-[box-shadow,border-color] hover:border-[#D5DED5] hover:shadow-[0_4px_14px_rgba(16,59,39,0.07)]">
+      <header className="flex items-center justify-between gap-3 p-4 pb-3 sm:flex-wrap sm:p-5 sm:pb-4">
         <div className="flex min-w-0 items-center gap-3">
           <span
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary font-serif text-sm font-semibold text-primary-foreground"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#EAF0E9] font-serif text-sm font-semibold text-[#174D32] ring-1 ring-inset ring-[#174D32]/12"
             aria-hidden="true"
           >
             {`${client.first_name.charAt(0)}${client.last_name.charAt(0)}`.toUpperCase()}
@@ -202,9 +208,9 @@ export function ClientCard({
         )}
       </div>
 
-      <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-border/70 bg-muted/30 px-4 py-3 sm:gap-3 sm:px-5">
-        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <FolderKanban className="size-4" aria-hidden="true" />
+      <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-[#E2E8E2] bg-[#F8F7F3]/70 px-4 py-3 sm:gap-3 sm:px-5">
+        <span className="flex items-center gap-1.5 text-sm text-[#64756D]">
+          <FolderKanban className="size-4 text-[#174D32]/70" aria-hidden="true" />
           {projectCount === 1 ? '1 project' : `${projectCount} projects`}
         </span>
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">

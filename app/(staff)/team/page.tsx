@@ -71,6 +71,7 @@ export default async function TeamPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={UsersRoundIcon}
+        tone="sage"
         title="Team"
         description="Invite builder staff and control what they can access. Homeowner access is managed from each client record."
         actions={

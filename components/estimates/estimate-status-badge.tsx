@@ -1,10 +1,18 @@
-import { StatusPill } from '@/components/shared/status-badge'
-import { ESTIMATE_STATUS_LABELS, ESTIMATE_STATUS_TONES, type EstimateStatus } from '@/lib/estimates'
+import { SemanticBadge, type SemanticTone } from '@/components/shared/semantic-badge'
+import { ESTIMATE_STATUS_LABELS, type EstimateStatus } from '@/lib/estimates'
+
+const ESTIMATE_SEMANTIC_TONE: Record<EstimateStatus, SemanticTone> = {
+  draft: 'neutral',
+  internal_review: 'info',
+  submitted: 'pending',
+  approved: 'success',
+  rejected: 'danger',
+}
 
 export function EstimateStatusBadge({ status, className }: { status: EstimateStatus; className?: string }) {
   return (
-    <StatusPill tone={ESTIMATE_STATUS_TONES[status]} className={className}>
+    <SemanticBadge tone={ESTIMATE_SEMANTIC_TONE[status]} className={className}>
       {ESTIMATE_STATUS_LABELS[status]}
-    </StatusPill>
+    </SemanticBadge>
   )
 }

@@ -309,13 +309,13 @@ function StageList({
         const active = items.some((a) => a.status === 'in_progress')
         const panelId = `stage-${key.replace(/[^a-z0-9]/gi, '-')}`
         return (
-          <div key={key} className="overflow-hidden rounded-lg border border-border border-l-[3px] border-l-[#174D32] bg-card">
+          <div key={key} className="overflow-hidden rounded-lg border border-[#DFE7DF] border-l-[3px] border-l-[#174D32] bg-white">
             <button
               type="button"
               aria-expanded={open}
               aria-controls={panelId}
               onClick={() => toggle(key)}
-              className="flex min-h-12 w-full items-center gap-3 bg-[#F8F7F3] px-4 py-2.5 text-left transition-colors hover:bg-[#F1EFE8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32]"
+              className="flex min-h-12 w-full items-center gap-3 bg-[#E9F1EA] px-4 py-2.5 text-left text-[#183E2B] transition-colors hover:bg-[#E1ECE3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32]"
             >
               <span
                 className={cn(
@@ -323,27 +323,27 @@ function StageList({
                   done === items.length
                     ? 'border-[#174D32] bg-[#174D32] text-white'
                     : active
-                      ? 'border-[#174D32]/30 bg-white text-[#174D32]'
-                      : 'border-[#D8E0E8] bg-white text-[#526174]',
+                      ? 'border-[#174D32]/40 bg-white text-[#174D32]'
+                      : 'border-[#C9D8CB] bg-white text-[#183E2B]',
                 )}
                 aria-hidden="true"
               >
                 {index + 1}
               </span>
               <span className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-                <span className="truncate text-sm font-semibold text-foreground">{phase}</span>
-                <span className="text-xs text-muted-foreground">{phaseDates(items)}</span>
+                <span className="truncate text-sm font-semibold text-[#183E2B]">{phase}</span>
+                <span className="text-xs text-[#183E2B]/65">{phaseDates(items)}</span>
               </span>
               {overdue > 0 && (
                 <span className="hidden shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive sm:inline">
                   {`${overdue} overdue`}
                 </span>
               )}
-              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{`${done}/${items.length}`}</span>
-              <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', !open && '-rotate-90')} aria-hidden="true" />
+              <span className="shrink-0 text-xs tabular-nums text-[#183E2B]/70">{`${done}/${items.length}`}</span>
+              <ChevronDown className={cn('size-4 shrink-0 text-[#183E2B]/70 transition-transform', !open && '-rotate-90')} aria-hidden="true" />
             </button>
             {open && (
-              <ul id={panelId} className="divide-y divide-border/70 border-t border-border bg-card">
+              <ul id={panelId} className="divide-y divide-border/70 border-t border-[#DFE7DF] bg-white">
                 {items.map((a) => {
                   const late = isOverdue(a, today)
                   return (

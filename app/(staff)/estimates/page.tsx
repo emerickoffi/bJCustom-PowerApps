@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Calculator, Plus, Calculator as CalculatorIcon } from 'lucide-react'
+import { Calculator, CircleCheckBig, Clock, FileText, LoaderCircle, Plus, Calculator as CalculatorIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -44,6 +44,7 @@ export default async function EstimatesPage({
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={CalculatorIcon}
+        tone="sage"
         eyebrow="Preconstruction"
         title="Estimates"
         description="Builder-entered construction estimates for existing projects, with revisions and recorded homeowner approvals."
@@ -63,12 +64,17 @@ export default async function EstimatesPage({
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         {[
-          { label: 'In progress', value: String(openCount), hint: 'Draft or internal review', wide: false },
-          { label: 'Awaiting homeowner', value: String(awaitingCount), hint: 'Submitted, no decision yet', wide: false },
-          { label: 'Approved construction value', value: formatCents(approvedTotal), hint: 'All approved versions', wide: true },
+          { label: 'In progress', value: String(openCount), hint: 'Draft or internal review', wide: false, icon: LoaderCircle, tone: 'bg-[#E6F0FF] text-[#1D5FBD]' },
+          { label: 'Awaiting homeowner', value: String(awaitingCount), hint: 'Submitted, no decision yet', wide: false, icon: Clock, tone: 'bg-[#FFF2DA] text-[#96570E]' },
+          { label: 'Approved construction value', value: formatCents(approvedTotal), hint: 'All approved versions', wide: true, icon: CircleCheckBig, tone: 'bg-[#E2F3E9] text-[#187542]' },
         ].map((s) => (
           <div key={s.label} className={`surface flex min-w-0 flex-col gap-1 p-4 sm:p-5 ${s.wide ? 'col-span-2 sm:col-span-1' : ''}`}>
-            <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
+            <span className="flex min-w-0 items-center gap-2 text-xs font-medium text-muted-foreground">
+              <span className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${s.tone}`}>
+                <s.icon className="size-4" aria-hidden="true" />
+              </span>
+              <span className="min-w-0">{s.label}</span>
+            </span>
             <span className="break-words font-serif text-xl font-semibold tabular-nums text-foreground sm:text-2xl">{s.value}</span>
             <span className="hidden text-xs text-muted-foreground sm:block">{s.hint}</span>
           </div>
@@ -125,7 +131,7 @@ export default async function EstimatesPage({
       ) : (
         <div className="surface overflow-hidden p-0">
           <table className="hidden w-full text-sm md:table">
-            <thead className="border-b border-border bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <thead className="border-b border-[#E2E8E2] bg-[#F4F6F3] text-left text-xs font-medium uppercase tracking-wide text-[#64756D]">
               <tr>
                 <th scope="col" className="min-w-64 px-5 py-3">Estimate</th>
                 <th scope="col" className="px-3 py-3">Client</th>
@@ -139,9 +145,9 @@ export default async function EstimatesPage({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-[#E2E8E2]/80">
               {estimates.map((e) => (
-                <tr key={e.id} className="transition-colors hover:bg-sage/30">
+                <tr key={e.id} className="transition-colors hover:bg-[#F8F7F3]">
                   <td className="px-5 py-3.5">
                   <div className="flex flex-col">
                     <div className="flex min-w-0 items-center gap-2">
@@ -182,17 +188,21 @@ export default async function EstimatesPage({
                   </td>
                   <td className="px-3 py-3.5 text-muted-foreground">{formatDate(e.created_at)}</td>
                   <td className="px-5 py-3.5 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" render={<Link href={`/estimates/${e.id}`} />} nativeButton={false}>
+                    <div className="flex justify-end gap-1.5">
+                      <Button variant="outline" size="sm" render={<Link href={`/estimates/${e.id}`} />} nativeButton={false}>
                         View
+                        <span className="sr-only">{` ${e.estimate_number}`}</span>
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="text-[#64756D] hover:text-primary"
                         render={<Link href={`/print/estimates/${e.id}`} target="_blank" />}
                         nativeButton={false}
                       >
+                        <FileText data-icon="inline-start" />
                         PDF
+                        <span className="sr-only">{` for ${e.estimate_number}`}</span>
                       </Button>
                     </div>
                   </td>
@@ -201,7 +211,7 @@ export default async function EstimatesPage({
             </tbody>
           </table>
 
-          <ul className="divide-y md:hidden">
+          <ul className="divide-y divide-[#E2E8E2]/80 md:hidden">
             {estimates.map((e) => (
               <li key={e.id} className="flex flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -228,10 +238,11 @@ export default async function EstimatesPage({
                   </Button>
                   <Button
                     variant="ghost"
-                    className="h-11"
+                    className="h-11 text-[#64756D] hover:text-primary"
                     render={<Link href={`/print/estimates/${e.id}`} target="_blank" />}
                     nativeButton={false}
                   >
+                    <FileText data-icon="inline-start" />
                     PDF
                     <span className="sr-only">{` for ${e.estimate_number}`}</span>
                   </Button>

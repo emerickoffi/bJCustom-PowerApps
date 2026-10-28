@@ -10,11 +10,20 @@ type PageHeaderProps = {
   backHref?: string
   backLabel?: string
   actions?: React.ReactNode
+  tone?: 'plain' | 'sage'
 }
 
-export function PageHeader({ title, description, eyebrow, icon: Icon, backHref, backLabel, actions }: PageHeaderProps) {
+export function PageHeader({ title, description, eyebrow, icon: Icon, backHref, backLabel, actions, tone = 'plain' }: PageHeaderProps) {
+  const sage = tone === 'sage'
   return (
-    <header className="flex min-w-0 flex-col gap-3 border-b border-border/70 pb-4 md:gap-4 md:pb-6">
+    <header
+      className={cn(
+        'flex min-w-0 flex-col gap-3 md:gap-4',
+        sage
+          ? 'rounded-xl border border-[#E2E8E2] bg-[#EAF0E9] px-4 py-4 md:px-6 md:py-5'
+          : 'border-b border-border/70 pb-4 md:pb-6',
+      )}
+    >
       {backHref && (
         <Link
           href={backHref}
@@ -27,7 +36,12 @@ export function PageHeader({ title, description, eyebrow, icon: Icon, backHref, 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex min-w-0 items-start gap-3 md:gap-4">
           {Icon && (
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sage text-primary ring-1 ring-inset ring-primary/10 md:size-11">
+            <span
+              className={cn(
+                'flex size-9 shrink-0 items-center justify-center rounded-xl text-primary ring-1 ring-inset md:size-11',
+                sage ? 'bg-white ring-[#174D32]/12' : 'bg-sage ring-primary/10',
+              )}
+            >
               <Icon className="size-5" aria-hidden="true" />
             </span>
           )}
