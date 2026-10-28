@@ -144,7 +144,7 @@ const registerSchema = z.object({
   path: z.string().refine(isUploadPath, 'Invalid upload reference.'),
   originalFilename: z.string().trim().min(1).max(255),
   name: z.string().trim().min(1, 'Enter a document name').max(200).optional(),
-  category: z.enum(ALL_CATEGORY_KEYS).optional(),
+  category: z.enum(ALL_CATEGORY_KEYS, 'Please select a document category.').optional(),
   description: z.string().trim().max(2000).optional(),
   visibility: z.enum(['internal', 'homeowner']).default('internal'),
   revisionNotes: z.string().trim().max(1000).optional(),
@@ -165,6 +165,8 @@ export async function registerDocumentVersion(
   const projectId = companyMatch ? null : projectMatch![2]
   const ext = companyMatch ? companyMatch[4] : projectMatch![5]
   if (orgId !== session.organizationId) return { ok: false, error: 'You do not have permission to upload documents.' }
+  const isNewDocument = v.name !== undefined
+  if (isNewDocument && !v.category) return { ok: false, error: 'Please select a document category.' }
   if (companyMatch) {
     if (!canManage(session.role)) return { ok: false, error: 'Only administrators and project managers can upload company documents.' }
     if (v.category && !isCompanyDocumentCategory(v.category)) return { ok: false, error: 'Choose a Company Library category.' }

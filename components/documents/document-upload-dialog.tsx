@@ -16,8 +16,10 @@ import {
   categoriesFor,
   formatBytes,
   validateDocumentFile,
+  validateUploadFields,
   type AnyDocumentCategory,
   type DocumentScope,
+  type UploadField,
 } from '@/lib/documents'
 import { cn } from '@/lib/utils'
 
@@ -35,7 +37,23 @@ type UploadDialogProps = {
   canShare: boolean
   /** When set, the dialog uploads the next version of this document instead of creating a new one. */
   version?: NewVersionTarget | null
-  defaultCategory?: AnyDocumentCategory
+}
+
+function RequiredMark() {
+  return (
+    <span className="text-destructive" aria-hidden="true">
+      {' *'}
+    </span>
+  )
+}
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null
+  return (
+    <p id={id} className="text-xs text-destructive">
+      {message}
+    </p>
+  )
 }
 
 function displayNameFromFile(filename: string) {
@@ -68,7 +86,6 @@ export function DocumentUploadDialog({
   onOpenChange,
   canShare,
   version,
-  defaultCategory,
 }: UploadDialogProps) {
   const router = useRouter()
   const ids = useId()
@@ -79,25 +96,47 @@ export function DocumentUploadDialog({
   const [file, setFile] = useState<File | null>(null)
   const [targetProject, setTargetProject] = useState('')
   const [name, setName] = useState('')
-  const [category, setCategory] = useState<AnyDocumentCategory>(defaultCategory ?? 'other')
+  const [category, setCategory] = useState<AnyDocumentCategory | ''>('')
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<'internal' | 'homeowner'>('internal')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [touched, setTouched] = useState<Partial<Record<UploadField, boolean>>>({})
   const [dragging, setDragging] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+
+  const resolvedProject = projectId ?? targetProject
+  const fieldErrors = validateUploadFields({
+    scope,
+    file,
+    isVersion: Boolean(version),
+    requiresProject: !isCompany,
+    projectId: resolvedProject,
+    name,
+    category,
+  })
+  const isValid = Object.keys(fieldErrors).length === 0
+  const shownError = (field: UploadField) => (touched[field] ? fieldErrors[field] : undefined)
+  const touch = (field: UploadField) => setTouched((t) => (t[field] ? t : { ...t, [field]: true }))
 
   function reset() {
     setFile(null)
     setTargetProject('')
     setName('')
-    setCategory(defaultCategory ?? 'other')
+    setCategory('')
     setDescription('')
     setVisibility('internal')
     setNotes('')
     setError(null)
+    setTouched({})
     setProgress(null)
+  }
+
+  function close() {
+    if (busy) return
+    reset()
+    onOpenChange(false)
   }
 
   function pick(next: File | undefined) {
@@ -112,12 +151,10 @@ export function DocumentUploadDialog({
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (busy) return
-    if (!file) return setError('Choose a file to upload.')
-    const problem = validateDocumentFile(file)
-    if (problem) return setError(problem)
-    const resolvedProject = projectId ?? targetProject
-    if (choosesProject && !resolvedProject) return setError('Choose the project this document belongs to.')
-    if (!version && !name.trim()) return setError('Enter a document name.')
+    if (!isValid || !file) {
+      setTouched({ file: true, project: true, name: true, category: true })
+      return
+    }
 
     setBusy(true)
     setError(null)
@@ -143,7 +180,7 @@ export function DocumentUploadDialog({
         path,
         originalFilename: file.name,
         name: version ? undefined : name.trim(),
-        category: version ? undefined : category,
+        category: version || !category ? undefined : category,
         description: version ? undefined : description.trim() || undefined,
         visibility: version || isCompany ? 'internal' : visibility,
         revisionNotes: notes.trim() || undefined,
@@ -168,9 +205,8 @@ export function DocumentUploadDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (busy) return
-        if (!next) reset()
-        onOpenChange(next)
+        if (!next) return close()
+        if (!busy) onOpenChange(next)
       }}
     >
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
@@ -214,7 +250,10 @@ export function DocumentUploadDialog({
                 {!busy && (
                   <button
                     type="button"
-                    onClick={() => setFile(null)}
+                    onClick={() => {
+                      setFile(null)
+                      touch('file')
+                    }}
                     className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                     aria-label="Remove selected file"
                   >
@@ -241,19 +280,27 @@ export function DocumentUploadDialog({
               }}
             />
             <p className="text-xs text-muted-foreground">{DOCUMENT_TYPES_HINT}</p>
+            <FieldError id={`${ids}-file-error`} message={shownError('file')} />
           </div>
 
           {choosesProject && (
             <div className="flex flex-col gap-1.5">
               <label htmlFor={`${ids}-project`} className="text-sm font-medium">
                 Project
+                <RequiredMark />
               </label>
               <NativeSelect
                 id={`${ids}-project`}
                 value={targetProject}
-                onChange={(e) => setTargetProject(e.target.value)}
+                onChange={(e) => {
+                  setTargetProject(e.target.value)
+                  touch('project')
+                }}
+                onBlur={() => touch('project')}
                 disabled={busy}
                 required
+                aria-invalid={Boolean(shownError('project'))}
+                aria-describedby={shownError('project') ? `${ids}-project-error` : undefined}
               >
                 <option value="">Choose a project</option>
                 {(projectOptions ?? []).map((p) => (
@@ -262,6 +309,7 @@ export function DocumentUploadDialog({
                   </option>
                 ))}
               </NativeSelect>
+              <FieldError id={`${ids}-project-error`} message={shownError('project')} />
             </div>
           )}
 
@@ -270,34 +318,54 @@ export function DocumentUploadDialog({
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={`${ids}-name`} className="text-sm font-medium">
                   Document name
+                  <RequiredMark />
                 </label>
                 <input
                   id={`${ids}-name`}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    touch('name')
+                  }}
+                  onBlur={() => touch('name')}
                   maxLength={200}
                   required
                   disabled={busy}
-                  className="h-10 rounded-lg border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  aria-invalid={Boolean(shownError('name'))}
+                  aria-describedby={shownError('name') ? `${ids}-name-error` : undefined}
+                  className="h-10 rounded-lg border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive"
                 />
+                <FieldError id={`${ids}-name-error`} message={shownError('name')} />
               </div>
               <div className={cn('grid gap-4', !isCompany && 'sm:grid-cols-2')}>
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor={`${ids}-category`} className="text-sm font-medium">
                     Category
+                    <RequiredMark />
                   </label>
                   <NativeSelect
                     id={`${ids}-category`}
                     value={category}
-                    onChange={(e) => setCategory(e.target.value as AnyDocumentCategory)}
+                    onChange={(e) => {
+                      setCategory(e.target.value as AnyDocumentCategory | '')
+                      touch('category')
+                    }}
+                    onBlur={() => touch('category')}
                     disabled={busy}
+                    required
+                    aria-invalid={Boolean(shownError('category'))}
+                    aria-describedby={shownError('category') ? `${ids}-category-error` : undefined}
                   >
+                    <option value="" disabled>
+                      Select a category
+                    </option>
                     {categories.map((c) => (
                       <option key={c.key} value={c.key}>
                         {c.label}
                       </option>
                     ))}
                   </NativeSelect>
+                  <FieldError id={`${ids}-category-error`} message={shownError('category')} />
                 </div>
                 {!isCompany && (
                 <div className="flex flex-col gap-1.5">
@@ -374,10 +442,10 @@ export function DocumentUploadDialog({
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            <Button type="button" variant="outline" onClick={close} disabled={busy}>
               Cancel
             </Button>
-            <Button type="submit" disabled={busy || !file}>
+            <Button type="submit" disabled={busy || !isValid}>
               {busy ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <Upload data-icon="inline-start" />}
               {busy ? 'Uploading' : version ? 'Upload version' : 'Upload document'}
             </Button>
