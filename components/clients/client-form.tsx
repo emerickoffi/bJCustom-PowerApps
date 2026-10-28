@@ -8,6 +8,7 @@ import { initialActionState, type ActionState } from '@/lib/action-state'
 import { CLIENT_STATUS_LABELS, COMMUNICATION_LABELS } from '@/lib/domain'
 import { FormActions, FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
+import { AdditionalContactsSection } from '@/components/clients/additional-contacts-section'
 
 export type ClientFormValues = {
   first_name?: string
@@ -33,11 +34,13 @@ export function ClientForm({
   defaults: initialDefaults = {},
   submitLabel,
   cancelHref,
+  additionalContacts = false,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   defaults?: ClientFormValues
   submitLabel: string
   cancelHref: string
+  additionalContacts?: boolean
 }) {
   const [state, formAction] = useActionState(action, initialActionState)
   const fe = state.fieldErrors ?? {}
@@ -65,6 +68,8 @@ export function ClientForm({
         <TextField name="phone" label="Phone" type="tel" defaultValue={d(defaults.phone)} error={fe.phone} />
         <TextField name="alternate_phone" label="Alternate phone" type="tel" defaultValue={d(defaults.alternate_phone)} error={fe.alternate_phone} />
       </FormSection>
+
+      {additionalContacts && <AdditionalContactsSection values={state.values} fieldErrors={fe} />}
 
       <FormSection icon={MapPinIcon} title="Mailing address" description="Where the homeowner currently lives, not the build site.">
         <TextField name="address_line1" label="Street address" defaultValue={d(defaults.address_line1)} error={fe.address_line1} className="sm:col-span-2" />

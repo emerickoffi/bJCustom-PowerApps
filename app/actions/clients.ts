@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/server'
 import { canManage, getSession, requireManager, requireStaff } from '@/lib/session'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { activitySchema, clientSchema, contactSchema } from '@/lib/validation'
+import { getOrgFeatures } from '@/lib/features'
+import { ADDITIONAL_CONTACT_PREFIX, MAX_ADDITIONAL_CONTACTS } from '@/lib/additional-contacts'
 
 const uuid = z.uuid()
 
@@ -20,7 +22,32 @@ export async function createClientAction(_prev: ActionState, formData: FormData)
   if (!canManage(session.role)) return { error: 'Your role does not allow you to create clients.', values }
 
   const parsed = clientSchema.safeParse(values)
-  if (!parsed.success) return { ...fromZodError(parsed.error), values }
+  const extras = parseAdditionalContacts(values)
+
+  if (extras.entries.length > 0) {
+    const features = await getOrgFeatures(session.organizationId)
+    if (!features.additional_contacts) {
+      return { error: 'Additional contacts are not enabled for your company.', values }
+    }
+  }
+  if (extras.tooMany) {
+    return { error: `You can add up to ${MAX_ADDITIONAL_CONTACTS} additional contacts here. Add more from the client page.`, values }
+  }
+
+  if (!parsed.success || Object.keys(extras.fieldErrors).length > 0) {
+    const base = parsed.success ? {} : (fromZodError(parsed.error).fieldErrors ?? {})
+    return { error: 'Please correct the highlighted fields.', fieldErrors: { ...base, ...extras.fieldErrors }, values }
+  }
+
+  const duplicateErrors: Record<string, string> = {}
+  for (const { id, contact } of extras.entries) {
+    if (matchesPrimary(contact, parsed.data)) {
+      duplicateErrors[`${ADDITIONAL_CONTACT_PREFIX}${id}_first_name`] = 'This is the same person as the primary contact'
+    }
+  }
+  if (Object.keys(duplicateErrors).length > 0) {
+    return { error: 'Please correct the highlighted fields.', fieldErrors: duplicateErrors, values }
+  }
 
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -43,8 +70,80 @@ export async function createClientAction(_prev: ActionState, formData: FormData)
     return { error: message, values }
   }
 
+  let contactsFailed = false
+  if (extras.entries.length > 0) {
+    const { error: contactsError } = await supabase.from('client_contacts').insert(
+      extras.entries.map(({ contact }) => ({
+        ...contact,
+        is_primary: false,
+        client_id: data.id,
+        organization_id: session.organizationId,
+        created_by: session.userId,
+      })),
+    )
+    if (contactsError) {
+      contactsFailed = true
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[clients] additional contacts failed', { code: contactsError.code, message: contactsError.message })
+      }
+    }
+  }
+
   revalidatePath('/clients')
-  redirect(`/clients/${data.id}`)
+  redirect(contactsFailed ? `/clients/${data.id}?notice=contacts_not_saved` : `/clients/${data.id}`)
+}
+
+const ADDITIONAL_CONTACT_FIELDS = [
+  'first_name',
+  'middle_name',
+  'last_name',
+  'relationship',
+  'email',
+  'phone',
+  'alternate_phone',
+  'preferred_communication',
+] as const
+const ADDITIONAL_CONTACT_TEXT_FIELDS = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'alternate_phone'] as const
+
+type ParsedContact = Omit<z.infer<typeof contactSchema>, never>
+
+function parseAdditionalContacts(values: Record<string, string>) {
+  const ids = new Set<string>()
+  for (const key of Object.keys(values)) {
+    const match = /^ac_(\d{1,4})_/.exec(key)
+    if (match) ids.add(match[1])
+  }
+
+  const entries: { id: string; contact: ParsedContact }[] = []
+  const fieldErrors: Record<string, string> = {}
+  for (const id of ids) {
+    const raw: Record<string, string> = {}
+    for (const field of ADDITIONAL_CONTACT_FIELDS) {
+      raw[field] = values[`${ADDITIONAL_CONTACT_PREFIX}${id}_${field}`] ?? ''
+    }
+    if (ADDITIONAL_CONTACT_TEXT_FIELDS.every((f) => !raw[f].trim())) continue
+    if (raw.relationship === 'primary_owner') raw.relationship = 'other'
+
+    const result = contactSchema.safeParse({ ...raw, portal_enabled: false, portal_view_reports: false, portal_validate_issues: false, portal_acknowledge: false, portal_sign: false })
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        const key = `${ADDITIONAL_CONTACT_PREFIX}${id}_${issue.path.join('.')}`
+        if (!fieldErrors[key]) fieldErrors[key] = issue.message
+      }
+      continue
+    }
+    entries.push({ id, contact: result.data })
+  }
+  return { entries, fieldErrors, tooMany: ids.size > MAX_ADDITIONAL_CONTACTS }
+}
+
+function matchesPrimary(
+  contact: ParsedContact,
+  primary: { first_name: string; last_name: string; email: string | null | undefined },
+) {
+  const same = (a?: string | null, b?: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
+  if (contact.email && primary.email) return same(contact.email, primary.email)
+  return same(contact.first_name, primary.first_name) && same(contact.last_name, primary.last_name)
 }
 
 export async function updateClientAction(

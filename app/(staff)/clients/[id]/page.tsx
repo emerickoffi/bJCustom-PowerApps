@@ -72,9 +72,16 @@ async function loadPortalAccess(
   }
 }
 
-export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ClientDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ notice?: string }>
+}) {
   const session = await requireStaff()
   const { id } = await params
+  const { notice } = await searchParams
   const supabase = await createClient()
 
   const { data: client } = await supabase
@@ -151,6 +158,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           )
         }
       />
+
+      {notice === 'contacts_not_saved' && (
+        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          The client was created, but the additional contacts could not be saved. Please add them from the Contacts section below.
+        </p>
+      )}
 
       <div className="grid gap-8 xl:grid-cols-[1fr_24rem]">
         <div className="flex flex-col gap-8">
