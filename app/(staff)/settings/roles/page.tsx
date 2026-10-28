@@ -19,7 +19,7 @@ export default async function RolesPermissionsPage() {
         icon={ShieldCheck}
         tone="sage"
         title="Roles & Permissions"
-        description="A read-only view of what each role can do today, based on the checks the server actually runs. A module also has to be turned on in Feature management before anyone can use it."
+        description="A read-only view of what each role can do today, based on the checks the server runs and the live database security policies. A module also has to be turned on in Feature management before anyone can use it."
         actions={
           <Button
             variant="outline"
