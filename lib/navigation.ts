@@ -18,7 +18,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: '/invoices', label: 'Invoices', icon: 'invoices', feature: 'invoices' },
   { href: '/documents', label: 'Documents', icon: 'documents', feature: 'documents' },
   { href: '/warranty', label: 'Warranty', icon: 'warranty', feature: 'warranty' },
-  { href: '/team', label: 'Team', icon: 'team', roles: ['org_admin'] },
+  { href: '/team', label: 'Users & Access', icon: 'team', roles: ['org_admin'] },
   { href: '/settings', label: 'Settings', icon: 'settings', roles: ['org_admin'] },
 ]
 
