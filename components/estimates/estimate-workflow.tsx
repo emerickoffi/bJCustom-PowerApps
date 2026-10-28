@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useState, type ReactNode } from 'react'
 import { BadgeCheck, ShieldAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/shared/form-field'
@@ -98,6 +98,7 @@ export function EstimateWorkflow({
   lineCount,
   clientName,
   canManage,
+  signing,
 }: {
   estimateId: string
   status: EstimateStatus
@@ -106,6 +107,7 @@ export function EstimateWorkflow({
   lineCount: number
   clientName: string
   canManage: boolean
+  signing?: ReactNode
 }) {
   const [showDecision, setShowDecision] = useState(false)
   const locked = status === 'submitted' || status === 'approved' || status === 'rejected'
@@ -196,6 +198,8 @@ export function EstimateWorkflow({
           )}
         </div>
       )}
+
+      {signing}
 
       {canManage && (
         <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
