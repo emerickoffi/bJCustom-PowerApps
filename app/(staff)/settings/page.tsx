@@ -9,6 +9,8 @@ import { Settings as SettingsIcon } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'Company settings' }
 
+const navButtonClass = 'border-[#D6E0D5] bg-white text-[#174D32] hover:bg-[#F8F7F3] hover:text-[#103B27]'
+
 export default async function SettingsPage() {
   const session = await requireAdmin()
   const supabase = await createClient()
@@ -30,14 +32,15 @@ export default async function SettingsPage() {
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <PageHeader icon={SettingsIcon}
+        tone="sage"
         title="Company settings"
         description="Your company identity appears throughout the app, the homeowner portal, and future documents."
         actions={
           <>
-            <Button variant="outline" render={<Link href="/settings/integrations" />} nativeButton={false}>
+            <Button variant="outline" className={navButtonClass} render={<Link href="/settings/integrations" />} nativeButton={false}>
               Integrations
             </Button>
-            <Button variant="outline" render={<Link href="/settings/features" />} nativeButton={false}>
+            <Button variant="outline" className={navButtonClass} render={<Link href="/settings/features" />} nativeButton={false}>
               Feature management
             </Button>
           </>
