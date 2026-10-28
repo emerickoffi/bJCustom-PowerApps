@@ -3,7 +3,18 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { ArrowUpRight } from 'lucide-react'
+import {
+  ArrowUpRight,
+  ClipboardList,
+  FileBarChart,
+  Home,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 import { setFeatureAction } from '@/app/actions/warranty'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,21 +25,42 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { FEATURES, featureLabel, type FeatureDefinition, type FeatureKey, type FeatureMap } from '@/lib/feature-registry'
+import {
+  FEATURES,
+  featureLabel,
+  type FeatureDefinition,
+  type FeatureGroup,
+  type FeatureKey,
+  type FeatureMap,
+} from '@/lib/feature-registry'
 import { cn } from '@/lib/utils'
 
-const GROUPS = ['Project workflow', 'Homeowner experience', 'After completion', 'Finance'] as const
+const GROUPS: { name: FeatureGroup; icon: LucideIcon; note?: string }[] = [
+  { name: 'Clients & contacts', icon: Users },
+  { name: 'Project workflow', icon: ClipboardList },
+  { name: 'Homeowner experience', icon: Home },
+  { name: 'After completion', icon: ShieldCheck },
+  { name: 'Finance', icon: Wallet },
+  { name: 'AI & automation', icon: Sparkles, note: 'AI never writes or sends anything without your approval, and it only sees data your role already allows.' },
+  { name: 'Reporting & exports', icon: FileBarChart, note: 'Walkthrough reports are under Project workflow, and estimate PDFs come with Estimates.' },
+]
 
 type Records = Partial<Record<FeatureKey, string>>
 
 export function FeatureToggles({ features, records }: { features: FeatureMap; records: Records }) {
   return (
     <div className="flex flex-col gap-8">
-      {GROUPS.map((group) => (
+      {GROUPS.map(({ name: group, icon: Icon, note }) => (
         <section key={group} aria-labelledby={`group-${group}`} className="flex flex-col gap-3">
-          <h2 id={`group-${group}`} className="font-serif text-lg font-semibold text-foreground">
-            {group}
-          </h2>
+          <div className="flex flex-col gap-1">
+            <h2 id={`group-${group}`} className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
+              <span className="flex size-7 items-center justify-center rounded-md bg-secondary text-primary">
+                <Icon className="size-4" aria-hidden="true" />
+              </span>
+              {group}
+            </h2>
+            {note && <p className="text-xs text-muted-foreground">{note}</p>}
+          </div>
           <ul className="surface divide-y">
             {FEATURES.filter((f) => f.group === group).map((f) => (
               <FeatureRow key={f.key} feature={f} features={features} recordSummary={records[f.key]} />
@@ -41,8 +73,10 @@ export function FeatureToggles({ features, records }: { features: FeatureMap; re
 }
 
 function StatusBadge({ feature, enabled }: { feature: FeatureDefinition; enabled: boolean }) {
-  const [label, tone] = feature.setupRequired
-    ? ['In development', 'bg-champagne-soft text-warning']
+  const [label, tone] = feature.core
+    ? ['Core', 'bg-secondary text-primary']
+    : feature.setupRequired
+    ? ['Setup required', 'bg-champagne-soft text-warning']
     : !feature.available
     ? ['Coming later', 'bg-muted text-muted-foreground']
     : enabled
@@ -66,7 +100,7 @@ function FeatureRow({
   const enabled = optimistic ?? features[feature.key]
   const missing = feature.requires.filter((r) => !features[r])
   const dependents = FEATURES.filter((f) => f.requires.includes(feature.key) && features[f.key])
-  const blockedReason = !feature.available
+  const blockedReason = !feature.available || feature.core
     ? null
     : !enabled && missing.length
       ? `Turn on ${missing.map(featureLabel).join(', ')} first`
@@ -92,13 +126,19 @@ function FeatureRow({
 
   const id = `feature-${feature.key}`
   return (
-    <li className="flex items-start justify-between gap-6 p-5">
+    <li className="flex items-start justify-between gap-4 p-4 sm:gap-6 sm:p-5">
       <div className="flex min-w-0 flex-col gap-1.5">
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor={id} className="font-medium text-foreground">
             {feature.label}
           </label>
           <StatusBadge feature={feature} enabled={enabled} />
+          {blockedReason && (
+            <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              <Lock className="size-3" aria-hidden="true" />
+              Locked by dependency
+            </span>
+          )}
         </div>
         <p className="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
         {feature.requires.length > 0 && (
@@ -108,7 +148,10 @@ function FeatureRow({
         {feature.setupRequired && feature.setupNote && (
           <p className="text-xs font-medium text-warning">{feature.setupNote}</p>
         )}
-        {((feature.available && enabled) || feature.setupRequired) && feature.configHref && (
+        {feature.core && feature.coreNote && (
+          <p className="text-xs text-muted-foreground">{feature.coreNote}</p>
+        )}
+        {((feature.available && enabled) || feature.setupRequired || feature.core) && feature.configHref && (
           <Link
             href={feature.configHref}
             className="flex w-fit items-center gap-1 text-xs font-medium text-primary underline-offset-4 hover:underline"
@@ -118,7 +161,13 @@ function FeatureRow({
           </Link>
         )}
       </div>
-      {feature.available && (
+      {feature.core && (
+        <span className="mt-1 flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground">
+          <Lock className="size-3.5" aria-hidden="true" />
+          Always on
+        </span>
+      )}
+      {feature.available && !feature.core && (
         <button
           id={id}
           type="button"
