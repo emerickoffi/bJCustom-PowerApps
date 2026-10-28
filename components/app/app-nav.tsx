@@ -10,6 +10,7 @@ import {
   FileText,
   FolderKanban,
   LayoutDashboard,
+  ListChecks,
   Palette,
   Receipt,
   Repeat,
@@ -23,6 +24,7 @@ import { PLANNED_MODULES, type NavItem } from '@/lib/navigation'
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
+  'my-work': ListChecks,
   projects: FolderKanban,
   clients: Users,
   team: UsersRound,

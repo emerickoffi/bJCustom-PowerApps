@@ -1,9 +1,20 @@
 import 'server-only'
 import { cache } from 'react'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { brandFromOrganization, type OrganizationBrand, type OrganizationRow } from '@/lib/branding'
 import type { OrgRole } from '@/lib/domain'
+
+/** Remembers which of the user's own active memberships is the current workspace. It never grants access. */
+export const WORKSPACE_COOKIE = 'bj_workspace'
+
+export type Workspace = {
+  organizationId: string
+  organizationName: string
+  role: OrgRole
+  kind: 'staff' | 'homeowner'
+}
 
 export type SessionContext = {
   userId: string
@@ -15,6 +26,7 @@ export type SessionContext = {
   brand: OrganizationBrand
   activationRequired: boolean
   activationExpired: boolean
+  workspaces: Workspace[]
 }
 
 type MembershipRow = {
@@ -25,7 +37,7 @@ type MembershipRow = {
   organizations: OrganizationRow | null
 }
 
-async function loadMembership(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+async function loadMemberships(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase
     .from('organization_memberships')
     .select(
@@ -34,9 +46,7 @@ async function loadMembership(supabase: Awaited<ReturnType<typeof createClient>>
     .eq('user_id', userId)
     .eq('status', 'active')
     .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
-  return data as MembershipRow | null
+  return (data ?? []) as unknown as MembershipRow[]
 }
 
 export const getSession = cache(async (): Promise<SessionContext | null> => {
@@ -46,11 +56,14 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  let membership = await loadMembership(supabase, user.id)
-  if (!membership) {
+  let memberships = await loadMemberships(supabase, user.id)
+  if (!memberships.length) {
     const { data: accepted } = await supabase.rpc('accept_pending_invitations')
-    if (accepted) membership = await loadMembership(supabase, user.id)
+    if (accepted) memberships = await loadMemberships(supabase, user.id)
   }
+
+  const selectedOrg = (await cookies()).get(WORKSPACE_COOKIE)?.value
+  const membership = memberships.find((m) => m.organization_id === selectedOrg) ?? memberships[0] ?? null
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -71,6 +84,12 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
     brand: brandFromOrganization(membership?.organizations),
     activationRequired,
     activationExpired: activationRequired && Boolean(expiresAt) && new Date(expiresAt as string).getTime() < Date.now(),
+    workspaces: memberships.map((m) => ({
+      organizationId: m.organization_id,
+      organizationName: m.organizations?.display_name || m.organizations?.legal_name || 'Organization',
+      role: m.role,
+      kind: m.role === 'client' ? 'homeowner' : 'staff',
+    })),
   }
 })
 

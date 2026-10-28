@@ -109,7 +109,7 @@ export default async function PortalPage() {
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2.5 text-sm font-medium text-champagne">
           <span className="h-px w-6 bg-champagne" aria-hidden="true" />
-          Homeowner portal
+          My Home
         </div>
         <h1 className="text-balance font-serif text-3xl font-semibold leading-tight text-foreground md:text-[2.6rem]">
           {firstName ? `Welcome home, ${firstName}.` : 'Welcome home.'}
@@ -174,23 +174,28 @@ export default async function PortalPage() {
                     <div className="flex flex-wrap gap-2 border-t pt-6">
                       {features?.schedule && (
                         <Button size="lg" render={<Link href={`/portal/projects/${p.id}/schedule`} />} nativeButton={false}>
-                          View construction timeline
+                          Construction progress
                           <ArrowRight data-icon="inline-end" />
                         </Button>
                       )}
                       {features?.documents && (
                         <Button size="lg" variant="outline" render={<Link href={`/portal/projects/${p.id}/documents`} />} nativeButton={false}>
-                          Documents
+                          Documents & approvals
+                        </Button>
+                      )}
+                      {walkthroughs.length > 0 && (
+                        <Button size="lg" variant="outline" render={<Link href={`#walk-${p.id}`} />} nativeButton={false}>
+                          Walkthroughs & issues
+                        </Button>
+                      )}
+                      {warrantyProjects.has(p.id) && (
+                        <Button size="lg" variant="outline" render={<Link href={`/portal/projects/${p.id}/warranty`} />} nativeButton={false}>
+                          Warranty
                         </Button>
                       )}
                       {features?.invoices && (
                         <Button size="lg" variant="outline" render={<Link href="/portal/invoices" />} nativeButton={false}>
                           Invoices
-                        </Button>
-                      )}
-                      {warrantyProjects.has(p.id) && (
-                        <Button size="lg" variant="outline" render={<Link href={`/portal/projects/${p.id}/warranty`} />} nativeButton={false}>
-                          Home warranty
                         </Button>
                       )}
                     </div>
@@ -205,7 +210,7 @@ export default async function PortalPage() {
                       </span>
                       <div className="flex flex-col">
                         <h3 id={`walk-${p.id}`} className="font-serif text-lg font-semibold text-foreground">
-                          Walkthroughs
+                          Walkthroughs & issues
                         </h3>
                         <p className="text-sm text-muted-foreground">Review your home and track any repairs</p>
                       </div>

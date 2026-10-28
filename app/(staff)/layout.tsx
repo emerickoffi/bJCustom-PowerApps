@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { requireStaff } from '@/lib/session'
-import { navForRole } from '@/lib/navigation'
+import { landingPathForRole, navForRole } from '@/lib/navigation'
+import { WorkspaceSwitcher } from '@/components/app/workspace-switcher'
 import { getOrgFeatures } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { ROLE_LABELS } from '@/lib/domain'
@@ -75,8 +76,15 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   const collapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === '1'
   const items = navForRole(session.role, features)
   const logo = <CompanyLogo brand={session.brand} priority />
-  const homeLabel = `${session.brand.displayName} dashboard`
+  const homeHref = landingPathForRole(session.role)
+  const homeLabel = `${session.brand.displayName} ${homeHref === '/my-work' ? 'my work' : 'dashboard'}`
   const showAssistant = features.ai_assistant
+  const workspaces = session.workspaces.map((w) => ({
+    organizationId: w.organizationId,
+    organizationName: w.organizationName,
+    roleLabel: ROLE_LABELS[w.role],
+    kind: w.kind,
+  }))
 
   return (
     <BrandStyle brand={session.brand}>
@@ -87,13 +95,14 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           logo={logo}
           monogram={monogramFor(session.brand.displayName)}
           homeLabel={homeLabel}
+          homeHref={homeHref}
           defaultCollapsed={collapsed}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 border-b bg-background pt-[env(safe-area-inset-top)]">
             <div className="flex h-14 items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:gap-3 sm:px-6 lg:px-10">
               <MobileNav items={items} logo={logo} />
-              <Link href="/dashboard" className="flex min-h-11 w-24 shrink-0 items-center sm:w-28 lg:hidden" aria-label={homeLabel}>
+              <Link href={homeHref} className="flex min-h-11 w-24 shrink-0 items-center sm:w-28 lg:hidden" aria-label={homeLabel}>
                 {logo}
               </Link>
               <div className="hidden min-w-0 flex-1 lg:block">
@@ -101,6 +110,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
               </div>
               <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
                 <HeaderSearch />
+                <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />
                 <NotificationBell items={notifications} emptyHref="/dashboard" />
                 <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
                 <ProfileMenu

@@ -28,6 +28,7 @@ export type HeaderNotification = {
 
 const SEGMENT_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
+  'my-work': 'My Work',
   projects: 'Projects',
   clients: 'Clients',
   team: 'Team',

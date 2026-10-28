@@ -5,6 +5,8 @@ import { getSession } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { CompanyLogo } from '@/components/brand/company-logo'
 import { BrandStyle } from '@/components/brand/brand-style'
+import { WorkspaceSwitcher } from '@/components/app/workspace-switcher'
+import { ROLE_LABELS } from '@/lib/domain'
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
@@ -24,6 +26,15 @@ export default async function PortalLayout({ children }: { children: React.React
               <CompanyLogo brand={brand} priority />
             </Link>
             <nav aria-label="Account" className="flex items-center gap-1 text-sm">
+              <WorkspaceSwitcher
+                currentId={session.organizationId}
+                workspaces={session.workspaces.map((w) => ({
+                  organizationId: w.organizationId,
+                  organizationName: w.organizationName,
+                  roleLabel: ROLE_LABELS[w.role],
+                  kind: w.kind,
+                }))}
+              />
               <Link
                 href="/portal/profile"
                 className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-muted-foreground transition-colors hover:bg-sage/60 hover:text-primary sm:min-h-0 sm:min-w-0"
