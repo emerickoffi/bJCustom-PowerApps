@@ -45,29 +45,51 @@ function LineItemForm({
   item,
   submitLabel,
   onDone,
+  defaultCategory = 'Site Preparation',
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   item?: EstimateLineItem
   submitLabel: string
   onDone?: () => void
+  defaultCategory?: string
 }) {
   const [state, formAction] = useActionState(action, initialActionState)
   const formRef = useRef<HTMLFormElement>(null)
+  const categoryRef = useRef<HTMLSelectElement>(null)
+  const lastCategory = useRef<string>(item?.category ?? defaultCategory)
   const fe = state.fieldErrors ?? {}
   const v = state.values ?? {}
 
   useEffect(() => {
     if (!state.success) return
-    if (onDone) onDone()
-    else formRef.current?.reset()
+    if (onDone) {
+      onDone()
+      return
+    }
+    // Keep the category the user just used so consecutive items in the same group are quick to add.
+    formRef.current?.reset()
+    if (categoryRef.current) categoryRef.current.value = lastCategory.current
   }, [state, onDone])
 
   const val = (key: string, fallback: string) => v[key] ?? fallback
 
   return (
-    <form ref={formRef} action={formAction} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-12" noValidate>
+    <form
+      ref={formRef}
+      action={formAction}
+      onSubmit={() => {
+        if (categoryRef.current) lastCategory.current = categoryRef.current.value
+      }}
+      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-12"
+      noValidate
+    >
       <Field label="Category" error={fe.category} className="lg:col-span-3">
-        <NativeSelect name="category" defaultValue={val('category', item?.category ?? 'Site Preparation')} className="h-9">
+        <NativeSelect
+          ref={categoryRef}
+          name="category"
+          defaultValue={val('category', item?.category ?? defaultCategory)}
+          className="h-9"
+        >
           {ESTIMATE_CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {c}
@@ -153,7 +175,9 @@ function LineItemForm({
             Cancel
           </Button>
         )}
-        <SubmitButton size="sm">{submitLabel}</SubmitButton>
+        <SubmitButton size="sm" pendingLabel={submitLabel === 'Add item' ? 'Adding item…' : 'Saving item…'}>
+          {submitLabel}
+        </SubmitButton>
       </div>
       <div className="sm:col-span-2 lg:col-span-12">
         <FormMessage state={state.success ? initialActionState : state} />
@@ -255,6 +279,10 @@ export function LineItemsEditor({
   editable: boolean
 }) {
   const [adding, setAdding] = useState(items.length === 0 && editable)
+  const lastUsedCategory = items.reduce<EstimateLineItem | undefined>(
+    (latest, i) => (!latest || i.sort_order >= latest.sort_order ? i : latest),
+    undefined,
+  )?.category
   const groups = ESTIMATE_CATEGORIES.map((category) => ({
     category,
     items: items.filter((i) => i.category === category),
@@ -288,7 +316,11 @@ export function LineItemsEditor({
 
       {adding && editable && (
         <div className="border-b bg-sage/30 p-4">
-          <LineItemForm action={addLineItemAction.bind(null, estimateId)} submitLabel="Add item" />
+          <LineItemForm
+            action={addLineItemAction.bind(null, estimateId)}
+            submitLabel="Add item"
+            defaultCategory={lastUsedCategory}
+          />
           <div className="flex justify-end pt-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => setAdding(false)}>
               Close

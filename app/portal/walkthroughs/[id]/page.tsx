@@ -10,6 +10,7 @@ import { ChecklistForm, type SavedResponse } from '@/components/walkthroughs/che
 import { MediaGrid } from '@/components/walkthroughs/media-uploader'
 import { IssueStatusBadge, ValidationBadge } from '@/components/walkthroughs/badges'
 import { RepairValidation } from '@/components/walkthroughs/repair-validation'
+import { FocusHashTarget } from '@/components/shared/focus-hash-target'
 import { HomeownerCommentForm, IssueConversation, type ConversationMessage } from '@/components/walkthroughs/issue-conversation'
 import { HomeownerReportsSection } from '@/components/reports/homeowner-reports-section'
 import { formatDate, formatDateTime } from '@/lib/format'
@@ -34,6 +35,7 @@ export default async function PortalWalkthroughPage({ params }: { params: Promis
 
   return (
     <div className="flex flex-col gap-8">
+      <FocusHashTarget />
       <PageHeader
         icon={ClipboardCheck}
         backHref="/portal"
@@ -188,7 +190,12 @@ async function SubmittedView({
             const awaitingReview = issue.status === 'resolved' && issue.builder_approved_at
             const repairPhotos = mediaFor(issue.id, 'repair')
             return (
-              <li key={issue.id} className="flex flex-col gap-4 rounded-xl border bg-card p-5">
+              <li
+                key={issue.id}
+                id={`issue-${issue.id}`}
+                tabIndex={-1}
+                className="flex scroll-mt-28 flex-col gap-4 rounded-xl border bg-card p-5 outline-none focus-visible:ring-2 focus-visible:ring-ring target:border-primary"
+              >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <h2 className="font-medium text-foreground">
                     <span className="text-muted-foreground">{`${issue.category} · `}</span>

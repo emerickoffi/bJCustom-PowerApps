@@ -72,7 +72,11 @@ function TaskRow({ task: t }: { task: MySignatureTask }) {
   }
 
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 py-3">
+    <li
+      id={`sign-${t.signerId}`}
+      tabIndex={-1}
+      className="flex scroll-mt-28 flex-wrap items-center justify-between gap-3 rounded-md py-3 outline-none focus-visible:ring-2 focus-visible:ring-ring target:bg-sage/40 target:px-3"
+    >
       <div className="flex min-w-0 flex-col gap-1">
         <p className="truncate font-medium text-foreground">{t.title}</p>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

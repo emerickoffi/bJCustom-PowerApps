@@ -214,6 +214,24 @@ export default async function ClientDetailPage({
         }
       />
 
+      {notice === 'created' && manager && (
+        <div
+          role="status"
+          className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex flex-col gap-0.5">
+            <p className="text-sm font-medium text-foreground">Client created</p>
+            <p className="text-sm text-muted-foreground">
+              Next, create a project for this client. Their name and mailing address will be filled in for you.
+            </p>
+          </div>
+          <Button className="shrink-0" render={<Link href={`/projects/new?client=${client.id}`} />} nativeButton={false}>
+            <Plus data-icon="inline-start" />
+            Create project for this client
+          </Button>
+        </div>
+      )}
+
       {notice === 'contacts_not_saved' && (
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           The client was created, but the additional contacts could not be saved. Please add them from the Contacts section below.
