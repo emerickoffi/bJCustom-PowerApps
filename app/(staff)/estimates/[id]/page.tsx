@@ -16,6 +16,10 @@ import { QuickBooksPanel } from '@/components/estimates/quickbooks-panel'
 import { getOrgFeatures } from '@/lib/features'
 import { getQuickBooksStatus } from '@/lib/quickbooks'
 import { cn } from '@/lib/utils'
+import { EstimateSignaturePanel } from '@/components/estimates/estimate-signature-panel'
+import { estimateSigningEligibility } from '@/lib/estimate-signing'
+import { getEstimateSigningState } from '@/lib/esign/queries'
+import { getProviderConfig } from '@/lib/esign/dropbox-sign'
 
 export const metadata: Metadata = { title: 'Estimate' }
 
@@ -26,13 +30,25 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
   const estimate = await getEstimate(id, session.organizationId)
   if (!estimate) notFound()
 
-  const [items, family, features] = await Promise.all([
+  const [items, family, features, signing] = await Promise.all([
     getEstimateLineItems(id),
     getEstimateFamily(estimate.family_id),
     getOrgFeatures(session.organizationId),
+    getEstimateSigningState(id),
   ])
   const manager = canManage(session.role)
   const isLatest = family[0]?.id === estimate.id
+  const signingEligibility = estimateSigningEligibility({
+    status: estimate.status,
+    isLatest,
+    canManage: manager,
+    documentsEnabled: features.documents,
+    signaturesEnabled: features.e_signatures,
+    providerConfigured: getProviderConfig().configured,
+    hasProject: Boolean(estimate.project),
+    lineCount: items.length,
+  })
+  const showSigning = manager && features.e_signatures
   const hasOpenRevision = family.some((f) => isEditableStatus(f.status))
   const editable = manager && isLatest && isEditableStatus(estimate.status)
   const clientName = clientDisplayName(estimate.client)
@@ -167,6 +183,16 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
             clientName={clientName ?? ''}
             canManage={manager}
           />
+
+          {showSigning && (
+            <EstimateSignaturePanel
+              estimateId={id}
+              projectId={estimate.project?.id ?? null}
+              revision={estimate.revision}
+              eligibility={signingEligibility}
+              signing={signing}
+            />
+          )}
 
           {manager && (
             <QuickBooksPanel
