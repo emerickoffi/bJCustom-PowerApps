@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: 'Projects' }
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>
+  searchParams: Promise<{ q?: string; status?: string; state?: string; city?: string }>
 }) {
   const session = await requireStaff()
   const params = await searchParams
@@ -29,6 +29,31 @@ export default async function ProjectsPage({
     : null
 
   const supabase = await createClient()
+  const { data: locationRows } = await supabase
+    .from('projects')
+    .select('city, state')
+    .eq('organization_id', session.organizationId)
+    .is('archived_at', null)
+  const stateNames = new Map<string, string>()
+  const locationMap = new Map<string, { city: string; state: string }>()
+  for (const row of locationRows ?? []) {
+    const city = (row.city ?? '').trim()
+    const rawState = (row.state ?? '').trim()
+    if (!city && !rawState) continue
+    const stateKey = rawState.toLowerCase()
+    if (!stateNames.has(stateKey)) stateNames.set(stateKey, rawState)
+    const state = stateNames.get(stateKey)!
+    const key = `${city.toLowerCase()}|${stateKey}`
+    if (!locationMap.has(key)) locationMap.set(key, { city, state })
+  }
+  const locations = [...locationMap.values()]
+  const stateFilter = stateNames.get(params.state?.trim().toLowerCase() ?? '') ?? ''
+  const cityFilter =
+    locations.find(
+      (l) => l.city.toLowerCase() === params.city?.trim().toLowerCase() && (!stateFilter || l.state === stateFilter),
+    )?.city ?? ''
+  const escapeLike = (value: string) => value.replace(/[\\%_]/g, '\\$&')
+
   let query = supabase
     .from('projects')
     .select(`${PROJECT_SUMMARY_COLUMNS}, completion_date`)
@@ -37,7 +62,12 @@ export default async function ProjectsPage({
     .order('updated_at', { ascending: false })
     .limit(200)
   if (status) query = query.eq('status', status)
-  if (q) query = query.or(`name.ilike.*${q}*,project_number.ilike.*${q}*,address_line1.ilike.*${q}*,city.ilike.*${q}*`)
+  if (stateFilter) query = query.ilike('state', escapeLike(stateFilter))
+  if (cityFilter) query = query.ilike('city', escapeLike(cityFilter))
+  if (q)
+    query = query.or(
+      `name.ilike.*${q}*,project_number.ilike.*${q}*,address_line1.ilike.*${q}*,city.ilike.*${q}*,state.ilike.*${q}*`,
+    )
   const { data } = await query
   const projects = (data ?? []) as unknown as (ProjectSummary & { completion_date: string | null })[]
   const features = await getOrgFeatures(session.organizationId)
@@ -47,7 +77,7 @@ export default async function ProjectsPage({
     getDashboardCardDetails(session.organizationId, projects, features),
   ])
   const manager = canManage(session.role)
-  const filtered = Boolean(q || status)
+  const filtered = Boolean(q || status || stateFilter || cityFilter)
 
   return (
     <div className="flex flex-col gap-8">
@@ -65,10 +95,12 @@ export default async function ProjectsPage({
         }
       />
       <ListFilters
-        searchPlaceholder="Search by name, number, or address"
+        searchPlaceholder="Search by name, number, address, city, or state"
         defaultQuery={q}
         defaultStatus={status ?? ''}
         statusOptions={ALL_PROJECT_STATUSES.map((s) => ({ value: s, label: PROJECT_STATUS_LABELS[s] }))}
+        location={{ options: locations, defaultState: stateFilter, defaultCity: cityFilter }}
+        clearHref={filtered ? '/projects' : undefined}
       />
       {projects.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -112,17 +144,22 @@ export default async function ProjectsPage({
           title={filtered ? 'No matching projects' : 'No projects yet'}
           description={
             filtered
-              ? 'Try a different search or clear the status filter.'
+              ? 'Try a different search, or clear the status and location filters.'
               : manager
                 ? 'Start a project for an existing client to begin tracking it.'
                 : 'Projects you are assigned to will appear here.'
           }
           action={
-            manager &&
-            !filtered && (
-              <Button render={<Link href="/projects/new" />} nativeButton={false}>
-                Create project
+            filtered ? (
+              <Button variant="outline" render={<Link href="/projects" />} nativeButton={false}>
+                Clear filters
               </Button>
+            ) : (
+              manager && (
+                <Button render={<Link href="/projects/new" />} nativeButton={false}>
+                  Create project
+                </Button>
+              )
             )
           }
         />
