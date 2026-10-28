@@ -207,7 +207,7 @@ function RequestCard({ request: r, canManage, onChanged }: { request: SignatureR
                   {s.name}
                   <span className="ml-1.5 text-xs text-muted-foreground">{s.kind === 'homeowner' ? 'Homeowner' : 'Staff'}</span>
                 </p>
-                <p className="truncate text-xs text-muted-foreground">{s.email}</p>
+                <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{s.email}</p>
               </div>
             </div>
             <div className="text-right text-xs">
@@ -377,11 +377,11 @@ function Composer({ data, doc, onCancel, onSent }: { data: SignaturePanelData; d
                   const reason = c.reason ?? (blockedForMethod(c.key) ? 'No portal access to this project' : undefined)
                   return (
                     <li key={c.key} className="border-b border-[#E2E8E2] last:border-b-0">
-                      <label className={cn('flex items-start gap-3 px-3 py-2 text-sm', c.eligible ? 'cursor-pointer' : 'cursor-not-allowed opacity-60')}>
-                        <input type="checkbox" className="mt-1 size-4 accent-primary" checked={checked} disabled={!c.eligible} onChange={() => toggle(c.key)} />
+                      <label className={cn('flex min-h-11 items-start gap-3 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2', c.eligible ? 'cursor-pointer' : 'cursor-not-allowed opacity-60')}>
+                        <input type="checkbox" className="mt-1 size-4 shrink-0 accent-primary" checked={checked} disabled={!c.eligible} onChange={() => toggle(c.key)} />
                         <span className="min-w-0 flex-1">
                           <span className="block text-foreground">{c.name}</span>
-                          <span className="block truncate text-xs text-muted-foreground">{[c.email, c.detail].filter(Boolean).join(' · ')}</span>
+                          <span className="block text-xs text-muted-foreground [overflow-wrap:anywhere]">{[c.email, c.detail].filter(Boolean).join(' · ')}</span>
                           {reason && <span className="block text-xs text-warning">{reason}</span>}
                         </span>
                       </label>
@@ -407,19 +407,19 @@ function Composer({ data, doc, onCancel, onSent }: { data: SignaturePanelData; d
                 <li key={s.key} className="flex flex-wrap items-center gap-2 rounded-md bg-card px-2 py-1.5 text-sm">
                   <span className="flex size-5 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">{i + 1}</span>
                   <span className="min-w-0 flex-1 truncate">{c?.name}</span>
-                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <label className="flex min-h-11 items-center gap-1.5 text-xs text-muted-foreground sm:min-h-0">
                     <input
                       type="checkbox"
-                      className="size-3.5 accent-primary"
+                      className="size-4 accent-primary sm:size-3.5"
                       checked={s.initials}
                       onChange={(e) => setSelected((list) => list.map((x) => (x.key === s.key ? { ...x, initials: e.target.checked } : x)))}
                     />
                     Initial each page
                   </label>
-                  <Button type="button" size="icon" variant="ghost" className="size-7" disabled={i === 0} onClick={() => move(i, -1)} aria-label={`Move ${c?.name} up`}>
+                  <Button type="button" size="icon" variant="ghost" className="size-11 sm:size-7" disabled={i === 0} onClick={() => move(i, -1)} aria-label={`Move ${c?.name} up`}>
                     <ArrowUp aria-hidden="true" />
                   </Button>
-                  <Button type="button" size="icon" variant="ghost" className="size-7" disabled={i === selected.length - 1} onClick={() => move(i, 1)} aria-label={`Move ${c?.name} down`}>
+                  <Button type="button" size="icon" variant="ghost" className="size-11 sm:size-7" disabled={i === selected.length - 1} onClick={() => move(i, 1)} aria-label={`Move ${c?.name} down`}>
                     <ArrowDown aria-hidden="true" />
                   </Button>
                 </li>
