@@ -10,6 +10,7 @@ import { PortfolioTimeline } from '@/components/schedule/portfolio-timeline'
 import { ActivityStatusBadge, ProgressBar } from '@/components/schedule/schedule-badges'
 import { isOverdue, todayIso, type ScheduleActivity, type ScheduleDependency } from '@/lib/schedule'
 import { formatDate } from '@/lib/format'
+import { stageStyle } from '@/lib/schedule-stage-style'
 import { cn } from '@/lib/utils'
 
 export type BoardGroup = {
@@ -52,6 +53,20 @@ function groupByPhase(activities: ScheduleActivity[]) {
   return order.map((phase) => ({ phase, items: map.get(phase)! }))
 }
 
+function isFinished(a: ScheduleActivity) {
+  return a.status === 'completed' || a.status === 'skipped'
+}
+
+// The phase with active work is the current phase; otherwise the first phase with unfinished work.
+// Returns null when nothing is unfinished, leaving the existing defaults in place.
+function currentPhase(phases: { phase: string; items: ScheduleActivity[] }[]) {
+  const active = phases.find(({ items }) =>
+    items.some((a) => a.status === 'in_progress' || a.status === 'delayed' || a.status === 'on_hold'),
+  )
+  if (active) return active.phase
+  return phases.find(({ items }) => items.some((a) => !isFinished(a)))?.phase ?? null
+}
+
 function phaseDates(items: ScheduleActivity[]) {
   const starts = items.map((a) => a.planned_start ?? a.planned_end).filter(Boolean) as string[]
   const ends = items.map((a) => a.planned_end ?? a.planned_start).filter(Boolean) as string[]
@@ -80,9 +95,11 @@ export function ScheduleBoard({
     const initial = new Set<string>()
     for (const g of groups) {
       if (mode === 'all') initial.add(`p:${g.project.id}`)
-      for (const { phase, items } of groupByPhase(g.activities)) {
-        const done = items.every((a) => a.status === 'completed' || a.status === 'skipped')
-        if (done || mode === 'all') initial.add(`${g.project.id}:${phase}`)
+      const phases = groupByPhase(g.activities)
+      const current = mode === 'project' ? currentPhase(phases) : null
+      for (const { phase, items } of phases) {
+        const done = items.every(isFinished)
+        if (mode === 'all' || done || (current !== null && phase !== current)) initial.add(`${g.project.id}:${phase}`)
       }
     }
     return initial
@@ -110,6 +127,7 @@ export function ScheduleBoard({
     [groups, mode],
   )
   const allCollapsed = allKeys.every((k) => collapsed.has(k))
+  const noneCollapsed = allKeys.every((k) => !collapsed.has(k))
 
   const editingGroup = selected ? groups.find((g) => g.project.id === selected.projectId) : undefined
   const editingActivity = editingGroup?.activities.find((a) => a.id === selected?.id) ?? null
@@ -129,26 +147,29 @@ export function ScheduleBoard({
               aria-selected={view === v.value}
               onClick={() => setView(v.value)}
               className={cn(
-                'flex min-h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-none',
-                view === v.value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                'flex min-h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D32] sm:flex-none',
+                view === v.value
+                  ? 'bg-white text-[#103B27] shadow-sm ring-1 ring-[#E2E8E2]'
+                  : 'text-muted-foreground hover:bg-white/60 hover:text-[#103B27]',
               )}
             >
-              <v.icon className="size-4" aria-hidden="true" />
+              <v.icon className={cn('size-4', view === v.value && 'text-[#174D32]')} aria-hidden="true" />
               {v.label}
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1">
           {view === 'stages' && totalActivities > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="min-h-10"
-              onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(allKeys))}
-            >
-              {allCollapsed ? <ChevronsUpDown data-icon="inline-start" /> : <ChevronsDownUp data-icon="inline-start" />}
-              {allCollapsed ? 'Expand all' : 'Collapse all'}
-            </Button>
+            <>
+              <Button variant="ghost" size="sm" className="min-h-10" disabled={noneCollapsed} onClick={() => setCollapsed(new Set())}>
+                <ChevronsUpDown data-icon="inline-start" />
+                Expand all
+              </Button>
+              <Button variant="ghost" size="sm" className="min-h-10" disabled={allCollapsed} onClick={() => setCollapsed(new Set(allKeys))}>
+                <ChevronsDownUp data-icon="inline-start" />
+                Collapse all
+              </Button>
+            </>
           )}
           {totalActivities > 0 && (
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -304,46 +325,68 @@ function StageList({
       {groupByPhase(group.activities).map(({ phase, items }, index) => {
         const key = `${group.project.id}:${phase}`
         const open = !collapsed.has(key)
-        const done = items.filter((a) => a.status === 'completed' || a.status === 'skipped').length
+        const done = items.filter(isFinished).length
         const overdue = items.filter((a) => isOverdue(a, today)).length
-        const active = items.some((a) => a.status === 'in_progress')
+        const complete = done === items.length
+        const style = stageStyle(phase)
+        const StageIcon = style.icon
         const panelId = `stage-${key.replace(/[^a-z0-9]/gi, '-')}`
         return (
-          <div key={key} className="overflow-hidden rounded-lg border border-[#DFE7DF] border-l-[3px] border-l-[#174D32] bg-white">
+          <div
+            key={key}
+            className="overflow-hidden rounded-lg border border-[#E2E8E2] border-l-[3px] bg-white"
+            style={{ borderLeftColor: style.accent }}
+          >
             <button
               type="button"
               aria-expanded={open}
               aria-controls={panelId}
               onClick={() => toggle(key)}
-              className="flex min-h-12 w-full items-center gap-3 bg-[#E9F1EA] px-4 py-2.5 text-left text-[#183E2B] transition-colors hover:bg-[#E1ECE3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32]"
+              className="flex min-h-12 w-full items-center gap-3 px-3 py-2.5 text-left text-[#103B27] transition-[filter] hover:brightness-[0.97] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32] sm:px-4"
+              style={{ backgroundColor: style.background }}
             >
               <span
                 className={cn(
                   'flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums',
-                  done === items.length
-                    ? 'border-[#174D32] bg-[#174D32] text-white'
-                    : active
-                      ? 'border-[#174D32]/40 bg-white text-[#174D32]'
-                      : 'border-[#C9D8CB] bg-white text-[#183E2B]',
+                  complete ? 'text-white' : 'bg-white',
                 )}
-                aria-hidden="true"
+                style={
+                  complete
+                    ? { backgroundColor: style.accent, borderColor: style.accent }
+                    : { borderColor: `${style.accent}55`, color: style.accent }
+                }
               >
+                <span className="sr-only">{'Stage '}</span>
                 {index + 1}
               </span>
+              <StageIcon className="size-4 shrink-0" style={{ color: style.accent }} aria-hidden="true" />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-                <span className="truncate text-sm font-semibold text-[#183E2B]">{phase}</span>
-                <span className="text-xs text-[#183E2B]/65">{phaseDates(items)}</span>
+                <span className="truncate text-sm font-semibold text-[#103B27]">{phase}</span>
+                <span className="text-xs text-[#103B27]/65">{phaseDates(items)}</span>
               </span>
               {overdue > 0 && (
-                <span className="hidden shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive sm:inline">
+                <span className="hidden shrink-0 rounded-full border border-[#F5C7C5] bg-[#FDE8E7] px-2 py-0.5 text-xs font-medium text-[#BD302B] sm:inline">
                   {`${overdue} overdue`}
                 </span>
               )}
-              <span className="shrink-0 text-xs tabular-nums text-[#183E2B]/70">{`${done}/${items.length}`}</span>
-              <ChevronDown className={cn('size-4 shrink-0 text-[#183E2B]/70 transition-transform', !open && '-rotate-90')} aria-hidden="true" />
+              <span className="flex shrink-0 items-center gap-2">
+                <span className="hidden h-1 w-12 overflow-hidden rounded-full bg-white/80 ring-1 ring-black/5 sm:block" aria-hidden="true">
+                  {done > 0 && (
+                    <span className="block h-full rounded-full" style={{ width: `${(done / items.length) * 100}%`, backgroundColor: style.accent }} />
+                  )}
+                </span>
+                <span className="text-xs font-medium tabular-nums text-[#103B27]/75">
+                  {`${done}/${items.length}`}
+                  <span className="sr-only">{' activities complete'}</span>
+                </span>
+              </span>
+              <ChevronDown
+                className={cn('size-4 shrink-0 text-[#103B27]/70 transition-transform motion-reduce:transition-none', !open && '-rotate-90')}
+                aria-hidden="true"
+              />
             </button>
             {open && (
-              <ul id={panelId} className="divide-y divide-border/70 border-t border-[#DFE7DF] bg-white">
+              <ul id={panelId} className="divide-y divide-[#EEF1EE] border-t border-[#E2E8E2] bg-white">
                 {items.map((a) => {
                   const late = isOverdue(a, today)
                   return (
@@ -351,15 +394,18 @@ function StageList({
                       <button
                         type="button"
                         onClick={() => onSelect(a)}
-                        className={cn(
-                          'grid w-full gap-2 px-4 py-2.5 text-left transition-colors hover:bg-[#F8F7F3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32] md:grid-cols-[minmax(0,1fr)_9rem_11rem_8rem_7.5rem] md:items-center md:gap-4',
-                          late && 'bg-[#FDE8E7]/40 hover:bg-[#FDE8E7]/70',
-                        )}
+                        className="grid w-full gap-2 px-4 py-2.5 text-left transition-colors hover:bg-[#F8F7F3] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32] md:grid-cols-[minmax(0,1fr)_9rem_11rem_8rem_7.5rem] md:items-center md:gap-4"
                       >
-                        <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-foreground">
-                          {a.activity_type === 'milestone' && <Diamond className="size-3.5 shrink-0 fill-primary text-primary" aria-label="Milestone" />}
+                        <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+                          {a.activity_type === 'milestone' ? (
+                            <Diamond className="size-3.5 shrink-0" style={{ color: style.accent, fill: style.accent }} aria-label="Milestone" />
+                          ) : (
+                            <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: style.accent }} aria-hidden="true" />
+                          )}
                           <span className="truncate">{a.name}</span>
-                          {late && <span className="shrink-0 text-xs font-medium text-destructive">Overdue</span>}
+                          {late && (
+                            <span className="shrink-0 rounded-full bg-[#FDE8E7] px-1.5 py-px text-[11px] font-medium text-[#BD302B]">Overdue</span>
+                          )}
                         </span>
                         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground md:contents">
                           <span className={cn('truncate md:text-sm', a.assigned_to ? 'text-foreground/80' : 'text-muted-foreground')}>
