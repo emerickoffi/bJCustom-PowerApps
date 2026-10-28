@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireManager, requireStaff, canManage } from '@/lib/session'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
-import { ACTIVITY_STATUSES, ACTIVITY_TYPES } from '@/lib/schedule'
+import { ACTIVITY_STATUSES, ACTIVITY_TYPES, OPTIONAL_ACTIVITIES } from '@/lib/schedule'
 
 const uuid = z.uuid()
 const optionalDate = z
@@ -178,6 +178,86 @@ export async function deleteActivityAction(projectId: string, activityId: string
   if (!data?.length) return { error: 'Activity not found or you do not have permission to remove it.' }
   revalidateProject(projectId)
   return { success: 'Activity removed.' }
+}
+
+export async function includeOptionalActivityAction(projectId: string, key: string): Promise<ActionState> {
+  const session = await requireManager()
+  const def = OPTIONAL_ACTIVITIES.find((o) => o.key === key)
+  if (!uuid.safeParse(projectId).success || !def) return { error: 'Invalid activity.' }
+  const supabase = await createClient()
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('organization_id', session.organizationId)
+    .maybeSingle()
+  if (!project) return { error: 'Project not found or you do not have access.' }
+
+  const { data: rows, error: readError } = await supabase
+    .from('schedule_activities')
+    .select('template_key, phase, sort_order')
+    .eq('project_id', projectId)
+  if (readError) return { error: friendlyDbError(readError) }
+  if (rows?.some((r) => r.template_key === def.key)) return { success: `${def.name} is already on this schedule.` }
+
+  // Sit immediately before the anchor activity; otherwise at the end of the phase, otherwise at the end.
+  const anchor = rows?.find((r) => r.template_key === def.beforeKey)
+  const phaseOrders = (rows ?? []).filter((r) => r.phase === def.phase).map((r) => r.sort_order)
+  const allOrders = (rows ?? []).map((r) => r.sort_order)
+  const sortOrder = anchor
+    ? Math.max(0, anchor.sort_order - 1)
+    : phaseOrders.length
+      ? Math.max(...phaseOrders) + 1
+      : (allOrders.length ? Math.max(...allOrders) : 0) + 10
+
+  const { error } = await supabase.from('schedule_activities').insert({
+    organization_id: session.organizationId,
+    project_id: projectId,
+    template_key: def.key,
+    name: def.name,
+    phase: def.phase,
+    activity_type: def.activity_type,
+    weight: def.weight,
+    sort_order: sortOrder,
+    created_by: session.userId,
+    updated_by: session.userId,
+  })
+  if (error) {
+    if (error.code === '23505') return { success: `${def.name} is already on this schedule.` }
+    return { error: friendlyDbError(error) }
+  }
+  revalidateProject(projectId)
+  return { success: `${def.name} added to this project.` }
+}
+
+export async function excludeOptionalActivityAction(projectId: string, key: string): Promise<ActionState> {
+  await requireManager()
+  const def = OPTIONAL_ACTIVITIES.find((o) => o.key === key)
+  if (!uuid.safeParse(projectId).success || !def) return { error: 'Invalid activity.' }
+  const supabase = await createClient()
+  const { data: activity, error: readError } = await supabase
+    .from('schedule_activities')
+    .select('id, status, percent_complete, actual_start, actual_end')
+    .eq('project_id', projectId)
+    .eq('template_key', def.key)
+    .maybeSingle()
+  if (readError) return { error: friendlyDbError(readError) }
+  if (!activity) return { success: `${def.name} is not on this schedule.` }
+  // Never erase recorded work; started activities should be marked Skipped instead.
+  if (activity.status !== 'not_started' || Number(activity.percent_complete) > 0 || activity.actual_start || activity.actual_end)
+    return { error: `${def.name} already has recorded progress. Set its status to Skipped instead of removing it.` }
+
+  const { data, error } = await supabase
+    .from('schedule_activities')
+    .delete()
+    .eq('id', activity.id)
+    .eq('project_id', projectId)
+    .select('id')
+  if (error) return { error: friendlyDbError(error) }
+  if (!data?.length) return { error: 'Activity not found or you do not have permission to remove it.' }
+  revalidateProject(projectId)
+  return { success: `${def.name} removed from this project.` }
 }
 
 export async function addDependencyAction(

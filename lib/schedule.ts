@@ -44,6 +44,24 @@ export type ScheduleActivity = {
 
 export type ScheduleDependency = { id: string; predecessor_id: string; successor_id: string }
 
+/**
+ * Activities a builder may include per project. They are intentionally not schedule template rows,
+ * so "Initialize" / "Add missing template activities" never add them to any project automatically.
+ */
+export const OPTIONAL_ACTIVITIES = [
+  {
+    key: 'sprinkler_irrigation',
+    name: 'Sprinkler / Irrigation Installation',
+    phase: 'Exterior',
+    activity_type: 'task' as ActivityType,
+    weight: 2,
+    beforeKey: 'landscaping',
+    description: 'Irrigation lines, heads, and controller, installed before landscaping.',
+  },
+] as const
+
+export type OptionalActivityKey = (typeof OPTIONAL_ACTIVITIES)[number]['key']
+
 export const ACTIVITY_COLUMNS =
   'id, template_key, name, phase, activity_type, sort_order, planned_start, planned_end, actual_start, actual_end, assigned_to, percent_complete, status, weight, delay_reason, internal_notes, public_note, is_published, updated_at'
 
