@@ -7,7 +7,8 @@ import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/format'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { RunWarrantyButton } from '@/components/warranty/run-warranty-button'
-import { WARRANTY_STAGE_LABELS, daysUntil, type WarrantyStage } from '@/components/warranty/stage'
+import { WARRANTY_STAGE_LABELS, type WarrantyStage } from '@/components/warranty/stage'
+import { NextMilestone } from '@/components/warranty/next-milestone'
 import { cn } from '@/lib/utils'
 import { SemanticBadge, type SemanticTone } from '@/components/shared/semantic-badge'
 
@@ -18,13 +19,6 @@ const STAGE_TONE: Record<WarrantyStage, SemanticTone> = {
   completed: 'pending',
   ready_to_archive: 'info',
   archived: 'neutral',
-}
-
-function milestoneTone(days: number | null) {
-  if (days === null) return 'text-muted-foreground'
-  if (days < 0) return 'font-medium text-[#BD302B]'
-  if (days <= 30) return 'font-medium text-[#96570E]'
-  return 'text-foreground'
 }
 
 const FILTERS: { value: WarrantyStage | 'all'; label: string }[] = [
@@ -41,7 +35,7 @@ type Row = {
   stage: WarrantyStage
   start_date: string
   projects: { name: string; project_number: string | null } | null
-  current: { coverage_name: string; stage_label: string; due_on: string } | null
+  current: { coverage_name: string; stage_label: string; due_on: string; reached_at: string | null } | null
 }
 
 export default async function WarrantyPage({ searchParams }: { searchParams: Promise<{ stage?: string }> }) {
@@ -54,7 +48,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
   let query = supabase
     .from('project_warranties')
     .select(
-      'id, project_id, stage, start_date, projects(name, project_number), current:warranty_milestones!project_warranties_current_milestone_fk(coverage_name, stage_label, due_on)',
+      'id, project_id, stage, start_date, projects(name, project_number), current:warranty_milestones!project_warranties_current_milestone_fk(coverage_name, stage_label, due_on, reached_at)',
     )
     .order('start_date', { ascending: false })
     .limit(200)
@@ -145,7 +139,6 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
         <>
         <ul className="flex flex-col gap-3 md:hidden" aria-label="Warranties">
           {rows.map((r) => {
-            const days = r.current ? daysUntil(r.current.due_on) : null
             const claims = openClaims.get(r.project_id) ?? 0
             return (
               <li key={r.id} className="surface flex flex-col gap-3 p-4">
@@ -174,16 +167,8 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
                   </div>
                   <div className="col-span-2 flex flex-col gap-0.5">
                     <dt className="text-xs text-muted-foreground">Next milestone</dt>
-                    <dd className={milestoneTone(days)}>
-                      {r.current ? (
-                        <>
-                          <span className="block">{r.current.coverage_name}</span>
-                          <span className="tabular-nums">{formatDate(r.current.due_on)}</span>
-                          {days !== null && <span className="text-muted-foreground">{` · ${days} days`}</span>}
-                        </>
-                      ) : (
-                        <span className="text-muted-foreground">All periods ended</span>
-                      )}
+                    <dd>
+                      <NextMilestone milestone={r.current} />
                     </dd>
                   </div>
                 </dl>
@@ -210,8 +195,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
             </thead>
             <tbody className="divide-y divide-[#E2E8E2]/80">
               {rows.map((r) => {
-                const days = r.current ? daysUntil(r.current.due_on) : null
-                return (
+                    return (
                   <tr key={r.id} className="transition-colors hover:bg-[#F8F7F3]">
                     <td className="max-w-xs px-5 py-3.5">
                       <div className="flex min-w-0 items-baseline gap-2 whitespace-nowrap">
@@ -238,17 +222,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
                     </td>
                     <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-muted-foreground">{formatDate(r.start_date)}</td>
                     <td className="px-5 py-3.5">
-                      {r.current ? (
-                        <span className="flex flex-col gap-0.5">
-                          <span className="text-foreground">{r.current.coverage_name}</span>
-                          <span className={cn('text-xs tabular-nums', milestoneTone(days))}>
-                            {formatDate(r.current.due_on)}
-                            {days !== null && <span className="font-normal text-muted-foreground">{` · ${days} days`}</span>}
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">All periods ended</span>
-                      )}
+                      <NextMilestone milestone={r.current} />
                     </td>
                   </tr>
                 )

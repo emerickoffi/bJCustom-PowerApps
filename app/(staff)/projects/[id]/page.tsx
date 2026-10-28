@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import { AlertTriangle, CalendarClock, CalendarRange, ChevronLeft, ClipboardCheck, FolderOpen, MapPin, Pencil, Wallet } from 'lucide-react'
+import { AlertTriangle, CalendarClock, CalendarRange, ChevronLeft, ClipboardCheck, FolderOpen, History, MapPin, Pencil, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -332,15 +332,34 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <aside className="flex flex-col gap-6">
           {manager && (
             <section aria-labelledby="status-heading" className="surface flex flex-col gap-4 p-5">
-              <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-3">
                 <h2 id="status-heading" className="font-serif text-lg font-semibold text-foreground">
                   Project status
                 </h2>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {`Currently ${PROJECT_STATUS_LABELS[status]}. Changes are logged to the history.`}
-                </p>
+                <ProjectStatusBadge status={status} />
               </div>
+              <dl className="grid grid-cols-2 gap-3 rounded-lg bg-[#F8F7F3] p-3 text-sm">
+                <div className="flex flex-col gap-0.5">
+                  <dt className="text-xs text-muted-foreground">Last updated</dt>
+                  <dd className="font-medium tabular-nums text-foreground">
+                    {historyRes.data?.[0] ? formatDate(historyRes.data[0].created_at) : formatDate(project.updated_at ?? project.created_at)}
+                  </dd>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <dt className="text-xs text-muted-foreground">{project.completion_date ? 'Completed' : 'Target completion'}</dt>
+                  <dd className="font-medium tabular-nums text-foreground">
+                    {formatDate(project.completion_date ?? project.target_completion_date)}
+                  </dd>
+                </div>
+              </dl>
               <StatusChanger projectId={project.id} status={status} />
+              <a
+                href="#history-heading"
+                className="inline-flex items-center gap-1.5 self-start text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                <History className="size-3.5" aria-hidden="true" />
+                View status history
+              </a>
             </section>
           )}
           <ProjectClientsPanel projectId={project.id} links={links} clientOptions={clientOptions} canEdit={manager} />

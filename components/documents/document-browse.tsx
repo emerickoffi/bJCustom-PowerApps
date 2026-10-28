@@ -1,5 +1,20 @@
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Calculator,
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  FilePen,
+  FileSignature,
+  FileText,
+  Folders,
+  HardHat,
+  Ruler,
+  ShieldCheck,
+  Stamp,
+  type LucideIcon,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/shared/form-field'
 import { SearchInput } from '@/components/shared/search-input'
@@ -51,6 +66,35 @@ export function DocumentFiltersForm({
   )
 }
 
+const CATEGORY_ICONS: Record<DocumentCategory | '', LucideIcon> = {
+  '': Folders,
+  floor_plans: Ruler,
+  engineering: HardHat,
+  permits: Stamp,
+  contracts: FileSignature,
+  estimates: Calculator,
+  change_orders: FilePen,
+  construction_reports: ClipboardList,
+  photos: Camera,
+  warranty: ShieldCheck,
+  other: FileText,
+}
+
+function CategoryIcon({ category, active }: { category: string; active: boolean }) {
+  const Icon = CATEGORY_ICONS[category as DocumentCategory | ''] ?? FileText
+  return (
+    <span
+      className={cn(
+        'flex size-7 shrink-0 items-center justify-center rounded-md',
+        active ? 'bg-white text-primary' : 'bg-[#EAF0E9] text-[#174D32]',
+      )}
+      aria-hidden="true"
+    >
+      <Icon className="size-3.5" />
+    </span>
+  )
+}
+
 export function CategoryNav({
   base,
   params,
@@ -77,7 +121,10 @@ export function CategoryNav({
                   active ? 'bg-[#EAF0E9] font-medium text-primary' : 'text-muted-foreground hover:bg-[#F8F7F3] hover:text-foreground',
                 )}
               >
-                <span className="whitespace-nowrap lg:whitespace-normal">{item.label}</span>
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <CategoryIcon category={item.key} active={active} />
+                  <span className="whitespace-nowrap lg:whitespace-normal">{item.label}</span>
+                </span>
                 <span className={cn('rounded-full px-1.5 text-xs tabular-nums', active ? 'bg-white text-primary' : 'bg-[#F8F7F3]')}>
                   {item.count}
                 </span>
