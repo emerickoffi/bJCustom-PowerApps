@@ -1,5 +1,9 @@
 'use client'
 
+import { useState } from 'react'
+import { Check, ChevronDown, Mail, Minus, Pencil, Phone, Plus, ShieldCheck, ShieldOff, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import {
   addActivityAction,
   addContactAction,
@@ -48,12 +52,25 @@ export type ActivityRow = {
   author: string
 }
 
-function Panel({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  description,
+  actions,
+  children,
+}: {
+  title: string
+  description?: string
+  actions?: React.ReactNode
+  children: React.ReactNode
+}) {
   return (
     <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-serif text-lg font-semibold text-foreground">{title}</h2>
-        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <h2 className="font-serif text-lg font-semibold text-foreground">{title}</h2>
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
+        </div>
+        {actions}
       </div>
       {children}
     </section>
@@ -107,94 +124,208 @@ function ContactFields({ contact }: { contact?: ContactRow }) {
   )
 }
 
+function initials(c: ContactRow) {
+  return `${c.first_name.charAt(0)}${c.last_name.charAt(0)}`.toUpperCase()
+}
+
 function PortalSummary({ contact }: { contact: ContactRow }) {
-  if (!contact.portal_enabled) return <span className="text-xs text-muted-foreground">No portal access</span>
+  if (!contact.portal_enabled) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <ShieldOff className="size-3.5" aria-hidden="true" />
+        No portal access
+      </span>
+    )
+  }
   const granted = CONTACT_PORTAL_PERMISSIONS.filter((p) => contact[p.key])
   return (
-    <ul className="flex flex-wrap gap-1.5" aria-label="Portal permissions">
-      <li className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Portal</li>
-      {granted.map((p) => (
-        <li key={p.key} className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-          {p.label}
-        </li>
-      ))}
-    </ul>
+    <details className="group/perm">
+      <summary className="inline-flex min-h-8 cursor-pointer list-none items-center gap-2 rounded-md text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+        <span className="inline-flex items-center gap-1 rounded-full bg-sage px-2 py-0.5 font-medium text-primary">
+          <ShieldCheck className="size-3.5" aria-hidden="true" />
+          Portal access
+        </span>
+        <span className="text-muted-foreground">
+          {`${granted.length} ${granted.length === 1 ? 'permission' : 'permissions'} enabled`}
+        </span>
+        <ChevronDown
+          className="size-3.5 text-muted-foreground transition-transform group-open/perm:rotate-180"
+          aria-hidden="true"
+        />
+      </summary>
+      <ul className="mt-2 grid gap-1 sm:grid-cols-2" aria-label="Portal permissions">
+        {CONTACT_PORTAL_PERMISSIONS.map((p) => {
+          const on = Boolean(contact[p.key])
+          return (
+            <li key={p.key} className={cn('flex items-center gap-1.5 text-xs', on ? 'text-foreground' : 'text-muted-foreground')}>
+              {on ? (
+                <Check className="size-3.5 text-primary" aria-hidden="true" />
+              ) : (
+                <Minus className="size-3.5" aria-hidden="true" />
+              )}
+              <span>{p.label}</span>
+              <span className="sr-only">{on ? '(enabled)' : '(not enabled)'}</span>
+            </li>
+          )
+        })}
+      </ul>
+    </details>
+  )
+}
+
+function ContactCard({ clientId, contact: c, canEdit }: { clientId: string; contact: ContactRow; canEdit: boolean }) {
+  const [editing, setEditing] = useState(false)
+  const relationship = CONTACT_RELATIONSHIP_LABELS[c.relationship] ?? c.relationship
+  const preferred =
+    (COMMUNICATION_LABELS as Record<string, string>)[c.preferred_communication] ?? c.preferred_communication
+  const phones = [c.phone, c.alternate_phone].filter(Boolean) as string[]
+
+  return (
+    <li className={cn('flex flex-col gap-3 rounded-lg border bg-card p-4', c.is_primary && 'border-primary/20 bg-sage/30')}>
+      <div className="flex flex-wrap items-start gap-3">
+        <span
+          className={cn(
+            'flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold',
+            c.is_primary ? 'bg-primary text-primary-foreground' : 'bg-sage text-primary',
+          )}
+          aria-hidden="true"
+        >
+          {initials(c)}
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-foreground">{contactName(c)}</span>
+            {c.is_primary && (
+              <span className="rounded-full bg-primary px-2 py-0.5 text-[0.7rem] font-medium text-primary-foreground">
+                Primary
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground">{`${relationship} · Prefers ${preferred.toLowerCase()}`}</span>
+        </div>
+        {canEdit && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-expanded={editing}
+            aria-controls={`contact-edit-${c.id}`}
+            onClick={() => setEditing((v) => !v)}
+          >
+            <Pencil aria-hidden="true" />
+            {editing ? 'Close' : 'Edit'}
+          </Button>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1.5 text-sm sm:pl-[3.25rem]">
+        {c.email && (
+          <a
+            href={`mailto:${c.email}`}
+            className="inline-flex min-w-0 items-center gap-2 text-foreground underline-offset-4 hover:underline"
+          >
+            <Mail className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="truncate">{c.email}</span>
+          </a>
+        )}
+        {phones.map((phone) => (
+          <a
+            key={phone}
+            href={`tel:${phone}`}
+            className="inline-flex items-center gap-2 text-foreground underline-offset-4 hover:underline"
+          >
+            <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="tabular">{phone}</span>
+          </a>
+        ))}
+        {!c.email && phones.length === 0 && <span className="text-muted-foreground">No contact details</span>}
+        <div className="pt-1">
+          <PortalSummary contact={c} />
+        </div>
+      </div>
+
+      {canEdit && !c.is_primary && (
+        <div className="flex flex-wrap items-start justify-end gap-2 border-t pt-3">
+          <ActionButton
+            variant="outline"
+            label="Make primary"
+            pendingLabel="Updating..."
+            action={() => setPrimaryContactAction(clientId, c.id)}
+          />
+          <ActionButton
+            variant="destructive"
+            label="Remove"
+            confirmMessage={`Remove ${contactName(c)}? Their portal access ends, but their history is kept.`}
+            action={() => archiveContactAction(clientId, c.id)}
+          />
+        </div>
+      )}
+
+      {canEdit && editing && (
+        <InlineActionForm
+          action={updateContactAction.bind(null, clientId, c.id)}
+          className="grid gap-3 border-t pt-4 sm:grid-cols-2"
+        >
+          <div id={`contact-edit-${c.id}`} className="contents">
+            <ContactFields contact={c} />
+          </div>
+          <div className="flex flex-wrap gap-2 sm:col-span-2">
+            <SubmitButton pendingLabel="Saving...">Save contact</SubmitButton>
+            <Button type="button" variant="ghost" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+          </div>
+        </InlineActionForm>
+      )}
+    </li>
   )
 }
 
 export function ContactsPanel({ clientId, contacts, canEdit }: { clientId: string; contacts: ContactRow[]; canEdit: boolean }) {
-  const active = contacts.filter((c) => !c.archived_at)
+  const [adding, setAdding] = useState(false)
+  const active = contacts
+    .filter((c) => !c.archived_at)
+    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
   const archived = contacts.filter((c) => c.archived_at)
   return (
     <div id="contacts" className="scroll-mt-24">
-    <Panel title="Contacts" description="Everyone on this account. One primary contact receives updates by default.">
+    <Panel
+      title="Contacts"
+      description="Manage homeowners and authorized contacts."
+      actions={
+        canEdit && (
+          <Button
+            type="button"
+            className="w-full sm:w-auto"
+            aria-expanded={adding}
+            aria-controls="contact-add-form"
+            onClick={() => setAdding((v) => !v)}
+          >
+            {adding ? <X aria-hidden="true" /> : <Plus aria-hidden="true" />}
+            {adding ? 'Cancel' : 'Add contact'}
+          </Button>
+        )
+      }
+    >
+      {canEdit && adding && (
+        <div id="contact-add-form" className="rounded-lg border bg-sage/30 p-4">
+          <h3 className="mb-3 text-sm font-semibold text-foreground">New contact</h3>
+          <InlineActionForm action={addContactAction.bind(null, clientId)} className="grid gap-3 sm:grid-cols-2">
+            <ContactFields />
+            <div className="sm:col-span-2">
+              <SubmitButton pendingLabel="Adding...">Add contact</SubmitButton>
+            </div>
+          </InlineActionForm>
+        </div>
+      )}
       {active.length ? (
-        <ul className="flex flex-col divide-y">
+        <ul className="flex flex-col gap-3">
           {active.map((c) => (
-            <li key={c.id} className="flex flex-col gap-2 py-3 first:pt-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium text-foreground">{contactName(c)}</span>
-                {c.is_primary && (
-                  <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">Primary</span>
-                )}
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {`${CONTACT_RELATIONSHIP_LABELS[c.relationship] ?? c.relationship} · Prefers ${(COMMUNICATION_LABELS as Record<string, string>)[c.preferred_communication]?.toLowerCase() ?? c.preferred_communication}`}
-              </span>
-              <span className="truncate text-sm text-muted-foreground">
-                {[c.email, c.phone, c.alternate_phone].filter(Boolean).join(' · ') || 'No contact details'}
-              </span>
-              <PortalSummary contact={c} />
-              {canEdit && (
-                <details className="group">
-                  <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 text-sm">
-                    <span className="font-medium text-primary underline-offset-4 hover:underline">Edit</span>
-                  </summary>
-                  <InlineActionForm
-                    action={updateContactAction.bind(null, clientId, c.id)}
-                    className="mt-3 grid gap-3 sm:grid-cols-2"
-                  >
-                    <ContactFields contact={c} />
-                    <div className="flex flex-wrap gap-2 sm:col-span-2">
-                      <SubmitButton pendingLabel="Saving...">Save contact</SubmitButton>
-                    </div>
-                  </InlineActionForm>
-                </details>
-              )}
-              {canEdit && !c.is_primary && (
-                <div className="flex flex-wrap gap-2">
-                  <ActionButton
-                    label="Make primary"
-                    pendingLabel="Updating..."
-                    action={() => setPrimaryContactAction(clientId, c.id)}
-                  />
-                  <ActionButton
-                    label="Remove"
-                    confirmMessage={`Remove ${contactName(c)}? Their portal access ends, but their history is kept.`}
-                    action={() => archiveContactAction(clientId, c.id)}
-                  />
-                </div>
-              )}
-            </li>
+            <ContactCard key={c.id} clientId={clientId} contact={c} canEdit={canEdit} />
           ))}
         </ul>
       ) : (
         <p className="text-sm text-muted-foreground">No contacts yet.</p>
-      )}
-      {canEdit && (
-        <details className="border-t pt-4">
-          <summary className="cursor-pointer list-none text-sm font-medium text-primary underline-offset-4 hover:underline">
-            Add a contact
-          </summary>
-          <InlineActionForm action={addContactAction.bind(null, clientId)} className="mt-3 grid gap-3 sm:grid-cols-2">
-            <ContactFields />
-            <div className="sm:col-span-2">
-              <SubmitButton variant="outline" pendingLabel="Adding...">
-                Add contact
-              </SubmitButton>
-            </div>
-          </InlineActionForm>
-        </details>
       )}
       {archived.length > 0 && (
         <details className="border-t pt-4">
