@@ -89,7 +89,7 @@ export default async function ProjectDocumentsPage({
             {stats}
           </>
         }
-        actions={canUpload ? <DocumentUploadButton projectId={id} canShare={manager} /> : null}
+        actions={canUpload ? <DocumentUploadButton projectId={id} canShare={manager} openFromUrl /> : null}
       />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">

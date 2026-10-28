@@ -165,3 +165,10 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Floating controls (Quick Actions, AI Assistant) step aside while the on-screen keyboard is likely open on phones. */
+@media (max-width: 639px) {
+  body:has(:is(input:not([type='checkbox'], [type='radio'], [type='file']), textarea, select):focus) [data-floating-control] {
+    display: none;
+  }
+}
