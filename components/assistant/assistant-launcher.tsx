@@ -34,12 +34,32 @@ import { useAssistantProject, type AssistantProject } from './assistant-context'
 type QuickActionKey = 'overview' | 'schedule' | 'update' | 'warranty'
 
 type AnswerLink = { label: string; href: string }
+type AnswerSource = { label: string; href: string; period: string }
+type HealthBadge = { project: string; indicator: keyof typeof HEALTH_STYLES; label: string }
+
+const HEALTH_STYLES = {
+  on_track: 'border-primary/30 bg-sage text-primary',
+  needs_attention: 'border-amber-300 bg-amber-50 text-amber-900',
+  at_risk: 'border-destructive/30 bg-destructive/5 text-destructive',
+  insufficient_data: 'border-border bg-muted text-muted-foreground',
+} as const
+
+const SOURCE_PREFIX = 'https://fred.stlouisfed.org/series/'
 
 type Message =
   | { id: string; role: 'user'; text: string }
   | { id: string; role: 'assistant'; status: 'loading' }
   | { id: string; role: 'assistant'; status: 'error'; text: string }
-  | { id: string; role: 'assistant'; status: 'answer'; text: string; reviewDraft?: boolean; links?: AnswerLink[] }
+  | {
+      id: string
+      role: 'assistant'
+      status: 'answer'
+      text: string
+      reviewDraft?: boolean
+      links?: AnswerLink[]
+      sources?: AnswerSource[]
+      health?: HealthBadge
+    }
 
 const QUICK_ACTIONS: { key: QuickActionKey; label: string; hint: string; icon: LucideIcon }[] = [
   { key: 'overview', label: 'Project Overview', hint: 'Status, progress, and open items', icon: FolderKanban },
@@ -162,7 +182,13 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
         }),
         signal: controller.signal,
       })
-      const data = (await res.json().catch(() => null)) as { text?: string; error?: string; links?: AnswerLink[] } | null
+      const data = (await res.json().catch(() => null)) as {
+        text?: string
+        error?: string
+        links?: AnswerLink[]
+        sources?: AnswerSource[]
+        health?: HealthBadge
+      } | null
       if (!res.ok || !data?.text) {
         settle({ id: loadingId, role: 'assistant', status: 'error', text: data?.error ?? 'The assistant could not answer right now. Please try again.' })
         return
@@ -170,7 +196,19 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
       const links = (data.links ?? [])
         .filter((l) => typeof l?.href === 'string' && typeof l?.label === 'string' && isSafeAppPath(l.href))
         .slice(0, 3)
-      settle({ id: loadingId, role: 'assistant', status: 'answer', text: data.text, reviewDraft, links })
+      const sources = (data.sources ?? [])
+        .filter(
+          (s) =>
+            typeof s?.href === 'string' &&
+            typeof s?.label === 'string' &&
+            typeof s?.period === 'string' &&
+            s.href.startsWith(SOURCE_PREFIX) &&
+            /^[A-Z0-9]{3,20}$/.test(s.href.slice(SOURCE_PREFIX.length)),
+        )
+        .slice(0, 6)
+      const health =
+        data.health && typeof data.health.label === 'string' && data.health.indicator in HEALTH_STYLES ? data.health : undefined
+      settle({ id: loadingId, role: 'assistant', status: 'answer', text: data.text, reviewDraft, links, sources, health })
     } catch {
       if (controller.signal.aborted) return
       settle({ id: loadingId, role: 'assistant', status: 'error', text: 'Network problem. Check your connection and try again.' })
@@ -387,8 +425,37 @@ function MessageBubble({ message, onNavigate }: { message: Message; onNavigate: 
         {message.status === 'answer' && (
           <>
             <div className="flex flex-col gap-2 rounded-2xl rounded-tl-md border bg-card px-3.5 py-3">
+              {message.health && (
+                <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                  <span>Project health for {message.health.project}:</span>
+                  <span className={cn('rounded-full border px-2 py-0.5 font-semibold', HEALTH_STYLES[message.health.indicator])}>
+                    {message.health.label}
+                  </span>
+                </p>
+              )}
               <p className="whitespace-pre-wrap text-pretty text-sm leading-relaxed text-foreground">{message.text}</p>
             </div>
+            {message.sources && message.sources.length > 0 && (
+              <div className="flex flex-col gap-1 rounded-xl border border-dashed bg-card/60 px-3 py-2">
+                <span className="text-xs font-semibold text-muted-foreground">Sources</span>
+                <ul className="flex flex-col gap-1">
+                  {message.sources.map((s) => (
+                    <li key={s.href} className="text-xs leading-snug">
+                      <a
+                        href={s.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      >
+                        {s.label}
+                        <span className="sr-only"> (opens in a new tab)</span>
+                      </a>
+                      <span className="text-muted-foreground"> · data for {s.period}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {message.links && message.links.length > 0 && (
               <nav aria-label="Related pages" className="flex flex-wrap gap-1.5">
                 {message.links.map((l) => (

@@ -59,30 +59,28 @@ export function suggestionsFor(
 ): string[] {
   if (!inProject) {
     return module === 'dashboard'
-      ? ['Summarize my accessible projects.', 'Which projects need attention?', 'Show recently completed projects.']
+      ? [HEALTH_SUGGESTION, MARKET_SUGGESTION, 'Which projects need attention?', 'Summarize my accessible projects.']
       : []
   }
   switch (module) {
     case 'overview':
-      return [
-        'Summarize this project.',
-        'What needs my attention?',
-        'Who is assigned to this project?',
-        'What is the current construction status?',
-      ]
+      return [HEALTH_SUGGESTION, 'Summarize this project.', 'What needs my attention?', 'Who is assigned to this project?', MARKET_SUGGESTION]
     case 'schedule':
       return capabilities.schedule
-        ? ['What activities are upcoming?', 'Are any activities overdue?', 'Summarize schedule progress.']
-        : []
+        ? [HEALTH_SUGGESTION, 'What activities are upcoming?', 'Are any activities overdue?', 'Summarize schedule progress.']
+        : [HEALTH_SUGGESTION]
     case 'documents':
-      if (!capabilities.documents) return []
+      if (!capabilities.documents) return [HEALTH_SUGGESTION]
       return capabilities.signatures
-        ? ['What documents are available?', 'Are any signatures pending?']
-        : ['What documents are available?']
+        ? [HEALTH_SUGGESTION, 'What documents are available?', 'Are any signatures pending?']
+        : [HEALTH_SUGGESTION, 'What documents are available?']
     default:
-      return []
+      return [HEALTH_SUGGESTION]
   }
 }
+
+export const HEALTH_SUGGESTION = 'Analyze project health.'
+export const MARKET_SUGGESTION = 'Construction market insights for our area.'
 
 export type AssistantLink = { key: string; label: string; href: string }
 

@@ -22,8 +22,10 @@ test('moduleForPath ignores paths for a different project', () => {
 
 test('suggestions never exceed capabilities', () => {
   assert.ok(suggestionsFor('schedule', true, all).length > 0)
-  assert.deepEqual(suggestionsFor('schedule', true, none), [])
-  assert.deepEqual(suggestionsFor('documents', true, none), [])
+  assert.deepEqual(suggestionsFor('schedule', true, none), ['Analyze project health.'])
+  assert.deepEqual(suggestionsFor('documents', true, none), ['Analyze project health.'])
+  assert.ok(suggestionsFor('overview', true, all).includes('Analyze project health.'))
+  assert.ok(suggestionsFor('dashboard', false, none).some((s) => /market/i.test(s)))
   const docsNoSign = suggestionsFor('documents', true, { ...all, signatures: false })
   assert.ok(docsNoSign.every((s) => !/signature/i.test(s)))
   assert.ok(suggestionsFor('documents', true, all).some((s) => /signature/i.test(s)))

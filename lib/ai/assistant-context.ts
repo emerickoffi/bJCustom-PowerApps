@@ -7,6 +7,8 @@ import { OPEN_STATUSES } from '@/lib/signatures'
 import { getProjectNavItems } from '@/lib/project-nav'
 import { navForRole } from '@/lib/navigation'
 import type { AssistantLink, AssistantModule } from '@/lib/ai/assistant-scope'
+import { assessProjectHealth, HEALTH_RULES, type HealthLevel } from '@/lib/ai/project-health'
+import { latestSignatureRequests } from '@/lib/next-actions'
 
 const clip = (value: unknown, max = 280) =>
   typeof value === 'string' ? (value.length > max ? `${value.slice(0, max)}…` : value) : value
@@ -620,6 +622,178 @@ async function portfolioData(
         ...(claimBy ? { open_warranty_claims: claimBy.get(id) ?? 0 } : {}),
         ...(warrantyRows ? { warranty: warrantyBy.get(id) ?? 'not enrolled' } : {}),
       })),
+    },
+  }
+}
+
+const HEALTH_PROJECT_COLUMNS =
+  'id, project_number, name, status, phase, progress_percent, city, state, target_completion_date, completion_date, estimated_budget_cents, project_manager_id'
+
+type HealthProjectRow = {
+  id: string
+  project_number: string | null
+  name: string
+  status: string
+  phase: string | null
+  progress_percent: number | null
+  city: string | null
+  state: string | null
+  target_completion_date: string | null
+  completion_date: string | null
+  estimated_budget_cents: number | null
+  project_manager_id: string | null
+}
+
+export type ProjectHealthResult =
+  | { found: true; project: { id: string; name: string; state: string | null }; indicator: HealthLevel; data: Record<string, unknown>; links: AssistantLink[] }
+  | { found: false; data: Record<string, unknown> }
+
+/** Matches a project the user can access by exact number or partial name, within their organization. */
+async function findHealthProject(supabase: SupabaseClient, organizationId: string, term: string) {
+  const cleaned = term.replace(/[^\p{L}\p{N} #.'-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)
+  if (cleaned.length < 2) return { rows: [] as HealthProjectRow[], error: null }
+  const like = `%${cleaned.replace(/[%_\\]/g, (c) => `\\${c}`)}%`
+  const base = () => supabase.from('projects').select(HEALTH_PROJECT_COLUMNS).eq('organization_id', organizationId).is('archived_at', null)
+  const [byNumber, byName] = await Promise.all([base().eq('project_number', cleaned).limit(1), base().ilike('name', like).limit(4)])
+  const error = byNumber.error ?? byName.error
+  const rows = [...(byNumber.data ?? []), ...(byName.data ?? [])] as HealthProjectRow[]
+  return { rows: [...new Map(rows.map((r) => [r.id, r])).values()], error }
+}
+
+/**
+ * Loads only the records project health needs and applies the deterministic rules in
+ * project-health.ts. Runs through the user's RLS client, pinned to their organization.
+ * In project scope the current project is used and any model-supplied name is ignored.
+ */
+export async function loadProjectHealth(
+  supabase: SupabaseClient,
+  features: FeatureMap,
+  scope: { organizationId: string; projectId: string | null; projectQuery?: string | null },
+): Promise<ProjectHealthResult> {
+  const today = todayIso()
+  let project: HealthProjectRow | null = null
+  if (scope.projectId) {
+    const { data, error } = await supabase
+      .from('projects')
+      .select(HEALTH_PROJECT_COLUMNS)
+      .eq('id', scope.projectId)
+      .eq('organization_id', scope.organizationId)
+      .is('archived_at', null)
+      .maybeSingle()
+    if (error) return { found: false, data: { error: 'The project could not be loaded right now.' } }
+    project = data as HealthProjectRow | null
+  } else if (scope.projectQuery?.trim()) {
+    const { rows, error } = await findHealthProject(supabase, scope.organizationId, scope.projectQuery)
+    if (error) return { found: false, data: { error: 'Projects could not be searched right now.' } }
+    if (rows.length > 1) {
+      return { found: false, data: { ambiguous: true, matching_projects: rows.map((r) => ({ name: r.name, project_number: r.project_number })), instruction: 'Ask the user which project they mean.' } }
+    }
+    project = rows[0] ?? null
+  } else {
+    return { found: false, data: { instruction: 'No project is open. Ask the user which project to analyze, by name or number.' } }
+  }
+  if (!project) return { found: false, data: { not_found: 'No accessible project matches. Ask the user to check the name or number.' } }
+
+  const id = project.id
+  const signing = Boolean(features.documents && features.e_signatures)
+  const [{ data: canViewInternal }, schedule, estimates, issues, signatures, managerNames] = await Promise.all([
+    supabase.rpc('can_view_project_internal', { p_project: id }),
+    features.schedule
+      ? supabase.from('schedule_activities').select('name, status, planned_start, planned_end').eq('project_id', id).order('sort_order').limit(300)
+      : null,
+    features.estimates
+      ? supabase.from('estimates').select('estimate_number, status, estimate_date, construction_total_cents').eq('project_id', id).order('created_at', { ascending: false }).limit(20)
+      : null,
+    features.issues
+      ? supabase.from('project_issues').select('status, priority, due_date, builder_approved_at, homeowner_validation').eq('project_id', id).neq('status', 'closed').limit(300)
+      : null,
+    signing
+      ? supabase.from('signature_requests').select('document_id, status, created_at').eq('project_id', id).order('created_at', { ascending: false }).limit(200)
+      : null,
+    project.project_manager_id ? profileNames(supabase, [project.project_manager_id]) : Promise.resolve(new Map<string, string>()),
+  ])
+
+  const unavailable: string[] = []
+  const rowsOf = <T,>(res: { data: T[] | null; error: unknown } | null, label: string): T[] | null => {
+    if (!res) return null
+    if (res.error) {
+      unavailable.push(label)
+      return null
+    }
+    return res.data ?? []
+  }
+  const activities = rowsOf(schedule, 'schedule')
+  const estimateRows = rowsOf(estimates, 'estimates')
+  const issueRows = rowsOf(issues, 'issues')
+  const signatureRows = rowsOf(signatures, 'signature requests')
+
+  const latestSignatures = signatureRows ? latestSignatureRequests(signatureRows) : null
+  const assessment = assessProjectHealth({
+    today,
+    status: project.status,
+    targetCompletionDate: project.target_completion_date,
+    completionDate: project.completion_date,
+    schedule: activities,
+    financial: estimateRows
+      ? {
+          budget: dollars(project.estimated_budget_cents),
+          estimates: estimateRows.map((e) => ({ estimate_number: e.estimate_number, status: e.status, estimate_date: e.estimate_date, construction_total: dollars(e.construction_total_cents) })),
+        }
+      : null,
+    issues: issueRows
+      ? {
+          open: issueRows.filter((i) => i.status === 'open' || i.status === 'in_progress'),
+          awaitingBuilderApproval: issueRows.filter((i) => i.status === 'resolved' && !i.builder_approved_at).length,
+          awaitingHomeownerConfirmation: issueRows.filter((i) => i.status === 'resolved' && i.builder_approved_at && i.homeowner_validation === 'pending').length,
+        }
+      : null,
+    signatures: latestSignatures
+      ? {
+          awaiting: latestSignatures.filter((s) => s.status === 'awaiting_signatures' || s.status === 'partially_signed').length,
+          problems: latestSignatures.filter((s) => s.status === 'declined' || s.status === 'expired' || s.status === 'failed').length,
+        }
+      : null,
+  })
+
+  const horizon = addDays(today, 14)
+  const upcoming = (activities ?? [])
+    .filter((a) => a.status !== 'completed' && a.status !== 'skipped' && a.planned_start && a.planned_start >= today && a.planned_start <= horizon)
+    .slice(0, 10)
+    .map((a) => ({ name: a.name, planned_start: a.planned_start, planned_end: a.planned_end }))
+
+  const links: AssistantLink[] = getProjectNavItems(id, { features, projectStatus: project.status, canViewInternal: Boolean(canViewInternal) })
+    .filter((item) => ['overview', 'schedule', 'documents', 'warranty'].includes(item.key))
+    .map((item) => ({ key: `health_${item.key}`, label: item.key === 'overview' ? `Open ${project.name}` : `Open ${item.label}`, href: item.href }))
+
+  const managerName = !project.project_manager_id
+    ? 'none assigned'
+    : managerNames
+      ? (managerNames.get(project.project_manager_id) ?? 'name not available to this user')
+      : LOAD_FAILED
+
+  return {
+    found: true,
+    project: { id, name: project.name, state: project.state },
+    indicator: assessment.indicator,
+    links,
+    data: {
+      today,
+      project: {
+        name: project.name,
+        project_number: project.project_number,
+        status: project.status,
+        phase: project.phase,
+        progress_percent: project.progress_percent,
+        location: [project.city, project.state].filter(Boolean).join(', ') || null,
+        target_completion_date: project.target_completion_date,
+        completion_date: project.completion_date,
+        project_manager: managerName,
+      },
+      health: assessment,
+      upcoming_next_14_days: activities ? upcoming : 'schedule not available',
+      rules: HEALTH_RULES,
+      ...(unavailable.length ? { data_load_errors: unavailable.map((l) => `${l} could not be loaded; treated as insufficient data`) } : {}),
+      available_links: links.map(({ key, label }) => ({ key, label })),
     },
   }
 }
