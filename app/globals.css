@@ -112,6 +112,9 @@
   html {
     scrollbar-gutter: stable;
   }
+  :target {
+    scroll-margin-top: 6rem;
+  }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: 'cv11', 'ss01';

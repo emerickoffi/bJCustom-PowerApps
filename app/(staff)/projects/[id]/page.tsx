@@ -6,7 +6,6 @@ import {
   ArrowRight,
   CalendarClock,
   CalendarRange,
-  ChevronLeft,
   ClipboardCheck,
   FolderOpen,
   Hammer,
@@ -44,6 +43,7 @@ import {
 } from '@/components/projects/project-people'
 import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, type ProjectStatus } from '@/lib/domain'
 import { formatAddress, formatCents, formatDate, formatDateTime } from '@/lib/format'
+import { PROJECT_SECTION_ANCHORS } from '@/lib/project-nav'
 
 export const metadata: Metadata = { title: 'Project' }
 
@@ -167,14 +167,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       <AssistantProjectScope
         project={{ id: project.id, name: project.name, number: project.project_number ?? null, statusLabel: PROJECT_STATUS_LABELS[status] }}
       />
-      <Link
-        href="/projects"
-        className="flex w-fit items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-      >
-        <ChevronLeft className="size-4" aria-hidden="true" />
-        Projects
-      </Link>
-
       <section aria-labelledby="project-heading" className="overflow-hidden rounded-3xl bg-brand-deep text-white shadow-lift">
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
           <div className="flex flex-col gap-8 p-6 sm:p-8 lg:p-10">
@@ -453,13 +445,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             </section>
           )}
           <ProjectClientsPanel projectId={project.id} links={links} clientOptions={clientOptions} canEdit={manager} />
-          <ProjectTeamPanel
-            projectId={project.id}
-            managerName={nameFor(project.project_manager_id)}
-            members={members}
-            staffOptions={staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))}
-            canEdit={manager}
-          />
+          <div id={PROJECT_SECTION_ANCHORS.team}>
+            <ProjectTeamPanel
+              projectId={project.id}
+              managerName={nameFor(project.project_manager_id)}
+              members={members}
+              staffOptions={staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))}
+              canEdit={manager}
+            />
+          </div>
         </aside>
       </div>
     </div>
