@@ -150,7 +150,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
           )}
           {staff && signatures && doc.scope === 'project' && (signatures.summaries[doc.id] || (signatures.enabled && version?.content_type === 'application/pdf')) && (
             <DropdownMenuItem onClick={() => setSigning(openSignatureState({ id: doc.id, name: doc.name }))}>
-              <FileSignature aria-hidden="true" /> {signatures.summaries[doc.id] ? 'Signatures' : 'Request signatures'}
+              <FileSignature aria-hidden="true" /> {signatures.summaries[doc.id] ? 'View signing progress' : 'Request signatures'}
             </DropdownMenuItem>
           )}
           {staff && canEdit && !doc.archived_at && (
@@ -212,18 +212,25 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
           </button>
           {doc.description && <p className="line-clamp-1 text-xs text-muted-foreground">{doc.description}</p>}
           {signatures?.summaries[doc.id] && (
-            <button
-              type="button"
-              onClick={() => setSigning(openSignatureState({ id: doc.id, name: doc.name }))}
-              className="mt-0.5 w-fit rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label={`Signature status for ${doc.name}`}
-            >
-              <SignatureBadge
-                status={signatures.summaries[doc.id].status}
-                signed={signatures.summaries[doc.id].signed}
-                total={signatures.summaries[doc.id].total}
-              />
-            </button>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <button
+                type="button"
+                onClick={() => setSigning(openSignatureState({ id: doc.id, name: doc.name }))}
+                className="w-fit rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`Signature status for ${doc.name}`}
+              >
+                <SignatureBadge
+                  status={signatures.summaries[doc.id].status}
+                  signed={signatures.summaries[doc.id].signed}
+                  total={signatures.summaries[doc.id].total}
+                />
+              </button>
+              {signatures.summaries[doc.id].status === 'completed' && (
+                <span className="text-xs text-muted-foreground">
+                  {signatures.summaries[doc.id].hasSignedPdf ? 'Signed PDF available' : 'Signed PDF synchronization pending'}
+                </span>
+              )}
+            </div>
           )}
           {showProject && (
             <p className="text-xs text-muted-foreground md:hidden">
@@ -302,7 +309,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
               {nameCell(doc)}
               {actionsFor(doc)}
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 pl-12 text-xs text-muted-foreground">
+            <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 pl-12 text-xs text-muted-foreground">
               {showVisibility && <VisibilityBadge visibility={doc.visibility} />}
               <span>{categoryLabel(doc.category)}</span>
               <span>{`v${doc.current_version_number} · ${fileTypeLabel(doc.current_version?.content_type)} · ${formatBytes(doc.current_version?.size_bytes)}`}</span>
