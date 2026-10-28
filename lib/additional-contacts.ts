@@ -1,0 +1,2 @@
+export const MAX_ADDITIONAL_CONTACTS = 5
+export const ADDITIONAL_CONTACT_PREFIX = 'ac_'
