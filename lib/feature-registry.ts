@@ -7,6 +7,7 @@ export type FeatureKey =
   | 'warranty'
   | 'portal'
   | 'documents'
+  | 'e_signatures'
   | 'reports'
   | 'selections'
   | 'change_orders'
@@ -79,6 +80,7 @@ export const FEATURES: FeatureDefinition[] = [
 
   { key: 'portal', label: 'Homeowner portal', description: 'Homeowners sign in to see their projects. They only see the modules you have turned on, and only for projects they are linked to.', defaultEnabled: true, requires: [], group: 'Homeowner experience', available: true, disableNote: 'Homeowners cannot sign in to the portal. Their accounts, project links, and past approvals are kept.', configHref: '/team', configLabel: 'Manage portal accounts' },
   { key: 'documents', label: 'Documents', description: 'Project plans, permits, contracts, and reports with version history and per-document homeowner sharing.', defaultEnabled: false, requires: [], group: 'Homeowner experience', available: true, disableNote: 'Documents are hidden from staff and homeowners. Every file and version is kept exactly as it is.', configHref: '/documents', configLabel: 'Open documents' },
+  { key: 'e_signatures', label: 'Electronic signatures', description: 'Send PDF documents for legally binding electronic signature through Dropbox Sign, track progress, and keep the signed copy and audit trail with the project.', defaultEnabled: false, requires: ['documents'], group: 'Homeowner experience', available: true, setupNote: 'Add DROPBOX_SIGN_API_KEY to the project environment to connect Dropbox Sign. Add DROPBOX_SIGN_CLIENT_ID as well to let homeowners sign inside the portal.', disableNote: 'New signature requests stop. Signed PDFs, signer records, and audit history are kept and stay viewable.', configHref: '/documents', configLabel: 'Open documents' },
 
   { key: 'warranty', label: 'Warranty management', description: 'Starts the 1-2-10 warranty automatically when a project is Completed, with milestone reminders, claims, and anniversary follow-ups.', defaultEnabled: true, requires: [], group: 'After completion', available: true, disableNote: 'Warranty pages, claims, and reminders pause. Coverage dates and open claims are kept and resume when you turn it back on.', configHref: '/warranty', configLabel: 'Open warranty' },
 

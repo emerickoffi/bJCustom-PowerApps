@@ -11,6 +11,7 @@ import {
   Eye,
   EyeOff,
   FileImage,
+  FileSignature,
   FileText,
   History,
   Loader2,
@@ -42,6 +43,9 @@ import { DocumentUploadDialog } from '@/components/documents/document-upload-dia
 import { categoriesFor, categoryLabel, fileTypeLabel, formatBytes, type AnyDocumentCategory, type DocumentRow } from '@/lib/documents'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { SignatureBadge } from '@/components/signatures/signature-badge'
+import { SignatureDialog, openSignatureState, type SignatureDialogState } from '@/components/signatures/signature-dialog'
+import type { SignatureSummary } from '@/lib/signatures'
 
 /** project: one project's files. company: project files across projects. library: Company Library (no project). */
 export type LibraryMode = 'project' | 'company' | 'library' | 'portal'
@@ -56,6 +60,8 @@ type LibraryProps = {
   people: Record<string, string>
   projectId?: string
   archivedView?: boolean
+  /** Staff project view only. enabled: the e_signatures feature is on. */
+  signatures?: { enabled: boolean; summaries: Record<string, SignatureSummary> }
 }
 
 function FileIcon({ contentType, className }: { contentType?: string | null; className?: string }) {
@@ -84,9 +90,10 @@ async function openDownload(versionId: string) {
   window.location.assign(res.data.url)
 }
 
-export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projectId, archivedView }: LibraryProps) {
+export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projectId, archivedView, signatures }: LibraryProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const [signing, setSigning] = useState<SignatureDialogState | null>(null)
   const [preview, setPreviewState] = useState<PreviewState | null>(null)
   const [history, setHistoryState] = useState<HistoryState | null>(null)
   const [editing, setEditing] = useState<DocumentRow | null>(null)
@@ -139,6 +146,11 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
           {staff && (
             <DropdownMenuItem onClick={() => setHistory(doc)}>
               <History aria-hidden="true" /> Version history
+            </DropdownMenuItem>
+          )}
+          {staff && signatures && doc.scope === 'project' && (signatures.summaries[doc.id] || (signatures.enabled && version?.content_type === 'application/pdf')) && (
+            <DropdownMenuItem onClick={() => setSigning(openSignatureState({ id: doc.id, name: doc.name }))}>
+              <FileSignature aria-hidden="true" /> {signatures.summaries[doc.id] ? 'Signatures' : 'Request signatures'}
             </DropdownMenuItem>
           )}
           {staff && canEdit && !doc.archived_at && (
@@ -199,6 +211,20 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
             {doc.name}
           </button>
           {doc.description && <p className="line-clamp-1 text-xs text-muted-foreground">{doc.description}</p>}
+          {signatures?.summaries[doc.id] && (
+            <button
+              type="button"
+              onClick={() => setSigning(openSignatureState({ id: doc.id, name: doc.name }))}
+              className="mt-0.5 w-fit rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`Signature status for ${doc.name}`}
+            >
+              <SignatureBadge
+                status={signatures.summaries[doc.id].status}
+                signed={signatures.summaries[doc.id].signed}
+                total={signatures.summaries[doc.id].total}
+              />
+            </button>
+          )}
           {showProject && (
             <p className="text-xs text-muted-foreground md:hidden">
               <span className="font-medium text-foreground/70">Project: </span>
@@ -288,6 +314,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
 
       <PreviewDialog state={preview} onRetry={() => preview && setPreview(preview.doc)} onClose={() => setPreviewState(null)} />
       {staff && <HistoryDialog state={history} onClose={() => setHistoryState(null)} />}
+      {staff && signatures && <SignatureDialog state={signing} onChange={setSigning} onClose={() => setSigning(null)} />}
       {staff && <EditDialog doc={editing} onClose={() => setEditing(null)} />}
       {staff && projectId !== undefined && (
         <DocumentUploadDialog

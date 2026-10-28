@@ -47,7 +47,16 @@ const GROUPS: { name: FeatureGroup; icon: LucideIcon; note?: string }[] = [
 
 type Records = Partial<Record<FeatureKey, string>>
 
-export function FeatureToggles({ features, records }: { features: FeatureMap; records: Records }) {
+export function FeatureToggles({
+  features,
+  records,
+  pendingSetup = {},
+}: {
+  features: FeatureMap
+  records: Records
+  /** Features whose runtime credentials are missing. Unlike static setupRequired, the switch stays usable. */
+  pendingSetup?: Partial<Record<FeatureKey, boolean>>
+}) {
   return (
     <div className="flex flex-col gap-8">
       {GROUPS.map(({ name: group, icon: Icon, note }) => (
@@ -63,7 +72,12 @@ export function FeatureToggles({ features, records }: { features: FeatureMap; re
           </div>
           <ul className="surface divide-y">
             {FEATURES.filter((f) => f.group === group).map((f) => (
-              <FeatureRow key={f.key} feature={f} features={features} recordSummary={records[f.key]} />
+              <FeatureRow
+                key={f.key}
+                feature={pendingSetup[f.key] ? { ...f, setupRequired: true } : f}
+                features={features}
+                recordSummary={records[f.key]}
+              />
             ))}
           </ul>
         </section>

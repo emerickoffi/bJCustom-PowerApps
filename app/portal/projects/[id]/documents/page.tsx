@@ -8,6 +8,8 @@ import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { DocumentLibrary } from '@/components/documents/document-library'
 import { CategoryNav, DocumentFiltersForm, DocumentPagination, type BrowseParams } from '@/components/documents/document-browse'
 import { getCategoryCounts, listDocuments } from '@/lib/document-queries'
+import { getMySignatureTasks } from '@/app/actions/signatures'
+import { PortalSignatureTasks } from '@/components/signatures/portal-signature-tasks'
 
 export const metadata: Metadata = { title: 'Project documents' }
 
@@ -33,9 +35,10 @@ export default async function PortalDocumentsPage({
 
   const view = { q: sp.q, category: sp.category, page: sp.page }
   const base = `/portal/projects/${id}/documents`
-  const [list, counts] = await Promise.all([
+  const [list, counts, tasks] = await Promise.all([
     listDocuments({ projectId: id, q: sp.q, category: sp.category, page: Number(sp.page) || 1 }, { sharedOnly: true }),
     getCategoryCounts(id, true),
+    features.e_signatures ? getMySignatureTasks(id) : Promise.resolve([]),
   ])
   const filtered = Boolean(sp.q || sp.category)
 
@@ -48,6 +51,7 @@ export default async function PortalDocumentsPage({
         title="Documents"
         description={`Documents your builder has shared for ${project.name}.`}
       />
+      <PortalSignatureTasks tasks={tasks} />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         {counts && (
           <aside className="lg:w-64 lg:shrink-0">
