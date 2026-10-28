@@ -38,7 +38,7 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
   ])
   const manager = canManage(session.role)
   const isLatest = family[0]?.id === estimate.id
-  const signingEligibility = estimateSigningEligibility({
+  const signingInput = {
     status: estimate.status,
     isLatest,
     canManage: manager,
@@ -47,8 +47,16 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
     providerConfigured: getProviderConfig().configured,
     hasProject: Boolean(estimate.project),
     lineCount: items.length,
+  }
+  const signingEligibility = estimateSigningEligibility(signingInput)
+  const revisionEligibility = estimateSigningEligibility({
+    ...signingInput,
+    canManage: true,
+    documentsEnabled: true,
+    signaturesEnabled: true,
+    providerConfigured: true,
   })
-  const showSigning = manager && features.e_signatures
+  const revisionNote = revisionEligibility.eligible ? null : revisionEligibility.reason
   const hasOpenRevision = family.some((f) => isEditableStatus(f.status))
   const editable = manager && isLatest && isEditableStatus(estimate.status)
   const clientName = clientDisplayName(estimate.client)
@@ -182,17 +190,18 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
             lineCount={items.length}
             clientName={clientName ?? ''}
             canManage={manager}
+            signing={
+              <EstimateSignaturePanel
+                estimateId={id}
+                projectId={estimate.project?.id ?? null}
+                revision={estimate.revision}
+                eligibility={signingEligibility}
+                signing={signing}
+                isAdmin={session.role === 'org_admin'}
+                revisionNote={revisionNote}
+              />
+            }
           />
-
-          {showSigning && (
-            <EstimateSignaturePanel
-              estimateId={id}
-              projectId={estimate.project?.id ?? null}
-              revision={estimate.revision}
-              eligibility={signingEligibility}
-              signing={signing}
-            />
-          )}
 
           {manager && (
             <QuickBooksPanel
