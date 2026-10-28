@@ -39,6 +39,7 @@ export type ProjectFormValues = {
   target_completion_date?: string | null
   project_manager_id?: string | null
   internal_notes?: string | null
+  cover_image_kind?: string | null
 }
 
 type Option = { value: string; label: string }
@@ -62,6 +63,7 @@ export function ProjectForm({
   pendingLabel,
   cancelHref,
   scheduleSetup,
+  cover,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   defaults?: ProjectFormValues

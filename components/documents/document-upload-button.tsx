@@ -3,31 +3,41 @@
 import { useState } from 'react'
 import { Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { DocumentUploadDialog } from '@/components/documents/document-upload-dialog'
-import type { DocumentCategory } from '@/lib/documents'
+import { DocumentUploadDialog, type UploadProjectOption } from '@/components/documents/document-upload-dialog'
+import type { AnyDocumentCategory, DocumentScope } from '@/lib/documents'
 
 export function DocumentUploadButton({
   projectId,
+  scope = 'project',
+  projectOptions,
   canShare,
   defaultCategory,
+  label = 'Upload document',
+  variant = 'default',
 }: {
-  projectId: string
+  projectId?: string
+  scope?: DocumentScope
+  projectOptions?: UploadProjectOption[]
   canShare: boolean
-  defaultCategory?: DocumentCategory
+  defaultCategory?: AnyDocumentCategory
+  label?: string
+  variant?: 'default' | 'outline'
 }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button onClick={() => setOpen(true)}>
+      <Button variant={variant} onClick={() => setOpen(true)}>
         <Upload data-icon="inline-start" />
-        Upload document
+        {label}
       </Button>
       <DocumentUploadDialog
-        key={defaultCategory ?? 'none'}
+        key={`${scope}-${defaultCategory ?? 'none'}`}
         projectId={projectId}
+        scope={scope}
+        projectOptions={projectOptions}
         open={open}
         onOpenChange={setOpen}
-        canShare={canShare}
+        canShare={canShare && scope === 'project'}
         defaultCategory={defaultCategory}
       />
     </>

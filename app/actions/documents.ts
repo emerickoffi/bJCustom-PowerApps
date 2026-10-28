@@ -8,12 +8,17 @@ import { getSession, canManage } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { friendlyDbError } from '@/lib/action-state'
 import {
+  COMPANY_DOCUMENT_CATEGORY_KEYS,
+  COMPANY_DOCUMENT_PATH_PATTERN,
   DOCUMENT_CATEGORY_KEYS,
   DOCUMENT_MAX_BYTES,
   DOCUMENT_PATH_PATTERN,
   DOCUMENTS_BUCKET,
   DOCUMENT_TYPES,
+  companyDocumentStoragePath,
   documentStoragePath,
+  isCompanyDocumentCategory,
+  isDocumentCategory,
   isDocumentContentType,
 } from '@/lib/documents'
 
@@ -31,10 +36,40 @@ async function requireDocumentsStaff() {
   return session as typeof session & { organizationId: string }
 }
 
-function revalidateDocuments(projectId: string) {
-  revalidatePath(`/projects/${projectId}/documents`)
-  revalidatePath(`/portal/projects/${projectId}/documents`)
+function revalidateDocuments(projectId: string | null) {
+  if (projectId) {
+    revalidatePath(`/projects/${projectId}/documents`)
+    revalidatePath(`/portal/projects/${projectId}/documents`)
+  }
   revalidatePath('/documents')
+}
+
+const companyPrepareSchema = z.object({
+  documentId: uuid.optional(),
+  contentType: z.string(),
+  size: z.number().int().positive().max(DOCUMENT_MAX_BYTES, 'Files must be 25 MB or smaller.'),
+})
+
+/** Company Library uploads: organization-scoped, no project, administrators and project managers only. */
+export async function prepareCompanyDocumentUpload(input: z.input<typeof companyPrepareSchema>): Promise<Result<{ path: string }>> {
+  const session = await requireDocumentsStaff()
+  if (!session || !canManage(session.role)) return { ok: false, error: 'Only administrators and project managers can upload company documents.' }
+  const parsed = companyPrepareSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid upload.' }
+  const { documentId, contentType } = parsed.data
+  if (!isDocumentContentType(contentType)) return { ok: false, error: 'Upload a PDF, PNG, JPEG, or WebP file.' }
+
+  if (documentId) {
+    const supabase = await createClient()
+    const { data: doc } = await supabase.from('project_documents').select('id, scope, archived_at').eq('id', documentId).maybeSingle()
+    if (!doc || doc.scope !== 'company') return { ok: false, error: 'Document not found.' }
+    if (doc.archived_at) return { ok: false, error: 'Restore this document before uploading a new version.' }
+  }
+
+  return {
+    ok: true,
+    data: { path: companyDocumentStoragePath(session.organizationId, documentId ?? crypto.randomUUID(), crypto.randomUUID(), contentType) },
+  }
 }
 
 const prepareSchema = z.object({
@@ -65,8 +100,8 @@ export async function prepareDocumentUpload(input: z.input<typeof prepareSchema>
   if (!allowed) return { ok: false, error: 'You do not have permission to upload documents to this project.' }
 
   if (documentId) {
-    const { data: doc } = await supabase.from('project_documents').select('id, project_id, archived_at').eq('id', documentId).maybeSingle()
-    if (!doc || doc.project_id !== projectId) return { ok: false, error: 'Document not found.' }
+    const { data: doc } = await supabase.from('project_documents').select('id, project_id, scope, archived_at').eq('id', documentId).maybeSingle()
+    if (!doc || doc.scope !== 'project' || doc.project_id !== projectId) return { ok: false, error: 'Document not found.' }
     if (doc.archived_at) return { ok: false, error: 'Restore this document before uploading a new version.' }
   }
 
@@ -97,11 +132,17 @@ async function storedBytesMatch(path: string, ext: string): Promise<boolean> {
   }
 }
 
+const ALL_CATEGORY_KEYS = [...new Set([...DOCUMENT_CATEGORY_KEYS, ...COMPANY_DOCUMENT_CATEGORY_KEYS])] as [string, ...string[]]
+
+function isUploadPath(path: string) {
+  return DOCUMENT_PATH_PATTERN.test(path) || COMPANY_DOCUMENT_PATH_PATTERN.test(path)
+}
+
 const registerSchema = z.object({
-  path: z.string().regex(DOCUMENT_PATH_PATTERN, 'Invalid upload reference.'),
+  path: z.string().refine(isUploadPath, 'Invalid upload reference.'),
   originalFilename: z.string().trim().min(1).max(255),
   name: z.string().trim().min(1, 'Enter a document name').max(200).optional(),
-  category: z.enum(DOCUMENT_CATEGORY_KEYS).optional(),
+  category: z.enum(ALL_CATEGORY_KEYS).optional(),
   description: z.string().trim().max(2000).optional(),
   visibility: z.enum(['internal', 'homeowner']).default('internal'),
   revisionNotes: z.string().trim().max(1000).optional(),
@@ -116,11 +157,20 @@ export async function registerDocumentVersion(
   const parsed = registerSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid upload.' }
   const v = parsed.data
-  const match = DOCUMENT_PATH_PATTERN.exec(v.path)!
-  const [, orgId, projectId, , , ext] = match
+  const companyMatch = COMPANY_DOCUMENT_PATH_PATTERN.exec(v.path)
+  const projectMatch = companyMatch ? null : DOCUMENT_PATH_PATTERN.exec(v.path)
+  const orgId = companyMatch ? companyMatch[1] : projectMatch![1]
+  const projectId = companyMatch ? null : projectMatch![2]
+  const ext = companyMatch ? companyMatch[4] : projectMatch![5]
   if (orgId !== session.organizationId) return { ok: false, error: 'You do not have permission to upload documents.' }
-  if (v.visibility === 'homeowner' && !canManage(session.role)) {
-    return { ok: false, error: 'Only administrators and project managers can share documents with homeowners.' }
+  if (companyMatch) {
+    if (!canManage(session.role)) return { ok: false, error: 'Only administrators and project managers can upload company documents.' }
+    if (v.category && !isCompanyDocumentCategory(v.category)) return { ok: false, error: 'Choose a Company Library category.' }
+  } else {
+    if (v.category && !isDocumentCategory(v.category)) return { ok: false, error: 'Choose a project document category.' }
+    if (v.visibility === 'homeowner' && !canManage(session.role)) {
+      return { ok: false, error: 'Only administrators and project managers can share documents with homeowners.' }
+    }
   }
 
   const supabase = await createClient()
@@ -129,15 +179,24 @@ export async function registerDocumentVersion(
     return { ok: false, error: `The file contents do not match a ${Object.values(DOCUMENT_TYPES).find((t) => t.ext === ext)?.label ?? 'supported'} file.` }
   }
 
-  const { data, error } = await supabase.rpc('register_project_document_version', {
-    p_storage_path: v.path,
-    p_original_filename: v.originalFilename,
-    p_name: v.name ?? null,
-    p_category: v.category ?? null,
-    p_description: v.description ?? null,
-    p_visibility: v.visibility,
-    p_revision_notes: v.revisionNotes ?? null,
-  })
+  const { data, error } = companyMatch
+    ? await supabase.rpc('register_company_document_version', {
+        p_storage_path: v.path,
+        p_original_filename: v.originalFilename,
+        p_name: v.name ?? null,
+        p_category: v.category ?? null,
+        p_description: v.description ?? null,
+        p_revision_notes: v.revisionNotes ?? null,
+      })
+    : await supabase.rpc('register_project_document_version', {
+        p_storage_path: v.path,
+        p_original_filename: v.originalFilename,
+        p_name: v.name ?? null,
+        p_category: v.category ?? null,
+        p_description: v.description ?? null,
+        p_visibility: v.visibility,
+        p_revision_notes: v.revisionNotes ?? null,
+      })
   if (error) {
     await supabase.storage.from(DOCUMENTS_BUCKET).remove([v.path])
     return { ok: false, error: friendlyDbError(error) }
@@ -149,7 +208,7 @@ export async function registerDocumentVersion(
 
 /** Removes an uploaded object that was never registered. The storage policy only allows unreferenced objects the caller owns. */
 export async function discardDocumentUpload(path: string): Promise<void> {
-  if (!DOCUMENT_PATH_PATTERN.test(path)) return
+  if (!isUploadPath(path)) return
   const supabase = await createClient()
   await supabase.storage.from(DOCUMENTS_BUCKET).remove([path])
 }
@@ -157,7 +216,7 @@ export async function discardDocumentUpload(path: string): Promise<void> {
 const detailsSchema = z.object({
   documentId: uuid,
   name: z.string().trim().min(1, 'Enter a document name').max(200),
-  category: z.enum(DOCUMENT_CATEGORY_KEYS),
+  category: z.enum(ALL_CATEGORY_KEYS),
   description: z.string().trim().max(2000).optional(),
 })
 
@@ -167,8 +226,10 @@ export async function updateDocumentDetails(input: z.input<typeof detailsSchema>
   const parsed = detailsSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the document details.' }
   const supabase = await createClient()
-  const { data: doc } = await supabase.from('project_documents').select('project_id').eq('id', parsed.data.documentId).maybeSingle()
+  const { data: doc } = await supabase.from('project_documents').select('project_id, scope').eq('id', parsed.data.documentId).maybeSingle()
   if (!doc) return { ok: false, error: 'Document not found.' }
+  const categoryFits = doc.scope === 'company' ? isCompanyDocumentCategory(parsed.data.category) : isDocumentCategory(parsed.data.category)
+  if (!categoryFits) return { ok: false, error: 'Choose a category from this library.' }
   const { error } = await supabase.rpc('update_project_document_details', {
     p_document: parsed.data.documentId,
     p_name: parsed.data.name,
