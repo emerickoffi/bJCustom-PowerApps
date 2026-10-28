@@ -16,7 +16,9 @@ import {
   PortalAccessPanel,
   type ActivityRow,
   type ContactRow,
+  type PortalAccountStatus,
 } from '@/components/clients/client-panels'
+import { getOrgFeatures } from '@/lib/features'
 import {
   ManagePortalAccessPanel,
   type PortalAccountRow,
@@ -37,7 +39,7 @@ async function loadPortalAccess(
   const supabase = await createClient()
   const { data: accounts } = await supabase
     .from('portal_accounts')
-    .select('id, user_id, portal_project_access(project_id)')
+    .select('id, user_id, contact_id, portal_project_access(project_id)')
     .eq('client_id', client.id)
     .order('created_at')
   const userIds = (accounts ?? []).map((a) => a.user_id as string)
@@ -55,7 +57,23 @@ async function loadPortalAccess(
     ...contacts.map((c) => ({ value: c.id, label: `${c.first_name} ${c.last_name}`, hasEmail: Boolean(c.email) })),
   ]
 
+  const statusByContact: Record<string, PortalAccountStatus | null> = {}
+  for (const a of accounts ?? []) {
+    if (!a.contact_id) continue
+    const member = memberById.get(a.user_id)
+    statusByContact[a.contact_id] = !member
+      ? null
+      : member.status === 'suspended'
+        ? 'suspended'
+        : member.activation_required
+          ? 'pending'
+          : member.status === 'active'
+            ? 'active'
+            : null
+  }
+
   return {
+    statusByContact,
     contacts: contactOptions,
     projects: projects.map((p) => ({ id: p.id, label: [p.project_number && `#${p.project_number}`, p.name].filter(Boolean).join(' ') })),
     accounts: (accounts ?? []).map((a): PortalAccountRow => {
@@ -129,7 +147,13 @@ export default async function ClientDetailPage({
   }))
 
   const name = [client.first_name, client.middle_name, client.last_name].filter(Boolean).join(' ')
-  const portal = session.role === 'org_admin' ? await loadPortalAccess(client, (contactsRes.data ?? []).filter((c) => !c.archived_at), projects ?? []) : null
+  const portalData = session.role === 'org_admin' ? await loadPortalAccess(client, (contactsRes.data ?? []).filter((c) => !c.archived_at), projects ?? []) : null
+  const { statusByContact, ...portal } = portalData ?? { statusByContact: null }
+  const portalFeatureOn = portalData ? (await getOrgFeatures(session.organizationId)).portal : true
+  const accountStatusByContact =
+    statusByContact && !portalFeatureOn
+      ? Object.fromEntries(Object.keys(statusByContact).map((k) => [k, 'portal_off' as const]))
+      : statusByContact
 
   return (
     <div className="flex flex-col gap-8">
@@ -198,7 +222,7 @@ export default async function ClientDetailPage({
         </div>
 
         <aside className="flex flex-col gap-6">
-          {portal ? (
+          {portalData && 'accounts' in portal ? (
             <ManagePortalAccessPanel clientId={client.id} {...portal} />
           ) : (
             manager && (
@@ -210,7 +234,10 @@ export default async function ClientDetailPage({
               />
             )
           )}
-          <ContactsPanel clientId={client.id} contacts={(contactsRes.data ?? []) as ContactRow[]} canEdit={manager} />
+          <ContactsPanel clientId={client.id} contacts={(contactsRes.data ?? []) as ContactRow[]}
+            canEdit={manager}
+            accountStatusByContact={accountStatusByContact}
+          />
         </aside>
       </div>
     </div>
