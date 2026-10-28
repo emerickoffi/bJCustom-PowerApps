@@ -100,7 +100,7 @@ export function ScheduleActivityList({
           />
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex">
-          <Select value={stage} onValueChange={setStage}>
+          <Select value={stage} onValueChange={(value) => setStage(value ?? 'all')}>
             <SelectTrigger aria-label="Filter by stage" className="h-9 w-full sm:w-44">
               <SelectValue />
             </SelectTrigger>
@@ -114,7 +114,7 @@ export function ScheduleActivityList({
               ))}
             </SelectContent>
           </Select>
-          <Select value={status} onValueChange={setStatus}>
+          <Select value={status} onValueChange={(value) => setStatus(value ?? 'all')}>
             <SelectTrigger aria-label="Filter by status" className="h-9 w-full sm:w-40">
               <SelectValue />
             </SelectTrigger>

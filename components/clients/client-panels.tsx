@@ -1,7 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, ChevronDown, Mail, Minus, Pencil, Phone, Plus, ShieldCheck, ShieldOff, X } from 'lucide-react'
+import {
+  Check,
+  ChevronDown,
+  HardHat,
+  Mail,
+  Minus,
+  Pencil,
+  Phone,
+  Plus,
+  Settings2,
+  ShieldCheck,
+  ShieldOff,
+  StickyNote,
+  Users,
+  X,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -426,42 +441,111 @@ export function ContactsPanel({
   )
 }
 
+const ACTIVITY_ICONS: Record<string, React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>> = {
+  note: StickyNote,
+  call: Phone,
+  email: Mail,
+  meeting: Users,
+  site_visit: HardHat,
+  system: Settings2,
+}
+
 export function ActivityPanel({ clientId, activity }: { clientId: string; activity: ActivityRow[] }) {
   const loggable = Object.entries(ACTIVITY_TYPE_LABELS).filter(([value]) => value !== 'system')
+  const [formOpen, setFormOpen] = useState(false)
+  const [savedMessage, setSavedMessage] = useState<string | null>(null)
+
   return (
-    <Panel title="Communication log" description="Calls, meetings, site visits, and notes. Internal to your team.">
-      <InlineActionForm action={addActivityAction.bind(null, clientId)} className="grid gap-3 sm:grid-cols-[12rem_1fr]">
-        <SelectField
-          name="activity_type"
-          label="Type"
-          defaultValue="note"
-          options={loggable.map(([value, label]) => ({ value, label }))}
-        />
-        <TextField name="summary" label="Summary" required maxLength={500} placeholder="Discussed lot options" />
-        <TextAreaField name="details" label="Details" className="sm:col-span-2" />
-        <div className="sm:col-span-2">
-          <SubmitButton variant="outline" pendingLabel="Logging...">
+    <Panel
+      title="Communication Activity"
+      description="Calls, meetings, site visits, and internal notes."
+      actions={
+        !formOpen && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSavedMessage(null)
+              setFormOpen(true)
+            }}
+          >
+            <Plus data-icon="inline-start" />
             Log activity
-          </SubmitButton>
+          </Button>
+        )
+      }
+    >
+      {savedMessage && !formOpen && (
+        <p role="status" className="rounded-lg bg-sage px-3 py-2 text-sm text-primary">
+          {savedMessage}
+        </p>
+      )}
+
+      {formOpen && (
+        <div className="rounded-lg border border-[#E2E8E2] bg-[#F8F7F3] p-4">
+          <InlineActionForm
+            action={addActivityAction.bind(null, clientId)}
+            className="grid gap-3 sm:grid-cols-[12rem_1fr]"
+            onSuccess={(message) => {
+              setSavedMessage(message)
+              setFormOpen(false)
+            }}
+          >
+            <SelectField
+              name="activity_type"
+              label="Type"
+              defaultValue="note"
+              options={loggable.map(([value, label]) => ({ value, label }))}
+            />
+            <TextField name="summary" label="Summary" required maxLength={500} placeholder="Discussed lot options" />
+            <TextAreaField name="details" label="Details" className="sm:col-span-2" />
+            <div className="flex flex-wrap gap-2 sm:col-span-2">
+              <SubmitButton pendingLabel="Logging...">Log activity</SubmitButton>
+              <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </InlineActionForm>
         </div>
-      </InlineActionForm>
-      {activity.length > 0 && (
-        <ol className="flex flex-col border-t">
-          {activity.map((item) => (
-            <li key={item.id} className="flex flex-col gap-1 border-b py-3 last:border-b-0">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-sm font-medium text-foreground">{item.summary}</span>
-                <time dateTime={item.created_at} className="text-xs text-muted-foreground">
-                  {formatDateTime(item.created_at)}
-                </time>
-              </div>
-              {item.details && <p className="whitespace-pre-line text-sm text-muted-foreground">{item.details}</p>}
-              <span className="text-xs text-muted-foreground">
-                {`${ACTIVITY_TYPE_LABELS[item.activity_type] ?? item.activity_type} · ${item.author}`}
-              </span>
-            </li>
-          ))}
+      )}
+
+      {activity.length > 0 ? (
+        <ol className="flex flex-col">
+          {activity.map((item, index) => {
+            const Icon = ACTIVITY_ICONS[item.activity_type] ?? StickyNote
+            const last = index === activity.length - 1
+            return (
+              <li key={item.id} className="relative flex gap-3 pb-5 last:pb-0">
+                {!last && <span className="absolute top-9 bottom-1 left-4 w-px bg-[#E2E8E2]" aria-hidden="true" />}
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sage text-primary ring-1 ring-inset ring-primary/10">
+                  <Icon className="size-4" aria-hidden />
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1 pt-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                    <span className="min-w-0 break-words text-sm font-medium text-foreground">{item.summary}</span>
+                    <time dateTime={item.created_at} className="shrink-0 text-xs text-muted-foreground">
+                      {formatDateTime(item.created_at)}
+                    </time>
+                  </div>
+                  {item.details && (
+                    <p className="whitespace-pre-line break-words text-sm leading-relaxed text-muted-foreground">
+                      {item.details}
+                    </p>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {`${ACTIVITY_TYPE_LABELS[item.activity_type] ?? item.activity_type} · ${item.author}`}
+                  </span>
+                </div>
+              </li>
+            )
+          })}
         </ol>
+      ) : (
+        !formOpen && (
+          <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+            No activity logged yet.
+          </p>
+        )
       )}
     </Panel>
   )
