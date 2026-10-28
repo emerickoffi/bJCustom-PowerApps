@@ -8,7 +8,7 @@ import { signMediaPaths } from '@/lib/media'
 import { PageHeader, DetailList } from '@/components/shared/page-header'
 import { MediaGrid } from '@/components/walkthroughs/media-uploader'
 import { IssueStatusBadge, PriorityBadge, ValidationBadge } from '@/components/walkthroughs/badges'
-import { ApproveRepairButton, IssueNoteForm, IssueUpdateForm, RepairPhotoUploader } from '@/components/walkthroughs/issue-management'
+import { ApproveRepairButton, IssueNoteForm, IssueUpdateForm, MissingRepairPhotosReminder, RepairPhotoUploader } from '@/components/walkthroughs/issue-management'
 import { IssueTimeline } from '@/components/walkthroughs/issue-timeline'
 import { IssueConversation, type ConversationMessage } from '@/components/walkthroughs/issue-conversation'
 import { fullName, formatDate, formatDateTime } from '@/lib/format'
@@ -270,6 +270,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
               manager ? (
                 <div className="flex flex-col items-start gap-3">
                   <p className="text-sm text-muted-foreground">Review the work performed and after photos, then approve to request homeowner confirmation.</p>
+                  {toMedia('repair').length === 0 && <MissingRepairPhotosReminder />}
                   <ApproveRepairButton projectId={project.id} issueId={issue.id} />
                 </div>
               ) : (
@@ -340,6 +341,9 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
                 priority={priority}
                 dueDate={issue.due_date}
                 staffOptions={staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))}
+                canApprove={manager}
+                builderApproved={!!issue.builder_approved_at}
+                repairPhotoCount={toMedia('repair').length}
               />
             </section>
           )}

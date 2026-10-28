@@ -280,9 +280,9 @@ function ActivityTable({
                       onSelect(a)
                     }}
                     aria-label={`${actionLabel} ${a.name}`}
-                    className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-40 transition-opacity hover:bg-white hover:text-[#174D32] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D32] group-hover:opacity-100 motion-reduce:transition-none"
+                    className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-white text-[#174D32] transition-colors hover:border-[#174D32] hover:bg-[#174D32]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D32] motion-reduce:transition-none"
                   >
-                    <Pencil className="size-3.5" aria-hidden="true" />
+                    <Pencil className="size-4" aria-hidden="true" />
                   </button>
                 </td>
               </tr>

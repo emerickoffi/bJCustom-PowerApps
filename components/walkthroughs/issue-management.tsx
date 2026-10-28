@@ -4,7 +4,8 @@ import { useActionState, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { addIssueNoteAction, approveRepairAction, updateIssueAction } from '@/app/actions/walkthroughs'
-import { initialActionState } from '@/lib/action-state'
+import { Camera } from 'lucide-react'
+import { initialActionState, type ActionState } from '@/lib/action-state'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { ActionButton, InlineActionForm } from '@/components/shared/inline-action'
@@ -28,6 +29,9 @@ export function IssueUpdateForm({
   priority,
   dueDate,
   staffOptions,
+  canApprove = false,
+  builderApproved = false,
+  repairPhotoCount = 0,
 }: {
   projectId: string
   issueId: string
@@ -37,9 +41,22 @@ export function IssueUpdateForm({
   priority: IssuePriority
   dueDate: string | null
   staffOptions: { value: string; label: string }[]
+  canApprove?: boolean
+  builderApproved?: boolean
+  repairPhotoCount?: number
 }) {
-  const [state, formAction] = useActionState(updateIssueAction.bind(null, projectId, issueId), initialActionState)
+  const [savedStatus, setSavedStatus] = useState<string | null>(null)
+  const [state, formAction] = useActionState(async (prev: ActionState, formData: FormData) => {
+    const result = await updateIssueAction(projectId, issueId, prev, formData)
+    setSavedStatus(result.success ? String(formData.get('status') ?? '') : null)
+    return result
+  }, initialActionState)
+  const showApprovalPrompt = savedStatus === 'resolved' && status === 'resolved' && canApprove && !builderApproved
   return (
+    <>
+    {showApprovalPrompt && (
+      <RepairApprovalPrompt projectId={projectId} issueId={issueId} repairPhotoCount={repairPhotoCount} />
+    )}
     <form action={formAction} className="flex flex-col gap-4">
       <SelectField
         name="status"
@@ -79,6 +96,31 @@ export function IssueUpdateForm({
         Save changes
       </SubmitButton>
     </form>
+    </>
+  )
+}
+
+export function MissingRepairPhotosReminder() {
+  return (
+    <p className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+      <Camera className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      No after-repair photos yet. Adding them helps the homeowner confirm the work.
+    </p>
+  )
+}
+
+function RepairApprovalPrompt({ projectId, issueId, repairPhotoCount }: { projectId: string; issueId: string; repairPhotoCount: number }) {
+  return (
+    <div role="region" aria-label="Builder approval" className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-medium text-foreground">Next step: builder approval</p>
+        <p className="text-sm text-muted-foreground">
+          Review the work, then approve it to ask the homeowner to confirm the repair. Nothing is approved until you do.
+        </p>
+      </div>
+      {repairPhotoCount === 0 && <MissingRepairPhotosReminder />}
+      <ApproveRepairButton projectId={projectId} issueId={issueId} />
+    </div>
   )
 }
 
