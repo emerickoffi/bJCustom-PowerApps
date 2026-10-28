@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight, CircleArrowRight, CircleCheck, PauseCircle, ShieldCheck } from 'lucide-react'
 import { ArchitecturalPlaceholder } from '@/components/projects/project-card'
+import { CoverImage } from '@/components/projects/cover-image'
 import { PROJECT_STATUS_STYLES } from '@/components/shared/project-status-banner'
 import { ProgressBar } from '@/components/shared/progress'
 import { WARRANTY_STAGE_LABELS, type WarrantyStage } from '@/components/warranty/stage'
@@ -143,13 +144,11 @@ export function CompactProjectCard({
         </div>
         <div className="relative aspect-[4/3] w-20 shrink-0 overflow-hidden rounded-xl bg-muted sm:w-24">
           {project.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- signed storage URLs are short-lived
-            <img
+            <CoverImage
               src={project.photoUrl}
               alt={coverAlt(project.photoKind, project.name)}
-              loading="lazy"
-              decoding="async"
               className="size-full object-cover"
+              fallback={<ArchitecturalPlaceholder className="size-full bg-brand-deep" />}
             />
           ) : (
             <ArchitecturalPlaceholder className="size-full bg-brand-deep" />

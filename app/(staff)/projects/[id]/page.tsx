@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { AlertTriangle, CalendarClock, CalendarRange, ChevronLeft, ClipboardCheck, FolderOpen, History, MapPin, Pencil, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,6 +9,7 @@ import { getOrgFeatures } from '@/lib/features'
 import { getClientOptions, getStaffMembers } from '@/lib/queries'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { coverAlt, coverDesignBadge } from '@/lib/project-cover'
+import { CoverImage } from '@/components/projects/cover-image'
 import { DetailList } from '@/components/shared/page-header'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { ProgressRing } from '@/components/shared/progress'
@@ -96,6 +96,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const status = project.status as ProjectStatus
   const progress = project.progress_percent === null ? null : Number(project.progress_percent)
   const cover = photos.get(id)
+  const heroPlaceholder = (
+    <div className="blueprint absolute inset-0 flex items-end p-6" aria-hidden="true">
+      <span className="text-xs text-white/50">Site photos from walkthroughs will appear here</span>
+    </div>
+  )
 
   const activities = activitiesRes.data ?? []
   const counted = activities.filter((a) => a.status !== 'skipped')
@@ -230,26 +235,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
           <div className="relative min-h-56 lg:min-h-full">
             {cover ? (
-              <>
-                <Image
-                  src={cover.url}
-                  alt={coverAlt(cover.kind, project.name)}
-                  fill
-                  sizes="(min-width: 1024px) 26rem, 100vw"
-                  className="object-cover object-center"
-                  unoptimized
-                  priority
-                />
-                {coverDesignBadge(cover.kind) && (
-                  <span className="absolute bottom-3 right-3 rounded-full bg-brand-deep/75 px-2.5 py-1 text-[0.7rem] font-medium text-white backdrop-blur-sm">
-                    {coverDesignBadge(cover.kind)}
-                  </span>
-                )}
-              </>
+              <CoverImage
+                src={cover.url}
+                alt={coverAlt(cover.kind, project.name)}
+                className="absolute inset-0 size-full object-cover object-center"
+                priority
+                fallback={heroPlaceholder}
+                overlay={
+                  coverDesignBadge(cover.kind) && (
+                    <span className="absolute bottom-3 right-3 rounded-full bg-brand-deep/75 px-2.5 py-1 text-[0.7rem] font-medium text-white backdrop-blur-sm">
+                      {coverDesignBadge(cover.kind)}
+                    </span>
+                  )
+                }
+              />
             ) : (
-              <div className="blueprint absolute inset-0 flex items-end p-6" aria-hidden="true">
-                <span className="text-xs text-white/50">Site photos from walkthroughs will appear here</span>
-              </div>
+              heroPlaceholder
             )}
           </div>
         </div>

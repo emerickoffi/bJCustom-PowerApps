@@ -78,7 +78,7 @@ export function OrganizationSettingsForm({
         </div>
       </FormSection>
 
-      <div className="sticky bottom-4 z-10">
+      <div>
         <FormActions
           message={<FormMessage state={dirty && state.success ? initialActionState : state} />}
           note={dirty ? 'You have unsaved changes.' : 'Fields marked * are required.'}
