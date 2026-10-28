@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getProfileNames, PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
-import { PageHeader, DetailList } from '@/components/shared/page-header'
+import { PageHeader } from '@/components/shared/page-header'
+import { ClientInformationCard } from '@/components/clients/client-information-card'
 import { ClientStatusBadge } from '@/components/shared/status-badge'
 import { ProjectList } from '@/components/projects/project-list'
 import {
@@ -167,30 +168,18 @@ export default async function ClientDetailPage({
 
       <div className="grid gap-8 xl:grid-cols-[1fr_24rem]">
         <div className="flex flex-col gap-8">
-          <section className="flex flex-col gap-5 rounded-xl border bg-card p-5">
-            <h2 className="font-serif text-lg font-semibold text-foreground">Details</h2>
-            <DetailList
-              items={[
-                { label: 'Email', value: client.email ?? '—' },
-                { label: 'Phone', value: client.phone ?? '—' },
-                { label: 'Alternate phone', value: client.alternate_phone ?? '—' },
-                {
-                  label: 'Preferred contact',
-                  value: COMMUNICATION_LABELS[client.preferred_communication as CommunicationMethod],
-                },
-                { label: 'Mailing address', value: formatAddress(client) || '—' },
-                { label: 'Client since', value: formatDate(client.created_at) },
-              ]}
-            />
-            {client.notes && (
-              <div className="flex flex-col gap-1 rounded-lg bg-muted p-4">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Internal notes · staff only
-                </h3>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{client.notes}</p>
-              </div>
-            )}
-          </section>
+          <ClientInformationCard
+            info={{
+              email: client.email,
+              phone: client.phone,
+              alternatePhone: client.alternate_phone,
+              preferredContact: COMMUNICATION_LABELS[client.preferred_communication as CommunicationMethod] ?? null,
+              mailingAddress: formatAddress(client),
+              clientSince: formatDate(client.created_at),
+              projectCount: projects?.length ?? 0,
+              notes: client.notes,
+            }}
+          />
 
           <section aria-labelledby="client-projects" className="flex flex-col gap-4">
             <h2 id="client-projects" className="font-serif text-lg font-semibold text-foreground">
