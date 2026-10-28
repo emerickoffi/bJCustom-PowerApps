@@ -61,9 +61,30 @@ export const PLANNED_MODULES: PlannedModule[] = [
   },
 ]
 
+export const MY_WORK_NAV: NavItem = { href: '/my-work', label: 'My Work', icon: 'my-work', roles: ['project_manager'] }
+
+const PROJECT_MANAGER_PRIORITY = ['/my-work', '/projects', '/schedule', '/documents']
+
+function priorityRank(href: string): number {
+  const rank = PROJECT_MANAGER_PRIORITY.indexOf(href)
+  return rank === -1 ? PROJECT_MANAGER_PRIORITY.length : rank
+}
+
+/** Presentation only: which items to show and in what order. Access is still enforced by each page and by RLS. */
 export function navForRole(role: OrgRole | null, features?: FeatureMap): NavItem[] {
-  return PRIMARY_NAV.filter(
+  const items = [MY_WORK_NAV, ...PRIMARY_NAV].filter(
     (item) =>
       (!item.roles || (role && item.roles.includes(role))) && (!item.feature || !features || features[item.feature]),
   )
+  if (role !== 'project_manager') return items
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => priorityRank(a.item.href) - priorityRank(b.item.href) || a.index - b.index)
+    .map(({ item }) => item)
+}
+
+export function landingPathForRole(role: OrgRole | null): string {
+  if (role === 'client') return '/portal'
+  if (role === 'project_manager') return '/my-work'
+  return '/dashboard'
 }

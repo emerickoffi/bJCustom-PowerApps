@@ -14,12 +14,14 @@ export function Sidebar({
   logo,
   monogram,
   homeLabel,
+  homeHref = '/dashboard',
   defaultCollapsed,
 }: {
   items: NavItem[]
   logo: React.ReactNode
   monogram: string
   homeLabel: string
+  homeHref?: string
   defaultCollapsed: boolean
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
@@ -38,7 +40,7 @@ export function Sidebar({
       )}
     >
       <div className={cn('flex h-24 items-center border-b border-sidebar-border/70', collapsed ? 'justify-center px-2' : 'px-6')}>
-        <Link href="/dashboard" aria-label={homeLabel} className={cn('block', collapsed ? 'w-auto' : 'w-44')}>
+        <Link href={homeHref} aria-label={homeLabel} className={cn('block', collapsed ? 'w-auto' : 'w-44')}>
           {collapsed ? (
             <span className="flex size-10 items-center justify-center rounded-xl bg-primary font-serif text-base font-semibold italic text-champagne">
               {monogram}

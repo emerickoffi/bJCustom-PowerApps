@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
+import { landingPathForRole } from '@/lib/navigation'
 import { BrandStyle } from '@/components/brand/brand-style'
 import { CompanyLogo } from '@/components/brand/company-logo'
 import { ActivateForm } from '@/components/account/activate-form'
@@ -10,7 +11,7 @@ export const metadata: Metadata = { title: 'Activate your account' }
 export default async function ActivatePage() {
   const session = await getSession()
   if (!session) redirect('/auth/login')
-  if (!session.activationRequired) redirect(session.role === 'client' ? '/portal' : '/dashboard')
+  if (!session.activationRequired) redirect(session.role === 'client' ? '/portal' : landingPathForRole(session.role))
 
   return (
     <BrandStyle brand={session.brand}>
