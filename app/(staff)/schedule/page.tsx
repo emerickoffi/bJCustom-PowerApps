@@ -151,6 +151,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
+        tone="sage"
         icon={CalendarDaysIcon}
         eyebrow="Workspace"
         title="Schedule"

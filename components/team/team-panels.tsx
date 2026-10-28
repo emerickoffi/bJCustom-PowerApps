@@ -3,7 +3,7 @@
 import { inviteStaffAction, revokeInvitationAction, updateMemberAction, updateMemberFormAction } from '@/app/actions/team'
 import { ROLE_LABELS, STAFF_ROLES, type OrgRole } from '@/lib/domain'
 import { formatDate, initials } from '@/lib/format'
-import { Badge } from '@/components/ui/badge'
+import { SemanticBadge } from '@/components/shared/semantic-badge'
 import { ActionButton, InlineActionForm } from '@/components/shared/inline-action'
 import { NativeSelect, SelectField, TextField } from '@/components/shared/form-field'
 import { SubmitButton } from '@/components/shared/form-message'
@@ -35,32 +35,37 @@ export function MemberList({ members }: { members: MemberRow[] }) {
       <h2 id="members-heading" className="font-serif text-lg font-semibold text-foreground">
         Members
       </h2>
-      <ul className="divide-y overflow-hidden rounded-xl border bg-card">
+      <ul className="divide-y divide-[#E2E8E2]/80 overflow-hidden rounded-xl border border-[#E2E8E2] bg-card">
         {members.map((m) => (
-          <li key={m.id} className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+          <li
+            key={m.id}
+            className="flex flex-col gap-4 p-4 transition-colors hover:bg-[#F8F7F3]/70 md:flex-row md:items-center md:justify-between md:px-5"
+          >
             <div className="flex min-w-0 items-center gap-3">
               <span
                 aria-hidden="true"
-                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
+                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#EAF0E9] text-sm font-semibold text-[#174D32] ring-1 ring-inset ring-[#174D32]/12"
               >
                 {initials(m.name ?? m.email)}
               </span>
-              <div className="flex min-w-0 flex-col">
-                <span className="flex items-center gap-2 font-medium text-foreground">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="flex min-w-0 flex-wrap items-center gap-2 font-medium text-foreground">
                   <span className="truncate">{m.name ?? m.email ?? 'Team member'}</span>
-                  {m.isSelf && <Badge variant="secondary">You</Badge>}
-                  {m.status === 'suspended' && <Badge variant="destructive">Suspended</Badge>}
+                  {m.isSelf && <SemanticBadge tone="neutral">You</SemanticBadge>}
+                  {m.status === 'suspended' && <SemanticBadge tone="danger">Suspended</SemanticBadge>}
                 </span>
-                <span className="truncate text-sm text-muted-foreground">{m.email}</span>
+                <span className="truncate text-sm text-[#64756D]">{m.email}</span>
               </div>
             </div>
             {m.isSelf ? (
-              <span className="text-sm text-muted-foreground">{ROLE_LABELS[m.role]}</span>
+              <SemanticBadge tone="success" className="self-start md:self-auto">
+                {ROLE_LABELS[m.role]}
+              </SemanticBadge>
             ) : (
               <>
               <div className="flex items-center justify-between gap-3 md:hidden">
-                <span className="flex flex-col text-sm">
-                  <span className="text-foreground">{ROLE_LABELS[m.role]}</span>
+                <span className="flex flex-wrap items-center gap-2 text-sm">
+                  <SemanticBadge tone="success">{ROLE_LABELS[m.role]}</SemanticBadge>
                   <span className="text-xs text-muted-foreground">{m.status === 'active' ? 'Active' : 'Suspended'}</span>
                 </span>
                 <Sheet>
@@ -108,13 +113,16 @@ export function MemberList({ members }: { members: MemberRow[] }) {
                   </SheetContent>
                 </Sheet>
               </div>
-              <div className="hidden flex-wrap items-start gap-2 md:flex">
-                <InlineActionForm action={updateMemberFormAction} className="flex items-center gap-2">
+              <div className="hidden flex-wrap items-center gap-3 md:flex">
+                <InlineActionForm
+                  action={updateMemberFormAction}
+                  className="flex items-center gap-1.5 rounded-lg border border-[#E2E8E2] bg-[#F8F7F3] p-1"
+                >
                   <input type="hidden" name="membership_id" value={m.id} />
                   <label htmlFor={`role-${m.id}`} className="sr-only">
                     Role
                   </label>
-                  <NativeSelect id={`role-${m.id}`} name="role" defaultValue={m.role} className="w-44">
+                  <NativeSelect id={`role-${m.id}`} name="role" defaultValue={m.role} className="w-44 bg-card">
                     {roleOptions.map((o) => (
                       <option key={o.value} value={o.value}>
                         {o.label}

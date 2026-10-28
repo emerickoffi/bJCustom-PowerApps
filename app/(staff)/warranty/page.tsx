@@ -9,8 +9,23 @@ import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { RunWarrantyButton } from '@/components/warranty/run-warranty-button'
 import { WARRANTY_STAGE_LABELS, daysUntil, type WarrantyStage } from '@/components/warranty/stage'
 import { cn } from '@/lib/utils'
+import { SemanticBadge, type SemanticTone } from '@/components/shared/semantic-badge'
 
 export const metadata: Metadata = { title: 'Warranty' }
+
+const STAGE_TONE: Record<WarrantyStage, SemanticTone> = {
+  monitoring: 'success',
+  completed: 'pending',
+  ready_to_archive: 'info',
+  archived: 'neutral',
+}
+
+function milestoneTone(days: number | null) {
+  if (days === null) return 'text-muted-foreground'
+  if (days < 0) return 'font-medium text-[#BD302B]'
+  if (days <= 30) return 'font-medium text-[#96570E]'
+  return 'text-foreground'
+}
 
 const FILTERS: { value: WarrantyStage | 'all'; label: string }[] = [
   { value: 'all', label: 'All active' },
@@ -64,6 +79,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={ShieldCheckIcon}
+        tone="sage"
         title="Warranty"
         description="Warranties start automatically on the official completion date. Coverage periods run concurrently: Year 1 workmanship, Year 2 systems, Year 10 structural."
         actions={session.role === 'org_admin' ? <RunWarrantyButton /> : null}
@@ -95,7 +111,9 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
             aria-current={filter === f.value ? 'page' : undefined}
             className={cn(
               'flex min-h-11 items-center rounded-full border px-3.5 text-sm font-medium transition-colors md:min-h-0 md:py-1.5',
-              filter === f.value ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted',
+              filter === f.value
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-[#E2E8E2] bg-card text-foreground hover:bg-[#EAF0E9] hover:text-primary',
             )}
           >
             {f.label}
@@ -129,19 +147,21 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
           {rows.map((r) => {
             const days = r.current ? daysUntil(r.current.due_on) : null
             const claims = openClaims.get(r.project_id) ?? 0
-            const soon = days !== null && days <= 30
             return (
               <li key={r.id} className="surface flex flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 flex-col">
-                    <span className="break-words font-medium text-foreground">{r.projects?.name ?? 'Project'}</span>
+                  <div className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap">
+                    <span className="truncate font-semibold text-foreground">{r.projects?.name ?? 'Project'}</span>
                     {r.projects?.project_number && (
-                      <span className="font-mono text-xs text-muted-foreground">{r.projects.project_number}</span>
+                      <>
+                        <span aria-hidden="true" className="shrink-0 text-muted-foreground">·</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">{r.projects.project_number}</span>
+                      </>
                     )}
                   </div>
-                  <span className="shrink-0 rounded-full bg-sage px-2.5 py-1 text-xs font-medium text-primary">
+                  <SemanticBadge tone={STAGE_TONE[r.stage]} className="shrink-0">
                     {r.current?.stage_label ?? WARRANTY_STAGE_LABELS[r.stage]}
-                  </span>
+                  </SemanticBadge>
                 </div>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   <div className="flex flex-col gap-0.5">
@@ -150,11 +170,11 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
                   </div>
                   <div className="flex flex-col gap-0.5">
                     <dt className="text-xs text-muted-foreground">Open claims</dt>
-                    <dd className={cn('tabular-nums', claims > 0 && 'font-medium text-warning')}>{claims}</dd>
+                    <dd className={cn('tabular-nums', claims > 0 && 'font-medium text-[#96570E]')}>{claims}</dd>
                   </div>
                   <div className="col-span-2 flex flex-col gap-0.5">
                     <dt className="text-xs text-muted-foreground">Next milestone</dt>
-                    <dd className={cn(soon && 'font-medium text-warning')}>
+                    <dd className={milestoneTone(days)}>
                       {r.current ? (
                         <>
                           <span className="block">{r.current.coverage_name}</span>
@@ -180,7 +200,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
         </ul>
         <div className="surface hidden overflow-x-auto md:block">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-border bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <thead className="border-b border-[#E2E8E2] bg-[#F4F6F3] text-left text-xs font-medium uppercase tracking-wide text-[#64756D]">
               <tr>
                 <th scope="col" className="px-5 py-3 font-medium">Project</th>
                 <th scope="col" className="px-5 py-3 font-medium">Stage</th>
@@ -188,11 +208,11 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
                 <th scope="col" className="px-5 py-3 font-medium">Next milestone</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-[#E2E8E2]/80">
               {rows.map((r) => {
                 const days = r.current ? daysUntil(r.current.due_on) : null
                 return (
-                  <tr key={r.id} className="hover:bg-muted/40">
+                  <tr key={r.id} className="transition-colors hover:bg-[#F8F7F3]">
                     <td className="max-w-xs px-5 py-3.5">
                       <div className="flex min-w-0 items-baseline gap-2 whitespace-nowrap">
                         <Link
@@ -211,13 +231,20 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
                         )}
                       </div>
                     </td>
-                    <td className="px-5 py-3.5">{r.current?.stage_label ?? WARRANTY_STAGE_LABELS[r.stage]}</td>
-                    <td className="px-5 py-3.5 tabular-nums">{formatDate(r.start_date)}</td>
+                    <td className="px-5 py-3.5">
+                      <SemanticBadge tone={STAGE_TONE[r.stage]}>
+                        {r.current?.stage_label ?? WARRANTY_STAGE_LABELS[r.stage]}
+                      </SemanticBadge>
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-muted-foreground">{formatDate(r.start_date)}</td>
                     <td className="px-5 py-3.5">
                       {r.current ? (
-                        <span className={cn(days !== null && days <= 30 && 'font-medium text-warning')}>
-                          {`${r.current.coverage_name} · ${formatDate(r.current.due_on)}`}
-                          {days !== null && <span className="text-muted-foreground">{` (${days} days)`}</span>}
+                        <span className="flex flex-col gap-0.5">
+                          <span className="text-foreground">{r.current.coverage_name}</span>
+                          <span className={cn('text-xs tabular-nums', milestoneTone(days))}>
+                            {formatDate(r.current.due_on)}
+                            {days !== null && <span className="font-normal text-muted-foreground">{` · ${days} days`}</span>}
+                          </span>
                         </span>
                       ) : (
                         <span className="text-muted-foreground">All periods ended</span>
