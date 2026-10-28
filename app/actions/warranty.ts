@@ -7,7 +7,7 @@ import { requireAdmin, requireStaff } from '@/lib/session'
 import { friendlyDbError, type ActionState } from '@/lib/action-state'
 import { FEATURES, type FeatureKey } from '@/lib/feature-registry'
 
-const featureKeys = FEATURES.filter((f) => f.available).map((f) => f.key) as [FeatureKey, ...FeatureKey[]]
+const featureKeys = FEATURES.filter((f) => f.available && !f.core).map((f) => f.key) as [FeatureKey, ...FeatureKey[]]
 
 export async function setFeatureAction(key: string, enabled: boolean): Promise<ActionState> {
   const session = await requireAdmin()
