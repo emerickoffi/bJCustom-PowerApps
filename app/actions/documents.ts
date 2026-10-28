@@ -103,6 +103,8 @@ export async function prepareDocumentUpload(input: z.input<typeof prepareSchema>
     const { data: doc } = await supabase.from('project_documents').select('id, project_id, scope, archived_at').eq('id', documentId).maybeSingle()
     if (!doc || doc.scope !== 'project' || doc.project_id !== projectId) return { ok: false, error: 'Document not found.' }
     if (doc.archived_at) return { ok: false, error: 'Restore this document before uploading a new version.' }
+    const { data: snapshot } = await supabase.from('estimate_signing_snapshots').select('estimate_id').eq('document_id', documentId).maybeSingle()
+    if (snapshot) return { ok: false, error: 'This is the locked signing copy of an estimate revision and cannot be replaced. Create a new estimate revision instead.' }
   }
 
   return {

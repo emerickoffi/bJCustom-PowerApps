@@ -36,3 +36,8 @@ export function estimatePdfBaseName(input: {
 export function estimatePdfFilename(input: Parameters<typeof estimatePdfBaseName>[0]): string {
   return `${estimatePdfBaseName(input)}.pdf`
 }
+
+/** `{ProjectNumber}_{ProjectName}_{EstimateNumber}_Rev{Revision}.pdf` — always names the revision, since a signing copy is tied to one exact revision. */
+export function estimateSigningFilename(input: Parameters<typeof estimatePdfBaseName>[0] & { revision: number }): string {
+  return `${estimatePdfBaseName({ ...input, revision: null })}_Rev${input.revision}.pdf`
+}

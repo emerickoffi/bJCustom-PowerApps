@@ -2,6 +2,29 @@ import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import type { SignatureStatus, SignatureSummary } from '@/lib/signatures'
 
+export type EstimateSigningState = {
+  snapshot: { documentId: string; name: string; createdAt: string | null } | null
+  summary: SignatureSummary | null
+}
+
+/** The estimate revision's signing snapshot (if created) and its latest signature request, read through RLS. */
+export async function getEstimateSigningState(estimateId: string): Promise<EstimateSigningState> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('estimate_signing_snapshots')
+    .select('document_id, completed_at, project_documents:document_id(name)')
+    .eq('estimate_id', estimateId)
+    .not('document_id', 'is', null)
+    .maybeSingle()
+  if (!data?.document_id) return { snapshot: null, summary: null }
+  const doc = Array.isArray(data.project_documents) ? data.project_documents[0] : data.project_documents
+  const summaries = await getSignatureSummaries([data.document_id])
+  return {
+    snapshot: { documentId: data.document_id, name: (doc as { name?: string } | null)?.name ?? 'Estimate signing copy', createdAt: data.completed_at },
+    summary: summaries[data.document_id] ?? null,
+  }
+}
+
 /** Latest signature request per document, read through RLS. */
 export async function getSignatureSummaries(documentIds: string[]): Promise<Record<string, SignatureSummary>> {
   if (!documentIds.length) return {}
