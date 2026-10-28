@@ -90,7 +90,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           defaultCollapsed={collapsed}
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+          <header className="sticky top-0 z-30 border-b bg-background pt-[env(safe-area-inset-top)]">
             <div className="flex h-14 items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:gap-3 sm:px-6 lg:px-10">
               <MobileNav items={items} logo={logo} />
               <Link href="/dashboard" className="flex min-h-11 w-24 shrink-0 items-center sm:w-28 lg:hidden" aria-label={homeLabel}>

@@ -43,8 +43,8 @@ function StageRow({ status, count, total }: { status: ProjectStatus; count: numb
 
 function Metric({ label, value, emphasis }: { label: string; value: number; emphasis?: boolean }) {
   return (
-    <div className={cn('flex flex-col gap-0.5 rounded-lg border px-3 py-2.5', emphasis ? 'border-primary/15 bg-sage/60' : 'bg-card')}>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
+    <div className={cn('flex flex-col gap-1 rounded-lg border px-4 py-3', emphasis ? 'border-primary/15 bg-sage/60' : 'bg-card')}>
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className={cn('tabular font-serif text-2xl font-semibold leading-tight', emphasis ? 'text-primary' : 'text-foreground')}>
         {value}
       </dd>
@@ -66,10 +66,10 @@ export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectSta
 
   return (
     <section aria-labelledby="pipeline-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-4">
         <div className="flex flex-col gap-1">
           <h2 id="pipeline-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
-            Project pipeline
+            Project Pipeline
           </h2>
           <p className="text-sm text-muted-foreground">Portfolio distribution from first call to handover</p>
         </div>
@@ -119,7 +119,7 @@ export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectSta
       )}
 
       {populated.length > 0 && (
-        <ol className="-mx-2 flex flex-col" aria-label="Stages with projects">
+        <ol className="-mx-2 flex flex-col divide-y divide-border/60" aria-label="Stages with projects">
           {populated.map((s) => (
             <StageRow key={s} status={s} count={countOf(s)} total={total} />
           ))}

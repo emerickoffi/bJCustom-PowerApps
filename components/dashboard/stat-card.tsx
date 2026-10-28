@@ -4,12 +4,12 @@ import { cn } from '@/lib/utils'
 
 type Accent = 'primary' | 'champagne' | 'warning' | 'danger' | 'neutral'
 
-const ACCENT: Record<Accent, { icon: string; bar: string }> = {
-  primary: { icon: 'bg-sage text-primary', bar: 'bg-primary' },
-  champagne: { icon: 'bg-champagne-soft text-champagne-foreground', bar: 'bg-champagne' },
-  warning: { icon: 'bg-champagne-soft text-warning', bar: 'bg-warning' },
-  danger: { icon: 'bg-destructive/8 text-destructive', bar: 'bg-destructive' },
-  neutral: { icon: 'bg-muted text-muted-foreground', bar: 'bg-muted-foreground/40' },
+const ACCENT: Record<Accent, string> = {
+  primary: 'bg-sage text-primary',
+  champagne: 'bg-champagne-soft text-champagne-foreground',
+  warning: 'bg-champagne-soft text-warning',
+  danger: 'bg-destructive/8 text-destructive',
+  neutral: 'bg-muted text-muted-foreground',
 }
 
 export function StatCard({
@@ -27,32 +27,31 @@ export function StatCard({
   hint?: string
   accent?: Accent
 }) {
-  const a = ACCENT[accent]
   return (
     <Link
       href={href}
-      className="group surface relative flex flex-col gap-4 overflow-hidden p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-lift"
+      aria-label={`${label}: ${value}${hint ? `. ${hint}` : ''}. View details.`}
+      className="group surface flex flex-col gap-4 p-5 transition-[border-color,box-shadow] duration-200 hover:border-primary/25 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <span className={cn('absolute inset-x-0 top-0 h-0.5 opacity-0 transition-opacity group-hover:opacity-100', a.bar)} aria-hidden="true" />
       <div className="flex items-start justify-between gap-3">
         {Icon ? (
-          <span className={cn('flex size-10 items-center justify-center rounded-xl', a.icon)}>
-            <Icon className="size-5" aria-hidden="true" />
+          <span className={cn('flex size-9 items-center justify-center rounded-lg', ACCENT[accent])} aria-hidden="true">
+            <Icon className="size-[1.125rem]" />
           </span>
         ) : (
           <span />
         )}
         <ArrowUpRight
-          className="size-4 text-muted-foreground/60 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
+          className="size-4 text-muted-foreground/50 transition-[color,transform] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
           aria-hidden="true"
         />
       </div>
       <div className="flex flex-col gap-1">
-        <span className="tabular font-serif text-4xl font-semibold leading-none tracking-tight text-foreground">
+        <span className="tabular font-serif text-[2rem] font-semibold leading-none tracking-tight text-brand-deep">
           {value}
         </span>
-        <span className="text-sm font-medium text-foreground">{label}</span>
-        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
+        <span className="pt-1 text-sm font-medium text-foreground">{label}</span>
+        {hint && <span className="text-xs leading-relaxed text-muted-foreground">{hint}</span>}
       </div>
     </Link>
   )
