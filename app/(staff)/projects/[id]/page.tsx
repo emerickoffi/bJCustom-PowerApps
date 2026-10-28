@@ -205,9 +205,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="flex flex-col gap-8">
       <ProjectSectionScroll />
-      <AssistantProjectScope
-        project={{ id: project.id, name: project.name, number: project.project_number ?? null, statusLabel: PROJECT_STATUS_LABELS[status] }}
-      />
       <section aria-labelledby="project-heading" className="overflow-hidden rounded-3xl bg-brand-deep text-white shadow-lift">
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
           <div className="flex flex-col gap-8 p-6 sm:p-8 lg:p-10">

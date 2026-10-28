@@ -1,6 +1,17 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { AlertTriangle, CalendarRange, Lock, CalendarDays as CalendarDaysIcon } from 'lucide-react'
+import {
+  AlertTriangle,
+  CalendarClock,
+  CalendarRange,
+  ListChecks,
+  Lock,
+  MapPin,
+  TrendingUp,
+  CalendarDays as CalendarDaysIcon,
+  type LucideIcon,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getStaffMembers } from '@/lib/queries'
@@ -38,6 +49,53 @@ function describeChange(field: string, change: Change, nameFor: (id: string | nu
   const label = EVENT_FIELD_LABELS[field] ?? field
   if (field === 'internal_notes' || field === 'public_note') return `${label} updated`
   return `${label}: ${fmt(change.from)} → ${fmt(change.to)}`
+}
+
+function KpiCard({
+  icon: Icon,
+  label,
+  tone = 'default',
+  children,
+}: {
+  icon: LucideIcon
+  label: string
+  tone?: 'default' | 'alert'
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-[#E2E8E2] bg-white p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium uppercase tracking-wider text-[#103B27]/60">{label}</span>
+        <span
+          className={cn(
+            'flex size-7 items-center justify-center rounded-lg',
+            tone === 'alert' ? 'bg-[#FDE8E7] text-[#BD302B]' : 'bg-[#EAF0E9] text-[#174D32]',
+          )}
+          aria-hidden="true"
+        >
+          <Icon className="size-3.5" />
+        </span>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function KpiValue({ muted = false, children }: { muted?: boolean; children: React.ReactNode }) {
+  return (
+    <span
+      className={cn(
+        'font-serif text-2xl font-semibold leading-tight tabular-nums',
+        muted ? 'text-[#103B27]/45' : 'text-[#103B27]',
+      )}
+    >
+      {children}
+    </span>
+  )
+}
+
+function KpiNote({ tone = 'default', children }: { tone?: 'default' | 'alert'; children: React.ReactNode }) {
+  return <span className={cn('text-xs', tone === 'alert' ? 'font-medium text-[#BD302B]' : 'text-muted-foreground')}>{children}</span>
 }
 
 export default async function SchedulePage({
@@ -97,6 +155,7 @@ export default async function SchedulePage({
     return d && (!max || d > max) ? d : max
   }, null)
 
+  const address = formatAddress(project)
   const latest = baselines[0]
   const baselineEnd = latest
     ? ((latest.snapshot as { planned_end: string | null }[]).reduce<string | null>(
@@ -110,13 +169,24 @@ export default async function SchedulePage({
       : null
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader icon={CalendarDaysIcon}
-        backHref={`/projects/${project.id}`}
-        backLabel={project.name}
-        eyebrow={<span className="font-mono normal-case tracking-normal">{project.project_number}</span>}
-        title="Construction schedule"
-        description={formatAddress(project)}
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        icon={CalendarDaysIcon}
+        eyebrow={
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 normal-case tracking-normal">
+            <span className="truncate font-medium text-[#103B27]">{project.name}</span>
+            {project.project_number && <span className="font-mono">{project.project_number}</span>}
+          </span>
+        }
+        title="Construction Schedule"
+        description={
+          address ? (
+            <span className="flex items-center gap-1.5">
+              <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
+              {address}
+            </span>
+          ) : undefined
+        }
         actions={manager && activities.length > 0 && <InitializeScheduleButton projectId={project.id} label="Add missing template activities" />}
       />
 
@@ -149,41 +219,51 @@ export default async function SchedulePage({
         </section>
       ) : (
         <>
-          <section aria-label="Schedule summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="flex flex-col gap-3 rounded-xl border bg-card p-5">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Overall progress</span>
+          <section aria-label="Schedule summary" className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2 xl:grid-cols-4">
+            <KpiCard icon={TrendingUp} label="Overall progress">
               {project.progress_percent === null ? (
-                <span className="text-sm text-muted-foreground">Progress not configured · all activities have zero weight or are not applicable</span>
+                <>
+                  <KpiValue muted>Not configured</KpiValue>
+                  <KpiNote>All activities have zero weight or are not applicable</KpiNote>
+                </>
               ) : (
                 <>
-                  <span className="font-serif text-3xl font-semibold tabular-nums text-foreground">{`${Math.round(Number(project.progress_percent))}%`}</span>
-                  <ProgressBar value={Number(project.progress_percent)} label="Overall project progress" />
+                  <KpiValue>{`${Math.round(Number(project.progress_percent))}%`}</KpiValue>
+                  <ProgressBar value={Number(project.progress_percent)} label="Overall project progress" className="[&>span]:hidden" />
                 </>
               )}
-            </div>
-            <div className="flex flex-col gap-1 rounded-xl border bg-card p-5">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Activities complete</span>
-              <span className="font-serif text-3xl font-semibold tabular-nums text-foreground">{`${completed} / ${active.length}`}</span>
-              <span className="text-xs text-muted-foreground">Weighted by milestone importance</span>
-            </div>
-            <div className="flex flex-col gap-1 rounded-xl border bg-card p-5">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Forecast completion</span>
-              <span className="font-serif text-2xl font-semibold text-foreground">{formatDate(forecastEnd)}</span>
-              <span className={slipDays && slipDays > 0 ? 'text-xs font-medium text-destructive' : 'text-xs text-muted-foreground'}>
-                {slipDays === null
-                  ? `Target ${formatDate(project.target_completion_date)}`
-                  : slipDays > 0
+            </KpiCard>
+            <KpiCard icon={ListChecks} label="Activities complete">
+              <KpiValue>
+                {completed}
+                <span className="text-lg font-medium text-[#103B27]/45">{` / ${active.length}`}</span>
+              </KpiValue>
+              <KpiNote>{active.length === activities.length ? 'All scheduled activities' : 'Skipped activities excluded'}</KpiNote>
+            </KpiCard>
+            <KpiCard icon={CalendarClock} label="Forecast completion">
+              {forecastEnd ? <KpiValue>{formatDate(forecastEnd)}</KpiValue> : <KpiValue muted>Not forecast yet</KpiValue>}
+              {slipDays !== null && (
+                <KpiNote tone={slipDays > 0 ? 'alert' : 'default'}>
+                  {slipDays > 0
                     ? `${slipDays} days behind baseline v${latest?.version}`
                     : slipDays < 0
                       ? `${-slipDays} days ahead of baseline v${latest?.version}`
                       : `On baseline v${latest?.version}`}
-              </span>
-            </div>
-            <div className="flex flex-col gap-1 rounded-xl border bg-card p-5">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Needs attention</span>
-              <span className="font-serif text-3xl font-semibold tabular-nums text-foreground">{delayed.length + conflictIds.length}</span>
-              <span className="text-xs text-muted-foreground">{`${delayed.length} delayed or past due · ${conflictIds.length} date conflicts`}</span>
-            </div>
+                </KpiNote>
+              )}
+              <KpiNote>
+                {project.target_completion_date ? `Target ${formatDate(project.target_completion_date)}` : 'No target date set'}
+                {!forecastEnd && ' · forecast appears once activities have dates'}
+              </KpiNote>
+            </KpiCard>
+            <KpiCard icon={AlertTriangle} label="Needs attention" tone={delayed.length + conflictIds.length > 0 ? 'alert' : 'default'}>
+              <KpiValue muted={delayed.length + conflictIds.length === 0}>{delayed.length + conflictIds.length}</KpiValue>
+              <KpiNote>
+                {delayed.length + conflictIds.length === 0
+                  ? 'Nothing delayed, past due or in conflict'
+                  : `${delayed.length} delayed or past due · ${conflictIds.length} date conflicts`}
+              </KpiNote>
+            </KpiCard>
           </section>
 
           {conflicts.length > 0 && (

@@ -16,18 +16,50 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { ArrowUpRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import {
+  ASSISTANT_MODULE_LABELS,
+  isSafeAppPath,
+  moduleForPath,
+  suggestionsFor,
+  type AssistantModule,
+} from '@/lib/ai/assistant-scope'
 import { useAssistantProject, type AssistantProject } from './assistant-context'
 
 type QuickActionKey = 'overview' | 'schedule' | 'update' | 'warranty'
+
+type AnswerLink = { label: string; href: string }
+type AnswerSource = { label: string; href: string; period: string }
+type HealthBadge = { project: string; indicator: keyof typeof HEALTH_STYLES; label: string }
+
+const HEALTH_STYLES = {
+  on_track: 'border-primary/30 bg-sage text-primary',
+  needs_attention: 'border-amber-300 bg-amber-50 text-amber-900',
+  at_risk: 'border-destructive/30 bg-destructive/5 text-destructive',
+  insufficient_data: 'border-border bg-muted text-muted-foreground',
+} as const
+
+const SOURCE_PREFIX = 'https://fred.stlouisfed.org/series/'
 
 type Message =
   | { id: string; role: 'user'; text: string }
   | { id: string; role: 'assistant'; status: 'loading' }
   | { id: string; role: 'assistant'; status: 'error'; text: string }
-  | { id: string; role: 'assistant'; status: 'answer'; text: string; reviewDraft?: boolean }
+  | {
+      id: string
+      role: 'assistant'
+      status: 'answer'
+      text: string
+      reviewDraft?: boolean
+      links?: AnswerLink[]
+      sources?: AnswerSource[]
+      health?: HealthBadge
+    }
 
 const QUICK_ACTIONS: { key: QuickActionKey; label: string; hint: string; icon: LucideIcon }[] = [
   { key: 'overview', label: 'Project Overview', hint: 'Status, progress, and open items', icon: FolderKanban },
@@ -99,6 +131,13 @@ export function AssistantLauncher({ configured }: { configured: boolean }) {
 
 function AssistantPanel({ configured, onClose }: { configured: boolean; onClose: () => void }) {
   const project = useAssistantProject()
+  const pathname = usePathname()
+  const pageModule = moduleForPath(pathname ?? '', project?.id ?? null)
+  const suggestions = suggestionsFor(
+    pageModule,
+    Boolean(project),
+    project?.capabilities ?? { schedule: false, documents: false, signatures: false },
+  )
   const [messages, setMessages] = useState<Message[]>([])
   const [draft, setDraft] = useState('')
   const logRef = useRef<HTMLDivElement>(null)
@@ -136,15 +175,40 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
       const res = await fetch('/api/assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: project?.id ?? null, messages: [...history, { role: 'user', text: question }] }),
+        body: JSON.stringify({
+          projectId: project?.id ?? null,
+          module: pageModule,
+          messages: [...history, { role: 'user', text: question }],
+        }),
         signal: controller.signal,
       })
-      const data = (await res.json().catch(() => null)) as { text?: string; error?: string } | null
+      const data = (await res.json().catch(() => null)) as {
+        text?: string
+        error?: string
+        links?: AnswerLink[]
+        sources?: AnswerSource[]
+        health?: HealthBadge
+      } | null
       if (!res.ok || !data?.text) {
         settle({ id: loadingId, role: 'assistant', status: 'error', text: data?.error ?? 'The assistant could not answer right now. Please try again.' })
         return
       }
-      settle({ id: loadingId, role: 'assistant', status: 'answer', text: data.text, reviewDraft })
+      const links = (data.links ?? [])
+        .filter((l) => typeof l?.href === 'string' && typeof l?.label === 'string' && isSafeAppPath(l.href))
+        .slice(0, 3)
+      const sources = (data.sources ?? [])
+        .filter(
+          (s) =>
+            typeof s?.href === 'string' &&
+            typeof s?.label === 'string' &&
+            typeof s?.period === 'string' &&
+            s.href.startsWith(SOURCE_PREFIX) &&
+            /^[A-Z0-9]{3,20}$/.test(s.href.slice(SOURCE_PREFIX.length)),
+        )
+        .slice(0, 6)
+      const health =
+        data.health && typeof data.health.label === 'string' && data.health.indicator in HEALTH_STYLES ? data.health : undefined
+      settle({ id: loadingId, role: 'assistant', status: 'answer', text: data.text, reviewDraft, links, sources, health })
     } catch {
       if (controller.signal.aborted) return
       settle({ id: loadingId, role: 'assistant', status: 'error', text: 'Network problem. Check your connection and try again.' })
@@ -193,7 +257,7 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
         </div>
       </header>
 
-      <ContextBar project={project} />
+      <ContextBar project={project} module={pageModule} />
 
       <div
         ref={logRef}
@@ -204,12 +268,18 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 focus-visible:outline-none"
       >
         {messages.length === 0 ? (
-          <WelcomeState project={project} configured={configured} onAction={runQuickAction} />
+          <WelcomeState
+            project={project}
+            configured={configured}
+            suggestions={suggestions}
+            onSuggestion={(s) => void send(s)}
+            onAction={runQuickAction}
+          />
         ) : (
           <ol className="flex flex-col gap-4">
             {messages.map((m) => (
               <li key={m.id}>
-                <MessageBubble message={m} />
+                <MessageBubble message={m} onNavigate={onClose} />
               </li>
             ))}
           </ol>
@@ -221,12 +291,13 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
   )
 }
 
-function ContextBar({ project }: { project: AssistantProject | null }) {
+function ContextBar({ project, module }: { project: AssistantProject | null; module: AssistantModule | null }) {
+  const pageLabel = module && module !== 'overview' ? ASSISTANT_MODULE_LABELS[module] : null
   return (
     <div className="flex items-center gap-3 border-b bg-sage/60 px-4 py-2.5">
       <Building2 className="size-4 shrink-0 text-primary" aria-hidden="true" />
       {project ? (
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm font-semibold text-foreground">
             {project.name}
             {project.number && <span className="font-normal text-muted-foreground">{` · ${project.number}`}</span>}
@@ -234,7 +305,13 @@ function ContextBar({ project }: { project: AssistantProject | null }) {
           <span className="text-xs text-muted-foreground">{project.statusLabel}</span>
         </div>
       ) : (
-        <span className="text-sm font-medium text-foreground">All accessible projects</span>
+        <span className="flex-1 text-sm font-medium text-foreground">All accessible projects</span>
+      )}
+      {pageLabel && (
+        <span className="shrink-0 rounded-full border border-primary/20 bg-card px-2 py-0.5 text-xs font-medium text-primary">
+          <span className="sr-only">Current page: </span>
+          {pageLabel}
+        </span>
       )}
     </div>
   )
@@ -243,10 +320,14 @@ function ContextBar({ project }: { project: AssistantProject | null }) {
 function WelcomeState({
   project,
   configured,
+  suggestions,
+  onSuggestion,
   onAction,
 }: {
   project: AssistantProject | null
   configured: boolean
+  suggestions: string[]
+  onSuggestion: (s: string) => void
   onAction: (k: QuickActionKey) => void
 }) {
   return (
@@ -259,6 +340,25 @@ function WelcomeState({
             : 'Ask about any project you can access, or start with a suggestion below.'}
         </p>
       </div>
+      {suggestions.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Suggested for this page</span>
+          <ul className="flex flex-wrap gap-2">
+            {suggestions.map((s) => (
+              <li key={s}>
+                <button
+                  type="button"
+                  onClick={() => onSuggestion(s)}
+                  disabled={!configured}
+                  className="rounded-full border bg-card px-3 py-1.5 text-left text-sm text-foreground shadow-xs transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {s}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2.5">
         {QUICK_ACTIONS.map(({ key, label, hint, icon: Icon }) => (
           <button
@@ -286,7 +386,7 @@ function WelcomeState({
   )
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({ message, onNavigate }: { message: Message; onNavigate: () => void }) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
@@ -325,8 +425,52 @@ function MessageBubble({ message }: { message: Message }) {
         {message.status === 'answer' && (
           <>
             <div className="flex flex-col gap-2 rounded-2xl rounded-tl-md border bg-card px-3.5 py-3">
+              {message.health && (
+                <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                  <span>Project health for {message.health.project}:</span>
+                  <span className={cn('rounded-full border px-2 py-0.5 font-semibold', HEALTH_STYLES[message.health.indicator])}>
+                    {message.health.label}
+                  </span>
+                </p>
+              )}
               <p className="whitespace-pre-wrap text-pretty text-sm leading-relaxed text-foreground">{message.text}</p>
             </div>
+            {message.sources && message.sources.length > 0 && (
+              <div className="flex flex-col gap-1 rounded-xl border border-dashed bg-card/60 px-3 py-2">
+                <span className="text-xs font-semibold text-muted-foreground">Sources</span>
+                <ul className="flex flex-col gap-1">
+                  {message.sources.map((s) => (
+                    <li key={s.href} className="text-xs leading-snug">
+                      <a
+                        href={s.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      >
+                        {s.label}
+                        <span className="sr-only"> (opens in a new tab)</span>
+                      </a>
+                      <span className="text-muted-foreground"> · data for {s.period}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {message.links && message.links.length > 0 && (
+              <nav aria-label="Related pages" className="flex flex-wrap gap-1.5">
+                {message.links.map((l) => (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    onClick={onNavigate}
+                    className="inline-flex items-center gap-1 rounded-lg border border-primary/25 bg-sage/40 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-sage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  >
+                    {l.label}
+                    <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                  </Link>
+                ))}
+              </nav>
+            )}
             <div className="flex items-center gap-1">
               <CopyButton text={message.text} />
             </div>

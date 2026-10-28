@@ -20,7 +20,7 @@ type ViewProps = {
 const DAY = 86_400_000
 const toTime = (iso: string) => new Date(`${iso}T00:00:00`).getTime()
 
-function groupByPhase(activities: ScheduleActivity[]) {
+export function groupByPhase(activities: ScheduleActivity[]) {
   const groups: { phase: string; items: ScheduleActivity[] }[] = []
   for (const a of activities) {
     const last = groups[groups.length - 1]
@@ -30,7 +30,7 @@ function groupByPhase(activities: ScheduleActivity[]) {
   return groups
 }
 
-function Flags({ activity, conflict, today }: { activity: ScheduleActivity; conflict: boolean; today: string }) {
+export function Flags({ activity, conflict, today }: { activity: ScheduleActivity; conflict: boolean; today: string }) {
   const overdue = isOverdue(activity, today)
   if (!overdue && !conflict) return null
   return (
@@ -48,97 +48,6 @@ function Flags({ activity, conflict, today }: { activity: ScheduleActivity; conf
         </span>
       )}
     </span>
-  )
-}
-
-export function ScheduleList({ activities, conflictIds, nameFor, onSelect }: ViewProps) {
-  const today = todayIso()
-  return (
-    <div className="flex flex-col gap-6">
-      {groupByPhase(activities).map((group) => (
-        <section key={group.phase} className="flex flex-col gap-2" aria-label={group.phase}>
-          <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{group.phase}</h3>
-          <div className="overflow-hidden rounded-xl border bg-card">
-            <table className="hidden w-full text-sm md:table">
-              <thead className="border-b border-border bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th scope="col" className="px-4 py-2 font-medium">Activity</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Assigned</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Planned</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Actual finish</th>
-                  <th scope="col" className="w-40 px-4 py-2 font-medium">Progress</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {group.items.map((a) => (
-                  <tr key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onSelect(a)}>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        className="flex flex-col items-start gap-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSelect(a)
-                        }}
-                      >
-                        <span className="flex items-center gap-1.5 font-medium text-foreground">
-                          {a.activity_type === 'milestone' && <Diamond className="size-3.5 fill-primary text-primary" aria-label="Milestone" />}
-                          {a.name}
-                          {!a.is_published && <span className="text-xs font-normal text-muted-foreground">{'· Internal'}</span>}
-                        </span>
-                        {a.activity_type !== 'task' && a.activity_type !== 'milestone' && (
-                          <span className="text-xs text-muted-foreground">{ACTIVITY_TYPE_LABELS[a.activity_type]}</span>
-                        )}
-                        <Flags activity={a} conflict={conflictIds.has(a.id)} today={today} />
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{nameFor(a.assigned_to) ?? '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 tabular-nums text-muted-foreground">
-                      {a.planned_start || a.planned_end ? `${formatDate(a.planned_start)} – ${formatDate(a.planned_end)}` : 'Not scheduled'}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 tabular-nums text-muted-foreground">{formatDate(a.actual_end)}</td>
-                    <td className="px-4 py-3">
-                      <ProgressBar value={Number(a.percent_complete)} label={`${a.name} progress`} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <ActivityStatusBadge status={a.status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <ul className="divide-y md:hidden">
-              {group.items.map((a) => (
-                <li key={a.id}>
-                  <button type="button" onClick={() => onSelect(a)} className="flex w-full flex-col gap-2 p-4 text-left hover:bg-muted/50">
-                    <span className="flex items-start justify-between gap-3">
-                      <span className="flex items-center gap-1.5 font-medium text-foreground">
-                        {a.activity_type === 'milestone' && <Diamond className="size-3.5 shrink-0 fill-primary text-primary" aria-label="Milestone" />}
-                        {a.name}
-                      </span>
-                      <ActivityStatusBadge status={a.status} />
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {[
-                        a.planned_end ? `Due ${formatDate(a.planned_end)}` : 'Not scheduled',
-                        a.actual_end ? `Done ${formatDate(a.actual_end)}` : null,
-                        nameFor(a.assigned_to),
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
-                    <ProgressBar value={Number(a.percent_complete)} label={`${a.name} progress`} />
-                    <Flags activity={a} conflict={conflictIds.has(a.id)} today={today} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      ))}
-    </div>
   )
 }
 
