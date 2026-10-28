@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getStaffMembers } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/page-header'
 import { ScheduleWorkspace } from '@/components/schedule/schedule-workspace'
-import { BaselineForm, InitializeScheduleButton } from '@/components/schedule/schedule-controls'
+import { BaselineForm, InitializeScheduleButton, OptionalActivitiesPanel } from '@/components/schedule/schedule-controls'
 import { ProgressBar } from '@/components/schedule/schedule-badges'
 import {
   ACTIVITY_COLUMNS,
@@ -228,6 +228,12 @@ export default async function SchedulePage({ params }: { params: Promise<{ id: s
             </section>
 
             <aside className="flex flex-col gap-4">
+              {manager && (
+                <OptionalActivitiesPanel
+                  projectId={project.id}
+                  includedKeys={activities.map((a) => a.template_key).filter((k): k is string => !!k)}
+                />
+              )}
               <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
                 <div className="flex flex-col gap-1">
                   <h2 className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
