@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { requireAdmin } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
+import { getProviderConfig } from '@/lib/esign/dropbox-sign'
 import { createClient } from '@/lib/supabase/server'
 import type { FeatureKey } from '@/lib/feature-registry'
 import { PageHeader } from '@/components/shared/page-header'
@@ -43,7 +44,7 @@ export default async function FeaturesPage() {
         backHref="/settings"
         backLabel="Company settings"
       />
-      <FeatureToggles features={features} records={records} />
+      <FeatureToggles features={features} records={records} pendingSetup={{ e_signatures: !getProviderConfig().configured }} />
     </div>
   )
 }

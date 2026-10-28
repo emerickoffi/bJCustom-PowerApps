@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Archive, FolderOpen } from 'lucide-react'
 import { canManage, requireStaff } from '@/lib/session'
-import { requireFeature } from '@/lib/features'
+import { getOrgFeatures, requireFeature } from '@/lib/features'
+import { getSignatureSummaries } from '@/lib/esign/queries'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { DocumentLibrary } from '@/components/documents/document-library'
@@ -41,7 +42,11 @@ export default async function ProjectDocumentsPage({
     getCategoryCounts(id),
     countArchivedDocuments(id),
   ])
-  const people = list.ok ? await getPeopleNames(list.rows.map((r) => r.current_version?.uploaded_by)) : {}
+  const [people, features, summaries] = await Promise.all([
+    list.ok ? getPeopleNames(list.rows.map((r) => r.current_version?.uploaded_by)) : Promise.resolve({}),
+    getOrgFeatures(session.organizationId),
+    list.ok ? getSignatureSummaries(list.rows.map((r) => r.id)) : Promise.resolve({}),
+  ])
   const manager = canManage(session.role)
   const filtered = Boolean(sp.q || sp.category || sp.visibility)
   const canUpload = !project.archived_at && !archived
@@ -100,7 +105,7 @@ export default async function ProjectDocumentsPage({
             />
           ) : (
             <>
-              <DocumentLibrary rows={list.rows} mode="project" canEdit={!project.archived_at} canManage={manager} people={people} projectId={id} archivedView={archived} />
+              <DocumentLibrary rows={list.rows} mode="project" canEdit={!project.archived_at} canManage={manager} people={people} projectId={id} archivedView={archived} signatures={{ enabled: features.e_signatures && !archived, summaries }} />
               <DocumentPagination base={base} params={sp} page={list.page} pageCount={list.pageCount} total={list.total} />
             </>
           )}
