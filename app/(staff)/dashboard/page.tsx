@@ -153,7 +153,6 @@ export default async function DashboardPage() {
           value={clientCountRes.count ?? 0}
           href="/clients?status=active"
           icon={Users}
-          accent="neutral"
           hint="Homeowners with live projects"
         />
         <StatCard
@@ -182,7 +181,7 @@ export default async function DashboardPage() {
           }
         />
         {recent.length ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {recent.map((p) => (
               <CompactProjectCard
                 key={p.id}
@@ -217,7 +216,7 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_26rem]">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
         <PipelineOverview counts={counts} />
         <div className="flex flex-col gap-6">
           <NotificationsCard userId={session.userId} />
