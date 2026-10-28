@@ -5,6 +5,7 @@ import { ProgressBar } from '@/components/shared/progress'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/format'
 import type { ProjectStatus } from '@/lib/domain'
+import { coverAlt, type ProjectCover } from '@/lib/project-cover'
 
 export type ProjectCardData = {
   id: string
@@ -19,6 +20,7 @@ export type ProjectCardData = {
   clientName: string | null
   managerName: string | null
   photoUrl?: string | null
+  photoKind?: ProjectCover['kind']
 }
 
 /** Neutral drafting-grid placeholder used whenever a project has no real site photo. */
@@ -57,7 +59,9 @@ export function ProjectCard({ project, className }: { project: ProjectCardData; 
           // eslint-disable-next-line @next/next/no-img-element -- signed storage URLs are short-lived
           <img
             src={project.photoUrl}
-            alt={`Site photo for ${project.name}`}
+            alt={coverAlt(project.photoKind, project.name)}
+            loading="lazy"
+            decoding="async"
             className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
         ) : (

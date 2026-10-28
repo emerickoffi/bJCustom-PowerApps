@@ -189,7 +189,8 @@ export default async function DashboardPage() {
                 project={{
                   ...p,
                   completion_date: p.completion_date ?? null,
-                  photoUrl: photos.get(p.id) ?? null,
+                  photoUrl: photos.get(p.id)?.url ?? null,
+                  photoKind: photos.get(p.id)?.kind ?? null,
                   details: cardDetails.get(p.id)!,
                   warrantyEnabled: features.warranty,
                 }}

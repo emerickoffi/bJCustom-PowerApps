@@ -6,11 +6,14 @@ import {
   CalendarRange as CalendarRangeIcon,
   ListChecks as ListChecksIcon,
   Lock as LockIcon,
+  Image as ImageIcon,
 } from 'lucide-react'
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { initialActionState, type ActionState } from '@/lib/action-state'
+import { formValues, initialActionState, type ActionState } from '@/lib/action-state'
+import { validateCoverFile } from '@/lib/project-cover'
+import { CoverImageField, uploadProjectCover } from '@/components/projects/cover-image-field'
 import { PROJECT_TYPE_LABELS } from '@/lib/domain'
 import { cn } from '@/lib/utils'
 import { FormActions, FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
@@ -40,6 +43,8 @@ export type ProjectFormValues = {
 
 type Option = { value: string; label: string }
 
+export type ProjectFormCover = { orgId: string; savedUrl?: string | null; savedKind?: string | null }
+
 const usd = new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 
 function formatBudget(raw: string) {
@@ -67,8 +72,30 @@ export function ProjectForm({
   cancelHref: string
   /** Only passed on create. `true` when the Schedule feature is on; `false` shows it as unavailable; omitted hides it. */
   scheduleSetup?: boolean
+  cover?: ProjectFormCover
 }) {
-  const [state, formAction] = useActionState(action, initialActionState)
+  const [coverFile, setCoverFile] = useState<{ file: File; url: string } | null>(null)
+  const [removeSavedCover, setRemoveSavedCover] = useState(false)
+  const [coverError, setCoverError] = useState<string | null>(null)
+  // The wrapped action reads the latest selection at submit time.
+  const coverRef = useRef({ file: null as File | null, remove: false })
+
+  useEffect(() => () => {
+    if (coverFile) URL.revokeObjectURL(coverFile.url)
+  }, [coverFile])
+
+  const [state, formAction] = useActionState(async (prev: ActionState, formData: FormData) => {
+    const { file, remove } = coverRef.current
+    if (cover && file) {
+      const upload = await uploadProjectCover(cover.orgId, file)
+      if ('error' in upload) return { error: upload.error, fieldErrors: { cover_image: upload.error }, values: formValues(formData) }
+      formData.set('cover_action', 'replace')
+      formData.set('cover_image_path', upload.path)
+    } else {
+      formData.set('cover_action', remove ? 'remove' : 'keep')
+    }
+    return action(prev, formData)
+  }, initialActionState)
   const fe = state.fieldErrors ?? {}
   const sv = state.values
   // After a failed submit, re-seed every field from what the builder entered so nothing is lost.
@@ -116,6 +143,34 @@ export function ProjectForm({
           className="sm:col-span-2"
         />
       </FormSection>
+
+      {cover && (
+        <FormSection
+          icon={ImageIcon}
+          title="Project Cover Image"
+          description="Upload an architectural rendering, 3D visualization, or photograph of the home."
+        >
+          <CoverImageField
+            previewUrl={coverFile?.url ?? (removeSavedCover ? null : (cover.savedUrl ?? null))}
+            fileName={coverFile?.file.name ?? null}
+            kindDefault={v('cover_image_kind', cover.savedKind)}
+            error={coverError ?? fe.cover_image}
+            onSelect={(file) => {
+              const invalid = validateCoverFile(file)
+              setCoverError(invalid)
+              if (invalid) return
+              coverRef.current = { file, remove: false }
+              setCoverFile({ file, url: URL.createObjectURL(file) })
+            }}
+            onRemove={() => {
+              setCoverError(null)
+              coverRef.current = { file: null, remove: Boolean(cover.savedUrl) }
+              setCoverFile(null)
+              setRemoveSavedCover(Boolean(cover.savedUrl))
+            }}
+          />
+        </FormSection>
+      )}
 
       <FormSection icon={MapPinIcon} title="Site" description="Where the home is being built. This is separate from the homeowner's mailing address.">
         <TextField name="address_line1" label="Street address" required autoComplete="off" defaultValue={v('address_line1', defaults.address_line1)} error={fe.address_line1} className="sm:col-span-2" />

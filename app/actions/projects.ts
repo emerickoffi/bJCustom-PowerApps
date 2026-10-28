@@ -10,6 +10,8 @@ import { projectSchema, statusChangeSchema } from '@/lib/validation'
 import { isStatusTransitionAllowed, type ProjectStatus } from '@/lib/domain'
 import { getOrgFeatures } from '@/lib/features'
 import { includeOptionalActivityAction, initializeScheduleAction } from '@/app/actions/schedule'
+import { isCoverKind, isCoverPathForOrg } from '@/lib/project-cover'
+import { MEDIA_BUCKET } from '@/lib/walkthroughs'
 
 const uuid = z.uuid()
 
@@ -18,17 +20,65 @@ function toProjectRow(data: z.infer<typeof projectSchema>) {
   return { ...rest, estimated_budget_cents: estimated_budget }
 }
 
+type CoverChange = { action: 'keep' | 'remove' } | { action: 'replace'; path: string }
+
+/** The browser uploads the file first; the action only accepts a fresh org-scoped storage key. */
+function readCoverChange(values: Record<string, string>, orgId: string): CoverChange | { error: string } {
+  if (values.cover_action === 'remove') return { action: 'remove' }
+  if (values.cover_action !== 'replace') return { action: 'keep' }
+  const path = values.cover_image_path ?? ''
+  if (!isCoverPathForOrg(path, orgId)) return { error: 'The cover image upload is not valid. Please choose it again.' }
+  return { action: 'replace', path }
+}
+
+async function discardCoverUpload(supabase: Awaited<ReturnType<typeof createClient>>, change: CoverChange | { error: string }) {
+  if ('path' in change) await supabase.storage.from(MEDIA_BUCKET).remove([change.path])
+}
+
+/** Removes a replaced cover only when no other project still references it. */
+async function removeCoverIfUnused(supabase: Awaited<ReturnType<typeof createClient>>, path: string | null) {
+  if (!path) return
+  const { count } = await supabase.from('projects').select('id', { count: 'exact', head: true }).eq('cover_image_path', path)
+  if (!count) await supabase.storage.from(MEDIA_BUCKET).remove([path])
+}
+
+async function coverPathInUse(supabase: Awaited<ReturnType<typeof createClient>>, path: string) {
+  const { count } = await supabase.from('projects').select('id', { count: 'exact', head: true }).eq('cover_image_path', path)
+  return Boolean(count)
+}
+
+function withoutCoverValues(values: Record<string, string>) {
+  const { cover_image_path: _path, cover_action: _action, ...rest } = values
+  return rest
+}
+
 export async function createProjectAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await requireManager()
-  const values = formValues(formData)
-  const parsed = projectSchema.safeParse(values)
-  if (!parsed.success) return { ...fromZodError(parsed.error), values }
-
+  const allValues = formValues(formData)
+  const values = withoutCoverValues(allValues)
   const supabase = await createClient()
+  const cover = readCoverChange(allValues, session.organizationId)
+  if ('error' in cover) return { error: cover.error, fieldErrors: { cover_image: cover.error }, values }
+
+  const parsed = projectSchema.safeParse(values)
+  if (!parsed.success) {
+    await discardCoverUpload(supabase, cover)
+    return { ...fromZodError(parsed.error), values }
+  }
+  if (cover.action === 'replace' && (await coverPathInUse(supabase, cover.path))) {
+    return { error: 'The cover image upload is not valid. Please choose it again.', values }
+  }
+  const coverKind = isCoverKind(values.cover_image_kind) ? values.cover_image_kind : null
+
+  // The cover reference is written in the same insert, so a project is never created twice
+  // and a failed insert leaves no stored image behind.
   const { data, error } = await supabase
     .from('projects')
     .insert({
       ...toProjectRow(parsed.data),
+      ...(cover.action === 'replace'
+        ? { cover_image_path: cover.path, cover_image_kind: coverKind, cover_image_updated_at: new Date().toISOString() }
+        : {}),
       organization_id: session.organizationId,
       created_by: session.userId,
       updated_by: session.userId,
@@ -36,7 +86,10 @@ export async function createProjectAction(_prev: ActionState, formData: FormData
     })
     .select('id')
     .single()
-  if (error) return { error: friendlyDbError(error), values }
+  if (error) {
+    await discardCoverUpload(supabase, cover)
+    return { error: friendlyDbError(error), values }
+  }
 
   revalidatePath('/projects')
   revalidatePath('/dashboard')
@@ -63,20 +116,56 @@ export async function updateProjectAction(
 ): Promise<ActionState> {
   const session = await requireManager()
   if (!uuid.safeParse(projectId).success) return { error: 'Invalid project.' }
-  const values = formValues(formData)
-  const parsed = projectSchema.safeParse(values)
-  if (!parsed.success) return { ...fromZodError(parsed.error), values }
-
+  const allValues = formValues(formData)
+  const values = withoutCoverValues(allValues)
   const supabase = await createClient()
-  const { error } = await supabase
+  const cover = readCoverChange(allValues, session.organizationId)
+  if ('error' in cover) return { error: cover.error, fieldErrors: { cover_image: cover.error }, values }
+
+  const parsed = projectSchema.safeParse(values)
+  if (!parsed.success) {
+    await discardCoverUpload(supabase, cover)
+    return { ...fromZodError(parsed.error), values }
+  }
+
+  const { data: current } = await supabase
     .from('projects')
-    .update({ ...toProjectRow(parsed.data), updated_by: session.userId })
+    .select('cover_image_path')
     .eq('id', projectId)
     .eq('organization_id', session.organizationId)
-  if (error) return { error: friendlyDbError(error) }
+    .maybeSingle()
+  if (!current) {
+    await discardCoverUpload(supabase, cover)
+    return { error: 'Project not found.' }
+  }
+  if (cover.action === 'replace' && (await coverPathInUse(supabase, cover.path))) {
+    return { error: 'The cover image upload is not valid. Please choose it again.', values }
+  }
+
+  const previousPath = current.cover_image_path as string | null
+  const nextPath = cover.action === 'replace' ? cover.path : cover.action === 'remove' ? null : previousPath
+  const coverKind = nextPath && isCoverKind(values.cover_image_kind) ? values.cover_image_kind : null
+
+  const { error } = await supabase
+    .from('projects')
+    .update({
+      ...toProjectRow(parsed.data),
+      cover_image_path: nextPath,
+      cover_image_kind: coverKind,
+      ...(nextPath !== previousPath ? { cover_image_updated_at: nextPath ? new Date().toISOString() : null } : {}),
+      updated_by: session.userId,
+    })
+    .eq('id', projectId)
+    .eq('organization_id', session.organizationId)
+  if (error) {
+    await discardCoverUpload(supabase, cover)
+    return { error: friendlyDbError(error), values }
+  }
+  if (previousPath && previousPath !== nextPath) await removeCoverIfUnused(supabase, previousPath)
 
   revalidatePath(`/projects/${projectId}`)
   revalidatePath('/projects')
+  revalidatePath('/dashboard')
   redirect(`/projects/${projectId}`)
 }
 
