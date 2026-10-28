@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
@@ -20,6 +21,20 @@ export function ProjectNav({
 }) {
   const pathname = usePathname()
   const activeKey = getActiveProjectNavKey(pathname, projectId, items)
+  const activeTabRef = useRef<HTMLAnchorElement>(null)
+
+  // On narrow screens the tab strip scrolls sideways; keep the selected tab visible without moving the page vertically.
+  useEffect(() => {
+    const tab = activeTabRef.current
+    const strip = tab?.closest('nav')
+    if (!tab || !strip || strip.scrollWidth <= strip.clientWidth) return
+    const stripBox = strip.getBoundingClientRect()
+    const tabBox = tab.getBoundingClientRect()
+    if (tabBox.left < stripBox.left || tabBox.right > stripBox.right) {
+      const target = strip.scrollLeft + (tabBox.left - stripBox.left) - 16
+      strip.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
+    }
+  }, [activeKey])
   const overviewHref = items[0]?.href ?? `/projects/${projectId}`
 
   // On the overview itself, scroll directly: a repeated hash click is otherwise a no-op in the router.
@@ -71,6 +86,7 @@ export function ProjectNav({
               <li key={item.key}>
                 <Link
                   href={item.href}
+                  ref={active ? activeTabRef : undefined}
                   onClick={(event) => handleSectionClick(event, item.href)}
                   aria-current={active ? 'page' : undefined}
                   className={cn(

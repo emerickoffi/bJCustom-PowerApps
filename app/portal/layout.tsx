@@ -26,18 +26,18 @@ export default async function PortalLayout({ children }: { children: React.React
             <nav aria-label="Account" className="flex items-center gap-1 text-sm">
               <Link
                 href="/portal/profile"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-muted-foreground transition-colors hover:bg-sage/60 hover:text-primary"
+                className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-muted-foreground transition-colors hover:bg-sage/60 hover:text-primary sm:min-h-0 sm:min-w-0"
               >
                 <UserRound className="size-4" aria-hidden="true" />
-                <span className="hidden sm:inline">Profile</span>
+                <span className="sr-only sm:not-sr-only">Profile</span>
               </Link>
               <form action="/auth/sign-out" method="post">
                 <button
                   type="submit"
-                  className="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-muted-foreground transition-colors hover:bg-sage/60 hover:text-primary"
+                  className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-muted-foreground transition-colors hover:bg-sage/60 hover:text-primary sm:min-h-0 sm:min-w-0"
                 >
                   <LogOut className="size-4" aria-hidden="true" />
-                  <span className="hidden sm:inline">Sign out</span>
+                  <span className="sr-only sm:not-sr-only">Sign out</span>
                 </button>
               </form>
             </nav>
