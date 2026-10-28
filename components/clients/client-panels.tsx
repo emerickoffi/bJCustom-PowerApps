@@ -23,6 +23,7 @@ import { formatDateTime } from '@/lib/format'
 import { ActionButton, InlineActionForm } from '@/components/shared/inline-action'
 import { SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { SubmitButton } from '@/components/shared/form-message'
+import { StatusPill } from '@/components/shared/status-badge'
 
 export type ContactRow = {
   id: string
@@ -128,52 +129,109 @@ function initials(c: ContactRow) {
   return `${c.first_name.charAt(0)}${c.last_name.charAt(0)}`.toUpperCase()
 }
 
-function PortalSummary({ contact }: { contact: ContactRow }) {
-  if (!contact.portal_enabled) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-        <ShieldOff className="size-3.5" aria-hidden="true" />
-        No portal access
-      </span>
-    )
-  }
-  const granted = CONTACT_PORTAL_PERMISSIONS.filter((p) => contact[p.key])
+/** Derived from portal_accounts + organization_memberships. "portal_off" means the organization has the Homeowner portal turned off. */
+export type PortalAccountStatus = 'active' | 'pending' | 'none' | 'suspended' | 'portal_off'
+
+const ACCOUNT_STATUS: Record<PortalAccountStatus, { label: string; tone: 'sage' | 'warning' | 'neutral' | 'danger' }> = {
+  active: { label: 'Active', tone: 'sage' },
+  pending: { label: 'Activation pending', tone: 'warning' },
+  none: { label: 'No portal account', tone: 'neutral' },
+  suspended: { label: 'Suspended', tone: 'danger' },
+  portal_off: { label: 'Portal turned off', tone: 'neutral' },
+}
+
+function PortalAccountLine({ status }: { status: PortalAccountStatus }) {
+  const s = ACCOUNT_STATUS[status]
   return (
-    <details className="group/perm">
-      <summary className="inline-flex min-h-8 cursor-pointer list-none items-center gap-2 rounded-md text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-        <span className="inline-flex items-center gap-1 rounded-full bg-sage px-2 py-0.5 font-medium text-primary">
-          <ShieldCheck className="size-3.5" aria-hidden="true" />
-          Portal access
-        </span>
-        <span className="text-muted-foreground">
-          {`${granted.length} ${granted.length === 1 ? 'permission' : 'permissions'} enabled`}
-        </span>
-        <ChevronDown
-          className="size-3.5 text-muted-foreground transition-transform group-open/perm:rotate-180"
-          aria-hidden="true"
-        />
-      </summary>
-      <ul className="mt-2 grid gap-1 sm:grid-cols-2" aria-label="Portal permissions">
-        {CONTACT_PORTAL_PERMISSIONS.map((p) => {
-          const on = Boolean(contact[p.key])
-          return (
-            <li key={p.key} className={cn('flex items-center gap-1.5 text-xs', on ? 'text-foreground' : 'text-muted-foreground')}>
-              {on ? (
-                <Check className="size-3.5 text-primary" aria-hidden="true" />
-              ) : (
-                <Minus className="size-3.5" aria-hidden="true" />
-              )}
-              <span>{p.label}</span>
-              <span className="sr-only">{on ? '(enabled)' : '(not enabled)'}</span>
-            </li>
-          )
-        })}
-      </ul>
-    </details>
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+      <span>Portal account:</span>
+      <StatusPill tone={s.tone}>{s.label}</StatusPill>
+    </p>
   )
 }
 
-function ContactCard({ clientId, contact: c, canEdit }: { clientId: string; contact: ContactRow; canEdit: boolean }) {
+function PortalSummary({
+  contact,
+  accountStatus,
+  onManage,
+}: {
+  contact: ContactRow
+  accountStatus?: PortalAccountStatus
+  onManage?: () => void
+}) {
+  if (!contact.portal_enabled) {
+    return (
+      <div className="flex flex-col gap-2">
+        {accountStatus && <PortalAccountLine status={accountStatus} />}
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <ShieldOff className="size-3.5" aria-hidden="true" />
+          No portal access
+        </span>
+      </div>
+    )
+  }
+  const granted = CONTACT_PORTAL_PERMISSIONS.filter((p) => contact[p.key])
+  const heading = accountStatus ? 'Portal permissions' : 'Configured permissions'
+  const count = granted.length
+    ? `${granted.length} ${granted.length === 1 ? 'permission' : 'permissions'} enabled`
+    : 'No permissions enabled'
+  return (
+    <div className="flex flex-col gap-2">
+      {accountStatus && <PortalAccountLine status={accountStatus} />}
+      <details className="group/perm rounded-lg border border-primary/10 bg-sage/60">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+          <ShieldCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="text-sm font-medium text-primary">{heading}</span>
+            <span className="text-xs text-muted-foreground">{count}</span>
+          </span>
+          <ChevronDown
+            className="size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-open/perm:rotate-180"
+            aria-hidden="true"
+          />
+        </summary>
+        <div className="flex flex-col gap-2 border-t border-primary/10 px-3 py-2.5">
+          <ul className="flex flex-col gap-1.5" aria-label={heading}>
+            {CONTACT_PORTAL_PERMISSIONS.map((p) => {
+              const on = Boolean(contact[p.key])
+              return (
+                <li
+                  key={p.key}
+                  className={cn('flex items-start gap-2 text-xs leading-5', on ? 'text-foreground' : 'text-muted-foreground')}
+                >
+                  {on ? (
+                    <Check className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                  ) : (
+                    <Minus className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                  )}
+                  <span className="min-w-0">{p.label}</span>
+                  <span className="sr-only">{on ? '(enabled)' : '(not enabled)'}</span>
+                </li>
+              )
+            })}
+          </ul>
+          {onManage && (
+            <Button type="button" variant="link" size="sm" className="h-auto self-start px-0 text-xs" onClick={onManage}>
+              Manage permissions
+            </Button>
+          )}
+        </div>
+      </details>
+    </div>
+  )
+}
+
+function ContactCard({
+  clientId,
+  contact: c,
+  canEdit,
+  accountStatus,
+}: {
+  clientId: string
+  contact: ContactRow
+  canEdit: boolean
+  accountStatus?: PortalAccountStatus
+}) {
   const [editing, setEditing] = useState(false)
   const relationship = CONTACT_RELATIONSHIP_LABELS[c.relationship] ?? c.relationship
   const preferred =
@@ -240,7 +298,11 @@ function ContactCard({ clientId, contact: c, canEdit }: { clientId: string; cont
         ))}
         {!c.email && phones.length === 0 && <span className="text-muted-foreground">No contact details</span>}
         <div className="pt-1">
-          <PortalSummary contact={c} />
+          <PortalSummary
+            contact={c}
+            accountStatus={accountStatus}
+            onManage={canEdit ? () => setEditing(true) : undefined}
+          />
         </div>
       </div>
 
@@ -281,7 +343,22 @@ function ContactCard({ clientId, contact: c, canEdit }: { clientId: string; cont
   )
 }
 
-export function ContactsPanel({ clientId, contacts, canEdit }: { clientId: string; contacts: ContactRow[]; canEdit: boolean }) {
+export function ContactsPanel({
+  clientId,
+  contacts,
+  canEdit,
+  accountStatusByContact = null,
+}: {
+  clientId: string
+  contacts: ContactRow[]
+  canEdit: boolean
+  /** Null when the viewer cannot see portal accounts. A missing key means no account; a null value means unknown. */
+  accountStatusByContact?: Record<string, PortalAccountStatus | null> | null
+}) {
+  const statusFor = (id: string): PortalAccountStatus | undefined => {
+    if (!accountStatusByContact) return undefined
+    return id in accountStatusByContact ? (accountStatusByContact[id] ?? undefined) : 'none'
+  }
   const [adding, setAdding] = useState(false)
   const active = contacts
     .filter((c) => !c.archived_at)
@@ -321,7 +398,7 @@ export function ContactsPanel({ clientId, contacts, canEdit }: { clientId: strin
       {active.length ? (
         <ul className="flex flex-col gap-3">
           {active.map((c) => (
-            <ContactCard key={c.id} clientId={clientId} contact={c} canEdit={canEdit} />
+            <ContactCard key={c.id} clientId={clientId} contact={c} canEdit={canEdit} accountStatus={statusFor(c.id)} />
           ))}
         </ul>
       ) : (
