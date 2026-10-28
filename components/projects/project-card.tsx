@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/format'
 import type { ProjectStatus } from '@/lib/domain'
 import { coverAlt, type ProjectCover } from '@/lib/project-cover'
+import { CoverImage } from '@/components/projects/cover-image'
 
 export type ProjectCardData = {
   id: string
@@ -56,13 +57,11 @@ export function ProjectCard({ project, className }: { project: ProjectCardData; 
       <ProjectStatusBanner status={project.status} />
       <div className="relative aspect-[16/9] overflow-hidden">
         {project.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- signed storage URLs are short-lived
-          <img
+          <CoverImage
             src={project.photoUrl}
             alt={coverAlt(project.photoKind, project.name)}
-            loading="lazy"
-            decoding="async"
             className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            fallback={<ArchitecturalPlaceholder className="size-full" label="No site photos yet" />}
           />
         ) : (
           <ArchitecturalPlaceholder className="size-full" label="No site photos yet" />
