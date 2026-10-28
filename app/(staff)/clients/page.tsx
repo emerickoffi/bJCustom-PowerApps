@@ -130,7 +130,6 @@ export default async function ClientsPage({
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={UsersIcon}
-        tone="sage"
         title="Clients"
         description="Homeowners and prospects, with their contacts, projects, and communication history."
         actions={

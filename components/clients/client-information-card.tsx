@@ -69,27 +69,64 @@ function Group({ title, children, columns = true }: { title: string; children: R
 const linkClass =
   'rounded-sm text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
-export function ClientInformationCard({ info }: { info: ClientInformation }) {
+export type ClientIdentity = {
+  name: string
+  initials: string
+  company: string | null
+  /** Extra `<li>` items shown before the project count, e.g. client number and status. */
+  meta?: ReactNode
+  actions?: ReactNode
+}
+
+export function ClientInformationCard({ info, identity }: { info: ClientInformation; identity: ClientIdentity }) {
   const phoneLink = info.phone ? telHref(info.phone) : null
   const altLink = info.alternatePhone ? telHref(info.alternatePhone) : null
 
+  const projectLabel = `${info.projectCount} ${info.projectCount === 1 ? 'project' : 'projects'}`
+
   return (
     <section
-      aria-labelledby="client-information-heading"
-      className="flex flex-col gap-5 rounded-xl border bg-card p-5 shadow-xs"
+      aria-labelledby="client-profile-heading"
+      className="flex flex-col overflow-hidden rounded-xl border border-[#E2E8E2] bg-card shadow-xs"
     >
-      <header className="flex items-start gap-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary ring-1 ring-inset ring-primary/10">
-          <ContactRound className="size-4" aria-hidden />
+      <header className="flex flex-col gap-4 border-b border-[#E2E8E2] bg-[#EAF0E9] px-5 py-5 md:flex-row md:items-start md:justify-between md:px-6">
+        <div className="flex min-w-0 items-start gap-4">
+          <span
+            aria-hidden="true"
+            className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#174D32] font-serif text-base font-semibold text-white md:size-14 md:text-lg"
+          >
+            {identity.initials || <ContactRound className="size-5" aria-hidden />}
+          </span>
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#174D32]">Client profile</p>
+            <h1
+              id="client-profile-heading"
+              className="text-balance break-words font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-3xl"
+            >
+              {identity.name}
+            </h1>
+            {identity.company && <p className="break-words text-sm text-muted-foreground">{identity.company}</p>}
+            <ul className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+              {identity.meta}
+              <li className="flex items-center gap-1.5">
+                <FolderKanban className="size-3.5 text-[#174D32]/70" aria-hidden />
+                {projectLabel}
+              </li>
+              <li className="flex items-center gap-1.5">
+                <CalendarDays className="size-3.5 text-[#174D32]/70" aria-hidden />
+                {`Client since ${info.clientSince}`}
+              </li>
+            </ul>
+          </div>
         </div>
-        <div className="flex flex-col gap-0.5">
-          <h2 id="client-information-heading" className="font-serif text-lg font-semibold leading-tight text-foreground">
-            Client Information
-          </h2>
-          <p className="text-sm text-muted-foreground">Contact details and account information</p>
-        </div>
+        {identity.actions && (
+          <div className="flex shrink-0 flex-wrap items-center gap-2 max-md:[&>*]:min-h-11 max-md:[&>*]:flex-1">
+            {identity.actions}
+          </div>
+        )}
       </header>
 
+      <div className="flex flex-col gap-5 p-5 md:px-6">
       <div className="flex flex-col divide-y divide-border">
         <Group title="Contact information">
           <Field icon={Mail} label="Email">
@@ -141,15 +178,6 @@ export function ClientInformationCard({ info }: { info: ClientInformation }) {
             {info.mailingAddress ? <span className="whitespace-pre-line">{info.mailingAddress}</span> : <Missing />}
           </Field>
         </Group>
-
-        <Group title="Account information">
-          <Field icon={CalendarDays} label="Client since">
-            {info.clientSince}
-          </Field>
-          <Field icon={FolderKanban} label="Associated projects">
-            {info.projectCount}
-          </Field>
-        </Group>
       </div>
 
       {info.notes && (
@@ -160,6 +188,7 @@ export function ClientInformationCard({ info }: { info: ClientInformation }) {
           <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{info.notes}</p>
         </div>
       )}
+      </div>
     </section>
   )
 }

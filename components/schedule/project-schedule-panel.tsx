@@ -63,13 +63,16 @@ export async function ProjectSchedulePanel({
       {activities.length ? (
         <>
           {progressPercent !== null && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="text-muted-foreground">Construction progress</span>
-                <span className="font-semibold tabular-nums text-foreground">{`${Math.round(progressPercent)}%`}</span>
+            <div className="flex flex-col gap-2.5 rounded-xl border border-[#E2E8E2] bg-[#F8F7F3] p-4">
+              <div className="flex items-end justify-between gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs font-medium text-muted-foreground">Construction progress</span>
+                  <span className="text-sm text-foreground">{`${completed} of ${activities.length} activities complete`}</span>
+                </div>
+                <span className="font-serif text-2xl font-semibold leading-none tabular-nums text-primary">{`${Math.round(progressPercent)}%`}</span>
               </div>
               <div
-                className="h-1.5 overflow-hidden rounded-full bg-sage"
+                className="h-2.5 overflow-hidden rounded-full bg-white ring-1 ring-inset ring-[#E2E8E2]"
                 role="progressbar"
                 aria-label="Construction progress"
                 aria-valuemin={0}

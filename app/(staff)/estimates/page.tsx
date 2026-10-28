@@ -44,7 +44,6 @@ export default async function EstimatesPage({
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={CalculatorIcon}
-        tone="sage"
         eyebrow="Preconstruction"
         title="Estimates"
         description="Builder-entered construction estimates for existing projects, with revisions and recorded homeowner approvals."

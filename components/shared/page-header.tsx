@@ -15,7 +15,7 @@ type PageHeaderProps = {
   avatar?: React.ReactNode
 }
 
-export function PageHeader({ title, description, eyebrow, icon: Icon, avatar, backHref, backLabel, actions, tone = 'plain' }: PageHeaderProps) {
+export function PageHeader({ title, description, eyebrow, icon: Icon, avatar, backHref, backLabel, actions, tone = 'sage' }: PageHeaderProps) {
   const sage = tone === 'sage'
   return (
     <header
@@ -26,15 +26,7 @@ export function PageHeader({ title, description, eyebrow, icon: Icon, avatar, ba
           : 'border-b border-border/70 pb-4 md:pb-6',
       )}
     >
-      {backHref && (
-        <Link
-          href={backHref}
-          className="group flex w-fit items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-        >
-          <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
-          {backLabel ?? 'Back'}
-        </Link>
-      )}
+      {backHref && <BackLink href={backHref} label={backLabel} />}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex min-w-0 items-start gap-3 md:gap-4">
           {avatar}
@@ -71,6 +63,18 @@ export function PageHeader({ title, description, eyebrow, icon: Icon, avatar, ba
         )}
       </div>
     </header>
+  )
+}
+
+export function BackLink({ href, label }: { href: string; label?: string }) {
+  return (
+    <Link
+      href={href}
+      className="group flex w-fit items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
+      {label ?? 'Back'}
+    </Link>
   )
 }
 

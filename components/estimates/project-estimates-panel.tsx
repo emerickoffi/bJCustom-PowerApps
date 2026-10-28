@@ -28,12 +28,35 @@ function varianceMessage(hasBudget: boolean, hasApproved: boolean, variance: num
   return 'A project budget and an approved construction estimate are required to calculate the budget variance.'
 }
 
-function SummaryCard({ label, value, note, valueClassName }: { label: string; value: string; note?: string; valueClassName?: string }) {
+function SummaryCard({
+  label,
+  value,
+  note,
+  unavailable = false,
+  valueClassName,
+}: {
+  label: string
+  value: string
+  note?: string
+  /** Missing data renders as a quiet label so it is never mistaken for a $0 value. */
+  unavailable?: boolean
+  valueClassName?: string
+}) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5 rounded-xl border bg-[#F8F7F3] p-4">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className={cn('break-words font-serif text-xl font-semibold tabular-nums text-foreground', valueClassName)}>{value}</dd>
-      {note && <p className="text-xs leading-relaxed text-muted-foreground">{note}</p>}
+    <div className="flex h-full min-w-0 flex-col gap-2 rounded-xl border border-[#E2E8E2] bg-[#F8F7F3] p-4">
+      <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dd
+        className={cn(
+          'flex min-h-8 items-center break-words',
+          unavailable
+            ? 'text-sm font-medium italic text-muted-foreground'
+            : 'font-serif text-2xl font-semibold leading-tight tabular-nums text-foreground',
+          valueClassName,
+        )}
+      >
+        {value}
+      </dd>
+      {note && <p className="mt-auto text-xs leading-relaxed text-muted-foreground">{note}</p>}
     </div>
   )
 }
@@ -88,11 +111,11 @@ export async function ProjectEstimatesPanel({
       }
     >
       <dl className="grid gap-3 md:grid-cols-3">
-        <SummaryCard label="Project budget" value={hasBudget ? formatCentsExact(budgetCents) : 'Not set'} valueClassName={hasBudget ? undefined : 'text-muted-foreground'} />
+        <SummaryCard label="Project budget" value={hasBudget ? formatCentsExact(budgetCents) : 'Not set'} unavailable={!hasBudget} />
         <SummaryCard
           label="Approved construction estimate"
           value={approved ? formatCentsExact(approved.construction_total_cents) : 'None approved'}
-          valueClassName={approved ? undefined : 'text-muted-foreground'}
+          unavailable={!approved}
           note={
             approved
               ? `${approved.estimate_number} rev ${approved.revision}${approved.land_cost_cents !== null ? ` · land ${formatCentsExact(approved.land_cost_cents)} tracked separately` : ''}`
@@ -102,7 +125,8 @@ export async function ProjectEstimatesPanel({
         <SummaryCard
           label="Estimate vs. budget"
           value={variance === null ? 'Not available' : `${variance > 0 ? '+' : ''}${formatCentsExact(variance)}`}
-          valueClassName={variance === null ? 'text-base text-muted-foreground' : variance > 0 ? 'text-destructive' : 'text-primary'}
+          unavailable={variance === null}
+          valueClassName={variance === null ? undefined : variance > 0 ? 'text-destructive' : 'text-primary'}
           note={varianceMessage(hasBudget, Boolean(approved), variance)}
         />
       </dl>

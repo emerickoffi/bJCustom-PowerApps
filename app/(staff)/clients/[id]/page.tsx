@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getProfileNames, PROJECT_SUMMARY_COLUMNS } from '@/lib/queries'
-import { PageHeader } from '@/components/shared/page-header'
+import { BackLink } from '@/components/shared/page-header'
 import { ClientInformationCard } from '@/components/clients/client-information-card'
 import { ClientStatusBadge } from '@/components/shared/status-badge'
 import { ProjectList, type ProjectListItem, type WarrantyMilestone } from '@/components/projects/project-list'
@@ -178,41 +178,7 @@ export default async function ClientDetailPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
-        tone="sage"
-        avatar={
-          <span
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white font-serif text-base font-semibold text-[#174D32] ring-1 ring-inset ring-[#174D32]/12 md:size-12"
-            aria-hidden="true"
-          >
-            {initials}
-          </span>
-        }
-        backHref="/clients"
-        backLabel="Clients"
-        eyebrow={
-          <span className="flex items-center gap-2 normal-case tracking-normal">
-            <span className="font-mono">{`#${client.client_number}`}</span>
-            <ClientStatusBadge status={client.status as ClientStatus} />
-          </span>
-        }
-        title={name}
-        description={client.company_name ?? undefined}
-        actions={
-          manager && (
-            <>
-              <Button variant="outline" size="lg" render={<Link href={`/clients/${client.id}/edit`} />} nativeButton={false}>
-                <Pencil data-icon="inline-start" />
-                Edit
-              </Button>
-              <Button size="lg" render={<Link href={`/projects/new?client=${client.id}`} />} nativeButton={false}>
-                <Plus data-icon="inline-start" />
-                New project
-              </Button>
-            </>
-          )
-        }
-      />
+      <BackLink href="/clients" label="Clients" />
 
       {notice === 'created' && manager && (
         <div
@@ -250,6 +216,31 @@ export default async function ClientDetailPage({
               clientSince: formatDate(client.created_at),
               projectCount: projects?.length ?? 0,
               notes: client.notes,
+            }}
+            identity={{
+              name,
+              initials,
+              company: client.company_name,
+              meta: (
+                <>
+                  <li className="font-mono">{`#${client.client_number}`}</li>
+                  <li>
+                    <ClientStatusBadge status={client.status as ClientStatus} />
+                  </li>
+                </>
+              ),
+              actions: manager && (
+                <>
+                  <Button variant="outline" className="bg-white" render={<Link href={`/clients/${client.id}/edit`} />} nativeButton={false}>
+                    <Pencil data-icon="inline-start" />
+                    Edit
+                  </Button>
+                  <Button render={<Link href={`/projects/new?client=${client.id}`} />} nativeButton={false}>
+                    <Plus data-icon="inline-start" />
+                    New project
+                  </Button>
+                </>
+              ),
             }}
           />
 

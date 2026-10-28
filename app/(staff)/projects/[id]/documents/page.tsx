@@ -73,7 +73,6 @@ export default async function ProjectDocumentsPage({
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        tone="sage"
         icon={FolderOpen}
         backHref={`/projects/${id}`}
         backLabel={`Back to ${project.name}`}

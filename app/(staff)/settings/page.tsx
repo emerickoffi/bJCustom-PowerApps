@@ -32,7 +32,6 @@ export default async function SettingsPage() {
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <PageHeader icon={SettingsIcon}
-        tone="sage"
         title="Company settings"
         description="Your company identity appears throughout the app, the homeowner portal, and future documents."
         actions={

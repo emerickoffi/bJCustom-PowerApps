@@ -82,7 +82,6 @@ export default async function ProjectsPage({
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={FolderKanbanIcon}
-  tone="sage"
         title="Projects"
         description="Every custom home and renovation, from first consultation to final walkthrough."
         actions={
