@@ -16,6 +16,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: '/schedule', label: 'Schedule', icon: 'schedule', feature: 'schedule' },
   { href: '/estimates', label: 'Estimates', icon: 'estimates', feature: 'estimates' },
   { href: '/invoices', label: 'Invoices', icon: 'invoices', feature: 'invoices' },
+  { href: '/documents', label: 'Documents', icon: 'documents', feature: 'documents' },
   { href: '/warranty', label: 'Warranty', icon: 'warranty', feature: 'warranty' },
   { href: '/team', label: 'Team', icon: 'team', roles: ['org_admin'] },
   { href: '/settings', label: 'Settings', icon: 'settings', roles: ['org_admin'] },
@@ -43,13 +44,6 @@ export const PLANNED_MODULES: PlannedModule[] = [
     icon: 'change-orders',
     stage: 3,
     summary: 'Scope and price changes with electronic homeowner approval and budget impact.',
-  },
-  {
-    slug: 'documents',
-    label: 'Documents',
-    icon: 'documents',
-    stage: 4,
-    summary: 'Plans, permits, contracts, and photos with per-document homeowner visibility.',
   },
   {
     slug: 'daily-logs',
