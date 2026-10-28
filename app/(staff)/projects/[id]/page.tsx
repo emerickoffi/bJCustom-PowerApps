@@ -1,7 +1,25 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { AlertTriangle, CalendarClock, CalendarRange, ChevronLeft, ClipboardCheck, FolderOpen, History, MapPin, Pencil, Wallet } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowRight,
+  CalendarClock,
+  CalendarRange,
+  ChevronLeft,
+  ClipboardCheck,
+  FolderOpen,
+  Hammer,
+  History,
+  House,
+  LandPlot,
+  MapPin,
+  Pencil,
+  Trees,
+  UserRound,
+  Wallet,
+} from 'lucide-react'
+import { OverviewSection } from '@/components/projects/overview-section'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -10,7 +28,7 @@ import { getClientOptions, getStaffMembers } from '@/lib/queries'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { coverAlt, coverDesignBadge } from '@/lib/project-cover'
 import { CoverImage } from '@/components/projects/cover-image'
-import { DetailList } from '@/components/shared/page-header'
+import type { ReactNode } from 'react'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { ProgressRing } from '@/components/shared/progress'
 import { StatusChanger } from '@/components/projects/status-changer'
@@ -38,6 +56,31 @@ function Fact({ icon: Icon, label, value }: { icon: typeof Wallet; label: string
       <div className="flex min-w-0 flex-col">
         <span className="text-xs text-white/60">{label}</span>
         <span className="truncate text-sm font-medium text-white">{value}</span>
+      </div>
+    </div>
+  )
+}
+
+function DetailField({
+  icon: Icon,
+  label,
+  value,
+  empty = 'Not provided',
+  action,
+}: {
+  icon: typeof Wallet
+  label: string
+  value: string | null
+  empty?: string
+  action?: ReactNode
+}) {
+  return (
+    <div className="flex min-w-0 items-start gap-3">
+      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <dt className="text-xs text-muted-foreground">{label}</dt>
+        <dd className={value ? 'break-words text-sm font-medium text-foreground' : 'text-sm text-muted-foreground'}>{value ?? empty}</dd>
+        {action}
       </div>
     </div>
   )
@@ -109,6 +152,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const nextUp = counted.find((a) => a.status !== 'completed')
   const openIssues = openIssuesRes.count ?? 0
   const primaryClient = links[0]?.client
+  const managerName = nameFor(project.project_manager_id)
+  const lotBlockPhase =
+    [
+      project.lot && `Lot ${project.lot}`,
+      project.block && `Block ${project.block}`,
+      project.phase && `Phase ${project.phase}`,
+    ]
+      .filter(Boolean)
+      .join(' · ') || null
 
   return (
     <div className="flex flex-col gap-8">
@@ -258,21 +310,34 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="flex flex-col gap-8">
-          <section aria-labelledby="overview-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
-            <h2 id="overview-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
-              Project details
-            </h2>
-            <DetailList
-              items={[
-                { label: 'Project type', value: PROJECT_TYPE_LABELS[project.project_type] ?? project.project_type },
-                { label: 'Project manager', value: nameFor(project.project_manager_id) ?? 'Unassigned' },
-                { label: 'Community', value: project.community || '—' },
-                {
-                  label: 'Lot / Block / Phase',
-                  value: [project.lot, project.block, project.phase].map((v) => v || '—').join(' / '),
-                },
-              ]}
-            />
+          <OverviewSection
+            id="overview-heading"
+            icon={House}
+            title="Project details"
+            subtitle="Property and construction information."
+          >
+            <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+              <DetailField
+                icon={Hammer}
+                label="Project type"
+                value={PROJECT_TYPE_LABELS[project.project_type] ?? project.project_type ?? null}
+              />
+              <DetailField
+                icon={UserRound}
+                label="Project manager"
+                value={managerName}
+                empty="Not assigned"
+                action={
+                  !managerName && manager ? (
+                    <Link href={`/projects/${project.id}/edit`} className="text-xs font-medium text-primary underline-offset-4 hover:underline">
+                      Assign manager
+                    </Link>
+                  ) : null
+                }
+              />
+              <DetailField icon={Trees} label="Community" value={project.community || null} />
+              <DetailField icon={LandPlot} label="Lot / Block / Phase" value={lotBlockPhase} />
+            </dl>
             {project.description && (
               <div className="flex flex-col gap-1.5 border-t pt-5">
                 <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Description</h3>
@@ -291,9 +356,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{project.internal_notes}</p>
               </div>
             )}
-          </section>
+          </OverviewSection>
 
-          {features.schedule && <ProjectSchedulePanel projectId={project.id} canManage={manager} />}
+          {features.schedule && <ProjectSchedulePanel projectId={project.id} canManage={manager} progressPercent={progress} />}
 
           {features.estimates && (
             <ProjectEstimatesPanel
@@ -309,33 +374,49 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
           {features.walkthroughs && <ProjectWalkthroughsPanel projectId={project.id} canCreate={manager} />}
 
-          <section aria-labelledby="history-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
-            <h2 id="history-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
-              Status history
-            </h2>
-            <ol className="relative flex flex-col gap-5 before:absolute before:bottom-2 before:left-[0.3125rem] before:top-2 before:w-px before:bg-border">
-              {(historyRes.data ?? []).map((entry) => (
-                <li key={entry.id} className="relative flex flex-col gap-1 pl-6">
-                  <span
-                    className="absolute left-0 top-1.5 size-2.5 rounded-full border-2 border-card bg-primary ring-2 ring-sage"
-                    aria-hidden="true"
-                  />
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-foreground">
-                      {entry.from_status
-                        ? `${PROJECT_STATUS_LABELS[entry.from_status as ProjectStatus]} → ${PROJECT_STATUS_LABELS[entry.to_status as ProjectStatus]}`
-                        : `Created as ${PROJECT_STATUS_LABELS[entry.to_status as ProjectStatus]}`}
-                    </span>
-                    <time dateTime={entry.created_at} className="text-xs text-muted-foreground">
-                      {formatDateTime(entry.created_at)}
-                    </time>
-                  </div>
-                  {entry.note && <p className="text-sm leading-relaxed text-muted-foreground">{entry.note}</p>}
-                  <span className="text-xs text-muted-foreground">{`By ${nameFor(entry.changed_by) ?? 'System'}`}</span>
-                </li>
-              ))}
-            </ol>
-          </section>
+          <OverviewSection
+            id="history-heading"
+            icon={History}
+            title="Status history"
+            subtitle="Project lifecycle changes and recorded transitions."
+          >
+            {(historyRes.data ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No status changes recorded yet.</p>
+            ) : (
+              <ol className="relative flex flex-col gap-6 before:absolute before:bottom-3 before:left-[0.4375rem] before:top-3 before:w-px before:bg-border">
+                {(historyRes.data ?? []).map((entry, index) => (
+                  <li key={entry.id} className="relative flex flex-col gap-1.5 pl-8">
+                    <span
+                      className={
+                        index === 0
+                          ? 'absolute left-0 top-1 size-3.5 rounded-full border-[3px] border-card bg-primary ring-1 ring-primary/30'
+                          : 'absolute left-0.5 top-1.5 size-2.5 rounded-full border-2 border-card bg-muted-foreground/40 ring-1 ring-border'
+                      }
+                      aria-hidden="true"
+                    />
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                      <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-foreground">
+                        {entry.from_status ? (
+                          <>
+                            <span className="text-muted-foreground">{PROJECT_STATUS_LABELS[entry.from_status as ProjectStatus]}</span>
+                            <ArrowRight className="size-3.5 text-muted-foreground" aria-label="to" />
+                            <span>{PROJECT_STATUS_LABELS[entry.to_status as ProjectStatus]}</span>
+                          </>
+                        ) : (
+                          `Created as ${PROJECT_STATUS_LABELS[entry.to_status as ProjectStatus]}`
+                        )}
+                      </p>
+                      <time dateTime={entry.created_at} className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {formatDateTime(entry.created_at)}
+                      </time>
+                    </div>
+                    {entry.note && <p className="text-sm leading-relaxed text-muted-foreground">{entry.note}</p>}
+                    <span className="text-xs text-muted-foreground">{`By ${nameFor(entry.changed_by) ?? 'System'}`}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </OverviewSection>
         </div>
 
         <aside className="flex flex-col gap-6">
