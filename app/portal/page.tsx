@@ -16,6 +16,9 @@ import { coverAlt } from '@/lib/project-cover'
 import { PROJECT_PIPELINE, PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { getMySignatureTasks } from '@/app/actions/signatures'
+import { buildHomeownerActions } from '@/lib/next-actions'
+import { HomeownerActions } from '@/components/portal/homeowner-actions'
 
 export const metadata: Metadata = { title: 'Your home' }
 
@@ -102,6 +105,33 @@ export default async function PortalPage() {
     ? await supabase.from('project_warranties').select('project_id').in('project_id', ids)
     : { data: [] as { project_id: string }[] }
   const warrantyProjects = new Set((warrantyRows ?? []).map((w) => w.project_id))
+  const actionFeatures = {
+    walkthroughs: features?.walkthroughs ?? false,
+    documents: features?.documents ?? false,
+    e_signatures: features?.e_signatures ?? false,
+  }
+  const [{ data: repairRows }, signatureTaskLists] = await Promise.all([
+    ids.length && actionFeatures.walkthroughs
+      ? supabase
+          .from('project_issues')
+          .select('id, project_id, walkthrough_id, item_label')
+          .in('project_id', ids)
+          .eq('status', 'resolved')
+          .eq('homeowner_validation', 'pending')
+          .not('builder_approved_at', 'is', null)
+          .order('builder_approved_at', { ascending: true })
+      : Promise.resolve({ data: [] as { id: string; project_id: string; walkthrough_id: string; item_label: string }[] }),
+    actionFeatures.documents && actionFeatures.e_signatures
+      ? Promise.all(ids.map(async (pid) => (await getMySignatureTasks(pid)).map((t) => ({ ...t, projectId: pid }))))
+      : Promise.resolve([]),
+  ])
+  const homeownerActions = buildHomeownerActions({
+    projects: projects.map((p) => ({ id: p.id, name: p.name })),
+    features: actionFeatures,
+    walkthroughs: walkthroughRows ?? [],
+    repairsAwaitingConfirmation: repairRows ?? [],
+    signatureTasks: signatureTaskLists.flat(),
+  })
   const firstName = session?.fullName?.split(' ')[0]
 
   return (
@@ -118,6 +148,8 @@ export default async function PortalPage() {
           {`Follow every stage of your build with ${session?.brand.displayName ?? 'your builder'}: progress, timeline, and walkthroughs, all in one place.`}
         </p>
       </div>
+
+      {projects.length > 0 && <HomeownerActions actions={homeownerActions} showProject={projects.length > 1} />}
 
       {projects.length ? (
         <ul className="flex flex-col gap-10">
