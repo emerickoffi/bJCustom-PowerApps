@@ -149,7 +149,7 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-input bg-card/70 px-6 py-12 text-center">
       <div className="flex size-11 items-center justify-center rounded-xl bg-sage text-primary ring-1 ring-inset ring-primary/10">
-        <Icon className="size-5" />
+        <Icon className="size-5" aria-hidden="true" />
       </div>
       <div className="flex max-w-sm flex-col gap-1.5">
         <h2 className="font-serif text-lg font-semibold text-foreground">{title}</h2>
