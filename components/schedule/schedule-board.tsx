@@ -309,18 +309,22 @@ function StageList({
         const active = items.some((a) => a.status === 'in_progress')
         const panelId = `stage-${key.replace(/[^a-z0-9]/gi, '-')}`
         return (
-          <div key={key} className="overflow-hidden rounded-lg border border-border bg-card">
+          <div key={key} className="overflow-hidden rounded-lg border border-border border-l-[3px] border-l-[#174D32] bg-card">
             <button
               type="button"
               aria-expanded={open}
               aria-controls={panelId}
               onClick={() => toggle(key)}
-              className="flex min-h-12 w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              className="flex min-h-12 w-full items-center gap-3 bg-[#F8F7F3] px-4 py-2.5 text-left transition-colors hover:bg-[#F1EFE8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32]"
             >
               <span
                 className={cn(
-                  'flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums',
-                  done === items.length ? 'bg-primary text-primary-foreground' : active ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground',
+                  'flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums',
+                  done === items.length
+                    ? 'border-[#174D32] bg-[#174D32] text-white'
+                    : active
+                      ? 'border-[#174D32]/30 bg-white text-[#174D32]'
+                      : 'border-[#D8E0E8] bg-white text-[#526174]',
                 )}
                 aria-hidden="true"
               >
@@ -339,7 +343,7 @@ function StageList({
               <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', !open && '-rotate-90')} aria-hidden="true" />
             </button>
             {open && (
-              <ul id={panelId} className="divide-y divide-border border-t border-border">
+              <ul id={panelId} className="divide-y divide-border/70 border-t border-border bg-card">
                 {items.map((a) => {
                   const late = isOverdue(a, today)
                   return (
@@ -348,8 +352,8 @@ function StageList({
                         type="button"
                         onClick={() => onSelect(a)}
                         className={cn(
-                          'grid w-full gap-2 px-4 py-3 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:grid-cols-[minmax(0,1fr)_9rem_11rem_8rem_7rem] md:items-center md:gap-4',
-                          late && 'bg-destructive/5',
+                          'grid w-full gap-2 px-4 py-2.5 text-left transition-colors hover:bg-[#F8F7F3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32] md:grid-cols-[minmax(0,1fr)_9rem_11rem_8rem_7.5rem] md:items-center md:gap-4',
+                          late && 'bg-[#FDE8E7]/40 hover:bg-[#FDE8E7]/70',
                         )}
                       >
                         <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-foreground">
@@ -358,10 +362,14 @@ function StageList({
                           {late && <span className="shrink-0 text-xs font-medium text-destructive">Overdue</span>}
                         </span>
                         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground md:contents">
-                          <span className="truncate md:text-sm">{nameFor(a.assigned_to) ?? 'Unassigned'}</span>
-                          <span className={cn('tabular-nums md:text-sm', !a.planned_start && !a.planned_end && 'italic')}>{plannedRange(a)}</span>
+                          <span className={cn('truncate md:text-sm', a.assigned_to ? 'text-foreground/80' : 'text-muted-foreground')}>
+                            {nameFor(a.assigned_to) ?? 'Unassigned'}
+                          </span>
+                          <span className={cn('tabular-nums text-foreground/80 md:text-sm', !a.planned_start && !a.planned_end && 'italic text-muted-foreground')}>
+                            {plannedRange(a)}
+                          </span>
                         </span>
-                        <ProgressBar value={Number(a.percent_complete)} label={`${a.name} progress`} />
+                        <ProgressBar value={Number(a.percent_complete)} label={`${a.name} progress`} status={a.status} overdue={late} />
                         <span className="md:justify-self-end">
                           <ActivityStatusBadge status={a.status} />
                         </span>
@@ -407,7 +415,7 @@ function ActivityTable({
           {activities.map((a) => {
             const late = isOverdue(a, today)
             return (
-              <tr key={a.id} className={cn('hover:bg-muted/40', late && 'bg-destructive/5')}>
+              <tr key={a.id} className={cn('transition-colors hover:bg-[#F8F7F3]', late && 'bg-[#FDE8E7]/40 hover:bg-[#FDE8E7]/70')}>
                 <td className="px-4 py-2.5">
                   <button
                     type="button"
@@ -424,7 +432,7 @@ function ActivityTable({
                 <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-muted-foreground">{plannedRange(a)}</td>
                 <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-muted-foreground">{actualRange(a)}</td>
                 <td className="px-4 py-2.5">
-                  <ProgressBar value={Number(a.percent_complete)} label={`${a.name} progress`} />
+                  <ProgressBar value={Number(a.percent_complete)} label={`${a.name} progress`} status={a.status} overdue={late} />
                 </td>
                 <td className="px-4 py-2.5">
                   <ActivityStatusBadge status={a.status} />
@@ -440,7 +448,10 @@ function ActivityTable({
             <button
               type="button"
               onClick={() => onSelect(a)}
-              className={cn('flex w-full flex-col gap-2 p-4 text-left hover:bg-muted/40', isOverdue(a, today) && 'bg-destructive/5')}
+              className={cn(
+                'flex w-full flex-col gap-2 p-4 text-left transition-colors hover:bg-[#F8F7F3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32]',
+                isOverdue(a, today) && 'bg-[#FDE8E7]/40',
+              )}
             >
               <span className="flex items-start justify-between gap-3">
                 <span className="flex min-w-0 flex-col">
