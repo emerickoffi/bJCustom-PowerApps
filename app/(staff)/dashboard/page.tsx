@@ -16,6 +16,7 @@ import { PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
 import { getOrgFeatures } from '@/lib/features'
 import { getDashboardCardDetails } from '@/lib/dashboard-cards'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
+import { loadDashboardAttention } from '@/lib/attention-data'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
@@ -77,9 +78,10 @@ export default async function DashboardPage() {
 
   const recent = (recentRes.data ?? []) as unknown as (ProjectSummary & { completion_date: string | null })[]
   const features = await getOrgFeatures(orgId)
-  const [photos, cardDetails] = await Promise.all([
+  const [photos, cardDetails, attention] = await Promise.all([
     getProjectCoverPhotos(recent.map((p) => p.id)),
     getDashboardCardDetails(orgId, recent, features),
+    loadDashboardAttention(orgId, session.userId, features),
   ])
 
   return (
@@ -219,9 +221,14 @@ export default async function DashboardPage() {
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
         <PipelineOverview counts={counts} />
         <div className="flex flex-col gap-6">
-          <NotificationsCard userId={session.userId} />
+          <NotificationsCard
+            items={attention.items}
+            total={attention.total}
+            totalIsLowerBound={attention.totalIsLowerBound}
+          />
           <RecentActivity
             items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
+            updates={attention.updates}
           />
         </div>
       </div>
