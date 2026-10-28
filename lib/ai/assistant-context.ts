@@ -25,7 +25,7 @@ export async function buildAssistantContext(
   const { data: project, error: projectError } = await supabase
     .from('projects')
     .select(
-      'id, project_number, name, project_type, status, progress_percent, city, state, community, phase, lot, block, proposed_start_date, target_completion_date, completion_date, estimated_budget_cents, description',
+      'id, project_number, name, primary_client_id, project_type, status, progress_percent, city, state, community, phase, lot, block, proposed_start_date, target_completion_date, completion_date, estimated_budget_cents, description',
     )
     .eq('id', projectId)
     .is('archived_at', null)
@@ -33,7 +33,8 @@ export async function buildAssistantContext(
   if (projectError) throw new AssistantContextError(`project query failed: ${projectError.message}`)
   if (!project) return null
 
-  const [schedule, estimates, issues, warranty] = await Promise.all([
+  const [clientLinks, schedule, estimates, issues, warranty] = await Promise.all([
+    clientRelationshipsFor(supabase, [project], true),
     features.schedule
       ? supabase
           .from('schedule_activities')
@@ -70,7 +71,9 @@ export async function buildAssistantContext(
       description: clip(project.description, 600),
       estimated_budget: dollars(project.estimated_budget_cents),
       estimated_budget_cents: undefined,
+      primary_client_id: undefined,
     },
+    homeowners_and_contacts: clientLinks.get(project.id) ?? LOAD_FAILED,
     schedule: schedule ? (schedule.error ? LOAD_FAILED : schedule.data ?? []) : 'module turned off',
     estimates: estimates
       ? estimates.error
@@ -93,6 +96,152 @@ export async function buildAssistantContext(
 }
 
 const LOAD_FAILED = 'could not be loaded right now; do not guess'
+const RESTRICTED = 'linked, but this user is not authorized to view this client record'
+const NO_CLIENT = 'no client is linked to this project'
+const ID_CHUNK = 150
+
+type ProjectRef = { id: string; primary_client_id: string | null }
+type ClientRow = {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  company_name: string | null
+  archived_at: string | null
+  portal_user_id: string | null
+}
+type ContactRow = {
+  client_id: string
+  first_name: string | null
+  last_name: string | null
+  relationship: string | null
+  is_primary: boolean
+  portal_enabled: boolean | null
+}
+type QueryResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+
+async function selectByIds<T>(ids: string[], run: (chunk: string[]) => QueryResult<T>) {
+  const rows: T[] = []
+  for (let i = 0; i < ids.length; i += ID_CHUNK) {
+    const { data, error } = await run(ids.slice(i, i + ID_CHUNK))
+    if (error) return { rows: null, error: error.message }
+    rows.push(...(data ?? []))
+  }
+  return { rows, error: null }
+}
+
+const personName = (r: { first_name: string | null; last_name: string | null; company_name?: string | null }) =>
+  [r.first_name, r.last_name].filter(Boolean).join(' ').trim() || r.company_name || 'Unnamed record'
+
+/**
+ * Resolves each project's linked clients through project_clients and projects.primary_client_id,
+ * using the caller's RLS-scoped client. Only names, relationship labels, and portal flags are
+ * returned; emails, phones, and notes never leave the server. Each project resolves to a list of
+ * linked clients, NO_CLIENT, or LOAD_FAILED, and clients the user cannot read are marked RESTRICTED
+ * so a permission gap is never reported as a missing homeowner.
+ */
+async function clientRelationshipsFor(
+  supabase: SupabaseClient,
+  projects: ProjectRef[],
+  includeContacts: boolean,
+): Promise<Map<string, unknown>> {
+  const result = new Map<string, unknown>()
+  if (!projects.length) return result
+  const fail = () => {
+    for (const p of projects) result.set(p.id, LOAD_FAILED)
+    return result
+  }
+
+  const links = await selectByIds<{ project_id: string; client_id: string; relationship: string | null }>(
+    projects.map((p) => p.id),
+    (chunk) => supabase.from('project_clients').select('project_id, client_id, relationship').in('project_id', chunk).order('created_at'),
+  )
+  if (!links.rows) return fail()
+
+  const linksBy = new Map<string, { client_id: string; relationship: string | null }[]>()
+  for (const l of links.rows) linksBy.set(l.project_id, [...(linksBy.get(l.project_id) ?? []), l])
+  for (const p of projects) {
+    const list = linksBy.get(p.id) ?? []
+    if (p.primary_client_id && !list.some((l) => l.client_id === p.primary_client_id)) {
+      list.unshift({ client_id: p.primary_client_id, relationship: 'primary_owner' })
+    }
+    linksBy.set(p.id, list)
+  }
+
+  const clientIds = [...new Set([...linksBy.values()].flat().map((l) => l.client_id))]
+  if (!clientIds.length) {
+    for (const p of projects) result.set(p.id, NO_CLIENT)
+    return result
+  }
+
+  const [clients, contacts] = await Promise.all([
+    selectByIds<ClientRow>(clientIds, (chunk) =>
+      supabase.from('clients').select('id, first_name, last_name, company_name, archived_at, portal_user_id').in('id', chunk),
+    ),
+    includeContacts
+      ? selectByIds<ContactRow>(clientIds, (chunk) =>
+          supabase
+            .from('client_contacts')
+            .select('client_id, first_name, last_name, relationship, is_primary, portal_enabled')
+            .in('client_id', chunk)
+            .is('archived_at', null)
+            .order('is_primary', { ascending: false })
+            .order('created_at'),
+        )
+      : null,
+  ])
+  if (!clients.rows) return fail()
+
+  const clientBy = new Map(clients.rows.map((c) => [c.id, c]))
+  const contactsBy = new Map<string, ContactRow[]>()
+  for (const c of contacts?.rows ?? []) contactsBy.set(c.client_id, [...(contactsBy.get(c.client_id) ?? []), c])
+
+  for (const p of projects) {
+    const list = linksBy.get(p.id) ?? []
+    if (!list.length) {
+      result.set(p.id, NO_CLIENT)
+      continue
+    }
+    const primaryId = p.primary_client_id ?? list.find((l) => l.relationship === 'primary_owner')?.client_id ?? null
+    result.set(
+      p.id,
+      list.map((link) => {
+        const role = link.client_id === primaryId ? 'primary homeowner (client of record)' : `additional linked client (${link.relationship ?? 'other'})`
+        const client = clientBy.get(link.client_id)
+        if (!client) return { role, record: RESTRICTED }
+        return {
+          role,
+          name: personName(client),
+          ...(client.archived_at ? { client_record_archived: true } : {}),
+          client_has_portal_login: Boolean(client.portal_user_id),
+          ...(includeContacts
+            ? {
+                contacts: contacts?.error
+                  ? LOAD_FAILED
+                  : (contactsBy.get(link.client_id) ?? []).map((ct) => ({
+                      name: personName(ct),
+                      relationship_to_client: ct.relationship,
+                      primary_contact: ct.is_primary,
+                      portal_access_enabled: Boolean(ct.portal_enabled),
+                    })),
+              }
+            : {}),
+        }
+      }),
+    )
+  }
+  return result
+}
+
+/** Projects the question names by project number or a distinctive word of the project name. */
+function projectsMentioned<T extends { project_number: string | null; name: string }>(list: T[], question: string, max = 5) {
+  const q = question.toLowerCase()
+  const words = new Set(q.match(/[a-z0-9]{4,}/g) ?? [])
+  const byNumber = list.filter((p) => p.project_number && new RegExp(`\\b${p.project_number.toLowerCase().replace(/[^a-z0-9]/g, '\\$&')}\\b`).test(q))
+  const byName = list.filter(
+    (p) => !byNumber.includes(p) && (q.includes(p.name.toLowerCase()) || (p.name.toLowerCase().match(/[a-z0-9]{4,}/g) ?? []).some((w) => words.has(w))),
+  )
+  return [...byNumber, ...byName].slice(0, max)
+}
 
 async function warrantyFor(supabase: SupabaseClient, projectId: string) {
   const [enrollmentResult, claimResult] = await Promise.all([
@@ -121,10 +270,11 @@ async function warrantyFor(supabase: SupabaseClient, projectId: string) {
 const PORTFOLIO_PAGE_SIZE = 200
 const PORTFOLIO_MAX_PROJECTS = 600
 const PORTFOLIO_COLUMNS =
-  'id, project_number, name, status, progress_percent, city, community, target_completion_date, completion_date'
+  'id, project_number, name, primary_client_id, status, progress_percent, city, community, target_completion_date, completion_date'
 
 type PortfolioProject = {
   id: string
+  primary_client_id: string | null
   project_number: string | null
   name: string
   status: string
@@ -203,7 +353,11 @@ async function portfolio(supabase: SupabaseClient, features: FeatureMap, questio
   if (!ids.length) return { project_coverage: coverage, projects: [] }
 
   const today = new Date().toISOString().slice(0, 10)
-  const [late, issues, claims, warranties] = await Promise.all([
+  const mentioned = projectsMentioned(list, question)
+  const mentionedIds = new Set(mentioned.map((p) => p.id))
+  const [homeownerNames, homeownerDetails, late, issues, claims, warranties] = await Promise.all([
+    clientRelationshipsFor(supabase, list.filter((p) => !mentionedIds.has(p.id)), false),
+    clientRelationshipsFor(supabase, mentioned, true),
     features.schedule
       ? supabase
           .from('schedule_activities')
@@ -251,8 +405,9 @@ async function portfolio(supabase: SupabaseClient, features: FeatureMap, questio
   return {
     project_coverage: coverage,
     ...(unavailable.length ? { data_load_errors: unavailable.map((l) => `${l} could not be loaded; do not guess them`) } : {}),
-    projects: list.map(({ id, ...p }) => ({
+    projects: list.map(({ id, primary_client_id: _primaryClientId, ...p }) => ({
       ...p,
+      homeowners_and_contacts: homeownerDetails.get(id) ?? homeownerNames.get(id) ?? LOAD_FAILED,
       ...(lateBy ? { overdue_activities: lateBy.get(id) ?? 0 } : {}),
       ...(issueBy ? { open_punch_list_issues: issueBy.get(id) ?? 0 } : {}),
       ...(claimBy ? { open_warranty_claims: claimBy.get(id) ?? 0 } : {}),
