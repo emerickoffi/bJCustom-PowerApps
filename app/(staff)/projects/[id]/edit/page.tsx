@@ -35,9 +35,6 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={FolderPenIcon}
-        backHref={`/projects/${project.id}`}
-        backLabel={project.name}
-        eyebrow={project.project_number}
         title="Edit project"
       />
       <ProjectForm

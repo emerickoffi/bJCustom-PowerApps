@@ -75,9 +75,6 @@ export default async function ProjectDocumentsPage({
       <PageHeader
         tone="sage"
         icon={FolderOpen}
-        backHref={`/projects/${id}`}
-        backLabel={`Back to ${project.name}`}
-        eyebrow={project.project_number}
         title={archived ? 'Archived documents' : 'Project Documents'}
         description={
           <>

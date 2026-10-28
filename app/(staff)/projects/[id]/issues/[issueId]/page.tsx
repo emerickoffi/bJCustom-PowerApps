@@ -157,13 +157,11 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
         backLabel={walkthrough.title}
         eyebrow={
           <span className="flex flex-wrap items-center gap-2 normal-case tracking-normal">
-            <span className="font-mono">{project.project_number}</span>
             <IssueStatusBadge status={status} />
             <PriorityBadge priority={priority} />
           </span>
         }
         title={`${issue.category} · ${issue.item_label}`}
-        description={project.name}
       />
 
       <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border lg:grid-cols-4">

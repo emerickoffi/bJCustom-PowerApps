@@ -112,9 +112,6 @@ export default async function SchedulePage({
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={CalendarDaysIcon}
-        backHref={`/projects/${project.id}`}
-        backLabel={project.name}
-        eyebrow={<span className="font-mono normal-case tracking-normal">{project.project_number}</span>}
         title="Construction schedule"
         description={formatAddress(project)}
         actions={manager && activities.length > 0 && <InitializeScheduleButton projectId={project.id} label="Add missing template activities" />}

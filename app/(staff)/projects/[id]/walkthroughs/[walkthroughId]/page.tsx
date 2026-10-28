@@ -46,14 +46,7 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={ClipboardCheckIcon}
-        backHref={`/projects/${project.id}`}
-        backLabel={project.name}
-        eyebrow={
-          <span className="flex items-center gap-2 normal-case tracking-normal">
-            <span className="font-mono">{project.project_number}</span>
-            <WalkthroughStatusBadge status={status} />
-          </span>
-        }
+        eyebrow={<WalkthroughStatusBadge status={status} />}
         title={walkthrough.title}
         description={WALKTHROUGH_TYPE_LABELS[walkthrough.walkthrough_type] ?? walkthrough.walkthrough_type}
       />

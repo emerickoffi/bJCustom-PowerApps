@@ -23,9 +23,6 @@ export default async function NewWalkthroughPage({ params }: { params: Promise<{
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={ClipboardPlusIcon}
-        backHref={`/projects/${project.id}`}
-        backLabel={project.name}
-        eyebrow={<span className="font-mono normal-case tracking-normal">{project.project_number}</span>}
         title="New homeowner walkthrough"
         description="The homeowners linked to this project will complete the checklist from their portal."
       />

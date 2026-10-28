@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, ShieldCheck as ShieldCheckIcon } from 'lucide-react'
+import { ShieldCheck as ShieldCheckIcon } from 'lucide-react'
 import { canManage, requireStaff } from '@/lib/session'
 import { SubmitClaimForm, type StaffOption } from '@/components/warranty/claim-forms'
 import { ClaimList } from '@/components/warranty/claim-list'
@@ -95,14 +94,6 @@ export default async function ProjectWarrantyPage({ params }: { params: Promise<
 
   return (
     <div className="flex flex-col gap-8">
-      <Link
-        href={`/projects/${id}`}
-        className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        {project.name}
-      </Link>
-
       <PageHeader icon={ShieldCheckIcon}
         title="Warranty"
         description={
