@@ -34,6 +34,7 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
         clientOptions={clientOptions}
         managerOptions={managers.map((m) => ({ value: m.user_id, label: m.full_name || m.email || 'Team member' }))}
         scheduleSetup={features.schedule}
+        cover={{ orgId: session.organizationId }}
         submitLabel="Create project"
         pendingLabel="Creating project…"
         cancelHref="/projects"

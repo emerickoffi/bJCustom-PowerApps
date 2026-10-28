@@ -7,6 +7,7 @@ import { WARRANTY_STAGE_LABELS, type WarrantyStage } from '@/components/warranty
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import type { DashboardCardDetails } from '@/lib/dashboard-cards'
 import { formatDate } from '@/lib/format'
+import { coverAlt, type ProjectCover } from '@/lib/project-cover'
 import { cn } from '@/lib/utils'
 
 export type CompactProjectCardData = {
@@ -19,6 +20,7 @@ export type CompactProjectCardData = {
   progress_percent: number | null
   completion_date: string | null
   photoUrl: string | null
+  photoKind?: ProjectCover['kind']
   details: DashboardCardDetails
   warrantyEnabled: boolean
 }
@@ -142,7 +144,13 @@ export function CompactProjectCard({
         <div className="relative aspect-[4/3] w-20 shrink-0 overflow-hidden rounded-xl bg-muted sm:w-24">
           {project.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- signed storage URLs are short-lived
-            <img src={project.photoUrl} alt={`Site photo for ${project.name}`} className="size-full object-cover" />
+            <img
+              src={project.photoUrl}
+              alt={coverAlt(project.photoKind, project.name)}
+              loading="lazy"
+              decoding="async"
+              className="size-full object-cover"
+            />
           ) : (
             <ArchitecturalPlaceholder className="size-full bg-brand-deep" />
           )}

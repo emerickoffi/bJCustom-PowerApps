@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/shared/page-header'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { ProgressRing } from '@/components/shared/progress'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
+import { coverAlt } from '@/lib/project-cover'
 import { PROJECT_PIPELINE, PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -122,7 +123,8 @@ export default async function PortalPage() {
         <ul className="flex flex-col gap-10">
           {projects.map((p) => {
             const progress = p.progress_percent === null ? null : Number(p.progress_percent)
-            const photoUrl = photos.get(p.id)
+            const cover = photos.get(p.id)
+            const photoUrl = cover?.url
             const walkthroughs = walkthroughsByProject.get(p.id) ?? []
             return (
               <li key={p.id} className="flex flex-col gap-6">
@@ -131,7 +133,7 @@ export default async function PortalPage() {
                     {photoUrl ? (
                       <Image
                         src={photoUrl}
-                        alt={`Latest photo of ${p.name}`}
+                        alt={coverAlt(cover?.kind, p.name)}
                         fill
                         sizes="(min-width: 1152px) 72rem, 100vw"
                         className="object-cover"
