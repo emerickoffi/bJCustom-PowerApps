@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import { AlertTriangle, CalendarClock, CalendarRange, ChevronLeft, ClipboardCheck, MapPin, Pencil, Wallet } from 'lucide-react'
+import { AlertTriangle, CalendarClock, CalendarRange, ChevronLeft, ClipboardCheck, FolderOpen, MapPin, Pencil, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -188,6 +188,18 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 >
                   <CalendarRange data-icon="inline-start" />
                   Open schedule
+                </Button>
+              )}
+              {features.documents && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  render={<Link href={`/projects/${project.id}/documents`} />}
+                  nativeButton={false}
+                  className="border-white/25 bg-white/5 text-white hover:bg-white/15 hover:text-white"
+                >
+                  <FolderOpen data-icon="inline-start" />
+                  Documents
                 </Button>
               )}
               {features.warranty && project.status === 'completed' && (

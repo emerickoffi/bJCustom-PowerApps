@@ -176,6 +176,11 @@ export default async function PortalPage() {
                           <ArrowRight data-icon="inline-end" />
                         </Button>
                       )}
+                      {features?.documents && (
+                        <Button size="lg" variant="outline" render={<Link href={`/portal/projects/${p.id}/documents`} />} nativeButton={false}>
+                          Documents
+                        </Button>
+                      )}
                       {features?.invoices && (
                         <Button size="lg" variant="outline" render={<Link href="/portal/invoices" />} nativeButton={false}>
                           Invoices
