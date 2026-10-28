@@ -211,8 +211,14 @@ export default async function PortalPage() {
                         </Button>
                       )}
                       {features?.documents && (
-                        <Button size="lg" variant="outline" render={<Link href={`/portal/projects/${p.id}/documents`} />} nativeButton={false}>
-                          Documents & approvals
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          title="Project documents and any documents waiting for your signature. Repair confirmations are in Walkthroughs & issues."
+                          render={<Link href={`/portal/projects/${p.id}/documents`} />}
+                          nativeButton={false}
+                        >
+                          Documents & signatures
                         </Button>
                       )}
                       {walkthroughs.length > 0 && (

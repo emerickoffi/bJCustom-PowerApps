@@ -23,6 +23,7 @@ export default async function NewClientPage() {
       <ClientForm
         action={createClientAction}
         submitLabel="Create client"
+        pendingLabel="Creating client…"
         cancelHref="/clients"
         additionalContacts={Boolean(features?.additional_contacts)}
       />

@@ -10,6 +10,7 @@ import { CategoryNav, DocumentFiltersForm, DocumentPagination, type BrowseParams
 import { getCategoryCounts, listDocuments } from '@/lib/document-queries'
 import { getMySignatureTasks } from '@/app/actions/signatures'
 import { PortalSignatureTasks } from '@/components/signatures/portal-signature-tasks'
+import { FocusHashTarget } from '@/components/shared/focus-hash-target'
 
 export const metadata: Metadata = { title: 'Project documents' }
 
@@ -52,6 +53,7 @@ export default async function PortalDocumentsPage({
         description={`Documents your builder has shared for ${project.name}.`}
       />
       <PortalSignatureTasks tasks={tasks} />
+      <FocusHashTarget />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         {counts && (
           <aside className="lg:w-64 lg:shrink-0">

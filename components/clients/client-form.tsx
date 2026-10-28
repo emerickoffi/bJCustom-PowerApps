@@ -33,9 +33,11 @@ export function ClientForm({
   action,
   defaults: initialDefaults = {},
   submitLabel,
+  pendingLabel,
   cancelHref,
   additionalContacts = false,
 }: {
+  pendingLabel?: string
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   defaults?: ClientFormValues
   submitLabel: string
@@ -95,7 +97,7 @@ export function ClientForm({
         <Button variant="outline" size="lg" render={<Link href={cancelHref} />} nativeButton={false}>
           Cancel
         </Button>
-        <SubmitButton>{submitLabel}</SubmitButton>
+        <SubmitButton pendingLabel={pendingLabel}>{submitLabel}</SubmitButton>
       </FormActions>
     </form>
   )

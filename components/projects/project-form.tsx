@@ -44,6 +44,14 @@ export type ProjectFormValues = {
 
 type Option = { value: string; label: string }
 
+export type ClientMailingAddress = {
+  address_line1: string
+  address_line2: string
+  city: string
+  state: string
+  postal_code: string
+}
+
 export type ProjectFormCover = { orgId: string; savedUrl?: string | null; savedKind?: string | null }
 
 const usd = new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
@@ -64,6 +72,7 @@ export function ProjectForm({
   cancelHref,
   scheduleSetup,
   cover,
+  clientAddresses,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   defaults?: ProjectFormValues
@@ -75,7 +84,35 @@ export function ProjectForm({
   /** Only passed on create. `true` when the Schedule feature is on; `false` shows it as unavailable; omitted hides it. */
   scheduleSetup?: boolean
   cover?: ProjectFormCover
+  /** Mailing addresses keyed by client id. Copied into the site fields only when the user asks. */
+  clientAddresses?: Record<string, ClientMailingAddress>
 }) {
+  const formRef = useRef<HTMLFormElement>(null)
+  const [addressNotice, setAddressNotice] = useState<{ tone: 'success' | 'info'; text: string } | null>(null)
+
+  const copyClientMailingAddress = () => {
+    const form = formRef.current
+    if (!form || !clientAddresses) return
+    const clientId = (form.elements.namedItem('primary_client_id') as HTMLSelectElement | null)?.value
+    if (!clientId) {
+      setAddressNotice({ tone: 'info', text: 'Choose the primary homeowner first.' })
+      return
+    }
+    const address = clientAddresses[clientId]
+    if (!address) {
+      setAddressNotice({ tone: 'info', text: 'This client has no mailing address on file. Enter the site address below.' })
+      return
+    }
+    for (const [name, value] of Object.entries(address)) {
+      const input = form.elements.namedItem(name) as HTMLInputElement | null
+      if (input) input.value = value
+    }
+    setAddressNotice({
+      tone: 'success',
+      text: 'Copied the client’s mailing address. Check it matches the construction site before saving.',
+    })
+  }
+
   const [coverFile, setCoverFile] = useState<{ file: File; url: string } | null>(null)
   const [removeSavedCover, setRemoveSavedCover] = useState(false)
   const [coverError, setCoverError] = useState<string | null>(null)
@@ -112,7 +149,7 @@ export function ProjectForm({
   const [scheduleMode, setScheduleMode] = useState(sv?.schedule_setup ?? 'standard')
 
   return (
-    <form key={sv ? JSON.stringify(sv) : 'initial'} action={formAction} className="flex flex-col gap-5" noValidate={false}>
+    <form ref={formRef} key={sv ? JSON.stringify(sv) : 'initial'} action={formAction} className="flex flex-col gap-5" noValidate={false}>
       <FormSection icon={HouseIcon} title="Project" description="Name the project and choose the homeowner it is being built for.">
         <TextField name="name" label="Project name" required defaultValue={v('name', defaults.name)} error={fe.name} className="sm:col-span-2" />
         <SelectField
@@ -175,6 +212,21 @@ export function ProjectForm({
       )}
 
       <FormSection icon={MapPinIcon} title="Site" description="Where the home is being built. This is separate from the homeowner's mailing address.">
+        {clientAddresses && (
+          <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center">
+            <Button type="button" variant="outline" size="sm" className="self-start" onClick={copyClientMailingAddress}>
+              Use client mailing address
+            </Button>
+            {addressNotice && (
+              <p
+                role="status"
+                className={cn('text-sm', addressNotice.tone === 'success' ? 'text-primary' : 'text-muted-foreground')}
+              >
+                {addressNotice.text}
+              </p>
+            )}
+          </div>
+        )}
         <TextField name="address_line1" label="Street address" required autoComplete="off" defaultValue={v('address_line1', defaults.address_line1)} error={fe.address_line1} className="sm:col-span-2" />
         <TextField name="address_line2" label="Address line 2" autoComplete="off" defaultValue={v('address_line2', defaults.address_line2)} error={fe.address_line2} className="sm:col-span-2" />
         <div className="grid gap-5 sm:col-span-2 sm:grid-cols-6">

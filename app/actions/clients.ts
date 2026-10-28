@@ -90,7 +90,7 @@ export async function createClientAction(_prev: ActionState, formData: FormData)
   }
 
   revalidatePath('/clients')
-  redirect(contactsFailed ? `/clients/${data.id}?notice=contacts_not_saved` : `/clients/${data.id}`)
+  redirect(`/clients/${data.id}?notice=${contactsFailed ? 'contacts_not_saved' : 'created'}`)
 }
 
 const ADDITIONAL_CONTACT_FIELDS = [

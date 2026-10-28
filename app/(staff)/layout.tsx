@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
-import { requireStaff } from '@/lib/session'
+import { canManage, requireStaff } from '@/lib/session'
+import { QuickActionsButton, QuickActionsProvider, type QuickAction } from '@/components/app/quick-actions'
 import { landingPathForRole, navForRole } from '@/lib/navigation'
 import { WorkspaceSwitcher } from '@/components/app/workspace-switcher'
 import { getOrgFeatures } from '@/lib/features'
@@ -79,6 +80,13 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   const homeHref = landingPathForRole(session.role)
   const homeLabel = `${session.brand.displayName} ${homeHref === '/my-work' ? 'my work' : 'dashboard'}`
   const showAssistant = features.ai_assistant
+  // Same guard as /projects/new and /clients/new (requireManager).
+  const globalQuickActions: QuickAction[] = canManage(session.role)
+    ? [
+        { key: 'project', label: 'New project', href: '/projects/new', icon: 'project' },
+        { key: 'client', label: 'New client', href: '/clients/new', icon: 'client' },
+      ]
+    : []
   const workspaces = session.workspaces.map((w) => ({
     organizationId: w.organizationId,
     organizationName: w.organizationName,
@@ -89,6 +97,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   return (
     <BrandStyle brand={session.brand}>
       <AssistantProvider>
+      <QuickActionsProvider>
       <div className="flex min-h-svh bg-background">
         <Sidebar
           items={items}
@@ -99,7 +108,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           defaultCollapsed={collapsed}
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b bg-background pt-[env(safe-area-inset-top)]">
+          <header data-app-header className="sticky top-0 z-30 border-b bg-background pt-[env(safe-area-inset-top)]">
             <div className="flex h-14 items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:gap-3 sm:px-6 lg:px-10">
               <MobileNav items={items} logo={logo} />
               <Link href={homeHref} className="flex min-h-11 w-24 shrink-0 items-center sm:w-28 lg:hidden" aria-label={homeLabel}>
@@ -122,10 +131,12 @@ export default async function StaffLayout({ children }: { children: React.ReactN
               </div>
             </div>
           </header>
-          <main className="mx-auto w-full max-w-[90rem] flex-1 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:py-8 lg:px-10 lg:py-10">{children}</main>
+          <main className="mx-auto w-full max-w-[90rem] flex-1 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8 lg:px-10 lg:pt-10">{children}</main>
         </div>
       </div>
+      <QuickActionsButton globalActions={globalQuickActions} aboveAssistant={showAssistant} />
       {showAssistant && <AssistantLauncher configured={getAssistantProviderConfig().configured} />}
+      </QuickActionsProvider>
       </AssistantProvider>
     </BrandStyle>
   )

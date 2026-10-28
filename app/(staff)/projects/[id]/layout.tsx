@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
-import { requireStaff } from '@/lib/session'
+import { canManage, requireStaff } from '@/lib/session'
+import { ProjectQuickActionsScope, type QuickAction } from '@/components/app/quick-actions'
 import { createClient } from '@/lib/supabase/server'
 import { getOrgFeatures } from '@/lib/features'
 import { getProjectNavItems } from '@/lib/project-nav'
@@ -19,7 +20,7 @@ export default async function ProjectLayout({
   const [{ data: project }, { data: canViewInternal }, features] = await Promise.all([
     supabase
       .from('projects')
-      .select('id, name, project_number, status')
+      .select('id, name, project_number, status, archived_at')
       .eq('id', id)
       .eq('organization_id', session.organizationId)
       .maybeSingle(),
@@ -34,8 +35,24 @@ export default async function ProjectLayout({
     canViewInternal: Boolean(canViewInternal),
   })
 
+  // Each action mirrors the guard on its destination page, so only workflows the user can complete are offered.
+  const manager = canManage(session.role)
+  const editable = !project.archived_at
+  const base = `/projects/${encodeURIComponent(project.id)}`
+  const quickActions: QuickAction[] = []
+  if (editable && manager && features.schedule) {
+    quickActions.push({ key: 'schedule', label: 'Add schedule activity', href: `${base}/schedule?new=activity`, icon: 'schedule' })
+  }
+  if (editable && manager && features.estimates && project.status !== 'cancelled') {
+    quickActions.push({ key: 'estimate', label: 'Create estimate', href: `/estimates/new?project=${encodeURIComponent(project.id)}`, icon: 'estimate' })
+  }
+  if (editable && features.documents && canViewInternal) {
+    quickActions.push({ key: 'document', label: 'Upload document', href: `${base}/documents?upload=1`, icon: 'document' })
+  }
+
   return (
     <div className="flex flex-col gap-6">
+      <ProjectQuickActionsScope projectName={project.name} actions={quickActions} />
       <ProjectNav projectId={project.id} projectName={project.name} projectNumber={project.project_number ?? null} items={items} />
       {children}
     </div>

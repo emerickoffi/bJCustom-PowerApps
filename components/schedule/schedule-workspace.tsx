@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ActivityEditor, NewActivitySheet } from '@/components/schedule/activity-editor'
 import { ScheduleCalendar, ScheduleList, ScheduleTimeline } from '@/components/schedule/schedule-views'
 import type { ScheduleActivity, ScheduleDependency } from '@/lib/schedule'
+import { useOpenFromUrl } from '@/components/shared/use-open-from-url'
 
 export function ScheduleWorkspace({
   projectId,
@@ -30,6 +31,8 @@ export function ScheduleWorkspace({
   const nameFor = useCallback((id: string | null) => (id ? (names.get(id) ?? 'Former team member') : null), [names])
   const selected = activities.find((a) => a.id === selectedId) ?? null
   const closeNew = useCallback(() => setCreating(false), [])
+  const openNew = useCallback(() => setCreating(true), [])
+  useOpenFromUrl('new', 'activity', canManage, openNew)
 
   const viewProps = {
     activities,

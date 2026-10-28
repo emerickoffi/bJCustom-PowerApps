@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DocumentUploadDialog, type UploadProjectOption } from '@/components/documents/document-upload-dialog'
+import { useOpenFromUrl } from '@/components/shared/use-open-from-url'
 import type { DocumentScope } from '@/lib/documents'
 
 export function DocumentUploadButton({
@@ -13,6 +14,7 @@ export function DocumentUploadButton({
   canShare,
   label = 'Upload document',
   variant = 'default',
+  openFromUrl = false,
 }: {
   projectId?: string
   scope?: DocumentScope
@@ -20,8 +22,12 @@ export function DocumentUploadButton({
   canShare: boolean
   label?: string
   variant?: 'default' | 'outline'
+  /** Opens the dialog when the page is reached with `?upload=1` (used by Quick Actions). */
+  openFromUrl?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const openDialog = useCallback(() => setOpen(true), [])
+  useOpenFromUrl('upload', '1', openFromUrl, openDialog)
   return (
     <>
       <Button variant={variant} onClick={() => setOpen(true)}>

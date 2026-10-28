@@ -35,6 +35,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
         action={updateClientAction.bind(null, client.id)}
         defaults={client}
         submitLabel="Save changes"
+        pendingLabel="Saving changes…"
         cancelHref={`/clients/${client.id}`}
       />
     </div>

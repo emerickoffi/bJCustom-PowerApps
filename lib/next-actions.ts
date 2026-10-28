@@ -160,7 +160,7 @@ export function buildHomeownerActions(input: HomeownerActionInput): HomeownerAct
         title: `Sign ${t.documentName}`,
         description: t.waitingReason ?? 'Ready for your signature.',
         project: names.get(t.projectId)!,
-        href: `/portal/projects/${encodeURIComponent(t.projectId)}/documents`,
+        href: `/portal/projects/${encodeURIComponent(t.projectId)}/documents#sign-${encodeURIComponent(t.signerId)}`,
         actionLabel: 'Review and sign',
       })
     }
@@ -174,7 +174,7 @@ export function buildHomeownerActions(input: HomeownerActionInput): HomeownerAct
         title: `Confirm repair: ${r.item_label}`,
         description: 'Your builder marked this repaired. Accept it or tell them what still needs work.',
         project: names.get(r.project_id)!,
-        href: `/portal/walkthroughs/${encodeURIComponent(r.walkthrough_id)}`,
+        href: `/portal/walkthroughs/${encodeURIComponent(r.walkthrough_id)}#issue-${encodeURIComponent(r.id)}`,
         actionLabel: 'Review repair',
       })
     }

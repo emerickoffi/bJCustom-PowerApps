@@ -173,8 +173,8 @@ export function EstimateWorkflow({
           {(status === 'draft' || status === 'internal_review') && (
             <ActionButton
               action={() => changeEstimateStatusAction(estimateId, 'submitted')}
-              label={lineCount === 0 ? 'Add line items to submit' : 'Submit for homeowner review'}
-              confirmMessage="Submitting locks this estimate. Continue?"
+              label={lineCount === 0 ? 'Add line items to finalize' : 'Finalize Estimate'}
+              confirmMessage="Finalizing locks this estimate so no more line items can be changed. It is not emailed or sent to the homeowner automatically. Continue?"
               variant="default"
               size="default"
             />

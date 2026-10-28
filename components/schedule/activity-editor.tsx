@@ -1,13 +1,14 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
-import { Link2, X } from 'lucide-react'
+import { useFormStatus } from 'react-dom'
+import { CheckCircle2, Link2, X } from 'lucide-react'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { NativeSelect, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { ActionButton } from '@/components/shared/inline-action'
-import { initialActionState } from '@/lib/action-state'
+import { initialActionState, type ActionState } from '@/lib/action-state'
 import {
   addDependencyAction,
   deleteActivityAction,
@@ -28,24 +29,62 @@ import { formatDate } from '@/lib/format'
 
 type StaffOption = { value: string; label: string }
 
+type SavedNotice = (message: string) => void
+
+function MarkCompleteButton({ onMarkComplete }: { onMarkComplete: (formData: FormData) => void }) {
+  const { pending } = useFormStatus()
+  return (
+    <Button type="submit" variant="outline" size="lg" disabled={pending} formAction={onMarkComplete} className="w-full">
+      <CheckCircle2 data-icon="inline-start" />
+      {pending ? 'Saving...' : 'Mark Complete'}
+    </Button>
+  )
+}
+
+function SavedMessage({ message }: { message: string | null }) {
+  if (!message) return null
+  return (
+    <p role="status" className="flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
+      <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      {message}
+    </p>
+  )
+}
+
 function ProgressForm({
   projectId,
   activity,
   staffOptions,
   canManage,
+  onSaved,
 }: {
   projectId: string
   activity: ScheduleActivity
   staffOptions: StaffOption[]
   canManage: boolean
+  onSaved: SavedNotice
 }) {
-  const [state, formAction] = useActionState(
-    updateActivityProgressAction.bind(null, projectId, activity.id),
-    initialActionState,
-  )
-  const [status, setStatus] = useState(activity.status)
+  // The form remounts when the saved activity refreshes, so success is reported to the parent to stay visible.
+  const [state, formAction] = useActionState(async (prev: ActionState, formData: FormData) => {
+    const result = await updateActivityProgressAction(projectId, activity.id, prev, formData)
+    if (result.success) onSaved(result.success)
+    return result
+  }, initialActionState)
   const v = state.values
+  const [status, setStatus] = useState<ScheduleActivity['status']>(
+    (v?.status as ScheduleActivity['status'] | undefined) ?? activity.status,
+  )
+  const [percent, setPercent] = useState(v?.percent_complete ?? String(Number(activity.percent_complete)))
   const err = state.fieldErrors ?? {}
+  const isComplete = activity.status === 'completed'
+
+  const markComplete = (formData: FormData) => {
+    formData.set('status', 'completed')
+    formData.set('percent_complete', '100')
+    if (!formData.get('actual_end') && activity.actual_end) formData.set('actual_end', activity.actual_end)
+    formAction(formData)
+  }
+
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -57,7 +96,11 @@ function ProgressForm({
             id="status"
             name="status"
             value={status}
-            onChange={(e) => setStatus(e.target.value as ScheduleActivity['status'])}
+            onChange={(e) => {
+              const next = e.target.value as ScheduleActivity['status']
+              setStatus(next)
+              if (next === 'completed') setPercent('100')
+            }}
           >
             {ACTIVITY_STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -74,7 +117,8 @@ function ProgressForm({
           max={100}
           step={1}
           inputMode="numeric"
-          defaultValue={v?.percent_complete ?? String(Number(activity.percent_complete))}
+          value={percent}
+          onChange={(e) => setPercent(e.currentTarget.value)}
           error={err.percent_complete}
           hint="100% marks the activity complete."
         />
@@ -132,10 +176,18 @@ function ProgressForm({
         defaultValue={v?.internal_notes ?? activity.internal_notes ?? ''}
         hint="Staff only. Never shown to the homeowner."
       />
-      <FormMessage state={state} />
-      <SubmitButton pendingLabel="Saving..." className="w-full">
-        Save progress
-      </SubmitButton>
+      <FormMessage state={state.success ? initialActionState : state} />
+      <div className="flex flex-col gap-2 sm:flex-row">
+        {!isComplete && <MarkCompleteButton onMarkComplete={markComplete} />}
+        <SubmitButton pendingLabel="Saving..." className="w-full sm:flex-1">
+          Save Progress
+        </SubmitButton>
+      </div>
+      {!isComplete && (
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Mark Complete sets the status to Completed at 100% and keeps any finish date already recorded.
+        </p>
+      )}
     </form>
   )
 }
@@ -204,14 +256,18 @@ function PlanFields({ activity, values, errors }: { activity?: ScheduleActivity;
   )
 }
 
-function PlanForm({ projectId, activity }: { projectId: string; activity: ScheduleActivity }) {
-  const [state, formAction] = useActionState(updateActivityPlanAction.bind(null, projectId, activity.id), initialActionState)
+function PlanForm({ projectId, activity, onSaved }: { projectId: string; activity: ScheduleActivity; onSaved: SavedNotice }) {
+  const [state, formAction] = useActionState(async (prev: ActionState, formData: FormData) => {
+    const result = await updateActivityPlanAction(projectId, activity.id, prev, formData)
+    if (result.success) onSaved(result.success)
+    return result
+  }, initialActionState)
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <PlanFields activity={activity} values={state.values} errors={state.fieldErrors ?? {}} />
-      <FormMessage state={state} />
+      <FormMessage state={state.success ? initialActionState : state} />
       <SubmitButton pendingLabel="Saving..." variant="outline" className="w-full">
-        Save plan
+        Save Plan
       </SubmitButton>
     </form>
   )
@@ -302,6 +358,9 @@ export function ActivityEditor({
   canManage: boolean
   onClose: () => void
 }) {
+  const [notice, setNotice] = useState<{ activityId: string; section: 'progress' | 'plan'; message: string } | null>(null)
+  const noticeFor = (section: 'progress' | 'plan') =>
+    notice && activity && notice.activityId === activity.id && notice.section === section ? notice.message : null
   return (
     <Sheet open={!!activity} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full overflow-y-auto data-[side=right]:sm:max-w-xl">
@@ -314,13 +373,27 @@ export function ActivityEditor({
             <div className="flex flex-col gap-8 px-4 pb-8">
               <section className="flex flex-col gap-3">
                 <SectionTitle>Progress</SectionTitle>
-                <ProgressForm key={activity.updated_at} projectId={projectId} activity={activity} staffOptions={staffOptions} canManage={canManage} />
+                <ProgressForm
+                  key={activity.updated_at}
+                  projectId={projectId}
+                  activity={activity}
+                  staffOptions={staffOptions}
+                  canManage={canManage}
+                  onSaved={(message) => setNotice({ activityId: activity.id, section: 'progress', message })}
+                />
+                <SavedMessage message={noticeFor('progress')} />
               </section>
               {canManage && (
                 <>
                   <section className="flex flex-col gap-3">
                     <SectionTitle>Plan</SectionTitle>
-                    <PlanForm key={activity.updated_at} projectId={projectId} activity={activity} />
+                    <PlanForm
+                      key={activity.updated_at}
+                      projectId={projectId}
+                      activity={activity}
+                      onSaved={(message) => setNotice({ activityId: activity.id, section: 'plan', message })}
+                    />
+                    <SavedMessage message={noticeFor('plan')} />
                   </section>
                   <section className="flex flex-col gap-3">
                     <SectionTitle>Dependencies</SectionTitle>
