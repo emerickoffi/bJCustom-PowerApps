@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getOrgFeatures } from '@/lib/features'
 import { getProjectNavItems } from '@/lib/project-nav'
 import { ProjectNav } from '@/components/projects/project-nav'
+import { AssistantProjectScope } from '@/components/assistant/assistant-context'
+import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 
 export default async function ProjectLayout({
   children,
@@ -53,6 +55,19 @@ export default async function ProjectLayout({
   return (
     <div className="flex flex-col gap-6">
       <ProjectQuickActionsScope projectName={project.name} actions={quickActions} />
+      <AssistantProjectScope
+        project={{
+          id: project.id,
+          name: project.name,
+          number: project.project_number ?? null,
+          statusLabel: PROJECT_STATUS_LABELS[project.status as ProjectStatus] ?? project.status,
+          capabilities: {
+            schedule: Boolean(features.schedule),
+            documents: Boolean(features.documents && canViewInternal),
+            signatures: Boolean(features.documents && features.e_signatures && canViewInternal),
+          },
+        }}
+      />
       <ProjectNav projectId={project.id} projectName={project.name} projectNumber={project.project_number ?? null} items={items} />
       {children}
     </div>

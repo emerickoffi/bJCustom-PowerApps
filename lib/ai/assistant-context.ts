@@ -1,47 +1,79 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { FeatureMap } from '@/lib/feature-registry'
+import type { OrgRole } from '@/lib/domain'
+import { isOverdue, todayIso, type ActivityStatus } from '@/lib/schedule'
+import { OPEN_STATUSES } from '@/lib/signatures'
+import { getProjectNavItems } from '@/lib/project-nav'
+import { navForRole } from '@/lib/navigation'
+import type { AssistantLink, AssistantModule } from '@/lib/ai/assistant-scope'
 
 const clip = (value: unknown, max = 280) =>
   typeof value === 'string' ? (value.length > max ? `${value.slice(0, max)}…` : value) : value
 
 const dollars = (cents: number | null | undefined) => (cents == null ? null : Math.round(cents) / 100)
 
+export type AssistantRequestScope = {
+  organizationId: string
+  role: OrgRole
+  projectId: string | null
+  /** Untrusted page hint; it only shifts emphasis and never widens what is loaded beyond the user's access. */
+  module: AssistantModule | null
+  question: string
+}
+
+export type AssistantContext = { data: Record<string, unknown>; links: AssistantLink[] }
+
+const DOCUMENT_QUESTION = /\b(documents?|docs?|files?|contracts?|permits?|plans?|drawings?|sign(ed|ing|atures?)?|pdfs?)\b/i
+const SCHEDULE_ACTIVITY_LIMIT = 80
+
 /**
- * Builds the read-only data block sent to the model. Every query runs through the
- * signed-in user's RLS-scoped client, so the assistant can never see more than the
- * user could open in the app. Modules turned off for the organization are skipped.
- * Returns null when a requested project is not accessible.
+ * Builds the read-only data block sent to the model plus the allowlisted links it may reference.
+ * Every query runs through the signed-in user's RLS-scoped client and is pinned to their
+ * organization, so the assistant can never see more than the user could open in the app.
+ * Modules turned off for the organization are skipped. Returns null when a requested project
+ * is not accessible.
  */
 export async function buildAssistantContext(
   supabase: SupabaseClient,
   features: FeatureMap,
-  projectId: string | null,
-  question = '',
-): Promise<Record<string, unknown> | null> {
-  const today = new Date().toISOString().slice(0, 10)
-  if (!projectId) return { today, scope: 'portfolio', ...(await portfolio(supabase, features, question)) }
+  scope: AssistantRequestScope,
+): Promise<AssistantContext | null> {
+  const today = todayIso()
+  const { projectId, question, module: pageModule } = scope
+  if (!projectId) {
+    const { data, links } = await portfolio(supabase, features, scope, today)
+    return { data: { today, scope: 'portfolio', current_page: pageModule ?? 'other', ...data }, links }
+  }
 
-  const { data: project, error: projectError } = await supabase
-    .from('projects')
-    .select(
-      'id, project_number, name, primary_client_id, project_type, status, progress_percent, city, state, community, phase, lot, block, proposed_start_date, target_completion_date, completion_date, estimated_budget_cents, description',
-    )
-    .eq('id', projectId)
-    .is('archived_at', null)
-    .maybeSingle()
+  const [{ data: project, error: projectError }, { data: canViewInternal }] = await Promise.all([
+    supabase
+      .from('projects')
+      .select(
+        'id, project_number, name, primary_client_id, project_manager_id, project_type, status, progress_percent, city, state, community, phase, lot, block, proposed_start_date, target_completion_date, completion_date, estimated_budget_cents, description',
+      )
+      .eq('id', projectId)
+      .eq('organization_id', scope.organizationId)
+      .is('archived_at', null)
+      .maybeSingle(),
+    supabase.rpc('can_view_project_internal', { p_project: projectId }),
+  ])
   if (projectError) throw new AssistantContextError(`project query failed: ${projectError.message}`)
   if (!project) return null
 
-  const [clientLinks, schedule, estimates, issues, warranty] = await Promise.all([
+  const documentsAllowed = Boolean(features.documents && canViewInternal)
+  const wantsDocuments = documentsAllowed && (pageModule === 'documents' || DOCUMENT_QUESTION.test(question))
+
+  const [clientLinks, team, schedule, estimates, issues, warranty, documents] = await Promise.all([
     clientRelationshipsFor(supabase, [project], true),
+    teamFor(supabase, project),
     features.schedule
       ? supabase
           .from('schedule_activities')
           .select('name, phase, status, planned_start, planned_end, actual_start, actual_end, percent_complete, delay_reason')
           .eq('project_id', projectId)
           .order('sort_order')
-          .limit(80)
+          .limit(SCHEDULE_ACTIVITY_LIMIT)
       : null,
     features.estimates
       ? supabase
@@ -61,21 +93,44 @@ export async function buildAssistantContext(
           .limit(25)
       : null,
     features.warranty ? warrantyFor(supabase, projectId) : null,
+    wantsDocuments ? documentsFor(supabase, projectId, Boolean(features.e_signatures)) : null,
   ])
 
+  const navItems = getProjectNavItems(project.id, {
+    features,
+    projectStatus: project.status,
+    canViewInternal: Boolean(canViewInternal),
+  })
+  const links: AssistantLink[] = navItems.map((item) => ({
+    key: `project_${item.key}`,
+    label: item.key === 'overview' ? `Open ${project.name}` : `Open ${item.label}`,
+    href: item.href,
+  }))
+
   return {
-    today,
-    scope: 'project',
-    project: {
-      ...project,
-      description: clip(project.description, 600),
-      estimated_budget: dollars(project.estimated_budget_cents),
-      estimated_budget_cents: undefined,
-      primary_client_id: undefined,
-    },
-    homeowners_and_contacts: clientLinks.get(project.id) ?? LOAD_FAILED,
-    schedule: schedule ? (schedule.error ? LOAD_FAILED : schedule.data ?? []) : 'module turned off',
-    estimates: estimates
+    links,
+    data: {
+      today,
+      scope: 'project',
+      current_page: pageModule ?? 'other',
+      project: {
+        ...project,
+        description: clip(project.description, 600),
+        estimated_budget: dollars(project.estimated_budget_cents),
+        estimated_budget_cents: undefined,
+        primary_client_id: undefined,
+        project_manager_id: undefined,
+      },
+      homeowners_and_contacts: clientLinks.get(project.id) ?? LOAD_FAILED,
+      team,
+      schedule: schedule ? (schedule.error ? LOAD_FAILED : summarizeSchedule(schedule.data ?? [], today)) : 'module turned off',
+      documents: !features.documents
+        ? 'module turned off'
+        : !documentsAllowed
+          ? 'not available to this user'
+          : (documents ?? 'not loaded for this question; ask about documents to see them'),
+      available_links: links.map(({ key, label }) => ({ key, label })),
+      estimates: estimates
       ? estimates.error
         ? LOAD_FAILED
         : (estimates.data ?? []).map((e) => ({
@@ -91,7 +146,119 @@ export async function buildAssistantContext(
         ? LOAD_FAILED
         : (issues.data ?? []).map((i) => ({ ...i, homeowner_description: clip(i.homeowner_description) }))
       : 'module turned off',
-    warranty: warranty ?? 'module turned off',
+      warranty: warranty ?? 'module turned off',
+    },
+  }
+}
+
+type ActivityRow = {
+  name: string
+  phase: string | null
+  status: ActivityStatus
+  planned_start: string | null
+  planned_end: string | null
+  actual_start: string | null
+  actual_end: string | null
+  percent_complete: number | null
+  delay_reason: string | null
+}
+
+const addDays = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Flags overdue work with the app's own definition so the model never computes it from dates itself. */
+function summarizeSchedule(rows: ActivityRow[], today: string) {
+  const horizon = addDays(today, 14)
+  const open = (a: ActivityRow) => a.status !== 'completed' && a.status !== 'skipped'
+  const activities = rows.map((a) => ({ ...a, delay_reason: clip(a.delay_reason, 200), overdue: isOverdue(a, today) }))
+  return {
+    overdue_definition: 'planned_end is before today and the activity is not completed or not applicable',
+    totals: {
+      activities: rows.length,
+      completed: rows.filter((a) => a.status === 'completed').length,
+      in_progress: rows.filter((a) => a.status === 'in_progress').length,
+      delayed: rows.filter((a) => a.status === 'delayed').length,
+      overdue: activities.filter((a) => a.overdue).length,
+    },
+    upcoming_next_14_days: rows
+      .filter((a) => open(a) && a.planned_start && a.planned_start >= today && a.planned_start <= horizon)
+      .map((a) => ({ name: a.name, planned_start: a.planned_start, planned_end: a.planned_end })),
+    ...(rows.length >= SCHEDULE_ACTIVITY_LIMIT ? { note: `Only the first ${SCHEDULE_ACTIVITY_LIMIT} activities are included.` } : {}),
+    activities,
+  }
+}
+
+/**
+ * The assigned project manager and project members, by display name only.
+ * A user id with no readable profile is reported as restricted rather than missing.
+ */
+async function teamFor(supabase: SupabaseClient, project: { id: string; project_manager_id: string | null }) {
+  const { data: members, error } = await supabase
+    .from('project_members')
+    .select('user_id, project_role')
+    .eq('project_id', project.id)
+    .order('created_at')
+  if (error) return LOAD_FAILED
+  const ids = [...new Set([project.project_manager_id, ...(members ?? []).map((m) => m.user_id)].filter((v): v is string => Boolean(v)))]
+  const names = await profileNames(supabase, ids)
+  if (!names) return LOAD_FAILED
+  const nameOf = (id: string) => names.get(id) ?? 'team member (name not available to this user)'
+  return {
+    project_manager: project.project_manager_id ? nameOf(project.project_manager_id) : 'no project manager is assigned',
+    team_members: (members ?? [])
+      .filter((m) => m.user_id !== project.project_manager_id)
+      .map((m) => ({ name: nameOf(m.user_id), project_role: m.project_role })),
+  }
+}
+
+async function profileNames(supabase: SupabaseClient, ids: string[]): Promise<Map<string, string> | null> {
+  if (!ids.length) return new Map()
+  const res = await selectByIds<{ id: string; full_name: string | null }>(ids, (chunk) =>
+    supabase.from('profiles').select('id, full_name').in('id', chunk),
+  )
+  if (!res.rows) return null
+  return new Map(res.rows.filter((p) => p.full_name?.trim()).map((p) => [p.id, p.full_name!.trim()]))
+}
+
+/** Active project documents with the latest signature status, read through RLS. Fetched only when asked about. */
+async function documentsFor(supabase: SupabaseClient, projectId: string, signaturesOn: boolean) {
+  const { data: docs, error } = await supabase
+    .from('project_documents')
+    .select('id, name, category, visibility, current_version_number, updated_at')
+    .eq('project_id', projectId)
+    .eq('scope', 'project')
+    .is('archived_at', null)
+    .order('updated_at', { ascending: false })
+    .limit(40)
+  if (error) return LOAD_FAILED
+  const rows = docs ?? []
+  const latest = new Map<string, string>()
+  let signatureError = false
+  if (rows.length) {
+    const { data: requests, error: reqError } = await supabase
+      .from('signature_requests')
+      .select('document_id, status, created_at')
+      .in('document_id', rows.map((d) => d.id))
+      .order('created_at', { ascending: false })
+    if (reqError) signatureError = true
+    for (const r of requests ?? []) if (!latest.has(r.document_id)) latest.set(r.document_id, r.status)
+  }
+  const pending = [...latest.values()].filter((s) => (OPEN_STATUSES as string[]).includes(s)).length
+  return {
+    total_listed: rows.length,
+    ...(rows.length >= 40 ? { note: 'Only the 40 most recently updated documents are included.' } : {}),
+    signatures: signatureError
+      ? LOAD_FAILED
+      : { electronic_signatures_enabled: signaturesOn, pending_signature_requests: pending },
+    items: rows.map(({ id, visibility, ...d }) => ({
+      ...d,
+      name: clip(d.name, 160),
+      shared_with_homeowner: visibility === 'homeowner',
+      latest_signature_status: signatureError ? LOAD_FAILED : (latest.get(id) ?? 'none'),
+    })),
   }
 }
 
@@ -270,11 +437,12 @@ async function warrantyFor(supabase: SupabaseClient, projectId: string) {
 const PORTFOLIO_PAGE_SIZE = 200
 const PORTFOLIO_MAX_PROJECTS = 600
 const PORTFOLIO_COLUMNS =
-  'id, project_number, name, primary_client_id, status, progress_percent, city, community, target_completion_date, completion_date'
+  'id, project_number, name, primary_client_id, project_manager_id, status, progress_percent, city, community, target_completion_date, completion_date'
 
 type PortfolioProject = {
   id: string
   primary_client_id: string | null
+  project_manager_id: string | null
   project_number: string | null
   name: string
   status: string
@@ -339,8 +507,39 @@ async function searchProjects(supabase: SupabaseClient, question: string): Promi
   return results.flatMap((r) => (r.data ?? []) as PortfolioProject[])
 }
 
-async function portfolio(supabase: SupabaseClient, features: FeatureMap, question: string) {
+async function portfolio(
+  supabase: SupabaseClient,
+  features: FeatureMap,
+  scope: AssistantRequestScope,
+  today: string,
+): Promise<{ data: Record<string, unknown>; links: AssistantLink[] }> {
+  const { question } = scope
   const { projects: list, total, truncated } = await loadAccessibleProjects(supabase, question)
+  const pageLinks: AssistantLink[] = navForRole(scope.role, features)
+    .filter((item) => ['/dashboard', '/projects', '/schedule', '/estimates', '/warranty'].includes(item.href))
+    .map((item) => ({ key: `page_${item.href.slice(1)}`, label: `Open ${item.label}`, href: item.href }))
+  const { data, linkable } = await portfolioData(supabase, features, list, total, truncated, question, today)
+  const projectLinks = linkable.map((p) => ({
+    key: `project_${(p.project_number ?? p.id).toLowerCase()}`,
+    label: `Open ${p.name}`,
+    href: `/projects/${p.id}`,
+  }))
+  const links = [...pageLinks, ...projectLinks]
+  return { data: { ...data, available_links: links.map(({ key, label }) => ({ key, label })) }, links }
+}
+
+/** Projects worth a direct link: the ones named in the question, then the ones showing attention signals. */
+const MAX_PROJECT_LINKS = 12
+
+async function portfolioData(
+  supabase: SupabaseClient,
+  features: FeatureMap,
+  list: PortfolioProject[],
+  total: number,
+  truncated: boolean,
+  question: string,
+  today: string,
+): Promise<{ data: Record<string, unknown>; linkable: PortfolioProject[] }> {
   const ids = list.map((p) => p.id)
   const coverage = {
     accessible_project_count: total,
@@ -350,22 +549,23 @@ async function portfolio(supabase: SupabaseClient, features: FeatureMap, questio
       ? 'Only part of the accessible portfolio is included. Projects not listed may still exist; ask the user to select the project or check the Projects page.'
       : 'This is every non-archived project the user is authorized to view, in all statuses.',
   }
-  if (!ids.length) return { project_coverage: coverage, projects: [] }
+  if (!ids.length) return { data: { project_coverage: coverage, projects: [] }, linkable: [] }
 
-  const today = new Date().toISOString().slice(0, 10)
   const mentioned = projectsMentioned(list, question)
   const mentionedIds = new Set(mentioned.map((p) => p.id))
-  const [homeownerNames, homeownerDetails, late, issues, claims, warranties] = await Promise.all([
+  const managerIds = [...new Set(list.map((p) => p.project_manager_id).filter((v): v is string => Boolean(v)))]
+  const [homeownerNames, homeownerDetails, managers, late, issues, claims, warranties] = await Promise.all([
     clientRelationshipsFor(supabase, list.filter((p) => !mentionedIds.has(p.id)), false),
     clientRelationshipsFor(supabase, mentioned, true),
+    profileNames(supabase, managerIds),
     features.schedule
       ? supabase
           .from('schedule_activities')
           .select('project_id, name, planned_end, status')
           .in('project_id', ids)
           .lt('planned_end', today)
-          .is('actual_end', null)
-          .limit(200)
+          .not('status', 'in', '(completed,skipped)')
+          .limit(500)
       : null,
     features.issues
       ? supabase.from('project_issues').select('project_id').in('project_id', ids).in('status', ['open', 'in_progress']).limit(500)
@@ -402,16 +602,24 @@ async function portfolio(supabase: SupabaseClient, features: FeatureMap, questio
   const claimBy = claimRows && countBy(claimRows)
   const warrantyBy = new Map((warrantyRows ?? []).map((w) => [w.project_id, { stage: w.stage, start_date: w.start_date }]))
 
+  if (!managers) unavailable.push('project manager names')
+  const needsAttention = (id: string) => (lateBy?.get(id) ?? 0) > 0 || (issueBy?.get(id) ?? 0) > 0 || (claimBy?.get(id) ?? 0) > 0
+  const linkable = [...mentioned, ...list.filter((p) => !mentionedIds.has(p.id) && needsAttention(p.id))].slice(0, MAX_PROJECT_LINKS)
+
   return {
-    project_coverage: coverage,
-    ...(unavailable.length ? { data_load_errors: unavailable.map((l) => `${l} could not be loaded; do not guess them`) } : {}),
-    projects: list.map(({ id, primary_client_id: _primaryClientId, ...p }) => ({
-      ...p,
-      homeowners_and_contacts: homeownerDetails.get(id) ?? homeownerNames.get(id) ?? LOAD_FAILED,
-      ...(lateBy ? { overdue_activities: lateBy.get(id) ?? 0 } : {}),
-      ...(issueBy ? { open_punch_list_issues: issueBy.get(id) ?? 0 } : {}),
-      ...(claimBy ? { open_warranty_claims: claimBy.get(id) ?? 0 } : {}),
-      ...(warrantyRows ? { warranty: warrantyBy.get(id) ?? 'not enrolled' } : {}),
-    })),
+    linkable,
+    data: {
+      project_coverage: coverage,
+      ...(unavailable.length ? { data_load_errors: unavailable.map((l) => `${l} could not be loaded; do not guess them`) } : {}),
+      projects: list.map(({ id, primary_client_id: _primaryClientId, project_manager_id: managerId, ...p }) => ({
+        ...p,
+        project_manager: !managerId ? 'none assigned' : !managers ? LOAD_FAILED : (managers.get(managerId) ?? 'name not available to this user'),
+        homeowners_and_contacts: homeownerDetails.get(id) ?? homeownerNames.get(id) ?? LOAD_FAILED,
+        ...(lateBy ? { overdue_activities: lateBy.get(id) ?? 0 } : {}),
+        ...(issueBy ? { open_punch_list_issues: issueBy.get(id) ?? 0 } : {}),
+        ...(claimBy ? { open_warranty_claims: claimBy.get(id) ?? 0 } : {}),
+        ...(warrantyRows ? { warranty: warrantyBy.get(id) ?? 'not enrolled' } : {}),
+      })),
+    },
   }
 }

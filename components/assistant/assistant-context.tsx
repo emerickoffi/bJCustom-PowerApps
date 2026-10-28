@@ -1,12 +1,14 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
+import type { AssistantCapabilities } from '@/lib/ai/assistant-scope'
 
 export type AssistantProject = {
   id: string
   name: string
   number: string | null
   statusLabel: string
+  capabilities: AssistantCapabilities
 }
 
 type AssistantContextValue = {
@@ -26,7 +28,7 @@ export function useAssistantProject() {
 }
 
 /**
- * Rendered by a project page after the project has been loaded through the
+ * Rendered by the project layout after the project has been loaded through the
  * user's own authorized query, so the assistant only ever shows context the
  * page itself was allowed to show. Clears on unmount.
  */
@@ -34,12 +36,13 @@ export function AssistantProjectScope({ project }: { project: AssistantProject }
   const ctx = useContext(AssistantContext)
   const setProject = ctx?.setProject
   const { id, name, number, statusLabel } = project
+  const { schedule, documents, signatures } = project.capabilities
 
   useEffect(() => {
     if (!setProject) return
-    setProject({ id, name, number, statusLabel })
+    setProject({ id, name, number, statusLabel, capabilities: { schedule, documents, signatures } })
     return () => setProject(null)
-  }, [setProject, id, name, number, statusLabel])
+  }, [setProject, id, name, number, statusLabel, schedule, documents, signatures])
 
   return null
 }
