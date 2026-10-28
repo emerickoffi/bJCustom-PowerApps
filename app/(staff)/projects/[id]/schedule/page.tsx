@@ -40,9 +40,16 @@ function describeChange(field: string, change: Change, nameFor: (id: string | nu
   return `${label}: ${fmt(change.from)} → ${fmt(change.to)}`
 }
 
-export default async function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function SchedulePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ setup?: string }>
+}) {
   const session = await requireStaff()
   const { id } = await params
+  const { setup } = await searchParams
   const supabase = await createClient()
 
   const { data: project } = await supabase
@@ -112,6 +119,16 @@ export default async function SchedulePage({ params }: { params: Promise<{ id: s
         description={formatAddress(project)}
         actions={manager && activities.length > 0 && <InitializeScheduleButton projectId={project.id} label="Add missing template activities" />}
       />
+
+      {setup === 'incomplete' && (
+        <div role="alert" className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-foreground">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning-foreground" aria-hidden="true" />
+          <p className="leading-relaxed">
+            The project was created, but schedule setup did not finish. Use the schedule controls on this page to add the
+            template activities or optional activities. Nothing is duplicated if you retry.
+          </p>
+        </div>
+      )}
 
       {activities.length === 0 ? (
         <section className="flex flex-col items-start gap-4 rounded-xl border border-dashed bg-card p-8">
