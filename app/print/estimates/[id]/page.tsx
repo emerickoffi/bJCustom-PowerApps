@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -15,15 +16,50 @@ import {
 } from '@/lib/estimates'
 import { formatAddress, formatDate } from '@/lib/format'
 import { PrintButton } from '@/components/estimates/print-button'
+import { estimatePdfBaseName } from '@/lib/estimate-pdf'
 
-export const metadata: Metadata = { title: 'Estimate PDF', robots: { index: false } }
-
-export default async function EstimatePrintPage({ params }: { params: Promise<{ id: string }> }) {
+const loadEstimate = cache(async (id: string) => {
   const session = await requireStaff()
-  const { id } = await params
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
   const estimate = await getEstimate(id, session.organizationId)
   if (!estimate) notFound()
+  return { session, estimate }
+})
+
+// Browsers use the document title as the default "Save as PDF" filename, so it must be
+// absolute (no site-name template) and identify the estimate's own project.
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+  const { estimate } = await loadEstimate(id)
+  const title = estimate.project
+    ? estimatePdfBaseName({
+        projectNumber: estimate.project.project_number,
+        projectName: estimate.project.name,
+        estimateNumber: estimate.estimate_number,
+        revision: estimate.revision,
+      })
+    : 'Estimate unavailable'
+  return { title: { absolute: title }, robots: { index: false } }
+}
+
+export default async function EstimatePrintPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const { session, estimate } = await loadEstimate(id)
+  if (!estimate.project) {
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-xl flex-col items-start justify-center gap-4 px-6">
+        <h1 className="font-serif text-2xl font-semibold">Estimate PDF unavailable</h1>
+        <p className="text-muted-foreground">
+          {"This estimate's project record could not be loaded, so a PDF was not generated. Refresh the page or check that the project still exists."}
+        </p>
+        <Button variant="outline" size="lg" render={<Link href={`/estimates/${estimate.id}`} />} nativeButton={false}>
+          <ArrowLeft data-icon="inline-start" />
+          Back to estimate
+        </Button>
+      </main>
+    )
+  }
+  const project = estimate.project
   const items = await getEstimateLineItems(id)
   const brand = session.brand
 
@@ -33,7 +69,7 @@ export default async function EstimatePrintPage({ params }: { params: Promise<{ 
   }).filter((g) => g.rows.length > 0)
 
   const orEmpty = (value: string) => (value === '—' ? '' : value)
-  const projectAddress = estimate.project ? orEmpty(formatAddress(estimate.project)) : ''
+  const projectAddress = orEmpty(formatAddress(project))
   const companyAddress = orEmpty(
     formatAddress({
       address_line1: brand.addressLine1,
@@ -66,46 +102,64 @@ export default async function EstimatePrintPage({ params }: { params: Promise<{ 
       </div>
 
       <article className="mx-auto flex max-w-4xl flex-col gap-8 bg-white p-8 text-sm text-neutral-900 shadow-sm sm:p-12 print:max-w-none print:p-0 print:shadow-none">
-        <header className="flex flex-wrap items-start justify-between gap-6 border-b border-neutral-200 pb-6">
-          <div className="flex items-start gap-4">
-            {brand.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- organization logos are arbitrary remote URLs
-              <img src={brand.logoUrl || '/placeholder.svg'} alt="" className="size-14 object-contain" crossOrigin="anonymous" />
-            ) : null}
-            <div className="flex flex-col gap-1">
-              <p className="font-serif text-xl font-semibold">{brand.legalName || brand.displayName}</p>
-              {companyAddress ? <p className="text-neutral-600">{companyAddress}</p> : null}
-              <p className="text-neutral-600">{[brand.phone, brand.email, brand.website].filter(Boolean).join(' · ')}</p>
+        <header className="flex flex-col gap-6">
+          <div className="flex flex-wrap items-start justify-between gap-6 border-b-2 border-[#174D32] pb-5">
+            <div className="flex min-w-0 items-start gap-4">
+              {brand.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- organization logos are arbitrary remote URLs
+                <img src={brand.logoUrl || '/placeholder.svg'} alt="" className="size-14 object-contain" crossOrigin="anonymous" />
+              ) : null}
+              <div className="flex min-w-0 flex-col gap-1">
+                <p className="font-serif text-xl font-semibold uppercase tracking-wide text-[#103B27]">
+                  {brand.legalName || brand.displayName}
+                </p>
+                {companyAddress ? <p className="text-neutral-600">{companyAddress}</p> : null}
+                <p className="text-neutral-600">{[brand.phone, brand.email, brand.website].filter(Boolean).join(' · ')}</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1 text-right">
+              <h1 className="text-sm font-semibold uppercase tracking-[0.2em] text-[#174D32]">Construction Estimate</h1>
+              <p className="text-neutral-600">Status: {ESTIMATE_STATUS_LABELS[estimate.status]}</p>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1 text-right">
-            <h1 className="font-serif text-2xl font-semibold">Estimate</h1>
-            <p className="font-mono text-neutral-700">
-              {estimate.estimate_number} · Rev {estimate.revision}
-            </p>
-            <p className="text-neutral-600">Status: {ESTIMATE_STATUS_LABELS[estimate.status]}</p>
-          </div>
-        </header>
 
-        <section className="grid gap-6 sm:grid-cols-3" aria-label="Estimate details">
-          <div className="flex flex-col gap-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">Prepared for</p>
-            <p className="font-medium">{clientName ?? 'Client not assigned'}</p>
-            {estimate.client?.email ? <p className="text-neutral-600">{estimate.client.email}</p> : null}
-          </div>
-          <div className="flex flex-col gap-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">Project</p>
-            <p className="font-medium">{estimate.project?.name}</p>
-            {projectAddress ? <p className="text-neutral-600">{projectAddress}</p> : null}
-          </div>
-          <div className="flex flex-col gap-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">Dates</p>
-            <p>Issued {formatDate(estimate.estimate_date)}</p>
-            <p className="text-neutral-600">
-              {estimate.expiration_date ? `Valid until ${formatDate(estimate.expiration_date)}` : 'No expiration date'}
-            </p>
-          </div>
-        </section>
+          <section
+            aria-label="Project identification"
+            className="flex flex-col gap-4 break-inside-avoid rounded-md border border-neutral-200 border-l-4 border-l-[#174D32] bg-[#174D32]/[0.04] p-5 print:bg-white"
+          >
+            <div className="flex flex-col gap-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">Project</p>
+              <p className="text-pretty break-words font-serif text-2xl font-semibold leading-tight text-[#103B27]">
+                {project.name}
+              </p>
+              {projectAddress ? <p className="break-words text-neutral-700">{projectAddress}</p> : null}
+            </div>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-neutral-200 pt-4 sm:grid-cols-4">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">Project no.</dt>
+                <dd className="break-words font-mono font-medium">{project.project_number || '—'}</dd>
+              </div>
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">Estimate no.</dt>
+                <dd className="break-words font-mono font-medium">
+                  {estimate.estimate_number} · Rev {estimate.revision}
+                </dd>
+              </div>
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">Estimate date</dt>
+                <dd className="font-medium">{formatDate(estimate.estimate_date)}</dd>
+                <dd className="text-xs text-neutral-600">
+                  {estimate.expiration_date ? `Valid until ${formatDate(estimate.expiration_date)}` : 'No expiration date'}
+                </dd>
+              </div>
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <dt className="text-xs font-medium uppercase tracking-wide text-neutral-500">Prepared for</dt>
+                <dd className="break-words font-medium">{clientName ?? 'Client not assigned'}</dd>
+                {estimate.client?.email ? <dd className="break-words text-xs text-neutral-600">{estimate.client.email}</dd> : null}
+              </div>
+            </dl>
+          </section>
+        </header>
 
         <div className="flex flex-col gap-1">
           <h2 className="font-serif text-lg font-semibold">{estimate.name}</h2>
