@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Mail, MapPin, Phone, UserRound, UsersRound } from 'lucide-react'
+import { ArrowRight, Mail, MapPin, MessageCircle, Phone, UserRound, UsersRound } from 'lucide-react'
 import { ClientProjectsDisclosure, type ClientProject } from '@/components/clients/client-projects-disclosure'
 import { Button } from '@/components/ui/button'
 import { ClientStatusBadge } from '@/components/shared/status-badge'
@@ -53,11 +53,24 @@ function ContactLines({ email, phone }: { email: string | null; phone: string | 
   )
 }
 
+function relationshipLabel(relationship: string | null | undefined) {
+  if (!relationship) return 'Relationship not specified'
+  return CONTACT_RELATIONSHIP_LABELS[relationship] ?? 'Relationship not specified'
+}
+
+function preferenceLabel(method: string | null | undefined) {
+  if (!method) return null
+  const label = (COMMUNICATION_LABELS as Record<string, string>)[method]
+  if (!label) return null
+  return method === 'any' ? label : `Prefers ${label.toLowerCase()}`
+}
+
 function ContactColumn({
   label,
   icon: Icon,
   name,
-  meta,
+  relationship,
+  preference,
   email,
   phone,
   empty,
@@ -65,7 +78,8 @@ function ContactColumn({
   label: string
   icon: typeof UserRound
   name?: string
-  meta?: string | null
+  relationship?: string
+  preference?: string | null
   email?: string | null
   phone?: string | null
   empty?: string
@@ -87,7 +101,13 @@ function ContactColumn({
         <>
           <div className="flex min-w-0 flex-col gap-0.5">
             <span className="truncate font-medium text-foreground">{name}</span>
-            {meta && <span className="text-xs text-muted-foreground">{meta}</span>}
+            <span className="text-sm text-muted-foreground">{relationship}</span>
+            {preference && (
+              <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <MessageCircle className="size-3.5 shrink-0 text-[#174D32]/60" aria-hidden="true" />
+                {preference}
+              </span>
+            )}
           </div>
           <ContactLines email={email ?? null} phone={phone ?? null} />
         </>
@@ -114,8 +134,21 @@ export function ClientCard({
   const href = `/clients/${client.id}`
   const displayName = `${client.first_name} ${client.last_name}`
   const location = [client.city, client.state].filter(Boolean).join(', ')
-  const preferred = primary?.preferred_communication
-    ? (COMMUNICATION_LABELS as Record<string, string>)[primary.preferred_communication]
+  const primaryPanel = {
+    name: primary ? fullName(primary) : displayName,
+    relationship: relationshipLabel(primary?.relationship),
+    preference: preferenceLabel(primary?.preferred_communication),
+    email: primary ? primary.email : client.email,
+    phone: primary ? primary.phone : client.phone,
+  }
+  const secondaryPanel = secondary
+    ? {
+        name: fullName(secondary),
+        relationship: relationshipLabel(secondary.relationship),
+        preference: preferenceLabel(secondary.preferred_communication),
+        email: secondary.email,
+        phone: secondary.phone,
+      }
     : null
 
   return (
@@ -164,23 +197,9 @@ export function ClientCard({
             <ArrowRight className="size-4 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden="true" />
           </summary>
           <div className="flex flex-col gap-3 border-t border-border/70 p-3">
-            <ContactColumn
-              label="Primary contact"
-              icon={UserRound}
-              name={primary ? fullName(primary) : displayName}
-              meta={preferred ? `Prefers ${preferred.toLowerCase()}` : null}
-              email={primary ? primary.email : client.email}
-              phone={primary ? primary.phone : client.phone}
-            />
-            {secondary ? (
-              <ContactColumn
-                label="Secondary contact"
-                icon={UsersRound}
-                name={fullName(secondary)}
-                meta={CONTACT_RELATIONSHIP_LABELS[secondary.relationship] ?? null}
-                email={secondary.email}
-                phone={secondary.phone}
-              />
+            <ContactColumn label="Primary contact" icon={UserRound} {...primaryPanel} />
+            {secondaryPanel ? (
+              <ContactColumn label="Secondary contact" icon={UsersRound} {...secondaryPanel} />
             ) : (
               <ContactColumn label="Secondary contact" icon={UsersRound} empty="Secondary contact not added" />
             )}
@@ -189,23 +208,9 @@ export function ClientCard({
       </div>
 
       <div className="hidden gap-3 px-5 pb-5 sm:grid sm:grid-cols-2">
-        <ContactColumn
-          label="Primary contact"
-          icon={UserRound}
-          name={primary ? fullName(primary) : displayName}
-          meta={preferred ? `Prefers ${preferred.toLowerCase()}` : null}
-          email={primary ? primary.email : client.email}
-          phone={primary ? primary.phone : client.phone}
-        />
-        {secondary ? (
-          <ContactColumn
-            label="Secondary contact"
-            icon={UsersRound}
-            name={fullName(secondary)}
-            meta={CONTACT_RELATIONSHIP_LABELS[secondary.relationship] ?? null}
-            email={secondary.email}
-            phone={secondary.phone}
-          />
+        <ContactColumn label="Primary contact" icon={UserRound} {...primaryPanel} />
+        {secondaryPanel ? (
+          <ContactColumn label="Secondary contact" icon={UsersRound} {...secondaryPanel} />
         ) : (
           <ContactColumn label="Secondary contact" icon={UsersRound} empty="Secondary contact not added" />
         )}
