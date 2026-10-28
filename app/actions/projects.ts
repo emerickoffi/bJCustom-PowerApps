@@ -8,6 +8,8 @@ import { requireManager } from '@/lib/session'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { projectSchema, statusChangeSchema } from '@/lib/validation'
 import { isStatusTransitionAllowed, type ProjectStatus } from '@/lib/domain'
+import { getOrgFeatures } from '@/lib/features'
+import { includeOptionalActivityAction, initializeScheduleAction } from '@/app/actions/schedule'
 
 const uuid = z.uuid()
 
@@ -18,8 +20,9 @@ function toProjectRow(data: z.infer<typeof projectSchema>) {
 
 export async function createProjectAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await requireManager()
-  const parsed = projectSchema.safeParse(formValues(formData))
-  if (!parsed.success) return fromZodError(parsed.error)
+  const values = formValues(formData)
+  const parsed = projectSchema.safeParse(values)
+  if (!parsed.success) return { ...fromZodError(parsed.error), values }
 
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -33,10 +36,23 @@ export async function createProjectAction(_prev: ActionState, formData: FormData
     })
     .select('id')
     .single()
-  if (error) return { error: friendlyDbError(error) }
+  if (error) return { error: friendlyDbError(error), values }
 
   revalidatePath('/projects')
   revalidatePath('/dashboard')
+
+  // Optional schedule setup runs only after the project is persisted. Both steps are idempotent,
+  // and a failure here never rolls back the project; the builder is sent to the schedule to retry.
+  const features = await getOrgFeatures(session.organizationId)
+  if (features.schedule && values.schedule_setup === 'standard') {
+    const init = await initializeScheduleAction(data.id)
+    const sprinkler =
+      !init.error && values.include_sprinkler === 'on'
+        ? await includeOptionalActivityAction(data.id, 'sprinkler_irrigation')
+        : null
+    if (init.error || sprinkler?.error) redirect(`/projects/${data.id}/schedule?setup=incomplete`)
+  }
+
   redirect(`/projects/${data.id}`)
 }
 
@@ -47,8 +63,9 @@ export async function updateProjectAction(
 ): Promise<ActionState> {
   const session = await requireManager()
   if (!uuid.safeParse(projectId).success) return { error: 'Invalid project.' }
-  const parsed = projectSchema.safeParse(formValues(formData))
-  if (!parsed.success) return fromZodError(parsed.error)
+  const values = formValues(formData)
+  const parsed = projectSchema.safeParse(values)
+  if (!parsed.success) return { ...fromZodError(parsed.error), values }
 
   const supabase = await createClient()
   const { error } = await supabase

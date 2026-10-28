@@ -157,7 +157,11 @@ export const projectSchema = z
       .string()
       .trim()
       .transform((v) => v.replace(/[$,\s]/g, ''))
-      .refine((v) => v === '' || (/^\d+(\.\d{1,2})?$/.test(v) && Number(v) <= 100_000_000), 'Enter a valid amount')
+      .refine((v) => !v.startsWith('-'), 'Budget cannot be negative')
+      .refine(
+        (v) => v === '' || v.startsWith('-') || (/^\d+(\.\d{1,2})?$/.test(v) && Number(v) <= 100_000_000),
+        'Enter an amount up to $100,000,000 with at most 2 decimals',
+      )
       .transform((v) => (v === '' ? null : Math.round(Number(v) * 100))),
     proposed_start_date: optionalDate,
     target_completion_date: optionalDate,
