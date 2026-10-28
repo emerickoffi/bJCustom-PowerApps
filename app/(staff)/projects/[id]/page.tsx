@@ -45,6 +45,9 @@ import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, type ProjectStatus } from '
 import { formatAddress, formatCents, formatDate, formatDateTime } from '@/lib/format'
 import { PROJECT_SECTION_ANCHORS } from '@/lib/project-nav'
 import { ProjectSectionScroll } from '@/components/projects/project-section-scroll'
+import { ProjectNextActions } from '@/components/projects/next-actions'
+import { buildProjectNextActions } from '@/lib/next-actions'
+import { todayIso } from '@/lib/schedule'
 
 export const metadata: Metadata = { title: 'Project' }
 
@@ -102,7 +105,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const manager = canManage(session.role)
   const features = await getOrgFeatures(session.organizationId)
-  const [linksRes, membersRes, historyRes, staff, clientOptions, activitiesRes, openIssuesRes, photos] = await Promise.all([
+  const signing = features.documents && features.e_signatures
+  const [linksRes, membersRes, historyRes, staff, clientOptions, activitiesRes, openIssuesRes, photos, reviewEstimatesRes, signaturesRes] = await Promise.all([
     supabase
       .from('project_clients')
       .select('id, relationship, client:clients(id, first_name, last_name, email)')
@@ -124,10 +128,23 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .order('sort_order'),
     supabase
       .from('project_issues')
-      .select('id', { count: 'exact', head: true })
+      .select('id', { count: 'exact' })
       .eq('project_id', id)
-      .neq('status', 'closed'),
+      .neq('status', 'closed')
+      .order('reported_at', { ascending: true })
+      .limit(1),
     getProjectCoverPhotos([id]),
+    features.estimates && manager
+      ? supabase.from('estimates').select('id').eq('project_id', id).eq('status', 'internal_review').order('created_at')
+      : Promise.resolve({ data: [] as { id: string }[] }),
+    signing
+      ? supabase
+          .from('signature_requests')
+          .select('document_id, status, created_at')
+          .eq('project_id', id)
+          .order('created_at', { ascending: false })
+          .limit(200)
+      : Promise.resolve({ data: [] as { document_id: string; status: string; created_at: string }[] }),
   ])
 
   const nameFor = (userId: string | null) => {
@@ -152,6 +169,28 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const delayed = counted.filter((a) => a.status === 'delayed').length
   const nextUp = counted.find((a) => a.status !== 'completed')
   const openIssues = openIssuesRes.count ?? 0
+  const today = todayIso()
+  const lateActivityCount = counted.filter(
+    (a) => a.status !== 'completed' && (a.status === 'delayed' || (!!a.planned_end && a.planned_end < today)),
+  ).length
+  const nextActions = buildProjectNextActions({
+    projectId: project.id,
+    canManage: manager,
+    features: {
+      schedule: features.schedule,
+      estimates: features.estimates,
+      documents: features.documents,
+      e_signatures: features.e_signatures,
+      walkthroughs: features.walkthroughs,
+    },
+    hasProjectManager: Boolean(project.project_manager_id),
+    activityCount: activities.length,
+    lateActivityCount,
+    reviewEstimateIds: (reviewEstimatesRes.data ?? []).map((e) => e.id),
+    signatureRequests: signaturesRes.data ?? [],
+    openIssueCount: openIssues,
+    firstOpenIssueId: openIssuesRes.data?.[0]?.id ?? null,
+  })
   const primaryClient = links[0]?.client
   const managerName = nameFor(project.project_manager_id)
   const lotBlockPhase =
@@ -301,6 +340,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
       </section>
+
+      <ProjectNextActions items={nextActions.items} hiddenCount={nextActions.hiddenCount} />
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="flex flex-col gap-8">
