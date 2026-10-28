@@ -49,13 +49,14 @@ const SOURCE_PREFIX = 'https://fred.stlouisfed.org/series/'
 type Message =
   | { id: string; role: 'user'; text: string }
   | { id: string; role: 'assistant'; status: 'loading' }
-  | { id: string; role: 'assistant'; status: 'error'; text: string }
+  | { id: string; role: 'assistant'; status: 'error'; text: string; question: string; reviewDraft?: boolean; requestId?: string }
   | {
       id: string
       role: 'assistant'
       status: 'answer'
       text: string
       reviewDraft?: boolean
+      options?: string[]
       links?: AnswerLink[]
       sources?: AnswerSource[]
       health?: HealthBadge
@@ -151,21 +152,29 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
   }, [messages])
 
-  async function send(text: string, reviewDraft = false) {
+  async function send(text: string, reviewDraft = false, retryOf?: string) {
     const question = text.trim()
     if (!configured || busy || !question) return
 
-    const history = messages
-      .filter((m): m is Extract<Message, { text: string }> => m.role === 'user' || m.status === 'answer')
+    // A retry replaces the failed reply in place and resends the same question,
+    // so the user's message is not duplicated in the conversation.
+    const retryIndex = retryOf ? messages.findIndex((m) => m.id === retryOf) : -1
+    const prior = retryIndex > 0 ? messages.slice(0, retryIndex - 1) : messages
+    const history = prior
+      .filter((m): m is Extract<Message, { role: 'user' } | { status: 'answer' }> => m.role === 'user' || m.status === 'answer')
       .map((m) => ({ role: m.role, text: m.text }))
       .slice(-10)
     const loadingId = nextId()
-    setMessages((prev) => [
-      ...prev,
-      { id: nextId(), role: 'user', text: question },
-      { id: loadingId, role: 'assistant', status: 'loading' },
-    ])
-    setDraft('')
+    if (retryIndex > 0) {
+      setMessages((prev) => prev.map((m) => (m.id === retryOf ? { id: loadingId, role: 'assistant', status: 'loading' } : m)))
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        { id: nextId(), role: 'user', text: question },
+        { id: loadingId, role: 'assistant', status: 'loading' },
+      ])
+      setDraft('')
+    }
 
     const controller = new AbortController()
     inFlight.current = controller
@@ -188,11 +197,21 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
         links?: AnswerLink[]
         sources?: AnswerSource[]
         health?: HealthBadge
+        requestId?: string
       } | null
       if (!res.ok || !data?.text) {
-        settle({ id: loadingId, role: 'assistant', status: 'error', text: data?.error ?? 'The assistant could not answer right now. Please try again.' })
+        settle({
+          id: loadingId,
+          role: 'assistant',
+          status: 'error',
+          text: data?.error ?? 'The assistant could not answer right now. Please try again.',
+          question,
+          reviewDraft,
+          requestId: typeof data?.requestId === 'string' ? data.requestId : undefined,
+        })
         return
       }
+      const { text: answerText, options } = extractProjectOptions(data.text)
       const links = (data.links ?? [])
         .filter((l) => typeof l?.href === 'string' && typeof l?.label === 'string' && isSafeAppPath(l.href))
         .slice(0, 3)
@@ -208,10 +227,10 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
         .slice(0, 6)
       const health =
         data.health && typeof data.health.label === 'string' && data.health.indicator in HEALTH_STYLES ? data.health : undefined
-      settle({ id: loadingId, role: 'assistant', status: 'answer', text: data.text, reviewDraft, links, sources, health })
+      settle({ id: loadingId, role: 'assistant', status: 'answer', text: answerText, reviewDraft, links, sources, health, options })
     } catch {
       if (controller.signal.aborted) return
-      settle({ id: loadingId, role: 'assistant', status: 'error', text: 'Network problem. Check your connection and try again.' })
+      settle({ id: loadingId, role: 'assistant', status: 'error', text: 'Network problem. Check your connection and try again.', question, reviewDraft })
     } finally {
       if (inFlight.current === controller) inFlight.current = null
     }
@@ -277,9 +296,15 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
           />
         ) : (
           <ol className="flex flex-col gap-4">
-            {messages.map((m) => (
+            {messages.map((m, i) => (
               <li key={m.id}>
-                <MessageBubble message={m} onNavigate={onClose} />
+                <MessageBubble
+                  message={m}
+                  onNavigate={onClose}
+                  actionable={i === messages.length - 1 && !busy}
+                  onRetry={(failed) => void send(failed.question, failed.reviewDraft, failed.id)}
+                  onChooseProject={(name) => void send(`Continue with ${name}`)}
+                />
               </li>
             ))}
           </ol>
@@ -386,7 +411,35 @@ function WelcomeState({
   )
 }
 
-function MessageBubble({ message, onNavigate }: { message: Message; onNavigate: () => void }) {
+const PROJECT_OPTION = /^\s*[-*]?\s*\[\[project:([^\]\n]{1,120})\]\]\s*$/
+
+/** Pulls the "which project?" choices the assistant offers out of the answer text. */
+function extractProjectOptions(raw: string) {
+  const options: string[] = []
+  const lines = raw.split('\n').filter((line) => {
+    const match = PROJECT_OPTION.exec(line)
+    if (!match) return true
+    const name = match[1].trim()
+    if (name && !options.includes(name) && options.length < 6) options.push(name)
+    return false
+  })
+  const text = lines.join('\n').replace(/\[\[project:([^\]\n]{1,120})\]\]/g, '$1').replace(/\n{3,}/g, '\n\n').trim()
+  return { text, options }
+}
+
+function MessageBubble({
+  message,
+  onNavigate,
+  actionable,
+  onRetry,
+  onChooseProject,
+}: {
+  message: Message
+  onNavigate: () => void
+  actionable: boolean
+  onRetry: (failed: Extract<Message, { status: 'error' }>) => void
+  onChooseProject: (name: string) => void
+}) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
@@ -417,9 +470,22 @@ function MessageBubble({ message, onNavigate }: { message: Message; onNavigate: 
           </div>
         )}
         {message.status === 'error' && (
-          <div className="flex items-start gap-2 rounded-2xl rounded-tl-md border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            {message.text}
+          <div className="flex flex-col gap-2 rounded-2xl rounded-tl-md border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-sm text-destructive">
+            <p className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>{message.text}</span>
+            </p>
+            <div className="flex flex-wrap items-center gap-2 pl-6">
+              {actionable && (
+                <Button type="button" size="sm" variant="outline" className="h-7 gap-1.5 bg-card" onClick={() => onRetry(message)}>
+                  <RotateCcw className="size-3.5" aria-hidden="true" />
+                  Retry
+                </Button>
+              )}
+              {message.requestId && (
+                <span className="font-mono text-xs text-muted-foreground">{`Ref ${message.requestId.slice(0, 8)}`}</span>
+              )}
+            </div>
           </div>
         )}
         {message.status === 'answer' && (
@@ -435,6 +501,22 @@ function MessageBubble({ message, onNavigate }: { message: Message; onNavigate: 
               )}
               <p className="whitespace-pre-wrap text-pretty text-sm leading-relaxed text-foreground">{message.text}</p>
             </div>
+            {message.options && message.options.length > 0 && (
+              <ul className="flex flex-wrap gap-2" aria-label="Choose a project">
+                {message.options.map((name) => (
+                  <li key={name}>
+                    <button
+                      type="button"
+                      onClick={() => onChooseProject(name)}
+                      disabled={!actionable}
+                      className="rounded-full border bg-card px-3 py-1.5 text-left text-sm text-foreground shadow-xs transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
             {message.sources && message.sources.length > 0 && (
               <div className="flex flex-col gap-1 rounded-xl border border-dashed bg-card/60 px-3 py-2">
                 <span className="text-xs font-semibold text-muted-foreground">Sources</span>
