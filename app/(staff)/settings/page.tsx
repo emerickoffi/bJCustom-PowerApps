@@ -43,6 +43,9 @@ export default async function SettingsPage() {
             <Button variant="outline" className={navButtonClass} render={<Link href="/settings/features" />} nativeButton={false}>
               Feature management
             </Button>
+            <Button variant="outline" className={navButtonClass} render={<Link href="/settings/roles" />} nativeButton={false}>
+              Roles &amp; permissions
+            </Button>
           </>
         }
       />

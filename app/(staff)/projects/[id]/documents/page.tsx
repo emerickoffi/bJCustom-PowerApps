@@ -53,11 +53,11 @@ export default async function ProjectDocumentsPage({
         backHref={`/projects/${id}`}
         backLabel={project.name}
         eyebrow={project.project_number}
-        title={archived ? 'Archived documents' : 'Documents'}
+        title={archived ? 'Archived documents' : 'Project Documents'}
         description={
           archived
             ? 'Archived documents keep every version and can be restored.'
-            : 'Plans, permits, contracts, and reports for this project. Documents stay internal until shared.'
+            : 'Manage plans, permits, reports, contracts, and project files.'
         }
         actions={canUpload ? <DocumentUploadButton projectId={id} canShare={manager} defaultCategory={isDocumentCategory(sp.category) ? sp.category : undefined} /> : null}
       />
@@ -88,13 +88,13 @@ export default async function ProjectDocumentsPage({
           ) : list.rows.length === 0 ? (
             <EmptyState
               icon={FolderOpen}
-              title={filtered ? 'No matching documents' : archived ? 'No archived documents' : 'No documents yet'}
+              title={filtered ? 'No matching documents' : archived ? 'No archived documents' : 'No documents uploaded yet.'}
               description={
                 filtered
                   ? 'Try a different search or category.'
                   : archived
                     ? 'Documents you archive appear here with their full version history.'
-                    : 'Upload floor plans, permits, contracts, and reports to keep everything for this project in one place.'
+                    : "Upload floor plans, permits, reports, and other files to organize this project's documents."
               }
               action={!filtered && canUpload ? <DocumentUploadButton projectId={id} canShare={manager} /> : undefined}
             />

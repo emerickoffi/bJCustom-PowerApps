@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { ListFilters } from '@/components/shared/list-filters'
 import { ClientCard, type DirectoryContact } from '@/components/clients/client-card'
+import type { ClientProject } from '@/components/clients/client-projects-disclosure'
 import { CLIENT_STATUS_LABELS, type ClientStatus } from '@/lib/domain'
 import { sanitizeSearch } from '@/lib/format'
 import type { ClientSummary } from '@/lib/queries'
@@ -73,10 +74,32 @@ export default async function ClientsPage({
           .is('archived_at', null)
           .order('is_primary', { ascending: false })
           .order('last_name'),
-        supabase.from('projects').select('id, primary_client_id').in('primary_client_id', clientIds),
+        supabase
+          .from('projects')
+          .select('id, name, project_number, status, primary_client_id')
+          .in('primary_client_id', clientIds),
         supabase.from('project_clients').select('project_id, client_id').in('client_id', clientIds),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }]
+
+  const projectById = new Map<string, ClientProject>()
+  for (const p of (primaryProjectsResult.data ?? []) as (ClientProject & { primary_client_id: string | null })[]) {
+    projectById.set(p.id, { id: p.id, name: p.name, project_number: p.project_number, status: p.status })
+  }
+  const missingProjectIds = [
+    ...new Set(
+      ((linkedProjectsResult.data ?? []) as { project_id: string }[])
+        .map((l) => l.project_id)
+        .filter((id) => !projectById.has(id)),
+    ),
+  ]
+  if (missingProjectIds.length) {
+    const { data: linkedProjects } = await supabase
+      .from('projects')
+      .select('id, name, project_number, status')
+      .in('id', missingProjectIds)
+    for (const p of (linkedProjects ?? []) as ClientProject[]) projectById.set(p.id, p)
+  }
 
   const contactsByClient = new Map<string, DirectoryContact[]>()
   for (const contact of (contactsResult.data ?? []) as DirectoryContact[]) {
@@ -86,7 +109,7 @@ export default async function ClientsPage({
   }
   const projectsByClient = new Map<string, Set<string>>()
   const addProject = (clientId: string | null, projectId: string) => {
-    if (!clientId) return
+    if (!clientId || !projectById.has(projectId)) return
     const set = projectsByClient.get(clientId) ?? new Set<string>()
     set.add(projectId)
     projectsByClient.set(clientId, set)
@@ -132,7 +155,9 @@ export default async function ClientsPage({
                     client={client}
                     primary={primary}
                     secondary={secondary}
-                    projectCount={projectsByClient.get(client.id)?.size ?? 0}
+                    projects={[...(projectsByClient.get(client.id) ?? [])]
+                      .map((id) => projectById.get(id) as ClientProject)
+                      .sort((a, b) => a.name.localeCompare(b.name))}
                     canManageContacts={manager}
                   />
                 </div>

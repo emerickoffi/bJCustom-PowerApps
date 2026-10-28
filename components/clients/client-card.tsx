@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { ArrowRight, FolderKanban, Mail, MapPin, Phone, UserRound, UsersRound } from 'lucide-react'
+import { ArrowRight, Mail, MapPin, Phone, UserRound, UsersRound } from 'lucide-react'
+import { ClientProjectsDisclosure, type ClientProject } from '@/components/clients/client-projects-disclosure'
 import { Button } from '@/components/ui/button'
 import { ClientStatusBadge } from '@/components/shared/status-badge'
 import { COMMUNICATION_LABELS, CONTACT_RELATIONSHIP_LABELS } from '@/lib/domain'
@@ -99,13 +100,13 @@ export function ClientCard({
   client,
   primary,
   secondary,
-  projectCount,
+  projects,
   canManageContacts,
 }: {
   client: ClientSummary
   primary: DirectoryContact | null
   secondary: DirectoryContact | null
-  projectCount: number
+  projects: ClientProject[]
   canManageContacts: boolean
 }) {
   const href = `/clients/${client.id}`
@@ -208,11 +209,7 @@ export function ClientCard({
         )}
       </div>
 
-      <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-[#E2E8E2] bg-[#F8F7F3]/70 px-4 py-3 sm:gap-3 sm:px-5">
-        <span className="flex items-center gap-1.5 text-sm text-[#64756D]">
-          <FolderKanban className="size-4 text-[#174D32]/70" aria-hidden="true" />
-          {projectCount === 1 ? '1 project' : `${projectCount} projects`}
-        </span>
+      <ClientProjectsDisclosure clientName={displayName} projects={projects}>
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
           {canManageContacts && (
             <Button variant="ghost" size="sm" className="h-11 sm:h-8" render={<Link href={`${href}#contacts`} />} nativeButton={false}>
@@ -230,7 +227,7 @@ export function ClientCard({
             <ArrowRight data-icon="inline-end" />
           </Button>
         </div>
-      </footer>
+      </ClientProjectsDisclosure>
     </article>
   )
 }

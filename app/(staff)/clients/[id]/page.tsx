@@ -251,7 +251,7 @@ export default async function ClientDetailPage({
           <ActivityPanel clientId={client.id} activity={activity} />
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-6">
+        <aside id="portal-access" className="flex min-w-0 scroll-mt-24 flex-col gap-6">
           {portalData && 'accounts' in portal ? (
             <ManagePortalAccessPanel clientId={client.id} {...portal} />
           ) : (

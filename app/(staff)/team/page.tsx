@@ -12,11 +12,54 @@ import {
   type PendingActivation,
   type ProjectOption,
 } from '@/components/team/create-staff-account'
+import { UsersAccessTabs } from '@/components/team/users-access-tabs'
+import { HomeownerAccountList, type HomeownerFilter } from '@/components/team/homeowner-account-list'
+import { loadHomeownerAccounts } from '@/lib/homeowner-accounts'
+import { getOrgFeatures } from '@/lib/features'
+import { sanitizeSearch } from '@/lib/format'
 
-export const metadata: Metadata = { title: 'Team' }
+function UsersAccessHeader({ actions }: { actions?: React.ReactNode }) {
+  return (
+    <PageHeader
+      icon={UsersRoundIcon}
+      tone="sage"
+      title="Users & Access"
+      description="Manage builder staff accounts and see which homeowners have portal access."
+      actions={actions}
+    />
+  )
+}
 
-export default async function TeamPage() {
+export const metadata: Metadata = { title: 'Users & Access' }
+
+type Tab = 'staff' | 'homeowners'
+
+export default async function TeamPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; q?: string; account?: string }>
+}) {
   const session = await requireAdmin()
+  const params = await searchParams
+  const tab: Tab = params.tab === 'homeowners' ? 'homeowners' : 'staff'
+
+  if (tab === 'homeowners') {
+    const q = sanitizeSearch(params.q)
+    const filter: HomeownerFilter =
+      params.account === 'with_account' || params.account === 'without_account' ? params.account : 'all'
+    const [{ rows, truncated }, features] = await Promise.all([
+      loadHomeownerAccounts(session.organizationId, q),
+      getOrgFeatures(session.organizationId),
+    ])
+    return (
+      <div className="flex flex-col gap-8">
+        <UsersAccessHeader />
+        <UsersAccessTabs active="homeowners" />
+        <HomeownerAccountList rows={rows} filter={filter} q={q} truncated={truncated} portalEnabled={features.portal} />
+      </div>
+    )
+  }
+
   const supabase = await createClient()
 
   const [membersRes, invitesRes, projectsRes] = await Promise.all([
@@ -70,10 +113,7 @@ export default async function TeamPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader icon={UsersRoundIcon}
-        tone="sage"
-        title="Team"
-        description="Invite builder staff and control what they can access. Homeowner access is managed from each client record."
+      <UsersAccessHeader
         actions={
           <>
             <TeamActionDrawer
@@ -96,6 +136,7 @@ export default async function TeamPage() {
           </>
         }
       />
+      <UsersAccessTabs active="staff" />
       <div className="flex flex-col gap-8">
         <MemberList members={members} />
         <PendingActivationList accounts={pending} />
