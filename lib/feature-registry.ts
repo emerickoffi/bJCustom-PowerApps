@@ -54,6 +54,8 @@ export type FeatureDefinition = {
   /** Prepared but waiting on outside credentials or a connection. Shows "Setup required" instead of "Coming later". */
   setupRequired?: boolean
   setupNote?: string
+  /** When runtime setup is missing, the switch cannot be turned on (it can still be turned off). */
+  lockWhenSetupRequired?: boolean
   /** What turning the module off hides, shown in the confirmation. */
   disableNote?: string
   configHref?: string
@@ -88,7 +90,7 @@ export const FEATURES: FeatureDefinition[] = [
   { key: 'payments', label: 'Online payments', description: 'Collect homeowner payments online.', defaultEnabled: false, requires: ['estimates'], group: 'Finance', available: false },
   { key: 'quickbooks', label: 'QuickBooks Online', description: 'Send approved estimates to QuickBooks.', defaultEnabled: false, requires: ['estimates'], group: 'Finance', available: false, setupRequired: true, setupNote: 'API credentials are missing, and the connection and send-to-QuickBooks steps are still in development, so this switch stays locked.', configHref: '/settings/integrations', configLabel: 'Open integrations' },
 
-  { key: 'ai_assistant', label: 'B & J AI Assistant', description: 'Ask questions about projects and receive AI-assisted construction management guidance. Drafts are always reviewed before anything is sent.', defaultEnabled: false, requires: [], group: 'AI & automation', available: false, setupRequired: true, setupNote: 'No AI provider is connected and the feature is not yet registered for server-side enforcement, so this switch stays locked. The assistant UI is visible in preview environments only.' },
+  { key: 'ai_assistant', label: 'B & J AI Assistant', description: 'Ask questions about projects and receive AI-assisted construction management guidance. Drafts are always reviewed before anything is sent.', defaultEnabled: false, requires: [], group: 'AI & automation', available: true, lockWhenSetupRequired: true, setupNote: 'No AI provider is reachable in this environment. Deployments on Vercel connect to AI Gateway automatically; elsewhere add AI_GATEWAY_API_KEY. The switch unlocks once the provider is available.' },
   { key: 'ai_schedule_advisor', label: 'AI schedule advisor', description: 'Identify scheduling gaps and suggest improvements to construction activities.', defaultEnabled: false, requires: ['schedule', 'ai_assistant'], group: 'AI & automation', available: false },
   { key: 'ai_estimate_review', label: 'AI estimate review', description: 'Review estimate information and suggest improvements. Approved estimate values are never changed automatically.', defaultEnabled: false, requires: ['estimates', 'ai_assistant'], group: 'AI & automation', available: false },
   { key: 'ai_warranty_assistance', label: 'AI warranty assistance', description: 'Summarize warranty records and assist with claims and follow-ups. Coverage decisions always stay with your team.', defaultEnabled: false, requires: ['warranty', 'ai_assistant'], group: 'AI & automation', available: false },
