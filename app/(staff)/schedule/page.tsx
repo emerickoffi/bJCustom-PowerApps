@@ -142,10 +142,10 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     .filter((x) => x.total > 0 && x.open > 0)
 
   const metrics = [
-    { label: 'Total activities', value: activities.length, icon: ListChecks, hint: notScheduled ? `${notScheduled} not scheduled` : 'All scheduled' },
-    { label: 'In progress', value: inProgress.length, icon: CalendarRange, hint: inProgress.length ? null : 'None underway' },
-    { label: 'Overdue', value: overdue.length, icon: AlertTriangle, hint: 'Past planned finish', alert: overdue.length > 0 },
-    { label: 'Upcoming', value: upcoming.length, icon: CalendarClock, hint: `Next ${UPCOMING_DAYS} days` },
+    { label: 'Total activities', value: activities.length, icon: ListChecks, iconTone: 'bg-[#174D32]/10 text-[#174D32]', hint: notScheduled ? `${notScheduled} not scheduled` : 'All scheduled' },
+    { label: 'In progress', value: inProgress.length, icon: CalendarRange, iconTone: 'bg-[#E6F0FF] text-[#1D5FBD]', hint: inProgress.length ? null : 'None underway' },
+    { label: 'Overdue', value: overdue.length, icon: AlertTriangle, iconTone: 'bg-[#FDE8E7] text-[#BD302B]', hint: 'Past planned finish', alert: overdue.length > 0 },
+    { label: 'Upcoming', value: upcoming.length, icon: CalendarClock, iconTone: 'bg-[#FFF2DA] text-[#96570E]', hint: `Next ${UPCOMING_DAYS} days` },
   ]
 
   return (
@@ -187,7 +187,9 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
         {metrics.map((m) => (
           <div key={m.label} className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4">
             <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <m.icon className={cn('size-4', m.alert && 'text-destructive')} aria-hidden="true" />
+              <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-lg', m.iconTone)} aria-hidden="true">
+                <m.icon className="size-4" />
+              </span>
               {m.label}
             </span>
             <span className={cn('font-serif text-2xl font-semibold tabular-nums sm:text-3xl', m.alert ? 'text-destructive' : 'text-foreground')}>
