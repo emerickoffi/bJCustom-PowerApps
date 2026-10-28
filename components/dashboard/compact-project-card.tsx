@@ -91,7 +91,13 @@ const ICON_TONES: Record<Panel['tone'], string> = {
   success: 'text-green-700',
 }
 
-export function CompactProjectCard({ project }: { project: CompactProjectCardData }) {
+export function CompactProjectCard({
+  project,
+  footer,
+}: {
+  project: CompactProjectCardData
+  footer?: React.ReactNode
+}) {
   const status = PROJECT_STATUS_STYLES[project.status]
   const StatusIcon = status.icon
   const showProgress =
@@ -194,6 +200,7 @@ export function CompactProjectCard({ project }: { project: CompactProjectCardDat
           <div className={panelClass}>{panelBody}</div>
         )}
       </div>
+      {footer}
     </article>
   )
 }

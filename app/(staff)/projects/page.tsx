@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { FolderKanban, Plus, FolderKanban as FolderKanbanIcon } from 'lucide-react'
+import { FolderKanban, Home, Plus, UserRound, FolderKanban as FolderKanbanIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
-import { ProjectCard } from '@/components/projects/project-card'
+import { CompactProjectCard } from '@/components/dashboard/compact-project-card'
+import { getOrgFeatures } from '@/lib/features'
+import { getDashboardCardDetails } from '@/lib/dashboard-cards'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { ListFilters } from '@/components/shared/list-filters'
 import { ALL_PROJECT_STATUSES, PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
@@ -29,7 +31,7 @@ export default async function ProjectsPage({
   const supabase = await createClient()
   let query = supabase
     .from('projects')
-    .select(PROJECT_SUMMARY_COLUMNS)
+    .select(`${PROJECT_SUMMARY_COLUMNS}, completion_date`)
     .eq('organization_id', session.organizationId)
     .is('archived_at', null)
     .order('updated_at', { ascending: false })
@@ -37,10 +39,12 @@ export default async function ProjectsPage({
   if (status) query = query.eq('status', status)
   if (q) query = query.or(`name.ilike.*${q}*,project_number.ilike.*${q}*,address_line1.ilike.*${q}*,city.ilike.*${q}*`)
   const { data } = await query
-  const projects = (data ?? []) as unknown as ProjectSummary[]
-  const [managerNames, photos] = await Promise.all([
+  const projects = (data ?? []) as unknown as (ProjectSummary & { completion_date: string | null })[]
+  const features = await getOrgFeatures(session.organizationId)
+  const [managerNames, photos, cardDetails] = await Promise.all([
     getProfileNames(projects.map((p) => p.project_manager_id)),
     getProjectCoverPhotos(projects.map((p) => p.id)),
+    getDashboardCardDetails(session.organizationId, projects, features),
   ])
   const manager = canManage(session.role)
   const filtered = Boolean(q || status)
@@ -66,18 +70,39 @@ export default async function ProjectsPage({
         statusOptions={ALL_PROJECT_STATUSES.map((s) => ({ value: s, label: PROJECT_STATUS_LABELS[s] }))}
       />
       {projects.length ? (
-        <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
-          {projects.map((p) => (
-            <ProjectCard
-              key={p.id}
-              project={{
-                ...p,
-                clientName: p.primary_client ? `${p.primary_client.first_name} ${p.primary_client.last_name}` : null,
-                managerName: p.project_manager_id ? (managerNames.get(p.project_manager_id) ?? null) : null,
-                photoUrl: photos.get(p.id) ?? null,
-              }}
-            />
-          ))}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {projects.map((p) => {
+            const clientName = p.primary_client
+              ? `${p.primary_client.first_name} ${p.primary_client.last_name}`
+              : null
+            const managerName = p.project_manager_id ? (managerNames.get(p.project_manager_id) ?? null) : null
+            return (
+              <CompactProjectCard
+                key={p.id}
+                project={{
+                  ...p,
+                  completion_date: p.completion_date ?? null,
+                  photoUrl: photos.get(p.id) ?? null,
+                  details: cardDetails.get(p.id)!,
+                  warrantyEnabled: features.warranty,
+                }}
+                footer={
+                  <dl className="grid grid-cols-2 gap-3 border-t pt-3 text-xs">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <Home className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <dt className="sr-only">Homeowner</dt>
+                      <dd className="truncate text-foreground">{clientName ?? 'No homeowner'}</dd>
+                    </div>
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <UserRound className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <dt className="sr-only">Project manager</dt>
+                      <dd className="truncate text-foreground">{managerName ?? 'Unassigned'}</dd>
+                    </div>
+                  </dl>
+                }
+              />
+            )
+          })}
         </div>
       ) : (
         <EmptyState
