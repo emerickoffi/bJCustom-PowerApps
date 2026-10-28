@@ -11,9 +11,11 @@ type PageHeaderProps = {
   backLabel?: string
   actions?: React.ReactNode
   tone?: 'plain' | 'sage'
+  /** Replaces the icon tile, e.g. with a person's initials. */
+  avatar?: React.ReactNode
 }
 
-export function PageHeader({ title, description, eyebrow, icon: Icon, backHref, backLabel, actions, tone = 'plain' }: PageHeaderProps) {
+export function PageHeader({ title, description, eyebrow, icon: Icon, avatar, backHref, backLabel, actions, tone = 'plain' }: PageHeaderProps) {
   const sage = tone === 'sage'
   return (
     <header
@@ -35,7 +37,8 @@ export function PageHeader({ title, description, eyebrow, icon: Icon, backHref, 
       )}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex min-w-0 items-start gap-3 md:gap-4">
-          {Icon && (
+          {avatar}
+          {!avatar && Icon && (
             <span
               className={cn(
                 'flex size-9 shrink-0 items-center justify-center rounded-xl text-primary ring-1 ring-inset md:size-11',

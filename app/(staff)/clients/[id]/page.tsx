@@ -1,15 +1,15 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Pencil, Plus, UserRound as UserRoundIcon } from 'lucide-react'
+import { Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
-import { getProfileNames, PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
+import { getProfileNames, PROJECT_SUMMARY_COLUMNS } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/page-header'
 import { ClientInformationCard } from '@/components/clients/client-information-card'
 import { ClientStatusBadge } from '@/components/shared/status-badge'
-import { ProjectList } from '@/components/projects/project-list'
+import { ProjectList, type ProjectListItem, type WarrantyMilestone } from '@/components/projects/project-list'
 import {
   ActivityPanel,
   ContactsPanel,
@@ -137,8 +137,28 @@ export default async function ClientDetailPage({
 
   const projectIds = (linksRes.data ?? []).map((l) => l.project_id)
   const { data: projects } = projectIds.length
-    ? await supabase.from('projects').select(PROJECT_SUMMARY_COLUMNS).in('id', projectIds).order('updated_at', { ascending: false })
+    ? await supabase
+        .from('projects')
+        .select(`${PROJECT_SUMMARY_COLUMNS}, completion_date`)
+        .in('id', projectIds)
+        .order('updated_at', { ascending: false })
     : { data: [] }
+
+  const features = await getOrgFeatures(session.organizationId)
+  const completedIds = (projects ?? []).filter((p) => p.status === 'completed').map((p) => p.id)
+  const { data: warranties } =
+    features.warranty && completedIds.length
+      ? await supabase
+          .from('project_warranties')
+          .select('project_id, current:warranty_milestones!project_warranties_current_milestone_fk(stage_label, due_on)')
+          .in('project_id', completedIds)
+      : { data: [] }
+  const warrantyByProject: Record<string, WarrantyMilestone | null> = Object.fromEntries(
+    (warranties ?? []).map((w) => {
+      const current = w.current as unknown as WarrantyMilestone | WarrantyMilestone[] | null
+      return [w.project_id as string, Array.isArray(current) ? (current[0] ?? null) : current]
+    }),
+  )
 
   const names = await getProfileNames((activityRes.data ?? []).map((a) => a.created_by))
   const activity: ActivityRow[] = (activityRes.data ?? []).map((a) => ({
@@ -149,7 +169,8 @@ export default async function ClientDetailPage({
   const name = [client.first_name, client.middle_name, client.last_name].filter(Boolean).join(' ')
   const portalData = session.role === 'org_admin' ? await loadPortalAccess(client, (contactsRes.data ?? []).filter((c) => !c.archived_at), projects ?? []) : null
   const { statusByContact, ...portal } = portalData ?? { statusByContact: null }
-  const portalFeatureOn = portalData ? (await getOrgFeatures(session.organizationId)).portal : true
+  const portalFeatureOn = portalData ? features.portal : true
+  const initials = `${client.first_name?.[0] ?? ''}${client.last_name?.[0] ?? ''}`.toUpperCase()
   const accountStatusByContact =
     statusByContact && !portalFeatureOn
       ? Object.fromEntries(Object.keys(statusByContact).map((k) => [k, 'portal_off' as const]))
@@ -157,7 +178,16 @@ export default async function ClientDetailPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader icon={UserRoundIcon}
+      <PageHeader
+        tone="sage"
+        avatar={
+          <span
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white font-serif text-base font-semibold text-[#174D32] ring-1 ring-inset ring-[#174D32]/12 md:size-12"
+            aria-hidden="true"
+          >
+            {initials}
+          </span>
+        }
         backHref="/clients"
         backLabel="Clients"
         eyebrow={
@@ -190,8 +220,8 @@ export default async function ClientDetailPage({
         </p>
       )}
 
-      <div className="grid gap-8 xl:grid-cols-[1fr_24rem]">
-        <div className="flex flex-col gap-8">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(300px,1fr)]">
+        <div className="flex min-w-0 flex-col gap-6">
           <ClientInformationCard
             info={{
               email: client.email,
@@ -205,12 +235,12 @@ export default async function ClientDetailPage({
             }}
           />
 
-          <section aria-labelledby="client-projects" className="flex flex-col gap-4">
+          <section aria-labelledby="client-projects" className="flex flex-col gap-3">
             <h2 id="client-projects" className="font-serif text-lg font-semibold text-foreground">
               Projects
             </h2>
             {projects?.length ? (
-              <ProjectList projects={projects as unknown as ProjectSummary[]} />
+              <ProjectList projects={projects as unknown as ProjectListItem[]} warrantyByProject={warrantyByProject} />
             ) : (
               <p className="rounded-xl border border-dashed bg-card p-6 text-sm text-muted-foreground">
                 No projects for this client yet.
@@ -221,7 +251,7 @@ export default async function ClientDetailPage({
           <ActivityPanel clientId={client.id} activity={activity} />
         </div>
 
-        <aside className="flex flex-col gap-6">
+        <aside className="flex min-w-0 flex-col gap-6">
           {portalData && 'accounts' in portal ? (
             <ManagePortalAccessPanel clientId={client.id} {...portal} />
           ) : (

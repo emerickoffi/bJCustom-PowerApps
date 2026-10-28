@@ -10,16 +10,22 @@ export function InlineActionForm({
   action,
   children,
   className,
+  onSuccess,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   children: React.ReactNode
   className?: string
+  onSuccess?: (message: string) => void
 }) {
   const [state, formAction] = useActionState(action, initialActionState)
   const formRef = useRef<HTMLFormElement>(null)
+  const onSuccessRef = useRef(onSuccess)
+  onSuccessRef.current = onSuccess
 
   useEffect(() => {
-    if (state.success) formRef.current?.reset()
+    if (!state.success) return
+    formRef.current?.reset()
+    onSuccessRef.current?.(state.success)
   }, [state])
 
   return (
