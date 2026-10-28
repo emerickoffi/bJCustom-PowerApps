@@ -101,12 +101,14 @@ export function ClientCard({
   primary,
   secondary,
   projects,
+  projectsFailed = false,
   canManageContacts,
 }: {
   client: ClientSummary
   primary: DirectoryContact | null
   secondary: DirectoryContact | null
   projects: ClientProject[]
+  projectsFailed?: boolean
   canManageContacts: boolean
 }) {
   const href = `/clients/${client.id}`
@@ -209,7 +211,7 @@ export function ClientCard({
         )}
       </div>
 
-      <ClientProjectsDisclosure clientName={displayName} projects={projects}>
+      <ClientProjectsDisclosure clientName={displayName} projects={projects} failed={projectsFailed}>
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
           {canManageContacts && (
             <Button variant="ghost" size="sm" className="h-11 sm:h-8" render={<Link href={`${href}#contacts`} />} nativeButton={false}>

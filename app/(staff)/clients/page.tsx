@@ -80,7 +80,12 @@ export default async function ClientsPage({
           .in('primary_client_id', clientIds),
         supabase.from('project_clients').select('project_id, client_id').in('client_id', clientIds),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }]
+    : [
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+      ]
+  let projectsFailed = Boolean(primaryProjectsResult.error || linkedProjectsResult.error)
 
   const projectById = new Map<string, ClientProject>()
   for (const p of (primaryProjectsResult.data ?? []) as (ClientProject & { primary_client_id: string | null })[]) {
@@ -94,10 +99,11 @@ export default async function ClientsPage({
     ),
   ]
   if (missingProjectIds.length) {
-    const { data: linkedProjects } = await supabase
+    const { data: linkedProjects, error: linkedProjectsError } = await supabase
       .from('projects')
       .select('id, name, project_number, status')
       .in('id', missingProjectIds)
+    if (linkedProjectsError) projectsFailed = true
     for (const p of (linkedProjects ?? []) as ClientProject[]) projectById.set(p.id, p)
   }
 
@@ -158,6 +164,7 @@ export default async function ClientsPage({
                     projects={[...(projectsByClient.get(client.id) ?? [])]
                       .map((id) => projectById.get(id) as ClientProject)
                       .sort((a, b) => a.name.localeCompare(b.name))}
+                    projectsFailed={projectsFailed}
                     canManageContacts={manager}
                   />
                 </div>
