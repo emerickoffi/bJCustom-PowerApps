@@ -32,11 +32,23 @@ export type EstimateApprovalInput = {
   snapshot: { document_id: string | null; version_id: string | null } | null
   estimateStatus: string | null
   signerNames: string[]
+  /** The request and the estimate must belong to the same project. Defaults to true for older callers. */
+  sameProject?: boolean
+  /** Estimate expiration date (YYYY-MM-DD) and the moment the last signer signed. */
+  estimateExpirationDate?: string | null
+  completedAt?: string | null
 }
 
 export type EstimateApprovalDecision =
   | { approve: true; decisionByName: string }
-  | { approve: false; reason: 'not_completed' | 'not_estimate' | 'test_mode' | 'not_submitted' | 'no_signers' }
+  | { approve: false; reason: 'not_completed' | 'not_estimate' | 'test_mode' | 'not_submitted' | 'no_signers' | 'expired' }
+
+/** Signed after the last day the estimate was valid (expiration dates are whole days, inclusive). */
+export function signedAfterExpiration(expirationDate: string | null | undefined, completedAt: string | null | undefined): boolean {
+  if (!expirationDate || !completedAt) return false
+  const completedDay = new Date(completedAt).toISOString().slice(0, 10)
+  return completedDay > expirationDate.slice(0, 10)
+}
 
 /**
  * An estimate is approved by signature only when the completed request signed the exact
@@ -50,12 +62,14 @@ export function estimateApprovalFromSignature(input: EstimateApprovalInput): Est
     !snapshot?.document_id ||
     !snapshot.version_id ||
     snapshot.document_id !== input.requestDocumentId ||
-    snapshot.version_id !== input.requestSourceVersionId
+    snapshot.version_id !== input.requestSourceVersionId ||
+    input.sameProject === false
   ) {
     return { approve: false, reason: 'not_estimate' }
   }
   if (input.testMode) return { approve: false, reason: 'test_mode' }
   if (input.estimateStatus !== 'submitted') return { approve: false, reason: 'not_submitted' }
+  if (signedAfterExpiration(input.estimateExpirationDate, input.completedAt)) return { approve: false, reason: 'expired' }
   const names = [...new Set(input.signerNames.map((n) => n.trim()).filter(Boolean))]
   if (names.length === 0) return { approve: false, reason: 'no_signers' }
   return { approve: true, decisionByName: names.join(', ').slice(0, 160) }

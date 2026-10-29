@@ -175,20 +175,29 @@ async function registerSignedDocument(admin: SupabaseClient, requestId: string):
 async function approveEstimateFromSignature(admin: SupabaseClient, requestId: string, sr: ProviderSignatureRequest): Promise<void> {
   const { data: req } = await admin
     .from('signature_requests')
-    .select('id, status, test_mode, document_id, source_version_id, provider_request_id, completed_at')
+    .select('id, status, test_mode, project_id, document_id, source_version_id, provider_request_id, completed_at')
     .eq('id', requestId)
     .maybeSingle()
-  if (!req?.document_id) return
+  if (!req?.document_id || !req.source_version_id) return
 
+  // Only the exact signing copy generated for an estimate revision can approve it.
   const { data: snapshot } = await admin
     .from('estimate_signing_snapshots')
-    .select('estimate_id, document_id, version_id')
+    .select('estimate_id, project_id, document_id, version_id')
     .eq('document_id', req.document_id)
+    .eq('version_id', req.source_version_id)
     .maybeSingle()
   if (!snapshot) return
 
-  const { data: estimate } = await admin.from('estimates').select('id, status, project_id').eq('id', snapshot.estimate_id).maybeSingle()
+  const { data: estimate } = await admin
+    .from('estimates')
+    .select('id, status, project_id, expiration_date')
+    .eq('id', snapshot.estimate_id)
+    .maybeSingle()
   const decision = estimateApprovalFromSignature({
+    sameProject: Boolean(estimate) && estimate?.project_id === req.project_id && snapshot.project_id === req.project_id,
+    estimateExpirationDate: estimate?.expiration_date ?? null,
+    completedAt: req.completed_at,
     requestStatus: req.status,
     testMode: req.test_mode || sr.test_mode,
     requestDocumentId: req.document_id,

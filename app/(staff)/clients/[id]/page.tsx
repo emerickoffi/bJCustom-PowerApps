@@ -213,6 +213,12 @@ export default async function ClientDetailPage({
         </div>
       )}
 
+      {notice === 'primary_contact_missing' && (
+        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          The client was created, but its primary contact could not be saved. Add the client as a contact below and mark them as primary.
+        </p>
+      )}
+
       {notice === 'contacts_not_saved' && (
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           The client was created, but the additional contacts could not be saved. Please add them from the Contacts section below.

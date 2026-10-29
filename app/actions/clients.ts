@@ -91,10 +91,11 @@ export async function createClientAction(_prev: ActionState, formData: FormData)
       if (process.env.NODE_ENV !== 'production') {
         console.error('[clients] primary contact failed', { code: primaryError.code, message: primaryError.message })
       }
-      const { error: undoError } = await supabase.from('clients').delete().eq('id', data.id)
-      if (undoError) {
+      // RLS can silently delete zero rows, so confirm the undo actually removed the client.
+      const { data: undone, error: undoError } = await supabase.from('clients').delete().eq('id', data.id).select('id')
+      if (undoError || !undone?.length) {
         revalidatePath('/clients')
-        redirect(`/clients/${data.id}?notice=contacts_not_saved`)
+        redirect(`/clients/${data.id}?notice=primary_contact_missing`)
       }
       return { error: 'The client could not be saved because its primary contact failed. Nothing was saved; please try again.', values }
     }

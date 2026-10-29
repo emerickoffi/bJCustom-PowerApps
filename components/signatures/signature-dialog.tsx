@@ -235,7 +235,7 @@ function RequestCard({ request: r, canManage, onChanged }: { request: SignatureR
             </Button>
           </>
         )}
-        {canManage && (open || (r.status === 'completed' && !r.hasSignedPdf)) && (
+        {canManage && (open || (r.status === 'completed' && (!r.hasSignedPdf || !r.signedDocumentRegistered))) && (
           <Button size="sm" variant="ghost" disabled={pending} onClick={() => act(() => refreshSignatureRequest(r.id), 'Status refreshed')}>
             {pending ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />} Refresh status
           </Button>

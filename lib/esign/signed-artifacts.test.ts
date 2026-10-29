@@ -47,3 +47,14 @@ test('leaves unrelated or ineligible signature requests alone', () => {
   assert.equal(reason({ estimateStatus: 'draft' }), 'not_submitted')
   assert.equal(reason({ signerNames: ['  '] }), 'no_signers')
 })
+
+test('rejects cross-project requests and signatures completed after expiration', () => {
+  const reason = (over: Record<string, unknown>) => {
+    const r = estimateApprovalFromSignature({ ...base, ...over })
+    return r.approve ? 'approved' : r.reason
+  }
+  assert.equal(reason({ sameProject: false }), 'not_estimate')
+  assert.equal(reason({ estimateExpirationDate: '2026-10-01', completedAt: '2026-10-02T09:00:00Z' }), 'expired')
+  assert.equal(reason({ estimateExpirationDate: '2026-10-01', completedAt: '2026-10-01T23:00:00Z' }), 'approved')
+  assert.equal(reason({ estimateExpirationDate: null, completedAt: '2026-10-02T09:00:00Z' }), 'approved')
+})

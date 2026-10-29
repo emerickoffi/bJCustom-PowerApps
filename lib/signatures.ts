@@ -70,6 +70,8 @@ export type SignatureRequestView = {
   errorMessage: string | null
   artifactError: string | null
   hasSignedPdf: boolean
+  /** The signed PDF has been filed as its own document in Project Documents. */
+  signedDocumentRegistered: boolean
   signedSizeBytes: number | null
   signers: SignerView[]
   events: { id: string; type: string; time: string; source: string }[]

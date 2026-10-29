@@ -17,6 +17,7 @@ import {
 } from '@/lib/esign/dropbox-sign'
 import { buildSigningPacket, MAX_SIGNING_PDF_BYTES } from '@/lib/esign/packet'
 import { applyProviderState, recordEvent } from '@/lib/esign/sync'
+import { signedDocumentIds } from '@/lib/esign/signed-artifacts'
 import { listSignerCandidates } from '@/lib/esign/signers'
 import {
   OPEN_STATUSES,
@@ -105,6 +106,11 @@ async function loadRequestViews(supabase: Awaited<ReturnType<typeof createClient
   ])
   const admin = createAdminClient()
   const { data: people } = await admin.from('profiles').select('id, full_name, email').in('id', [...new Set(requests.map((r) => r.requested_by))])
+  const signedDocIds = requests.filter((r) => r.signed_storage_path).map((r) => signedDocumentIds(r.id).documentId)
+  const { data: registered } = signedDocIds.length
+    ? await admin.from('project_documents').select('id').in('id', signedDocIds).not('current_version_id', 'is', null)
+    : { data: [] as { id: string }[] }
+  const registeredIds = new Set((registered ?? []).map((d) => d.id))
 
   return requests.map((r) => ({
     id: r.id,
@@ -120,6 +126,7 @@ async function loadRequestViews(supabase: Awaited<ReturnType<typeof createClient
     errorMessage: r.error_message,
     artifactError: r.artifact_error,
     hasSignedPdf: Boolean(r.signed_storage_path),
+    signedDocumentRegistered: registeredIds.has(signedDocumentIds(r.id).documentId),
     signedSizeBytes: r.signed_size_bytes,
     signers: (signers ?? [])
       .filter((s) => s.request_id === r.id)

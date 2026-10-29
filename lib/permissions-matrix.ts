@@ -315,6 +315,118 @@ export const PERMISSIONS_MATRIX: MatrixModule[] = [
       },
     ],
   },
+  {
+    id: 'daily_logs',
+    module: 'Daily logs',
+    feature: 'daily_logs',
+    guard: 'requireFeature · requireStaff · can_view_project_internal',
+    database: 'daily_logs and child tables: read and write require is_org_staff plus project visibility; a restrictive policy also requires the feature.',
+    actions: [
+      { action: 'View', access: roles(ok(COMPANY_WIDE), ok(COMPANY_WIDE), cond(ASSIGNED), no('No database policy lets homeowners read daily logs.')) },
+      {
+        action: 'Create, edit & finalize, photos',
+        access: roles(ok(), ok(), cond(`${ASSIGNED} Field staff can write logs; this is not limited to managers.`), no(PORTAL_ONLY)),
+      },
+    ],
+  },
+  {
+    id: 'client_updates',
+    module: 'Client updates',
+    feature: 'client_updates',
+    guard: 'requireFeature · requireStaff · canManage',
+    database:
+      'client_updates: staff read with project visibility; writes require is_org_manager. Homeowners read only published snapshots in client_update_publications.',
+    actions: [
+      {
+        action: 'View drafts',
+        access: roles(ok(COMPANY_WIDE), ok(COMPANY_WIDE), cond(`Read-only. ${ASSIGNED}`), no('Homeowners never see drafts.')),
+      },
+      {
+        action: 'Write, AI-draft & publish',
+        access: roles(
+          ok('AI drafting also needs the B & J AI Assistant to be on.'),
+          ok('AI drafting also needs the B & J AI Assistant to be on.'),
+          no(MANAGER_WRITE),
+          no(PORTAL_ONLY),
+        ),
+      },
+      {
+        action: 'Read published updates',
+        access: roles(ok(), ok(), cond(ASSIGNED), cond(`Published snapshots only, in the portal. ${GRANTED}`)),
+      },
+    ],
+  },
+  {
+    id: 'change_orders',
+    module: 'Change orders',
+    feature: 'change_orders',
+    guard: 'requireFeature · requireManager',
+    database: 'change_orders and line items: read and write require is_org_manager plus project visibility.',
+    actions: [
+      {
+        action: 'View',
+        access: roles(
+          ok(COMPANY_WIDE),
+          ok(COMPANY_WIDE),
+          no('Redirected by requireManager; the database also hides change orders from this role.'),
+          no('No database policy lets homeowners read change orders.'),
+        ),
+      },
+      { action: 'Create, edit & decide', access: roles(ok(), ok(), no(MANAGER_WRITE), no(PORTAL_ONLY)) },
+    ],
+  },
+  {
+    id: 'subcontractors',
+    module: 'Subcontractors',
+    feature: 'subcontractors',
+    guard: 'requireFeature · requireManager',
+    database:
+      'subcontractor_companies: read and write require is_org_manager; restrictive policies also require the feature (administrators keep read access while it is off).',
+    actions: [
+      {
+        action: 'View directory',
+        access: roles(
+          ok(),
+          ok(),
+          no('Redirected by requireManager; the database also hides the directory from this role.'),
+          no(PORTAL_ONLY),
+        ),
+      },
+      { action: 'Add, edit & activate / deactivate', access: roles(ok(), ok(), no(MANAGER_WRITE), no(PORTAL_ONLY)) },
+      {
+        action: 'Assign to projects',
+        access: roles(
+          unverified('The server action requires a manager. The project assignment tables are not yet in this database, so the database side is not verified.'),
+          unverified('The server action requires a manager. The project assignment tables are not yet in this database, so the database side is not verified.'),
+          no('The server action requires a manager.'),
+          no(PORTAL_ONLY),
+        ),
+      },
+    ],
+  },
+  {
+    id: 'ai_assistant',
+    module: 'B & J AI Assistant',
+    feature: 'ai_assistant',
+    guard: 'session role check · feature check · usage limit',
+    database:
+      'ai_assistant_requests: users log and read their own requests; administrators read all. Answers use the asking user’s own database access.',
+    actions: [
+      {
+        action: 'Ask questions',
+        access: roles(
+          ok(`Answers draw only on data this user can already see. ${COMPANY_WIDE}`),
+          ok(`Answers draw only on data this user can already see. ${COMPANY_WIDE}`),
+          cond(`Answers draw only on data this user can already see. ${ASSIGNED}`),
+          no('The assistant route rejects homeowner accounts.'),
+        ),
+      },
+      {
+        action: 'View request history',
+        access: roles(ok('Every request in their company.'), cond('Their own requests only.'), cond('Their own requests only.'), no(PORTAL_ONLY)),
+      },
+    ],
+  },
 ]
 
 export type RoleDetail = { summary: string; scope: string; gaps: string[] }
@@ -327,12 +439,13 @@ export const ROLE_DETAILS: Record<OrgRole, RoleDetail> = {
   },
   project_manager: {
     summary:
-      'Manages clients, projects, schedules, estimates, invoices, documents, walkthroughs, and reports. Cannot change company settings, users, or warranty enrollment.',
+      'Manages clients, projects, schedules, estimates, invoices, documents, walkthroughs, reports, change orders, client updates, and subcontractors. Cannot change company settings, users, or warranty enrollment.',
     scope: `${COMPANY_WIDE} This is company-wide by design in the current database policies, not limited to assigned projects.`,
     gaps: ['E-signature signer eligibility for staff accounts has not been verified.'],
   },
   builder_staff: {
-    summary: 'Field and office staff. Views and updates work on the projects they are assigned to; cannot create or approve records.',
+    summary:
+      'Field and office staff. Views and updates work on the projects they are assigned to and writes daily logs there; cannot create or approve records.',
     scope: ASSIGNED,
     gaps: [
       'The Invoices page opens for this role but the database returns nothing, so it always shows empty.',
