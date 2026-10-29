@@ -1,6 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { DOCUMENTS_BUCKET } from '@/lib/documents'
+import { DOCUMENTS_BUCKET, documentStoragePath } from '@/lib/documents'
+import { estimateApprovalFromSignature, signedDocumentIds, signedDocumentName } from '@/lib/esign/signed-artifacts'
 import { downloadSignedPdf, ProviderError, type ProviderSignatureRequest } from '@/lib/esign/dropbox-sign'
 import { TERMINAL_STATUSES, type SignatureStatus, type SignerStatus } from '@/lib/signatures'
 
@@ -97,7 +98,119 @@ export async function applyProviderState(
   if (status === 'completed' && !row.signed_storage_path && sr.is_complete) {
     artifactStored = await storeSignedArtifact(admin, row, sr.signature_request_id)
   }
+  if (status === 'completed' && artifactStored) {
+    // Each step is idempotent, so a retried webhook or manual refresh completes anything a failed attempt missed.
+    try {
+      await registerSignedDocument(admin, row.id)
+    } catch (e) {
+      console.error('[esign] signed document registration failed', row.id, e instanceof Error ? e.message : e)
+    }
+    try {
+      await approveEstimateFromSignature(admin, row.id, sr)
+    } catch (e) {
+      console.error('[esign] estimate approval from signature failed', row.id, e instanceof Error ? e.message : e)
+    }
+  }
   return { status, artifactStored }
+}
+
+/** Registers the signed PDF in Project Documents as its own internal document, once per request. */
+async function registerSignedDocument(admin: SupabaseClient, requestId: string): Promise<void> {
+  const { data: req } = await admin
+    .from('signature_requests')
+    .select('id, organization_id, project_id, document_id, requested_by, signed_storage_path, signed_size_bytes, completed_at, title')
+    .eq('id', requestId)
+    .maybeSingle()
+  if (!req?.signed_storage_path) return
+
+  const { documentId, versionId } = signedDocumentIds(req.id)
+  const { data: existing } = await admin.from('project_documents').select('id, current_version_id').eq('id', documentId).maybeSingle()
+  if (existing?.current_version_id) return
+
+  const { data: source } = await admin.from('project_documents').select('name, category').eq('id', req.document_id).maybeSingle()
+  const path = documentStoragePath(req.organization_id, req.project_id, documentId, versionId, 'application/pdf')
+  const { error: copyError } = await admin.storage.from(DOCUMENTS_BUCKET).copy(req.signed_storage_path, path)
+  if (copyError && !/exists|duplicate/i.test(copyError.message)) throw new Error(copyError.message)
+
+  if (!existing) {
+    const { error } = await admin.from('project_documents').insert({
+      id: documentId,
+      organization_id: req.organization_id,
+      project_id: req.project_id,
+      scope: 'project',
+      name: signedDocumentName(source?.name ?? req.title),
+      description: `Executed copy returned by Dropbox Sign for "${req.title}". This is the signed record and cannot be replaced.`.slice(0, 2000),
+      category: source?.category ?? 'contracts',
+      visibility: 'internal',
+      created_by: req.requested_by,
+      updated_by: req.requested_by,
+    })
+    if (error && error.code !== '23505') throw new Error(error.message)
+  }
+
+  const { error: versionError } = await admin.from('project_document_versions').insert({
+    id: versionId,
+    document_id: documentId,
+    organization_id: req.organization_id,
+    project_id: req.project_id,
+    version_number: 1,
+    storage_path: path,
+    original_filename: `${signedDocumentName(source?.name ?? req.title).replace(/[^\w.\- ]+/g, '').trim() || 'Signed document'}.pdf`,
+    content_type: 'application/pdf',
+    size_bytes: req.signed_size_bytes ?? 0,
+    revision_notes: 'Signed by all parties through Dropbox Sign.',
+    uploaded_by: req.requested_by,
+    uploaded_at: req.completed_at ?? new Date().toISOString(),
+  })
+  if (versionError && versionError.code !== '23505') throw new Error(versionError.message)
+
+  await admin
+    .from('project_documents')
+    .update({ current_version_id: versionId, current_version_number: 1 })
+    .eq('id', documentId)
+    .is('current_version_id', null)
+}
+
+/** Approves the estimate whose exact signing copy was signed; any other request leaves estimates unchanged. */
+async function approveEstimateFromSignature(admin: SupabaseClient, requestId: string, sr: ProviderSignatureRequest): Promise<void> {
+  const { data: req } = await admin
+    .from('signature_requests')
+    .select('id, status, test_mode, document_id, source_version_id, provider_request_id, completed_at')
+    .eq('id', requestId)
+    .maybeSingle()
+  if (!req?.document_id) return
+
+  const { data: snapshot } = await admin
+    .from('estimate_signing_snapshots')
+    .select('estimate_id, document_id, version_id')
+    .eq('document_id', req.document_id)
+    .maybeSingle()
+  if (!snapshot) return
+
+  const { data: estimate } = await admin.from('estimates').select('id, status, project_id').eq('id', snapshot.estimate_id).maybeSingle()
+  const decision = estimateApprovalFromSignature({
+    requestStatus: req.status,
+    testMode: req.test_mode || sr.test_mode,
+    requestDocumentId: req.document_id,
+    requestSourceVersionId: req.source_version_id,
+    snapshot,
+    estimateStatus: estimate?.status ?? null,
+    signerNames: (sr.signatures ?? []).filter((s) => s.status_code === 'signed').map((s) => s.signer_name),
+  })
+  if (!decision.approve || !estimate) return
+
+  const { error } = await admin
+    .from('estimates')
+    .update({
+      status: 'approved',
+      decision_by_name: decision.decisionByName,
+      decision_method: 'other',
+      decision_note: `Approved by electronic signature through Dropbox Sign (request ${req.provider_request_id}). The signed PDF is in Project Documents.`,
+      decision_at: req.completed_at ?? new Date().toISOString(),
+    })
+    .eq('id', estimate.id)
+    .eq('status', 'submitted')
+  if (error) throw new Error(error.message)
 }
 
 async function storeSignedArtifact(admin: SupabaseClient, row: RequestRow, providerId: string): Promise<boolean> {
