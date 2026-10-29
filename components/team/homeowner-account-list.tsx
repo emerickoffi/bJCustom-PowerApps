@@ -101,9 +101,9 @@ export function HomeownerAccountList({
       </div>
 
       {visible.length ? (
-        <ul className="divide-y divide-[#E2E8E2]/80 overflow-hidden rounded-xl border border-[#E2E8E2] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
-          {visible.map((row) => (
-            <HomeownerItem key={row.key} row={row} />
+        <ul className="flex flex-col gap-3">
+          {groupByClient(visible).map((group) => (
+            <ClientGroup key={group.clientId} group={group} />
           ))}
         </ul>
       ) : (
@@ -123,7 +123,65 @@ export function HomeownerAccountList({
   )
 }
 
+type ClientGroupData = {
+  clientId: string
+  clientName: string
+  clientNumber: number | null
+  rows: HomeownerAccountRow[]
+}
+
+const RELATIONSHIP_RANK = (row: HomeownerAccountRow) =>
+  row.relationship === 'Primary' ? 0 : row.relationship === 'Client record' ? 1 : 2
+
+function groupByClient(rows: HomeownerAccountRow[]): ClientGroupData[] {
+  const groups = new Map<string, ClientGroupData>()
+  for (const row of rows) {
+    let group = groups.get(row.clientId)
+    if (!group) {
+      group = { clientId: row.clientId, clientName: row.clientName, clientNumber: row.clientNumber, rows: [] }
+      groups.set(row.clientId, group)
+    }
+    group.rows.push(row)
+  }
+  for (const group of groups.values()) {
+    group.rows.sort((a, b) => RELATIONSHIP_RANK(a) - RELATIONSHIP_RANK(b))
+  }
+  return [...groups.values()]
+}
+
+function ClientGroup({ group }: { group: ClientGroupData }) {
+  const headingId = `client-group-${group.clientId}`
+  return (
+    <li
+      aria-labelledby={headingId}
+      className="overflow-hidden rounded-xl border border-[#E2E8E2] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E8E2]/80 bg-[#F8F7F3]/70 px-4 py-2.5 sm:px-5">
+        <h3 id={headingId} className="min-w-0 truncate text-sm font-semibold text-[#174D32]">
+          {group.clientName}
+          {group.clientNumber ? <span className="ml-1.5 font-normal text-[#64756D]">{`#${group.clientNumber}`}</span> : null}
+        </h3>
+        <span className="text-xs text-[#64756D]">
+          {group.rows.length === 1 ? '1 contact' : `${group.rows.length} contacts`}
+        </span>
+      </div>
+      <ul className="divide-y divide-[#E2E8E2]/80">
+        {group.rows.map((row) => (
+          <HomeownerItem key={row.key} row={row} />
+        ))}
+      </ul>
+    </li>
+  )
+}
+
+function RelationshipBadge({ relationship }: { relationship: string }) {
+  if (relationship === 'Primary') return <SemanticBadge tone="success">Primary contact</SemanticBadge>
+  if (relationship === 'Client record') return <SemanticBadge tone="neutral">Client record</SemanticBadge>
+  return <SemanticBadge tone="neutral">Secondary contact</SemanticBadge>
+}
+
 function HomeownerItem({ row }: { row: HomeownerAccountRow }) {
+  const isSecondary = row.relationship !== 'Primary' && row.relationship !== 'Client record'
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 transition-colors hover:bg-[#F8F7F3]/70 sm:flex-nowrap sm:px-5">
       <span
@@ -135,14 +193,18 @@ function HomeownerItem({ row }: { row: HomeownerAccountRow }) {
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <span className="truncate font-medium text-foreground">{row.name}</span>
+          <RelationshipBadge relationship={row.relationship} />
           <SemanticBadge tone="info">Homeowner</SemanticBadge>
           {row.isLegacyInvite && <SemanticBadge tone="neutral">Invitation access</SemanticBadge>}
         </span>
         <span className="truncate text-sm text-[#64756D]">{row.email ?? 'No email on file'}</span>
-        <span className="truncate text-xs text-[#64756D]">
-          {`${row.relationship} · ${row.clientName}${row.clientNumber ? ` (#${row.clientNumber})` : ''}`}
-          {row.permissions.length > 0 && ` · ${row.permissions.join(', ')}`}
-        </span>
+        {(isSecondary || row.permissions.length > 0) && (
+          <span className="truncate text-xs text-[#64756D]">
+            {[isSecondary ? row.relationship : null, row.permissions.length > 0 ? row.permissions.join(', ') : null]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+        )}
       </div>
       <div className="ml-14 flex shrink-0 flex-wrap items-center gap-3 sm:ml-0">
         <SemanticBadge tone={STATUS_TONE[row.status]}>{HOMEOWNER_STATUS_LABELS[row.status]}</SemanticBadge>

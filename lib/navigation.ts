@@ -52,14 +52,13 @@ export const PLANNED_MODULES: PlannedModule[] = [
     stage: 4,
     summary: 'Site activity, weather, crews on site, and progress photos recorded each day.',
   },
-  {
-    slug: 'invoices',
-    label: 'Invoices',
-    icon: 'invoices',
-    stage: 5,
-    summary: 'Draw schedules, progress billing, payment tracking, and homeowner statements.',
-  },
 ]
+
+/** Former placeholder slugs that now have a real module; old bookmarks redirect there. */
+export const GRADUATED_MODULE_ROUTES: Record<string, string> = {
+  schedule: '/schedule',
+  invoices: '/invoices',
+}
 
 export const MY_WORK_NAV: NavItem = { href: '/my-work', label: 'My Work', icon: 'my-work', roles: ['project_manager'] }
 
