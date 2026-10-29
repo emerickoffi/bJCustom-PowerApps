@@ -29,7 +29,7 @@ import { formatAddress, formatDate } from '@/lib/format'
 
 export const metadata: Metadata = { title: 'Client' }
 
-type ContactLite = { id: string; first_name: string; last_name: string; email: string | null }
+type ContactLite = { id: string; first_name: string; last_name: string; email: string | null; is_primary: boolean }
 
 async function loadPortalAccess(
   client: { id: string; first_name: string; last_name: string; email: string | null },
@@ -52,9 +52,24 @@ async function loadPortalAccess(
   const profileById = new Map((profilesRes.data ?? []).map((p) => [p.id, p]))
   const memberById = new Map((membershipsRes.data ?? []).map((m) => [m.user_id, m]))
 
+  // The primary client is mirrored as the is_primary client_contacts row (see client_contacts migration),
+  // so only fall back to the synthetic "primary" option for clients that have no such row.
+  const primaryContact = contacts.find((c) => c.is_primary)
+  const contactIdsWithAccount = new Set(
+    (accounts ?? []).map((a) => (a.contact_id as string | null) ?? primaryContact?.id ?? 'primary'),
+  )
+  const toOption = (value: string, name: string, isPrimary: boolean, email: string | null): PortalContactOption => {
+    const hasAccount = contactIdsWithAccount.has(value)
+    return {
+      value,
+      label: `${name}${isPrimary ? ' (primary)' : ''}${hasAccount ? ' — has portal login' : ''}`,
+      hasEmail: Boolean(email),
+      hasAccount,
+    }
+  }
   const contactOptions: PortalContactOption[] = [
-    { value: 'primary', label: `${client.first_name} ${client.last_name} (primary)`, hasEmail: Boolean(client.email) },
-    ...contacts.map((c) => ({ value: c.id, label: `${c.first_name} ${c.last_name}`, hasEmail: Boolean(c.email) })),
+    ...(primaryContact ? [] : [toOption('primary', `${client.first_name} ${client.last_name}`, true, client.email)]),
+    ...contacts.map((c) => toOption(c.id, `${c.first_name} ${c.last_name}`, c.is_primary, c.email)),
   ]
 
   const statusByContact: Record<string, PortalAccountStatus | null> = {}

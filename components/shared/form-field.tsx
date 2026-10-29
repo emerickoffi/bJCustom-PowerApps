@@ -87,7 +87,7 @@ export function TextAreaField({ name, label, error, hint, required, className, .
 }
 
 type SelectFieldProps = BaseProps & {
-  options: { value: string; label: string }[]
+  options: { value: string; label: string; disabled?: boolean }[]
   defaultValue?: string
   placeholder?: string
   disabled?: boolean
@@ -121,7 +121,7 @@ export function SelectField({
           </option>
         )}
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <option key={option.value} value={option.value} disabled={option.disabled}>
             {option.label}
           </option>
         ))}
