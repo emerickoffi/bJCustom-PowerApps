@@ -30,6 +30,9 @@ import { formatAddress, formatDate } from '@/lib/format'
 import { RECENT_HISTORY_LIMIT, presentEvent } from '@/lib/activity-history'
 import { fetchRecentHistory, getOrgTimeZone } from '@/lib/activity-history-server'
 import { ActivityHistoryCard } from '@/components/schedule/activity-history-card'
+import { getOrgFeatures } from '@/lib/features'
+import { loadProjectAssignments } from '@/lib/assignments-data'
+import { ProjectAssignmentsCard } from '@/components/schedule/project-assignments-card'
 
 export const metadata: Metadata = { title: 'Schedule' }
 
@@ -101,7 +104,8 @@ export default async function SchedulePage({
   if (!project) notFound()
 
   const manager = canManage(session.role)
-  const [activitiesRes, depsRes, recentHistory, timeZone, baselinesRes, staff] = await Promise.all([
+  const features = await getOrgFeatures(session.organizationId)
+  const [activitiesRes, depsRes, recentHistory, timeZone, baselinesRes, staff, assignmentData] = await Promise.all([
     supabase.from('schedule_activities').select(ACTIVITY_COLUMNS).eq('project_id', id).order('sort_order').order('created_at'),
     supabase.from('schedule_dependencies').select('id, predecessor_id, successor_id').eq('project_id', id),
     fetchRecentHistory(supabase, id, RECENT_HISTORY_LIMIT),
@@ -112,6 +116,7 @@ export default async function SchedulePage({
       .eq('project_id', id)
       .order('version', { ascending: false }),
     getStaffMembers(session.organizationId, ['org_admin', 'project_manager', 'builder_staff']),
+    loadProjectAssignments(supabase, session.organizationId, id, features, manager),
   ])
 
   const activities = (activitiesRes.data ?? []) as ScheduleActivity[]
@@ -268,7 +273,18 @@ export default async function SchedulePage({
             conflictIds={conflictIds}
             staffOptions={staffOptions}
             canManage={manager}
+            assignmentAvailability={assignmentData.availability}
+            assignments={assignmentData.assignments}
+            companies={assignmentData.companies}
           />
+
+          {assignmentData.availability !== 'off' && (
+            <ProjectAssignmentsCard
+              availability={assignmentData.availability}
+              assignments={assignmentData.assignments}
+              activities={activities}
+            />
+          )}
 
           <div className="grid gap-8 xl:grid-cols-[1fr_22rem]">
             <div className="min-w-0">

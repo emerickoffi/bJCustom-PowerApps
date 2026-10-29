@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
-import { requireDailyLogProject, getOrgToday, getScheduleActivityOptions } from '@/lib/daily-logs-data'
+import { requireDailyLogProject, getCrewCompanyOptions, getOrgToday, getScheduleActivityOptions } from '@/lib/daily-logs-data'
 import {
   DAILY_LOG_PHOTO_MAX_BYTES,
   DAILY_LOG_PHOTO_TYPES,
@@ -35,12 +35,24 @@ export async function saveDailyLogAction(_prev: ActionState, formData: FormData)
   const { session, project } = await requireDailyLogProject(ids.data.project_id)
   if (project.archived_at) return { error: 'This project is archived; daily logs are read-only.' }
 
-  const [today, activities] = await Promise.all([getOrgToday(session.organizationId), getScheduleActivityOptions(project.id)])
-  const parsed = parseDailyLogForm(formData, { today, allowedActivityIds: new Set(activities.map((a) => a.id)) })
+  const supabase = await createClient()
+  const [today, activities, companies, existingCrews] = await Promise.all([
+    getOrgToday(session.organizationId),
+    getScheduleActivityOptions(project.id),
+    getCrewCompanyOptions(session.organizationId),
+    ids.data.id
+      ? supabase.from('daily_log_crews').select('subcontractor_company_id').eq('daily_log_id', ids.data.id).not('subcontractor_company_id', 'is', null)
+      : Promise.resolve({ data: [] as { subcontractor_company_id: string | null }[] }),
+  ])
+  // A company already recorded on this log stays valid even if it was later deactivated.
+  const allowedCompanyIds = new Set([
+    ...companies.map((c) => c.id),
+    ...(existingCrews.data ?? []).map((c) => c.subcontractor_company_id).filter((v): v is string => Boolean(v)),
+  ])
+  const parsed = parseDailyLogForm(formData, { today, allowedActivityIds: new Set(activities.map((a) => a.id)), allowedCompanyIds })
   if (!parsed.ok) return { error: parsed.error, fieldErrors: parsed.fieldErrors, values: formValues(formData) }
   if (ids.data.id && !ids.data.version) return { error: 'This form is out of date. Reload the page and try again.' }
 
-  const supabase = await createClient()
   const { data: logId, error } = await supabase.rpc('save_daily_log', {
     p_project: project.id,
     p_id: ids.data.id,

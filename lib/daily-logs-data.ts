@@ -3,7 +3,7 @@ import { cache } from 'react'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireStaff, type StaffSession } from '@/lib/session'
-import { requireFeature } from '@/lib/features'
+import { getOrgFeatures, requireFeature } from '@/lib/features'
 import { signMediaPaths } from '@/lib/media'
 import { isDailyLogStatus, todayInTimeZone, type DailyLogStatus } from '@/lib/daily-logs'
 
@@ -46,7 +46,32 @@ export type DailyLogRecord = {
   updated_at: string
 }
 
-export type DailyLogCrew = { id: string; trade: string; crew_size: number | null; hours_worked: number | null; notes: string | null }
+export type DailyLogCrew = {
+  id: string
+  trade: string
+  crew_size: number | null
+  hours_worked: number | null
+  notes: string | null
+  subcontractor_company_id: string | null
+  company_name: string | null
+}
+export type CrewCompanyOption = { id: string; company_name: string; trade: string }
+
+/** Active subcontractors for the crew picker. Empty when the module is off or its table is not set up yet. */
+export async function getCrewCompanyOptions(organizationId: string): Promise<CrewCompanyOption[]> {
+  const features = await getOrgFeatures(organizationId)
+  if (!features.subcontractors) return []
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('subcontractor_companies')
+    .select('id, company_name, trade')
+    .eq('organization_id', organizationId)
+    .eq('status', 'active')
+    .order('company_name')
+    .limit(500)
+  if (error) return []
+  return (data ?? []) as CrewCompanyOption[]
+}
 export type DailyLogPhoto = { id: string; storage_path: string; file_name: string; caption: string | null; created_at: string; url: string | null }
 export type ScheduleActivityOption = { id: string; name: string; phase: string | null; status: string | null }
 
@@ -89,7 +114,11 @@ export async function getDailyLog(projectId: string, logId: string) {
 export async function getDailyLogChildren(logId: string) {
   const supabase = await createClient()
   const [{ data: crews }, { data: links }, { data: photos }] = await Promise.all([
-    supabase.from('daily_log_crews').select('id, trade, crew_size, hours_worked, notes').eq('daily_log_id', logId).order('sort_order'),
+    supabase
+      .from('daily_log_crews')
+      .select('id, trade, crew_size, hours_worked, notes, subcontractor_company_id, company_name')
+      .eq('daily_log_id', logId)
+      .order('sort_order'),
     supabase.from('daily_log_activities').select('schedule_activity_id').eq('daily_log_id', logId),
     supabase.from('daily_log_photos').select('id, storage_path, file_name, caption, created_at').eq('daily_log_id', logId).order('created_at'),
   ])

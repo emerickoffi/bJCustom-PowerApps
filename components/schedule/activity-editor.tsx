@@ -26,6 +26,14 @@ import {
   type ScheduleDependency,
 } from '@/lib/schedule'
 import { formatDate } from '@/lib/format'
+import { ActivityAssignments } from '@/components/schedule/activity-assignments'
+import type { ActivityAssignment, AssignmentAvailability, CompanyOption } from '@/lib/assignments'
+
+export type AssignmentProps = {
+  availability: AssignmentAvailability
+  byActivity: Map<string, ActivityAssignment[]>
+  companies: CompanyOption[]
+}
 
 type StaffOption = { value: string; label: string }
 
@@ -348,6 +356,7 @@ export function ActivityEditor({
   dependencies,
   staffOptions,
   canManage,
+  assignments,
   onClose,
 }: {
   projectId: string
@@ -356,6 +365,7 @@ export function ActivityEditor({
   dependencies: ScheduleDependency[]
   staffOptions: StaffOption[]
   canManage: boolean
+  assignments?: AssignmentProps
   onClose: () => void
 }) {
   const [notice, setNotice] = useState<{ activityId: string; section: 'progress' | 'plan'; message: string } | null>(null)
@@ -383,6 +393,18 @@ export function ActivityEditor({
                 />
                 <SavedMessage message={noticeFor('progress')} />
               </section>
+              {canManage && assignments && assignments.availability !== 'off' && (
+                <section className="flex flex-col gap-3">
+                  <SectionTitle>Subcontractors</SectionTitle>
+                  <ActivityAssignments
+                    projectId={projectId}
+                    activityId={activity.id}
+                    availability={assignments.availability}
+                    assignments={assignments.byActivity.get(activity.id) ?? []}
+                    companies={assignments.companies}
+                  />
+                </section>
+              )}
               {canManage && (
                 <>
                   <section className="flex flex-col gap-3">
