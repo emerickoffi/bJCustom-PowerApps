@@ -66,7 +66,7 @@ export function TradeCombobox({ defaultValue = '', error }: { defaultValue?: str
             id="trade"
             placeholder="Search or select a trade"
             aria-invalid={error && !isOther ? true : undefined}
-            aria-describedby={describedBy}
+            aria-describedby={isOther ? undefined : describedBy}
             aria-required="true"
             className={cn(
               'h-10 w-full min-w-0 rounded-lg border border-input bg-background pl-2.5 pr-16 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/80',
@@ -128,6 +128,14 @@ export function TradeCombobox({ defaultValue = '', error }: { defaultValue?: str
         </Combobox.Portal>
       </Combobox.Root>
 
+      {!isOther && (
+        <FieldHelp
+          id={describedBy}
+          error={error}
+          hint="Type to search, or use the arrow keys to browse."
+        />
+      )}
+
       {isOther && (
         <div className="mt-1 flex flex-col gap-1.5">
           <Label htmlFor="trade_other" className="text-sm font-medium text-foreground">
@@ -148,19 +156,22 @@ export function TradeCombobox({ defaultValue = '', error }: { defaultValue?: str
             aria-describedby={describedBy}
             className="h-10 placeholder:text-muted-foreground/80"
           />
+          <FieldHelp id={describedBy} error={error} hint="Enter the trade or specialty this company performs." />
         </div>
       )}
-
-      {error ? (
-        <p id="trade-error" className="flex items-start gap-1.5 text-xs leading-relaxed text-destructive">
-          <AlertCircle className="mt-px size-3.5 shrink-0" aria-hidden="true" />
-          {error}
-        </p>
-      ) : (
-        <p id="trade-hint" className="text-xs leading-relaxed text-muted-foreground">
-          Type to search, or use the arrow keys to browse.
-        </p>
-      )}
     </div>
+  )
+}
+
+function FieldHelp({ id, error, hint }: { id: string; error?: string; hint: string }) {
+  return error ? (
+    <p id={id} className="flex items-start gap-1.5 text-xs leading-relaxed text-destructive">
+      <AlertCircle className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+      {error}
+    </p>
+  ) : (
+    <p id={id} className="text-xs leading-relaxed text-muted-foreground">
+      {hint}
+    </p>
   )
 }

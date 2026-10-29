@@ -1,90 +1,179 @@
 import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
+import { FolderKanban, Mail, Phone } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { SUBCONTRACTOR_STATUS_LABELS, type SubcontractorCompany } from '@/lib/subcontractors'
+import { cn } from '@/lib/utils'
+import { SUBCONTRACTOR_STATUS_LABELS, type SubcontractorCompany, type SubcontractorStatus } from '@/lib/subcontractors'
 import type { AssignedProject } from '@/lib/subcontractor-projects'
+import { companyInitials, projectCountLabel } from '@/lib/subcontractor-directory'
+import { SubcontractorRowActions } from '@/components/subcontractors/subcontractor-row-actions'
 
-const VISIBLE_PROJECTS = 3
+type Props = {
+  rows: SubcontractorCompany[]
+  projectsByCompany: Record<string, AssignedProject[]> | null
+}
 
-function ProjectList({ projects }: { projects: AssignedProject[] | undefined }) {
-  if (!projects?.length) return <span className="text-muted-foreground">None</span>
-  const shown = projects.slice(0, VISIBLE_PROJECTS)
-  const hidden = projects.length - shown.length
+function CompanyAvatar({ name, status }: { name: string; status: SubcontractorStatus }) {
   return (
-    <ul className="flex flex-col gap-0.5" aria-label={`${projects.length} assigned ${projects.length === 1 ? 'project' : 'projects'}`}>
-      {shown.map((p) => (
-        <li key={p.id} className="max-w-56 truncate">
-          <Link href={`/projects/${p.id}`} className="text-primary underline-offset-4 hover:underline">
-            <span className="text-muted-foreground">{p.project_number}</span> {p.name}
-          </Link>
-        </li>
-      ))}
-      {hidden > 0 && (
-        <li className="text-xs text-muted-foreground" title={projects.slice(VISIBLE_PROJECTS).map((p) => `${p.project_number} ${p.name}`).join(', ')}>
-          +{hidden} more
-        </li>
+    <span
+      aria-hidden="true"
+      className={cn(
+        'flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-semibold ring-1 ring-inset',
+        status === 'active' ? 'bg-[#EAF0E9] text-primary ring-primary/10' : 'bg-muted text-muted-foreground ring-border',
       )}
-    </ul>
+    >
+      {companyInitials(name)}
+    </span>
   )
 }
 
-export function SubcontractorTable({
-  rows,
-  projectsByCompany,
-}: {
-  rows: SubcontractorCompany[]
-  projectsByCompany: Record<string, AssignedProject[]> | null
-}) {
+function StatusBadge({ status }: { status: SubcontractorStatus }) {
+  const active = status === 'active'
   return (
-    <div className="overflow-x-auto rounded-xl border border-border/80 bg-card shadow-xs">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead scope="col">Company</TableHead>
-            <TableHead scope="col">Trade</TableHead>
-            <TableHead scope="col">Email</TableHead>
-            <TableHead scope="col">Phone</TableHead>
-            {projectsByCompany && <TableHead scope="col">Projects</TableHead>}
-            <TableHead scope="col">Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell className="font-medium text-foreground">{row.company_name}</TableCell>
-              <TableCell>{row.trade}</TableCell>
-              <TableCell>
-                {row.email ? (
-                  <a href={`mailto:${row.email}`} className="text-primary underline-offset-4 hover:underline">
-                    {row.email}
-                  </a>
-                ) : (
-                  <span className="text-muted-foreground">Not provided</span>
-                )}
-              </TableCell>
-              <TableCell>
-                {row.phone ? (
-                  <a href={`tel:${row.phone.replace(/[^0-9+]/g, '')}`} className="text-primary underline-offset-4 hover:underline">
-                    {row.phone}
-                  </a>
-                ) : (
-                  <span className="text-muted-foreground">Not provided</span>
-                )}
-              </TableCell>
-              {projectsByCompany && (
-                <TableCell className="align-top">
-                  <ProjectList projects={projectsByCompany[row.id]} />
-                </TableCell>
-              )}
-              <TableCell>
-                <Badge variant={row.status === 'active' ? 'secondary' : 'outline'}>
-                  {SUBCONTRACTOR_STATUS_LABELS[row.status]}
-                </Badge>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+        active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+      )}
+    >
+      <span className={cn('size-1.5 rounded-full', active ? 'bg-primary' : 'bg-muted-foreground/60')} aria-hidden="true" />
+      {SUBCONTRACTOR_STATUS_LABELS[status]}
+    </span>
+  )
+}
+
+function CompanyCell({ row }: { row: SubcontractorCompany }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <CompanyAvatar name={row.company_name} status={row.status} />
+      <div className="flex min-w-0 flex-col">
+        <Link
+          href={`/subcontractors/${row.id}`}
+          className="truncate font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:underline"
+        >
+          {row.company_name}
+        </Link>
+        <span className="truncate text-sm text-muted-foreground">{row.trade}</span>
+      </div>
     </div>
+  )
+}
+
+function ContactLines({ row }: { row: SubcontractorCompany }) {
+  if (!row.email && !row.phone) return <span className="text-sm text-muted-foreground/80">Not provided</span>
+  return (
+    <div className="flex min-w-0 flex-col gap-1 text-sm">
+      {row.email && (
+        <a
+          href={`mailto:${row.email}`}
+          className="flex min-w-0 items-center gap-2 text-foreground/85 underline-offset-4 hover:text-primary hover:underline"
+        >
+          <Mail className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="truncate">{row.email}</span>
+        </a>
+      )}
+      {row.phone && (
+        <a
+          href={`tel:${row.phone.replace(/[^0-9+]/g, '')}`}
+          className="flex items-center gap-2 text-foreground/85 underline-offset-4 hover:text-primary hover:underline"
+        >
+          <Phone className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="tabular-nums">{row.phone}</span>
+        </a>
+      )}
+    </div>
+  )
+}
+
+function ProjectsSummary({ projects }: { projects: AssignedProject[] | undefined }) {
+  const count = projects?.length ?? 0
+  if (!count) return <span className="text-sm text-muted-foreground/80">No projects</span>
+  const names = projects!.map((p) => `${p.project_number} ${p.name}`)
+  return (
+    <div className="flex min-w-0 flex-col" title={names.join(', ')}>
+      <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+        <FolderKanban className="size-3.5 text-muted-foreground" aria-hidden="true" />
+        {projectCountLabel(count)}
+      </span>
+      <span className="truncate text-xs text-muted-foreground">
+        {names[0]}
+        {count > 1 ? ` +${count - 1} more` : ''}
+      </span>
+    </div>
+  )
+}
+
+export function SubcontractorTable({ rows, projectsByCompany }: Props) {
+  const showProjects = projectsByCompany !== null
+  return (
+    <>
+      <div className="hidden overflow-hidden rounded-xl border border-border/70 bg-card shadow-xs md:block">
+        <Table className="table-fixed">
+          <TableHeader>
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead scope="col" className="h-10 w-[34%] pl-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Company / Trade
+              </TableHead>
+              <TableHead scope="col" className="h-10 w-[30%] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Contact
+              </TableHead>
+              {showProjects && (
+                <TableHead scope="col" className="h-10 w-[18%] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Projects
+                </TableHead>
+              )}
+              <TableHead scope="col" className="h-10 w-[11%] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Status
+              </TableHead>
+              <TableHead scope="col" className="h-10 w-16 pr-5 text-right">
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row.id} className="hover:bg-[#F4F7F3]">
+                <TableCell className="py-3.5 pl-5">
+                  <CompanyCell row={row} />
+                </TableCell>
+                <TableCell className="py-3.5">
+                  <ContactLines row={row} />
+                </TableCell>
+                {showProjects && (
+                  <TableCell className="py-3.5">
+                    <ProjectsSummary projects={projectsByCompany[row.id]} />
+                  </TableCell>
+                )}
+                <TableCell className="py-3.5">
+                  <StatusBadge status={row.status} />
+                </TableCell>
+                <TableCell className="py-3.5 pr-4 text-right">
+                  <div className="flex justify-end">
+                    <SubcontractorRowActions companyId={row.id} companyName={row.company_name} status={row.status} />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <ul className="flex flex-col divide-y divide-border/70 overflow-hidden rounded-xl border border-border/70 bg-card shadow-xs md:hidden">
+        {rows.map((row) => (
+          <li key={row.id} className="flex flex-col gap-3 p-4">
+            <div className="flex items-start justify-between gap-2">
+              <CompanyCell row={row} />
+              <div className="-mr-1.5 -mt-1 shrink-0">
+                <SubcontractorRowActions companyId={row.id} companyName={row.company_name} status={row.status} />
+              </div>
+            </div>
+            <ContactLines row={row} />
+            <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-3">
+              {showProjects ? <ProjectsSummary projects={projectsByCompany[row.id]} /> : <span />}
+              <StatusBadge status={row.status} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }

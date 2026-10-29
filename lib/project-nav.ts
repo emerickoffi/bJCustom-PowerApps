@@ -7,6 +7,7 @@ export type ProjectNavKey =
   | 'client_updates'
   | 'estimates'
   | 'change_orders'
+  | 'financials'
   | 'documents'
   | 'team'
   | 'walkthroughs'
@@ -84,6 +85,12 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
         href: `${base}/change-orders`,
         activePrefix: `${base}/change-orders`,
       },
+    Boolean(features.estimates && access.canViewFinancials && access.canViewInternal) && {
+      key: 'financials',
+      label: 'Financials',
+      href: `${base}/financials`,
+      activePrefix: `${base}/financials`,
+    },
     features.documents &&
       access.canViewInternal && {
         key: 'documents',

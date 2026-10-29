@@ -15,6 +15,21 @@ export function AssignedWorkCard({ availability, items }: { availability: Assign
   }
   const ordered = [...groups.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name))
 
+  if (availability === 'ready' && ordered.length === 0) {
+    return (
+      <section
+        aria-labelledby="assigned-work-heading"
+        className="flex flex-col gap-1 rounded-xl border border-dashed border-border/80 px-4 py-3 text-sm sm:flex-row sm:items-center sm:gap-3"
+      >
+        <h2 id="assigned-work-heading" className="flex items-center gap-2 font-medium text-foreground">
+          <ClipboardList className="size-4 text-muted-foreground" aria-hidden="true" />
+          Assigned work
+        </h2>
+        <p className="text-muted-foreground">No active schedule assignments. Assign work from a project schedule.</p>
+      </section>
+    )
+  }
+
   return (
     <section aria-labelledby="assigned-work-heading" className="flex flex-col gap-4 rounded-xl border bg-card p-5">
       <div className="flex flex-col gap-1">

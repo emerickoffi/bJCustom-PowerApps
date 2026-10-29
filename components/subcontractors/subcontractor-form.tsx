@@ -11,21 +11,34 @@ import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { TradeCombobox } from '@/components/subcontractors/trade-combobox'
 import { ProjectAssignmentsPicker, type ProjectPickerAvailability } from '@/components/subcontractors/project-assignments-picker'
 import type { AssignableProject } from '@/lib/subcontractor-projects'
+import type { SubcontractorCompany } from '@/lib/subcontractors'
 
 export function SubcontractorForm({
   action,
   cancelHref,
   projects,
   projectAvailability,
+  company,
+  lockedProjects,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   cancelHref: string
   projects: AssignableProject[]
   projectAvailability: ProjectPickerAvailability
+  /** Present when editing; prefills the fields. */
+  company?: SubcontractorCompany
+  lockedProjects?: AssignableProject[]
 }) {
   const [state, formAction] = useActionState(action, initialActionState)
   const fe = state.fieldErrors ?? {}
-  const v = state.values ?? {}
+  const v: Record<string, string> = state.values ?? {
+    company_name: company?.company_name ?? '',
+    trade: company?.trade ?? '',
+    status: company?.status ?? 'active',
+    email: company?.email ?? '',
+    phone: company?.phone ?? '',
+  }
+  const isEdit = Boolean(company)
   const formKey = state.values ? JSON.stringify(state.values) : 'initial'
 
   return (
@@ -51,13 +64,18 @@ export function SubcontractorForm({
       <FormSection
         icon={FolderKanbanIcon}
         title="Project Assignments"
-        description="Choose the projects this subcontractor will work on. You can also assign projects later."
+        description={
+          isEdit
+            ? 'Existing projects stay as history. Add any new projects this subcontractor will work on.'
+            : 'Choose the projects this subcontractor will work on. You can also assign projects later.'
+        }
       >
         <ProjectAssignmentsPicker
           projects={projects}
           availability={projectAvailability}
           defaultValue={v.project_ids ?? ''}
           error={fe.project_ids}
+          lockedProjects={lockedProjects}
         />
       </FormSection>
 
@@ -65,7 +83,9 @@ export function SubcontractorForm({
         <Button variant="outline" size="lg" render={<Link href={cancelHref} />} nativeButton={false}>
           Cancel
         </Button>
-        <SubmitButton pendingLabel="Saving subcontractor…">Save subcontractor</SubmitButton>
+        <SubmitButton pendingLabel={isEdit ? 'Saving changes…' : 'Saving subcontractor…'}>
+          {isEdit ? 'Save changes' : 'Save subcontractor'}
+        </SubmitButton>
       </FormActions>
     </form>
   )

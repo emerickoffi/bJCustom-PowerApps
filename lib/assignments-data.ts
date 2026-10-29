@@ -75,15 +75,20 @@ export type CompanyWorkItem = ActivityAssignment & {
 }
 
 /** Active work for every company in the directory, for the builder-side "Assigned work" view. */
-export async function loadDirectoryWork(supabase: Supabase, organizationId: string, features: FeatureMap) {
+export async function loadDirectoryWork(
+  supabase: Supabase,
+  organizationId: string,
+  features: FeatureMap,
+  companyId?: string,
+) {
   if (!features.schedule) return { availability: 'off' as AssignmentAvailability, items: [] as CompanyWorkItem[] }
-  const { data, error } = await supabase
+  let query = supabase
     .from('schedule_activity_assignments')
     .select(`${ASSIGNMENT_SELECT}, schedule_activities(name, status, planned_start, planned_end), projects(name)`)
     .eq('organization_id', organizationId)
     .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(500)
+  if (companyId) query = query.eq('subcontractor_company_id', companyId)
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(500)
   if (error) {
     return { availability: (isMissingTableError(error) ? 'setup-required' : 'error') as AssignmentAvailability, items: [] }
   }

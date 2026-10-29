@@ -16,9 +16,11 @@ import {
   type HistoryFilters,
 } from '@/lib/activity-history'
 
+import { APP_TIME_ZONE } from '@/lib/format'
+
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
-export const DEFAULT_TIME_ZONE = 'America/Chicago'
+export const DEFAULT_TIME_ZONE = APP_TIME_ZONE
 
 export type HistoryProject = { id: string; name: string; project_number: string | null }
 

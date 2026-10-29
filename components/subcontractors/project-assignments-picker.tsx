@@ -15,21 +15,49 @@ const projectLabel = (p: AssignableProject) => `${p.project_number} · ${p.name}
 const statusLabel = (status: string) => PROJECT_STATUS_LABELS[status as ProjectStatus] ?? status
 
 export function ProjectAssignmentsPicker({
-  projects,
+  projects: allProjects,
   availability,
   defaultValue = '',
   error,
+  lockedProjects = [],
 }: {
   projects: AssignableProject[]
   availability: ProjectPickerAvailability
   defaultValue?: string
   error?: string
+  /** Projects already associated. They are history, so they are shown but cannot be removed or reselected. */
+  lockedProjects?: AssignableProject[]
 }) {
+  const projects = useMemo(() => {
+    const locked = new Set(lockedProjects.map((p) => p.id))
+    return allProjects.filter((p) => !locked.has(p.id))
+  }, [allProjects, lockedProjects])
   const initial = useMemo(() => {
     const wanted = new Set(defaultValue.split(',').filter(Boolean))
     return projects.filter((p) => wanted.has(p.id))
   }, [defaultValue, projects])
   const [selected, setSelected] = useState<AssignableProject[]>(initial)
+  const editing = lockedProjects.length > 0
+
+  const lockedList = editing ? (
+    <div className="flex flex-col gap-2 sm:col-span-2">
+      <p className="text-xs font-medium text-muted-foreground">
+        {`Already on ${lockedProjects.length} ${lockedProjects.length === 1 ? 'project' : 'projects'} · kept as project history`}
+      </p>
+      <ul className="flex flex-wrap gap-2">
+        {lockedProjects.map((p) => (
+          <li key={p.id} className="flex min-w-0 max-w-full items-center gap-2 rounded-md border border-border bg-muted/50 px-2.5 py-1 text-sm">
+            <span className="truncate">
+              <span className="text-muted-foreground">{p.project_number}</span> {p.name}
+            </span>
+            <Badge variant="outline" className="shrink-0">
+              {statusLabel(p.status)}
+            </Badge>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ) : null
 
   if (availability !== 'ready') {
     return (
@@ -44,9 +72,14 @@ export function ProjectAssignmentsPicker({
 
   if (!projects.length) {
     return (
-      <p className="rounded-lg bg-muted px-3 py-2.5 text-sm text-muted-foreground sm:col-span-2">
-        No projects are in preconstruction, construction, or closeout right now. You can assign projects later.
-      </p>
+      <>
+        {lockedList}
+        <p className="rounded-lg bg-muted px-3 py-2.5 text-sm text-muted-foreground sm:col-span-2">
+          {editing
+            ? 'No other projects are in preconstruction, construction, or closeout right now.'
+            : 'No projects are in preconstruction, construction, or closeout right now. You can assign projects later.'}
+        </p>
+      </>
     )
   }
 
@@ -55,9 +88,10 @@ export function ProjectAssignmentsPicker({
 
   return (
     <div className="flex min-w-0 flex-col gap-3 sm:col-span-2">
+      {lockedList}
       <div className="flex min-w-0 flex-col gap-1.5">
         <Label htmlFor="project_ids" className="text-sm font-medium text-foreground">
-          Projects <span className="font-normal text-muted-foreground">(optional)</span>
+          {editing ? 'Add projects' : 'Projects'} <span className="font-normal text-muted-foreground">(optional)</span>
         </Label>
 
         {selected.map((p) => (
@@ -142,8 +176,10 @@ export function ProjectAssignmentsPicker({
       <div aria-live="polite" className="flex flex-col gap-2">
         <p className="text-xs font-medium text-muted-foreground">
           {selected.length
-            ? `${selected.length} ${selected.length === 1 ? 'project' : 'projects'} selected`
-            : 'No projects selected'}
+            ? `${selected.length} ${editing ? 'new ' : ''}${selected.length === 1 ? 'project' : 'projects'} selected`
+            : editing
+              ? 'No new projects selected'
+              : 'No projects selected'}
         </p>
         {selected.length > 0 && (
           <ul className="flex flex-wrap gap-2">

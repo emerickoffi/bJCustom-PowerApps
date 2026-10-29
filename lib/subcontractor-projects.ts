@@ -11,6 +11,19 @@ export type AssignedProject = { id: string; name: string; project_number: string
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+export function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID_RE.test(value)
+}
+
+/**
+ * Project associations are append-only history, so an edit can only add projects. Returns the submitted IDs that
+ * are not already associated, preserving submission order. Existing associations are never removed.
+ */
+export function newProjectIds(existingIds: readonly string[], submittedIds: readonly string[]): string[] {
+  const existing = new Set(existingIds.map((id) => id.toLowerCase()))
+  return submittedIds.filter((id) => !existing.has(id.toLowerCase()))
+}
+
 export type ProjectIdParse = { ok: true; ids: string[] } | { ok: false; error: string }
 
 /** Trims, de-duplicates, and validates submitted project IDs. An empty selection is valid. */

@@ -1,6 +1,13 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { checkSelectedProjects, groupAssignedProjects, parseProjectIds, MAX_PROJECT_ASSIGNMENTS } from './subcontractor-projects.ts'
+import {
+  checkSelectedProjects,
+  groupAssignedProjects,
+  isUuid,
+  newProjectIds,
+  parseProjectIds,
+  MAX_PROJECT_ASSIGNMENTS,
+} from './subcontractor-projects.ts'
 
 const A = '11111111-1111-4111-8111-111111111111'
 const B = '22222222-2222-4222-8222-222222222222'
@@ -59,4 +66,22 @@ test('associations group by company in project-number order and skip hidden proj
   ])
   assert.deepEqual(grouped.c1.map((p) => p.project_number), ['P1002', 'P1010'])
   assert.equal(grouped.c2, undefined)
+})
+
+test('editing only adds projects that are not already associated', () => {
+  assert.deepEqual(newProjectIds([A], [A, B]), [B])
+  assert.deepEqual(newProjectIds([A, B], [A, B]), [])
+  assert.deepEqual(newProjectIds([], [C, A]), [C, A])
+  assert.deepEqual(newProjectIds([A.toUpperCase()], [A]), [])
+})
+
+test('existing associations are never returned for removal', () => {
+  assert.deepEqual(newProjectIds([A, B], []), [])
+})
+
+test('isUuid accepts UUIDs and rejects route garbage', () => {
+  assert.equal(isUuid(A), true)
+  assert.equal(isUuid('new'), false)
+  assert.equal(isUuid("1' or 1=1"), false)
+  assert.equal(isUuid(undefined), false)
 })

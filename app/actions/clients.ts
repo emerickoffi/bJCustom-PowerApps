@@ -9,6 +9,7 @@ import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/l
 import { activitySchema, clientSchema, contactSchema } from '@/lib/validation'
 import { getOrgFeatures } from '@/lib/features'
 import { ADDITIONAL_CONTACT_PREFIX, MAX_ADDITIONAL_CONTACTS } from '@/lib/additional-contacts'
+import { buildPrimaryContact } from '@/lib/primary-contact'
 
 const uuid = z.uuid()
 
@@ -68,6 +69,35 @@ export async function createClientAction(_prev: ActionState, formData: FormData)
     const message =
       error.code === '42501' ? 'The client could not be saved. Please try again.' : friendlyDbError(error)
     return { error: message, values }
+  }
+
+  // Once migration 20261103000010 is applied, a trigger creates this row inside the
+  // client insert. Until then (and as a guard) create it here, undoing the client on failure.
+  const { data: existingPrimary } = await supabase
+    .from('client_contacts')
+    .select('id')
+    .eq('client_id', data.id)
+    .eq('is_primary', true)
+    .is('archived_at', null)
+    .maybeSingle()
+  if (!existingPrimary) {
+    const { error: primaryError } = await supabase.from('client_contacts').insert({
+      ...buildPrimaryContact(parsed.data),
+      client_id: data.id,
+      organization_id: session.organizationId,
+      created_by: session.userId,
+    })
+    if (primaryError) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[clients] primary contact failed', { code: primaryError.code, message: primaryError.message })
+      }
+      const { error: undoError } = await supabase.from('clients').delete().eq('id', data.id)
+      if (undoError) {
+        revalidatePath('/clients')
+        redirect(`/clients/${data.id}?notice=contacts_not_saved`)
+      }
+      return { error: 'The client could not be saved because its primary contact failed. Nothing was saved; please try again.', values }
+    }
   }
 
   let contactsFailed = false
