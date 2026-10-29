@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Eye, FolderKanban, Mail, Pencil, Phone } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import { DIRECTORY_TH_TEXT, DIRECTORY_THEAD_ROW } from '@/lib/directory-table-styles'
 import { SUBCONTRACTOR_STATUS_LABELS, type SubcontractorCompany, type SubcontractorStatus } from '@/lib/subcontractors'
 import type { AssignedProject } from '@/lib/subcontractor-projects'
 import { companyInitials, projectCountLabel } from '@/lib/subcontractor-directory'
@@ -112,22 +113,22 @@ export function SubcontractorTable({ rows, projectsByCompany }: Props) {
       <div className="hidden overflow-hidden rounded-xl border border-border/70 bg-card shadow-xs md:block">
         <Table className="table-fixed">
           <TableHeader>
-            <TableRow className="bg-muted/40 hover:bg-muted/40">
-              <TableHead scope="col" className="h-10 w-[30%] pl-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <TableRow className={DIRECTORY_THEAD_ROW}>
+              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[30%] pl-5")}>
                 Company / Trade
               </TableHead>
-              <TableHead scope="col" className="h-10 w-[26%] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[26%]")}>
                 Contact
               </TableHead>
               {showProjects && (
-                <TableHead scope="col" className="h-10 w-[17%] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[17%]")}>
                   Projects
                 </TableHead>
               )}
-              <TableHead scope="col" className="h-10 w-[10%] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[10%]")}>
                 Status
               </TableHead>
-              <TableHead scope="col" className="h-10 w-[200px] pr-5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[200px] pr-5 text-right")}>
                 Actions
               </TableHead>
             </TableRow>

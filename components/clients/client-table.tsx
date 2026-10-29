@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ClientStatusBadge } from '@/components/shared/status-badge'
 import { fullName, preferenceLabel, type DirectoryContact } from '@/components/clients/client-card'
 import type { ClientSummary } from '@/lib/queries'
+import { DIRECTORY_TH_TEXT, DIRECTORY_THEAD_ROW } from '@/lib/directory-table-styles'
 
 export type ClientTableRow = {
   client: ClientSummary
@@ -11,7 +12,7 @@ export type ClientTableRow = {
   projectCount: number
 }
 
-const TH = 'h-10 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wide text-[#64756D]'
+const TH = `${DIRECTORY_TH_TEXT} px-4 text-left align-middle`
 
 export function ClientTable({
   rows,
@@ -27,7 +28,7 @@ export function ClientTable({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[56rem] text-sm">
           <caption className="sr-only">Clients</caption>
-          <thead className="border-b border-[#E2E8E2] bg-[#F8F7F3]">
+          <thead className={DIRECTORY_THEAD_ROW}>
             <tr>
               <th scope="col" className={TH}>Client</th>
               <th scope="col" className={TH}>Location</th>

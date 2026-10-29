@@ -9,13 +9,14 @@ import { buildPanel, type CompactProjectCardData } from '@/components/dashboard/
 import { formatDate } from '@/lib/format'
 import { coverAlt } from '@/lib/project-cover'
 import { cn } from '@/lib/utils'
+import { DIRECTORY_TH_TEXT, DIRECTORY_THEAD_ROW } from '@/lib/directory-table-styles'
 
 export type ProjectTableRow = CompactProjectCardData & {
   target_completion_date: string | null
   managerName: string | null
 }
 
-const TH = 'h-10 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wide text-[#174D32]'
+const TH = `${DIRECTORY_TH_TEXT} px-4 text-left align-middle`
 
 const PANEL_TEXT = {
   neutral: 'text-foreground',
@@ -36,7 +37,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[72rem] text-sm">
           <caption className="sr-only">Projects</caption>
-          <thead className="border-b border-[#C3D6C7] bg-[#DCE8DE]">
+          <thead className={DIRECTORY_THEAD_ROW}>
             <tr>
               <th scope="col" className={TH}>Project</th>
               <th scope="col" className={TH}>Location</th>
