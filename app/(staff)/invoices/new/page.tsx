@@ -23,7 +23,7 @@ export default async function NewInvoicePage({
   const back = preselected ? `/projects/${preselected}` : '/invoices'
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
+    <div className="flex w-full max-w-5xl flex-col gap-8">
       <PageHeader
         icon={Receipt}
         title="New invoice"
