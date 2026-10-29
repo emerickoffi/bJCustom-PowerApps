@@ -55,22 +55,37 @@ export type DailyLogCrew = {
   subcontractor_company_id: string | null
   company_name: string | null
 }
-export type CrewCompanyOption = { id: string; company_name: string; trade: string }
+export type CrewCompanyOption = { id: string; company_name: string; trade: string; assigned?: boolean }
 
-/** Active subcontractors for the crew picker. Empty when the module is off or its table is not set up yet. */
-export async function getCrewCompanyOptions(organizationId: string): Promise<CrewCompanyOption[]> {
+/**
+ * Active subcontractors for the crew picker. Empty when the module is off or its table is not set up yet.
+ * When a project is given, companies with an active schedule assignment on it are flagged so the picker can list them first.
+ */
+export async function getCrewCompanyOptions(organizationId: string, projectId?: string): Promise<CrewCompanyOption[]> {
   const features = await getOrgFeatures(organizationId)
   if (!features.subcontractors) return []
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('subcontractor_companies')
-    .select('id, company_name, trade')
-    .eq('organization_id', organizationId)
-    .eq('status', 'active')
-    .order('company_name')
-    .limit(500)
+  const [{ data, error }, assignments] = await Promise.all([
+    supabase
+      .from('subcontractor_companies')
+      .select('id, company_name, trade')
+      .eq('organization_id', organizationId)
+      .eq('status', 'active')
+      .order('company_name')
+      .limit(500),
+    projectId && features.schedule
+      ? supabase
+          .from('schedule_activity_assignments')
+          .select('subcontractor_company_id')
+          .eq('organization_id', organizationId)
+          .eq('project_id', projectId)
+          .eq('status', 'active')
+          .limit(1000)
+      : Promise.resolve({ data: [] as { subcontractor_company_id: string }[] }),
+  ])
   if (error) return []
-  return (data ?? []) as CrewCompanyOption[]
+  const assignedIds = new Set((assignments.data ?? []).map((a) => a.subcontractor_company_id))
+  return ((data ?? []) as CrewCompanyOption[]).map((c) => ({ ...c, assigned: assignedIds.has(c.id) }))
 }
 export type DailyLogPhoto = { id: string; storage_path: string; file_name: string; caption: string | null; created_at: string; url: string | null }
 export type ScheduleActivityOption = { id: string; name: string; phase: string | null; status: string | null }

@@ -39,7 +39,7 @@ export async function saveDailyLogAction(_prev: ActionState, formData: FormData)
   const [today, activities, companies, existingCrews] = await Promise.all([
     getOrgToday(session.organizationId),
     getScheduleActivityOptions(project.id),
-    getCrewCompanyOptions(session.organizationId),
+    getCrewCompanyOptions(session.organizationId, project.id),
     ids.data.id
       ? supabase.from('daily_log_crews').select('subcontractor_company_id').eq('daily_log_id', ids.data.id).not('subcontractor_company_id', 'is', null)
       : Promise.resolve({ data: [] as { subcontractor_company_id: string | null }[] }),

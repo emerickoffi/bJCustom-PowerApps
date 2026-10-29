@@ -15,7 +15,7 @@ export default async function NewDailyLogPage({ params }: { params: Promise<{ id
   const [today, activities, companies] = await Promise.all([
     getOrgToday(session.organizationId),
     getScheduleActivityOptions(project.id),
-    getCrewCompanyOptions(session.organizationId),
+    getCrewCompanyOptions(session.organizationId, project.id),
   ])
 
   const defaults: DailyLogFormDefaults = {
