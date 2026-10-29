@@ -25,11 +25,13 @@ function dbError(error: { message?: string; code?: string } | null) {
   return clientUpdateErrorMessage(error) ?? friendlyDbError(error)
 }
 
-async function requireEditable(projectId: string) {
-  if (!uuid.safeParse(projectId).success) return { error: 'This page is out of date. Reload and try again.' } as const
+type EditableCheck = { error: string } | { ctx: Awaited<ReturnType<typeof requireClientUpdateProject>> }
+
+async function requireEditable(projectId: string): Promise<EditableCheck> {
+  if (!uuid.safeParse(projectId).success) return { error: 'This page is out of date. Reload and try again.' }
   const ctx = await requireClientUpdateProject(projectId)
-  if (!ctx.canEdit) return { error: ctx.project.archived_at ? 'This project is archived; client updates are read-only.' : 'Only administrators and project managers can edit client updates.' } as const
-  return { ctx } as const
+  if (!ctx.canEdit) return { error: ctx.project.archived_at ? 'This project is archived; client updates are read-only.' : 'Only administrators and project managers can edit client updates.' }
+  return { ctx }
 }
 
 export async function createClientUpdateAction(formData: FormData) {

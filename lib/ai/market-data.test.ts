@@ -1,176 +1,138 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
-  BRIEFING_TOPICS,
   getConstructionMarketIntelligence,
   isAllowedSourceUrl,
-  isStale,
-  parseObservations,
   resolveLocation,
-  seriesFor,
+  summarizeMarket,
+  type MarketDeps,
 } from './market-data.ts'
+import { parseBpsFile, parseQcewCsv, bpsCandidateMonths, qcewCandidateQuarters } from './market-providers.ts'
+import type { FetchLike } from './market-http.ts'
 
-const today = '2026-10-28'
+const fixture = (name: string) => readFileSync(new URL(`./fixtures/market/${name}`, import.meta.url), 'utf8')
+const TODAY = '2026-10-29'
 
-const okFetch = (urls: string[]) => async (url: string) => {
-  urls.push(url)
-  if (url.includes('/series/observations')) {
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({
-        observations: [
-          { date: '2026-09-01', value: '1450' },
-          { date: '2026-08-01', value: '.' },
-          { date: '2026-07-01', value: '1400' },
-          { date: '2025-09-01', value: '1300' },
-        ],
-      }),
+const respond = (status: number, body: string) =>
+  ({ ok: status >= 200 && status < 300, status, json: async () => JSON.parse(body), text: async () => body }) as Awaited<ReturnType<FetchLike>>
+
+type Overrides = { tiger?: 'ok' | 'down'; bps?: 'ok' | 'rejected' }
+
+/** Routes each official URL to the response recorded from that service. */
+function recordedFetch(o: Overrides = {}) {
+  const calls: string[] = []
+  const fetchImpl: FetchLike = async (url) => {
+    calls.push(url)
+    if (url.includes('tigerweb.geo.census.gov')) {
+      if (o.tiger === 'down') return respond(502, 'Bad Gateway')
+      if (url.includes('/28/query')) return respond(200, fixture('tiger-place.json'))
+      if (url.includes('/82/query')) return respond(200, fixture('tiger-county.json'))
+      if (url.includes('/93/query')) return respond(200, fixture('tiger-metro.json'))
+      return respond(200, '{"features":[]}')
     }
+    if (url.startsWith('https://api.bls.gov/')) return respond(200, fixture('bls.json'))
+    if (url.startsWith('https://data.bls.gov/cew/')) return url.includes('/2026/1/area/48113') ? respond(200, fixture('qcew-48113-2026-1.csv')) : respond(404, '')
+    if (url.startsWith('https://www2.census.gov/econ/bps/')) {
+      if (o.bps === 'rejected') return respond(200, fixture('bps-rejected.html'))
+      const m = url.match(/\/(co|so)(\d{4})c\.txt$/)
+      if (m && ['2609', '2509'].includes(m[2])) return respond(200, fixture(`bps-${m[1]}${m[2]}c.txt`))
+      return respond(404, '')
+    }
+    throw new Error(`unexpected URL ${url}`)
   }
-  return { ok: true, status: 200, json: async () => ({ seriess: [{ last_updated: '2026-10-17 07:51:02-05' }] }) }
+  return { fetchImpl, calls }
 }
 
-const company = { city: 'Cedar Hill', state: 'TX' }
+const deps = (fetchImpl: FetchLike, extra: Partial<MarketDeps> = {}): MarketDeps => ({ fetchImpl, today: TODAY, cache: null, timeoutMs: 2_000, deadlineMs: 5_000, ...extra })
+
+test('source allowlist accepts only official dataset URLs', () => {
+  assert.ok(isAllowedSourceUrl('https://data.bls.gov/timeseries/CES2000000001'))
+  assert.ok(isAllowedSourceUrl('https://data.bls.gov/cew/data/api/2026/1/area/48113.csv'))
+  assert.ok(isAllowedSourceUrl('https://www2.census.gov/econ/bps/Place/South%20Region/so2609c.txt'))
+  assert.ok(isAllowedSourceUrl('https://fred.stlouisfed.org/series/HOUST'))
+  assert.ok(!isAllowedSourceUrl('https://example.com/series/HOUST'))
+  assert.ok(!isAllowedSourceUrl('javascript:alert(1)'))
+  assert.ok(!isAllowedSourceUrl('https://data.bls.gov/timeseries/CES2000000001?x=1'))
+})
 
 test('resolveLocation splits city and state without a city list', () => {
-  for (const [input, city] of [
-    ['Cedar Hill, TX', 'Cedar Hill'],
-    ['cedar hill texas', 'Cedar Hill'],
-    ['Arlington, Texas', 'Arlington'],
-    ['Dallas TX', 'Dallas'],
-  ] as const) {
-    const r = resolveLocation(input)
-    assert.equal(r.stateCode, 'TX', input)
-    assert.equal(r.city, city, input)
-    assert.equal(r.dataLevel, 'state')
-    assert.match(r.note ?? '', /statewide/)
-  }
+  const r = resolveLocation('Cedar Hill, TX')
+  assert.equal(r.city, 'Cedar Hill')
+  assert.equal(r.stateCode, 'TX')
+  assert.equal(r.source, 'request')
   assert.equal(resolveLocation('Texas').city, null)
-  assert.equal(resolveLocation('TX').stateCode, 'TX')
+  assert.equal(resolveLocation('Texas').stateCode, 'TX')
 })
 
-test('"our area" and a bare matching city use the company address', () => {
-  for (const input of [null, '', 'our area', 'local', 'Cedar Hill']) {
-    const r = resolveLocation(input, company)
-    assert.equal(r.stateCode, 'TX', String(input))
-    assert.equal(r.label, 'Cedar Hill, Texas')
+test('release calendars pick the newest plausible period', () => {
+  assert.deepEqual(bpsCandidateMonths(TODAY), ['2609', '2608', '2607'])
+  assert.deepEqual(qcewCandidateQuarters(TODAY)[0], { year: 2026, quarter: 2 })
+})
+
+test('parseBpsFile matches the Texas place, not a same-named place in another state', () => {
+  const counts = parseBpsFile(fixture('bps-so2609c.txt'), { kind: 'place', region: 'South' }, { stateFips: '48', place: '13492' })
+  assert.deepEqual(counts, { singleFamilyUnits: 2, totalUnits: 2 })
+  assert.equal(parseBpsFile(fixture('bps-rejected.html'), { kind: 'place', region: 'South' }, { stateFips: '48', place: '13492' }), null)
+})
+
+test('parseQcewCsv reads private construction for the county', () => {
+  const q = parseQcewCsv(fixture('qcew-48113-2026-1.csv'), '48113')
+  assert.ok(q)
+  assert.ok(q.employment !== null && q.employment > 0)
+  assert.equal(q.avgWeeklyWage, 1949)
+  assert.equal(parseQcewCsv('not,a,csv', '48113'), null)
+})
+
+test('Cedar Hill resolves to Dallas County and DFW and returns local-first official data', async () => {
+  const { fetchImpl } = recordedFetch()
+  const r = await getConstructionMarketIntelligence({ topics: ['building_permits', 'labor', 'materials', 'interest_rates'], location: 'Cedar Hill, TX' }, deps(fetchImpl))
+  assert.equal(r.geography.resolution, 'resolved')
+  assert.match(r.geography.county ?? '', /Dallas/)
+  assert.equal(r.geography.metro_code, '19100')
+  assert.equal(r.geography.best_data_level, 'place')
+
+  const ids = r.series.map((s) => s.series_id)
+  assert.ok(ids.includes('BPS-place-single'), 'city permits')
+  assert.ok(ids.some((id) => id.startsWith('QCEW-48113')), 'county employment')
+  assert.ok(ids.includes('SMU48191001500000001'), 'metro falls back to mining, logging, and construction')
+  assert.ok(!ids.includes('SMU48191002000000001'))
+  assert.ok(ids.includes('WPUSI012011'))
+  for (const s of r.series) assert.ok(isAllowedSourceUrl(s.source_url), `${s.series_id} cites ${s.source_url}`)
+
+  const fredGaps = r.data_gaps.filter((g) => g.reason === 'source_not_connected')
+  assert.ok(fredGaps.some((g) => /mortgage/i.test(g.indicator)), 'unconnected FRED reported as a gap, not invented')
+  assert.equal(r.data_gaps.filter((g) => g.indicator.startsWith('Construction employment (Dallas')).length, 0, 'a loaded fallback series closes its alternative group')
+
+  const summary = summarizeMarket(r)
+  assert.equal(summary.coverage[0], 'City')
+  assert.equal(summary.indicators[0].geography, 'Cedar Hill, TX')
+})
+
+test('a throttled Census file is a gap; BLS data still returns', async () => {
+  const { fetchImpl } = recordedFetch({ bps: 'rejected' })
+  const r = await getConstructionMarketIntelligence({ topics: ['building_permits', 'labor'], location: 'Cedar Hill, TX' }, deps(fetchImpl))
+  assert.ok(!r.series.some((s) => s.series_id.startsWith('BPS-')))
+  assert.ok(r.data_gaps.some((g) => g.reason === 'source_unavailable' && /permit/i.test(g.indicator)))
+  assert.ok(r.series.some((s) => s.series_id === 'CES2000000001'))
+  assert.equal(r.providers.find((p) => p.provider === 'census_bps')?.status, 'failed')
+})
+
+test('geography outage falls back to state and national data with an explicit gap', async () => {
+  const { fetchImpl } = recordedFetch({ tiger: 'down' })
+  const r = await getConstructionMarketIntelligence({ topics: ['labor'], location: 'Cedar Hill, TX' }, deps(fetchImpl))
+  assert.equal(r.geography.resolution, 'lookup_failed')
+  assert.ok(r.series.some((s) => s.geography_level === 'state'))
+  assert.ok(!r.series.some((s) => s.geography_level === 'county' || s.geography_level === 'metro'))
+  assert.ok(r.data_gaps.some((g) => g.reason === 'location_not_resolved'))
+})
+
+test('FRED key never leaks into diagnostics', async () => {
+  const fetchImpl: FetchLike = async (url) => {
+    if (url.startsWith('https://api.stlouisfed.org/')) throw new Error(`network error for ${url}`)
+    return recordedFetch().fetchImpl(url)
   }
-})
-
-test('explicit locations win over the company address and nothing is mislabeled', () => {
-  assert.equal(resolveLocation('Oklahoma', company).stateCode, 'OK')
-  assert.equal(resolveLocation('Tulsa, OK', company).label, 'Tulsa, Oklahoma')
-  const unknown = resolveLocation('Springfield', company)
-  assert.equal(unknown.stateCode, null)
-  assert.equal(unknown.dataLevel, 'national')
-  assert.match(unknown.note ?? '', /state .* not given/)
-  assert.equal(resolveLocation('nationwide', company).stateCode, null)
-  assert.match(resolveLocation(null).note ?? '', /No company or project location/)
-})
-
-test('seriesFor only produces allowlisted ids', () => {
-  for (const s of seriesFor('building_permits', 'TX')) assert.match(s.id, /^[A-Z0-9]{3,20}$/)
-  assert.equal(seriesFor('building_permits', 'TX')[0].id, 'TXBPPRIVSA')
-  assert.deepEqual(seriesFor('construction_news', null), [])
-})
-
-test('parseObservations skips missing values and invalid rows', () => {
-  const rows = parseObservations({ observations: [{ date: '2026-01-01', value: '.' }, { date: 'bad', value: '1' }, { date: '2026-02-01', value: '5' }] })
-  assert.deepEqual(rows, [{ date: '2026-02-01', value: 5 }])
-  assert.equal(parseObservations({ nope: 1 }), null)
-})
-
-test('staleness by frequency', () => {
-  assert.equal(isStale('2026-09-01', 'monthly', today), false)
-  assert.equal(isStale('2026-05-01', 'monthly', today), true)
-  assert.equal(isStale('2026-10-01', 'weekly', today), true)
-})
-
-test('source URLs must be FRED series pages', () => {
-  assert.equal(isAllowedSourceUrl('https://fred.stlouisfed.org/series/HOUST'), true)
-  assert.equal(isAllowedSourceUrl('https://evil.example/series/HOUST'), false)
-  assert.equal(isAllowedSourceUrl('https://fred.stlouisfed.org/series/HOUST?x=<script>'), false)
-})
-
-test('no API key returns a clean not-configured status without fetching', async () => {
-  let called = false
-  const r = await getConstructionMarketIntelligence({ topics: BRIEFING_TOPICS }, {
-    apiKey: '',
-    today,
-    fetchImpl: async () => {
-      called = true
-      throw new Error('should not fetch')
-    },
-  }, company)
-  assert.equal(r.status, 'unavailable')
-  assert.equal(r.configuration, 'not_configured')
-  assert.equal(called, false)
-  assert.equal(r.categories.length, BRIEFING_TOPICS.length)
-  assert.ok(r.notes.every((n) => !/FRED_API_KEY|api[_ ]key|env/i.test(n)))
-  assert.equal(r.geography.location, 'Cedar Hill, Texas')
-})
-
-test('news is reported unavailable instead of invented', async () => {
-  const r = await getConstructionMarketIntelligence({ topics: ['construction_news'] }, { apiKey: 'k', today, fetchImpl: okFetch([]) })
-  assert.equal(r.status, 'unavailable')
-  assert.equal(r.configuration, null)
-  assert.equal(r.series.length, 0)
-})
-
-test('a full briefing is one bounded operation with shared series fetched once', async () => {
-  const urls: string[] = []
-  let active = 0
-  let peak = 0
-  const counting = async (url: string) => {
-    active++
-    peak = Math.max(peak, active)
-    await new Promise((r) => setTimeout(r, 5))
-    active--
-    return okFetch(urls)(url)
-  }
-  const r = await getConstructionMarketIntelligence({ topics: BRIEFING_TOPICS, location: 'Cedar Hill, TX' }, { apiKey: 'k', today, fetchImpl: counting })
-  assert.equal(r.status, 'ok')
-  const observed = urls.filter((u) => u.includes('/series/observations')).map((u) => new URL(u).searchParams.get('series_id'))
-  assert.equal(new Set(observed).size, observed.length, 'no series fetched twice')
-  assert.ok(observed.length <= 8)
-  assert.ok(peak <= 8, `peak concurrency ${peak}`)
-  assert.ok(r.categories.every((c) => c.status === 'ok' && c.series_ids.length > 0))
-  assert.equal(r.series.find((s) => s.series_id === 'TXBPPRIVSA')?.geography, 'state: Texas')
-  assert.ok(r.series.filter((s) => s.series_id !== 'TXBPPRIVSA').every((s) => s.geography === 'national'))
-})
-
-test('successful fetch returns periods, comparison, and source links on the fixed host', async () => {
-  const urls: string[] = []
-  const r = await getConstructionMarketIntelligence({ topics: ['building_permits'], location: 'Texas', timeframe: 'last_12_months' }, { apiKey: 'k', today, fetchImpl: okFetch(urls) })
-  assert.equal(r.status, 'ok')
-  assert.ok(urls.every((u) => u.startsWith('https://api.stlouisfed.org/fred/')))
-  const first = r.series[0]
-  assert.equal(first.observation_period, '2026-09-01')
-  assert.equal(first.latest_value, 1450)
-  assert.equal(first.source_last_updated, '2026-10-17')
-  assert.equal(first.stale, false)
-  assert.ok(isAllowedSourceUrl(first.source_url))
-})
-
-test('provider failures produce partial or unavailable, never fabricated values', async () => {
-  let n = 0
-  const flaky = async (url: string) => {
-    if (url.includes('/series/observations') && n++ === 0) return { ok: false, status: 500, json: async () => ({}) }
-    return okFetch([])(url)
-  }
-  const partial = await getConstructionMarketIntelligence({ topics: ['building_permits', 'interest_rates'], location: 'TX' }, { apiKey: 'k', today, fetchImpl: flaky })
-  assert.equal(partial.status, 'partial')
-  assert.ok(partial.unavailable.length >= 1)
-  assert.equal(partial.categories.find((c) => c.topic === 'interest_rates')?.status, 'ok')
-
-  const down = await getConstructionMarketIntelligence({ topics: ['interest_rates'] }, {
-    apiKey: 'k',
-    today,
-    fetchImpl: async () => {
-      throw new Error('timeout')
-    },
-  })
-  assert.equal(down.status, 'unavailable')
-  assert.equal(down.series.length, 0)
+  const r = await getConstructionMarketIntelligence({ topics: ['interest_rates'], location: 'Texas' }, deps(fetchImpl, { fredApiKey: 'secret-key-123' }))
+  assert.ok(!JSON.stringify(r).includes('secret-key-123'))
+  assert.ok(r.data_gaps.some((g) => g.reason === 'source_unavailable'))
 })
