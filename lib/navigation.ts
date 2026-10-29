@@ -15,6 +15,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: '/clients', label: 'Clients', icon: 'clients' },
   { href: '/subcontractors', label: 'Subcontractors', icon: 'subcontractors', roles: ['org_admin', 'project_manager'], feature: 'subcontractors' },
   { href: '/schedule', label: 'Schedule', icon: 'schedule', feature: 'schedule' },
+  { href: '/daily-logs', label: 'Daily Logs', icon: 'daily-logs', roles: ['org_admin', 'project_manager', 'builder_staff'], feature: 'daily_logs' },
   { href: '/estimates', label: 'Estimates', icon: 'estimates', feature: 'estimates' },
   { href: '/invoices', label: 'Invoices', icon: 'invoices', feature: 'invoices' },
   { href: '/documents', label: 'Documents', icon: 'documents', feature: 'documents' },
@@ -52,8 +53,7 @@ export const PLANNED_MODULES: PlannedModule[] = [
 export const GRADUATED_MODULE_ROUTES: Record<string, string> = {
   schedule: '/schedule',
   invoices: '/invoices',
-  // Daily logs live inside each project, so the old placeholder points to the project list.
-  'daily-logs': '/projects',
+  'daily-logs': '/daily-logs',
 }
 
 export const MY_WORK_NAV: NavItem = { href: '/my-work', label: 'My Work', icon: 'my-work', roles: ['project_manager'] }

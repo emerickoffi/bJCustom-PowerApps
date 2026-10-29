@@ -277,6 +277,44 @@ export function parseDailyLogFilters(params: Record<string, string | string[] | 
   }
 }
 
+export const DAILY_LOG_DIRECTORY_PATH = '/daily-logs'
+
+export type DailyLogDirectoryFilters = {
+  q: string
+  project: string | null
+  status: DailyLogStatus | null
+  page: number
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function parseDailyLogDirectoryFilters(params: Record<string, string | string[] | undefined>): DailyLogDirectoryFilters {
+  const one = (k: string) => {
+    const v = params[k]
+    return typeof v === 'string' ? v : undefined
+  }
+  const project = one('project')
+  const status = one('status')
+  const page = Number.parseInt(one('page') ?? '1', 10)
+  return {
+    q: (one('q') ?? '').trim().slice(0, 80),
+    project: project && UUID_PATTERN.test(project) ? project : null,
+    status: isDailyLogStatus(status) ? status : null,
+    page: Number.isFinite(page) && page > 0 && page <= 10_000 ? page : 1,
+  }
+}
+
+export function dailyLogDirectoryQuery(filters: DailyLogDirectoryFilters, overrides: Partial<DailyLogDirectoryFilters> = {}) {
+  const f = { ...filters, ...overrides }
+  const q = new URLSearchParams()
+  if (f.q) q.set('q', f.q)
+  if (f.project) q.set('project', f.project)
+  if (f.status) q.set('status', f.status)
+  if (f.page > 1) q.set('page', String(f.page))
+  const s = q.toString()
+  return s ? `?${s}` : ''
+}
+
 export function dailyLogFilterQuery(filters: DailyLogFilters, overrides: Partial<DailyLogFilters> = {}) {
   const f = { ...filters, ...overrides }
   const q = new URLSearchParams()
