@@ -9,21 +9,53 @@ export function formatCents(cents: number | null | undefined): string {
   return currency.format(cents / 100)
 }
 
-export function formatDate(value: string | null | undefined): string {
-  if (!value) return '—'
-  const date = value.length === 10 ? new Date(`${value}T00:00:00`) : new Date(value)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+/**
+ * The organization's configured zone (organization_settings.timezone). Formatting must never
+ * depend on the runtime's zone: Vercel renders in UTC while browsers hydrate in local time,
+ * which shifted times by hours and caused React hydration error #418.
+ */
+export const APP_TIME_ZONE = 'America/Chicago'
+
+const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/
+const formatterCache = new Map<string, Intl.DateTimeFormat>()
+
+function formatter(timeZone: string, withTime: boolean): Intl.DateTimeFormat {
+  const key = `${timeZone}|${withTime}`
+  let f = formatterCache.get(key)
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      ...(withTime ? { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' } : {}),
+    })
+    formatterCache.set(key, f)
+  }
+  return f
 }
 
-export function formatDateTime(value: string | null | undefined): string {
+/**
+ * Date-only values (YYYY-MM-DD) are calendar dates and are rendered as-is in UTC so they never
+ * shift a day. Full timestamps are rendered on the calendar of `timeZone`.
+ */
+export function formatDate(value: string | null | undefined, timeZone: string = APP_TIME_ZONE): string {
   if (!value) return '—'
-  return new Date(value).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
+  const dateOnly = DATE_ONLY_RE.exec(value)
+  if (dateOnly) {
+    const [, y, m, d] = dateOnly
+    return formatter('UTC', false).format(new Date(Date.UTC(Number(y), Number(m) - 1, Number(d))))
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return formatter(timeZone, false).format(date)
+}
+
+export function formatDateTime(value: string | null | undefined, timeZone: string = APP_TIME_ZONE): string {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return formatter(timeZone, true).format(date)
 }
 
 export function fullName(first?: string | null, last?: string | null): string {

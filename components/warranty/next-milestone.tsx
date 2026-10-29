@@ -1,8 +1,6 @@
 import { CalendarDays, CheckCircle2, Clock } from 'lucide-react'
+import { APP_TIME_ZONE } from '@/lib/format'
 import { cn } from '@/lib/utils'
-
-/** Warranty dates are calendar dates in the builder's local time, matching the rest of the app's reporting. */
-const APP_TIME_ZONE = 'America/Chicago'
 
 export type NextMilestoneData = {
   coverage_name: string

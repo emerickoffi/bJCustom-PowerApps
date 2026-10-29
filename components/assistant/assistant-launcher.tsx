@@ -31,6 +31,7 @@ import {
 } from '@/lib/ai/assistant-scope'
 import { isAllowedSourceUrl } from '@/lib/ai/market-source-urls'
 import { useAssistantProject, type AssistantProject } from './assistant-context'
+import { AssistantMarkdown } from './assistant-markdown'
 
 type QuickActionKey = 'overview' | 'schedule' | 'update' | 'warranty'
 
@@ -524,7 +525,7 @@ function MessageBubble({
                   </span>
                 </p>
               )}
-              <p className="whitespace-pre-wrap text-pretty text-sm leading-relaxed text-foreground">{message.text}</p>
+              <AssistantMarkdown text={message.text} />
             </div>
             {message.options && message.options.length > 0 && (
               <ul className="flex flex-wrap gap-2" aria-label="Choose a project">

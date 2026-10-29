@@ -20,6 +20,8 @@ import {
   type SubcontractorStatus,
 } from '@/lib/subcontractors'
 import { groupAssignedProjects } from '@/lib/subcontractor-projects'
+import { summarizeDirectory } from '@/lib/subcontractor-directory'
+import { DirectorySummary } from '@/components/subcontractors/directory-summary'
 
 export const metadata: Metadata = { title: 'Subcontractors' }
 
@@ -62,6 +64,17 @@ export default async function SubcontractorsPage({
   const projectsByCompany = assignmentsRes.error
     ? null
     : groupAssignedProjects((assignmentsRes.data ?? []) as unknown as Parameters<typeof groupAssignedProjects>[0])
+  // Metrics describe the whole directory, so reuse the unfiltered rows when we already have all of them.
+  let summaryCompanies: { id: string; status: string }[] = rows
+  if (!error && (filtered || rows.length === LIMIT)) {
+    const all = await supabase
+      .from('subcontractor_companies')
+      .select('id, status')
+      .eq('organization_id', session.organizationId)
+      .limit(5000)
+    summaryCompanies = all.error ? [] : (all.data ?? [])
+  }
+  const summary = summarizeDirectory(summaryCompanies, projectsByCompany)
   const addedProjects = Number.parseInt(params.projects ?? '', 10)
 
   const addButton = (
@@ -72,7 +85,7 @@ export default async function SubcontractorsPage({
   )
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PageHeader
         icon={HardHat}
         title="Subcontractors"
@@ -104,6 +117,7 @@ export default async function SubcontractorsPage({
         </div>
       ) : (
         <>
+          {summary.total > 0 && <DirectorySummary summary={summary} />}
           <ListFilters
             searchPlaceholder="Search by company, trade, email, or phone"
             defaultQuery={q}
