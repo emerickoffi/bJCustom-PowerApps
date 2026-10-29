@@ -4,6 +4,7 @@ export type ProjectNavKey =
   | 'overview'
   | 'schedule'
   | 'daily_logs'
+  | 'client_updates'
   | 'estimates'
   | 'change_orders'
   | 'documents'
@@ -21,7 +22,7 @@ export type ProjectNavItem = {
 
 export type ProjectNavAccess = {
   features: Pick<FeatureMap, 'schedule' | 'estimates' | 'documents' | 'walkthroughs' | 'warranty'> &
-    Partial<Pick<FeatureMap, 'change_orders' | 'daily_logs'>>
+    Partial<Pick<FeatureMap, 'change_orders' | 'daily_logs' | 'client_updates'>>
   projectStatus: string
   canViewInternal: boolean
   // Administrators and project managers only; change orders carry internal costs.
@@ -63,6 +64,12 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
       label: 'Daily logs',
       href: `${base}/daily-logs`,
       activePrefix: `${base}/daily-logs`,
+    },
+    Boolean(features.client_updates && access.canViewInternal) && {
+      key: 'client_updates',
+      label: 'Client updates',
+      href: `${base}/client-updates`,
+      activePrefix: `${base}/client-updates`,
     },
     features.estimates && {
       key: 'estimates',
