@@ -54,3 +54,53 @@ test('disabled features drop their items', () => {
   )
   assert.equal(items.length, 0)
 })
+
+const DELAY = {
+  id: 'l1',
+  project_id: 'p1',
+  projectName: 'Lake House',
+  log_date: '2026-10-27',
+  delay_reason: 'Weather',
+  delay_description: 'Rain stopped roofing at noon',
+}
+
+test('reported Daily Log delays sit between schedule and task items, quoted as field notes', () => {
+  const items = buildAttentionItems(
+    [note({ id: 'claim', kind: 'warranty_claim', action_required: true })],
+    [{ id: 'a1', project_id: 'p2', name: 'Framing', status: 'delayed', planned_end: null, projectName: 'Ridge' }],
+    { ...ALL, daily_logs: true },
+    TODAY,
+    [DELAY],
+  )
+  assert.deepEqual(items.map((i) => i.priority), ['critical', 'reported', 'pending'])
+  const log = items[1]
+  assert.equal(log.issueType, 'Daily Log')
+  assert.equal(log.sourceDate, '2026-10-27')
+  assert.equal(log.href, '/projects/p1/daily-logs/l1')
+  assert.equal(log.description, 'Field note: “Weather”')
+})
+
+test('Daily Log delays are hidden when Daily Logs is disabled', () => {
+  const items = buildAttentionItems([], [], ALL, TODAY, [DELAY])
+  assert.equal(items.length, 0)
+})
+
+test('assigned companies appear on overdue work only when Subcontractors is enabled', () => {
+  const activity = {
+    id: 'a1',
+    project_id: 'p2',
+    name: 'Electrical rough-in',
+    status: 'in_progress',
+    planned_end: '2026-10-20',
+    projectName: 'Ridge',
+    companies: ['Volt Electric'],
+  }
+  const on = buildAttentionItems([], [activity], { ...ALL, subcontractors: true }, TODAY)
+  assert.equal(on[0].issueType, 'Assigned work')
+  assert.match(on[0].description, /Assigned to Volt Electric\.$/)
+  assert.equal(on[0].sourceDate, '2026-10-20')
+
+  const off = buildAttentionItems([], [activity], ALL, TODAY)
+  assert.equal(off[0].issueType, 'Schedule')
+  assert.doesNotMatch(off[0].description, /Volt Electric/)
+})

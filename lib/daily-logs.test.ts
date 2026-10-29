@@ -36,7 +36,29 @@ test('parses a minimal draft and drops blank crew rows', () => {
   assert.ok(r.ok)
   assert.equal(r.header.work_performed, 'Set trusses on the east wing')
   assert.equal(r.header.weather_conditions, null)
-  assert.deepEqual(r.crews, [{ trade: 'Framing', crew_size: 4, hours_worked: 32.5, notes: null }])
+  assert.deepEqual(r.crews, [{ trade: 'Framing', crew_size: 4, hours_worked: 32.5, notes: null, subcontractor_company_id: null }])
+})
+
+test('links a crew row to an allowed subcontractor company', () => {
+  const r = parseDailyLogForm(
+    form([...base, ['crew_company', A1], ['crew_trade', 'Electrical'], ['crew_size', '3'], ['crew_hours', ''], ['crew_notes', '']]),
+    { today: '2026-10-29', allowedActivityIds: new Set(), allowedCompanyIds: new Set([A1]) },
+  )
+  assert.ok(r.ok)
+  assert.equal(r.crews[0].subcontractor_company_id, A1)
+})
+
+test('rejects a crew company outside the allowed set or malformed', () => {
+  const foreign = parseDailyLogForm(
+    form([...base, ['crew_company', A2], ['crew_trade', 'Roofing'], ['crew_size', ''], ['crew_hours', ''], ['crew_notes', '']]),
+    { today: '2026-10-29', allowedActivityIds: new Set(), allowedCompanyIds: new Set([A1]) },
+  )
+  assert.equal(foreign.ok, false)
+  const malformed = parseDailyLogForm(
+    form([...base, ['crew_company', 'not-a-uuid'], ['crew_trade', 'Roofing'], ['crew_size', ''], ['crew_hours', ''], ['crew_notes', '']]),
+    { today: '2026-10-29', allowedActivityIds: new Set() },
+  )
+  assert.equal(malformed.ok, false)
 })
 
 test('rejects future dates, bad crew rows and foreign activities', () => {

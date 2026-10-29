@@ -11,7 +11,17 @@ import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-type CrewRow = { key: number; trade: string; crew_size: string; hours_worked: string; notes: string }
+type CrewRow = {
+  key: number
+  trade: string
+  crew_size: string
+  hours_worked: string
+  notes: string
+  subcontractor_company_id: string
+  /** Snapshot name for a saved company that is no longer in the active list. */
+  company_name?: string
+}
+type CompanyOption = { id: string; company_name: string; trade: string }
 
 export type DailyLogFormDefaults = {
   id?: string
@@ -40,21 +50,24 @@ export type DailyLogFormDefaults = {
 
 type ActivityOption = { id: string; name: string; phase: string | null }
 
-const blankCrew = { trade: '', crew_size: '', hours_worked: '', notes: '' }
+const blankCrew = { trade: '', crew_size: '', hours_worked: '', notes: '', subcontractor_company_id: '' }
 
 export function DailyLogForm({
   projectId,
   defaults,
   activities,
+  companies = [],
   maxDate,
   cancelHref,
 }: {
   projectId: string
   defaults: DailyLogFormDefaults
   activities: ActivityOption[]
+  companies?: CompanyOption[]
   maxDate: string
   cancelHref: string
 }) {
+  const showCompany = companies.length > 0 || defaults.crews.some((c) => c.subcontractor_company_id)
   const [state, action] = useActionState(saveDailyLogAction, initialActionState)
   const [crews, setCrews] = useState<CrewRow[]>(() => (defaults.crews.length ? defaults.crews : [blankCrew]).map((c, i) => ({ ...c, key: i })))
   const [nextKey, setNextKey] = useState(crews.length)
@@ -101,8 +114,30 @@ export function DailyLogForm({
       <FormSection title="Crews on site" icon={HardHat} description="Trades and crew counts observed today. This is a site record, not a timesheet or payroll entry.">
         <div className="flex flex-col gap-3 sm:col-span-2">
           {crews.map((row, i) => (
-            <fieldset key={row.key} className="grid gap-3 rounded-lg border border-border/70 bg-background p-3 sm:grid-cols-[minmax(0,2fr)_6rem_6rem_minmax(0,2fr)_auto] sm:items-end">
+            <fieldset
+              key={row.key}
+              className={
+                showCompany
+                  ? 'grid gap-3 rounded-lg border border-border/70 bg-background p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_6rem_6rem_minmax(0,2fr)_auto] sm:items-end'
+                  : 'grid gap-3 rounded-lg border border-border/70 bg-background p-3 sm:grid-cols-[minmax(0,2fr)_6rem_6rem_minmax(0,2fr)_auto] sm:items-end'
+              }
+            >
               <legend className="sr-only">Crew entry {i + 1}</legend>
+              {showCompany ? (
+                <CompanySelect
+                  value={row.subcontractor_company_id}
+                  companies={companies}
+                  savedName={row.company_name}
+                  onChange={(id) => {
+                    const company = companies.find((c) => c.id === id)
+                    setCrews((rows) =>
+                      rows.map((r) => (r.key === row.key ? { ...r, subcontractor_company_id: id, trade: r.trade.trim() || !company ? r.trade : company.trade } : r)),
+                    )
+                  }}
+                />
+              ) : (
+                <input type="hidden" name="crew_company" value="" />
+              )}
               <CrewInput label="Trade or crew" name="crew_trade" value={row.trade} onChange={(x) => updateCrew(row.key, 'trade', x)} maxLength={120} placeholder="Framing" />
               <CrewInput label="Crew size" name="crew_size" value={row.crew_size} onChange={(x) => updateCrew(row.key, 'crew_size', x)} inputMode="numeric" />
               <CrewInput label="Hours" name="crew_hours" value={row.hours_worked} onChange={(x) => updateCrew(row.key, 'hours_worked', x)} inputMode="decimal" />
@@ -193,6 +228,39 @@ export function DailyLogForm({
         </SubmitButton>
       </FormActions>
     </form>
+  )
+}
+
+function CompanySelect({
+  value,
+  companies,
+  savedName,
+  onChange,
+}: {
+  value: string
+  companies: CompanyOption[]
+  savedName?: string
+  onChange: (id: string) => void
+}) {
+  const missing = value && !companies.some((c) => c.id === value)
+  return (
+    <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
+      Subcontractor
+      <select
+        name="crew_company"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <option value="">Own crew / not listed</option>
+        {missing && <option value={value}>{`${savedName ?? 'Saved subcontractor'} (inactive)`}</option>}
+        {companies.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.company_name}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 

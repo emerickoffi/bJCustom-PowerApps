@@ -12,6 +12,11 @@ const PRIORITY: Record<AttentionPriority, { label: string; dot: string; badge: s
     dot: 'bg-destructive',
     badge: 'bg-destructive/8 text-destructive',
   },
+  reported: {
+    label: 'Reported',
+    dot: 'bg-warning',
+    badge: 'bg-champagne-soft text-warning',
+  },
   pending: {
     label: 'Action needed',
     dot: 'bg-warning',
@@ -19,18 +24,39 @@ const PRIORITY: Record<AttentionPriority, { label: string; dot: string; badge: s
   },
 }
 
+const DATE_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+
+function formatSourceDate(iso: string | null): string | null {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null
+  return DATE_FORMAT.format(new Date(`${iso}T00:00:00Z`))
+}
+
 function AttentionRow({ item }: { item: AttentionItem }) {
   const p = PRIORITY[item.priority]
+  const date = formatSourceDate(item.sourceDate)
   return (
     <li className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex min-w-0 gap-3">
         <span className={cn('mt-1.5 size-2 shrink-0 rounded-full', p.dot)} aria-hidden="true" />
         <div className="flex min-w-0 flex-col gap-1">
-          <span className={cn('w-fit rounded-full px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wide', p.badge)}>
-            {p.label}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn('w-fit rounded-full px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wide', p.badge)}>
+              {p.label}
+            </span>
+            <span className="rounded-full bg-sage px-2 py-0.5 text-[0.7rem] font-medium text-primary">{item.issueType}</span>
+          </div>
           <p className="text-pretty text-sm font-semibold leading-snug text-foreground">{item.title}</p>
-          {item.project && <p className="text-xs font-medium text-primary">{item.project}</p>}
+          {(item.project || date) && (
+            <p className="flex flex-wrap items-center gap-x-2 text-xs">
+              {item.project && <span className="font-medium text-primary">{item.project}</span>}
+              {item.project && date && <span className="text-muted-foreground" aria-hidden="true">·</span>}
+              {date && (
+                <time dateTime={item.sourceDate ?? undefined} className="text-muted-foreground">
+                  {date}
+                </time>
+              )}
+            </p>
+          )}
           {item.description && (
             <p className="line-clamp-2 text-pretty text-xs leading-relaxed text-muted-foreground">{item.description}</p>
           )}
@@ -92,19 +118,21 @@ export function NotificationsCard({
           </span>
           <div className="flex flex-col gap-1">
             <h2 id="attention-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
-              Needs Your Attention
+              Construction Command Center
             </h2>
-            {total > 0 && <p className="text-sm text-muted-foreground">Open tasks across your projects</p>}
+            <p className="text-sm text-muted-foreground">
+              {total > 0 ? 'Verified issues across your projects' : 'Schedule, field and task signals in one place'}
+            </p>
           </div>
         </div>
         {total > 0 && (
           <span
             className="flex min-w-11 flex-col items-center rounded-xl bg-brand-deep px-3 py-1.5 text-white"
-            aria-label={`${countLabel} pending ${total === 1 ? 'item' : 'items'}`}
+            aria-label={`${countLabel} actionable ${total === 1 ? 'item' : 'items'}`}
           >
             <span className="font-serif text-2xl font-semibold leading-none tabular-nums">{countLabel}</span>
             <span className="text-[0.65rem] font-medium uppercase tracking-wide text-champagne" aria-hidden="true">
-              Pending
+              Open
             </span>
           </span>
         )}
@@ -114,10 +142,12 @@ export function NotificationsCard({
         <div className="-mt-1 flex items-start gap-3 rounded-xl bg-sage/60 p-4" role="status">
           <CircleCheck className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
           <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="text-sm font-semibold text-foreground">All caught up!</p>
-            <p className="text-pretty text-sm text-muted-foreground">No actions require your attention right now.</p>
+            <p className="text-sm font-semibold text-foreground">No verified issues right now</p>
+            <p className="text-pretty text-sm text-muted-foreground">
+              No overdue schedule work, reported delays or open tasks across your projects.
+            </p>
             <p className="text-pretty text-xs text-muted-foreground">
-              {"We'll highlight important tasks here as they arise."}
+              Items appear here only when a schedule, Daily Log or workflow record supports them.
             </p>
           </div>
         </div>
@@ -142,7 +172,7 @@ export function NotificationsCard({
               </ul>
               {items.length < total && (
                 <p className="mt-3 text-xs text-muted-foreground">
-                  {`Showing ${items.length} of ${countLabel}. Open each project's schedule or warranty tab for the full list.`}
+                  {`Showing ${items.length} of ${countLabel}. Open each project's schedule, Daily Logs or warranty tab for the full list.`}
                 </p>
               )}
             </details>

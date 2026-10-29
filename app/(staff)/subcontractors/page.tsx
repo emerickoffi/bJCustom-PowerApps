@@ -4,6 +4,8 @@ import { AlertCircle, CheckCircle2, HardHat, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
+import { loadDirectoryWork } from '@/lib/assignments-data'
+import { AssignedWorkCard } from '@/components/subcontractors/assigned-work-card'
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeSearch } from '@/lib/format'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
@@ -28,7 +30,7 @@ export default async function SubcontractorsPage({
   searchParams: Promise<{ q?: string; status?: string; added?: string }>
 }) {
   const session = await requireManager()
-  await requireFeature(session.organizationId, 'subcontractors')
+  const features = await requireFeature(session.organizationId, 'subcontractors')
   const params = await searchParams
   const q = sanitizeSearch(params.q)
   const status = SUBCONTRACTOR_STATUSES.includes(params.status as SubcontractorStatus)
@@ -46,7 +48,7 @@ export default async function SubcontractorsPage({
     .limit(LIMIT)
   if (status) query = query.eq('status', status)
   if (q) query = query.or(`company_name.ilike.*${q}*,trade.ilike.*${q}*,email.ilike.*${q}*,phone.ilike.*${q}*`)
-  const { data, error } = await query
+  const [{ data, error }, work] = await Promise.all([query, loadDirectoryWork(supabase, session.organizationId, features)])
   const rows = (data ?? []) as SubcontractorCompany[]
 
   const addButton = (
@@ -104,7 +106,9 @@ export default async function SubcontractorsPage({
               </p>
               <SubcontractorTable rows={rows} />
             </div>
-          ) : (
+          ) : null}
+          {work.availability !== 'off' && <AssignedWorkCard availability={work.availability} items={work.items} />}
+          {rows.length ? null : (
             <EmptyState
               icon={HardHat}
               title={filtered ? 'No matching subcontractors' : 'No subcontractors yet'}

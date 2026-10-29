@@ -9,6 +9,7 @@ import { ScheduleCalendar, ScheduleTimeline } from '@/components/schedule/schedu
 import { ScheduleStageList } from '@/components/schedule/schedule-stage-list'
 import type { ScheduleActivity, ScheduleDependency } from '@/lib/schedule'
 import { useOpenFromUrl } from '@/components/shared/use-open-from-url'
+import { groupByActivity, type ActivityAssignment, type AssignmentAvailability, type CompanyOption } from '@/lib/assignments'
 
 export function ScheduleWorkspace({
   projectId,
@@ -17,6 +18,9 @@ export function ScheduleWorkspace({
   conflictIds,
   staffOptions,
   canManage,
+  assignmentAvailability = 'off',
+  assignments = [],
+  companies = [],
 }: {
   projectId: string
   activities: ScheduleActivity[]
@@ -24,7 +28,14 @@ export function ScheduleWorkspace({
   conflictIds: string[]
   staffOptions: { value: string; label: string }[]
   canManage: boolean
+  assignmentAvailability?: AssignmentAvailability
+  assignments?: ActivityAssignment[]
+  companies?: CompanyOption[]
 }) {
+  const assignmentProps = useMemo(
+    () => ({ availability: assignmentAvailability, byActivity: groupByActivity(assignments), companies }),
+    [assignmentAvailability, assignments, companies],
+  )
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const conflicts = useMemo(() => new Set(conflictIds), [conflictIds])
@@ -129,6 +140,7 @@ export function ScheduleWorkspace({
         dependencies={dependencies}
         staffOptions={staffOptions}
         canManage={canManage}
+        assignments={assignmentProps}
         onClose={() => setSelectedId(null)}
       />
       {canManage && <NewActivitySheet projectId={projectId} open={creating} onClose={closeNew} />}

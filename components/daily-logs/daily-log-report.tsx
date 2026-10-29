@@ -75,7 +75,10 @@ export function DailyLogReport({ log, crews, activities }: { log: DailyLogRecord
               <tbody>
                 {crews.map((c) => (
                   <tr key={c.id} className="border-b border-border/60 align-top">
-                    <td className="py-2 pr-4 font-medium text-foreground">{c.trade}</td>
+                    <td className="py-2 pr-4">
+                      <span className="font-medium text-foreground">{c.trade}</span>
+                      {c.company_name && <span className="block text-xs text-muted-foreground">{c.company_name}</span>}
+                    </td>
                     <td className="py-2 pr-4 text-right tabular-nums">{c.crew_size ?? '—'}</td>
                     <td className="py-2 pr-4 text-right tabular-nums">{c.hours_worked === null ? '—' : formatHours(c.hours_worked)}</td>
                     <td className="whitespace-pre-wrap py-2 text-muted-foreground">{c.notes ?? ''}</td>

@@ -102,6 +102,11 @@ export const crewEntrySchema = z.object({
   crew_size: optionalInt(0, 500, 'Crew size'),
   hours_worked: optionalHours,
   notes: z.string().trim().max(1000, 'Crew notes must be 1,000 characters or fewer').transform((v) => (v === '' ? null : v)),
+  subcontractor_company_id: z
+    .string()
+    .trim()
+    .transform((v) => (v === '' ? null : v))
+    .refine((v) => v === null || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v), 'Choose a valid subcontractor'),
 })
 
 export type CrewEntry = z.infer<typeof crewEntrySchema>
@@ -169,7 +174,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
  */
 export function parseDailyLogForm(
   formData: FormData,
-  options: { today: string; allowedActivityIds: ReadonlySet<string> },
+  /** allowedCompanyIds: active companies; omit to skip the pre-check (the database still enforces it). */
+  options: { today: string; allowedActivityIds: ReadonlySet<string>; allowedCompanyIds?: ReadonlySet<string> },
 ): ParseResult {
   const raw: Record<string, string> = {}
   for (const key of ['log_date', 'temperature_f', ...DAILY_LOG_TEXT_FIELDS]) {
@@ -192,10 +198,21 @@ export function parseDailyLogForm(
   const sizes = strings('crew_size')
   const hours = strings('crew_hours')
   const notes = strings('crew_notes')
+  const companies = strings('crew_company')
   const crews: CrewEntry[] = []
   trades.forEach((trade, i) => {
-    const row = { trade, crew_size: sizes[i] ?? '', hours_worked: hours[i] ?? '', notes: notes[i] ?? '' }
+    const row = {
+      trade,
+      crew_size: sizes[i] ?? '',
+      hours_worked: hours[i] ?? '',
+      notes: notes[i] ?? '',
+      subcontractor_company_id: companies[i] ?? '',
+    }
     if (Object.values(row).every((v) => v.trim() === '')) return
+    if (row.subcontractor_company_id && options.allowedCompanyIds && !options.allowedCompanyIds.has(row.subcontractor_company_id)) {
+      if (!fieldErrors.crews) fieldErrors.crews = `Crew row ${i + 1}: that subcontractor is no longer active`
+      return
+    }
     const parsed = crewEntrySchema.safeParse(row)
     if (!parsed.success) {
       if (!fieldErrors.crews) fieldErrors.crews = `Crew row ${i + 1}: ${parsed.error.issues[0]?.message ?? 'invalid entry'}`
