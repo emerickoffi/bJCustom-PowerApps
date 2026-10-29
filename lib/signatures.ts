@@ -43,6 +43,14 @@ export type SignatureSummary = {
   hasSignedPdf: boolean
 }
 
+/**
+ * A completed request still needs a provider sync when its signed PDF was never stored or was stored
+ * but never filed into the project document library (for example, requests completed before filing existed).
+ */
+export function needsSignedArtifactSync(r: Pick<SignatureRequestView, 'status' | 'hasSignedPdf' | 'signedDocumentFiled'>) {
+  return r.status === 'completed' && (!r.hasSignedPdf || !r.signedDocumentFiled)
+}
+
 export type SignerView = {
   id: string
   name: string
@@ -70,6 +78,7 @@ export type SignatureRequestView = {
   errorMessage: string | null
   artifactError: string | null
   hasSignedPdf: boolean
+  signedDocumentFiled: boolean
   signedSizeBytes: number | null
   signers: SignerView[]
   events: { id: string; type: string; time: string; source: string }[]

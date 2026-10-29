@@ -18,7 +18,7 @@ import {
   type SignaturePanelData,
 } from '@/app/actions/signatures'
 import { SignatureBadge } from '@/components/signatures/signature-badge'
-import { OPEN_STATUSES, SIGNER_STATUS_LABELS, eventLabel, type SignatureRequestView, type SigningMethod } from '@/lib/signatures'
+import { OPEN_STATUSES, SIGNER_STATUS_LABELS, eventLabel, needsSignedArtifactSync, type SignatureRequestView, type SigningMethod } from '@/lib/signatures'
 import { formatBytes } from '@/lib/documents'
 import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -235,9 +235,15 @@ function RequestCard({ request: r, canManage, onChanged }: { request: SignatureR
             </Button>
           </>
         )}
-        {canManage && (open || (r.status === 'completed' && !r.hasSignedPdf)) && (
-          <Button size="sm" variant="ghost" disabled={pending} onClick={() => act(() => refreshSignatureRequest(r.id), 'Status refreshed')}>
-            {pending ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />} Refresh status
+        {canManage && (open || needsSignedArtifactSync(r)) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={pending}
+            onClick={() => act(() => refreshSignatureRequest(r.id), open ? 'Status refreshed' : 'Signed copy synchronized')}
+          >
+            {pending ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}{' '}
+            {open ? 'Refresh status' : r.hasSignedPdf ? 'File signed copy' : 'Retrieve signed PDF'}
           </Button>
         )}
         {canManage && open && (

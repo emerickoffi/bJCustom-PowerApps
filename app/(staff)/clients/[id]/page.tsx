@@ -58,11 +58,16 @@ async function loadPortalAccess(
   const contactIdsWithAccount = new Set(
     (accounts ?? []).map((a) => (a.contact_id as string | null) ?? primaryContact?.id ?? 'primary'),
   )
+  // Match on the login's verified email too, so a person whose account is linked elsewhere is never offered a second one.
+  const accountEmails = new Set(
+    (profilesRes.data ?? []).map((p) => (p.email as string | null)?.trim().toLowerCase()).filter(Boolean) as string[],
+  )
   const toOption = (value: string, name: string, isPrimary: boolean, email: string | null): PortalContactOption => {
-    const hasAccount = contactIdsWithAccount.has(value)
+    const normalizedEmail = email?.trim().toLowerCase()
+    const hasAccount = contactIdsWithAccount.has(value) || Boolean(normalizedEmail && accountEmails.has(normalizedEmail))
     return {
       value,
-      label: `${name}${isPrimary ? ' (primary)' : ''}${hasAccount ? ' — has portal login' : ''}`,
+      label: `${name}${isPrimary ? ' (primary)' : ''}${hasAccount ? ' — Already has access' : ''}`,
       hasEmail: Boolean(email),
       hasAccount,
     }

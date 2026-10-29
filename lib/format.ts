@@ -62,6 +62,18 @@ export function fullName(first?: string | null, last?: string | null): string {
   return [first, last].filter(Boolean).join(' ') || '—'
 }
 
+/** Formats 10-digit US numbers as (555) 555-1234; anything else (international, extensions) is returned as entered. */
+export function formatPhone(value?: string | null): string {
+  const raw = value?.trim() ?? ''
+  if (!raw) return ''
+  if (raw.startsWith('+') && !raw.startsWith('+1')) return raw
+  if (/[a-z]/i.test(raw)) return raw
+  let digits = raw.replace(/\D/g, '')
+  if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1)
+  if (digits.length !== 10) return raw
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
 export function initials(name?: string | null): string {
   if (!name) return '?'
   return name

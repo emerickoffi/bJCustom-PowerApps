@@ -182,6 +182,17 @@ const portalAccountSchema = z.object({
   contact: z.string().min(1, 'Select a homeowner contact'),
 })
 
+async function primaryContactId(supabase: Awaited<ReturnType<typeof createClient>>, clientId: string) {
+  const { data } = await supabase
+    .from('client_contacts')
+    .select('id')
+    .eq('client_id', clientId)
+    .eq('is_primary', true)
+    .is('archived_at', null)
+    .maybeSingle()
+  return (data?.id as string | undefined) ?? null
+}
+
 export async function createPortalAccountAction(_prev: ProvisionState, formData: FormData): Promise<ProvisionState> {
   const session = await requireAdmin()
   const parsed = portalAccountSchema.safeParse(formValues(formData))
@@ -225,6 +236,20 @@ export async function createPortalAccountAction(_prev: ProvisionState, formData:
   email = email?.trim().toLowerCase() ?? null
   if (!email || !z.email().safeParse(email).success) {
     return { error: 'This contact needs a valid email address before portal access can be created.' }
+  }
+
+  // A login with no contact link belongs to the client record, i.e. the primary person.
+  const targetsPrimary = contact === 'primary' || (contactId !== null && contactId === (await primaryContactId(supabase, client_id)))
+  if (targetsPrimary) {
+    const { data: unlinked } = await supabase
+      .from('portal_accounts')
+      .select('id')
+      .eq('organization_id', session.organizationId)
+      .eq('client_id', client_id)
+      .is('contact_id', null)
+      .limit(1)
+      .maybeSingle()
+    if (unlinked) return { error: 'This homeowner already has portal access. Edit their projects below.' }
   }
 
   if (contactId) {

@@ -1,6 +1,14 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { deterministicUuid, estimateApprovalFromSignature, signedDocumentIds, signedDocumentName } from './signed-artifacts.ts'
+import { needsSignedArtifactSync } from '../signatures.ts'
+
+test('completed requests whose signed PDF is stored but not filed still offer a sync', () => {
+  assert.equal(needsSignedArtifactSync({ status: 'completed', hasSignedPdf: true, signedDocumentFiled: false }), true)
+  assert.equal(needsSignedArtifactSync({ status: 'completed', hasSignedPdf: false, signedDocumentFiled: false }), true)
+  assert.equal(needsSignedArtifactSync({ status: 'completed', hasSignedPdf: true, signedDocumentFiled: true }), false)
+  assert.equal(needsSignedArtifactSync({ status: 'declined', hasSignedPdf: false, signedDocumentFiled: false }), false)
+})
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
