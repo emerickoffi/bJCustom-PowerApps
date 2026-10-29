@@ -158,8 +158,7 @@ function ClientGroup({ group }: { group: ClientGroupData }) {
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E8E2]/80 bg-[#F8F7F3]/70 px-4 py-2.5 sm:px-5">
         <h3 id={headingId} className="min-w-0 truncate text-sm font-semibold text-[#174D32]">
-          {group.clientName}
-          {group.clientNumber ? <span className="ml-1.5 font-normal text-[#64756D]">{`#${group.clientNumber}`}</span> : null}
+          {group.clientNumber ? `Client #${group.clientNumber} · ${group.clientName}` : group.clientName}
         </h3>
         <span className="text-xs text-[#64756D]">
           {group.rows.length === 1 ? '1 contact' : `${group.rows.length} contacts`}
@@ -174,14 +173,22 @@ function ClientGroup({ group }: { group: ClientGroupData }) {
   )
 }
 
-function RelationshipBadge({ relationship }: { relationship: string }) {
+const GENERIC_RELATIONSHIPS = new Set(['Other', 'Secondary', 'Secondary contact'])
+
+function RelationshipBadges({ relationship }: { relationship: string }) {
   if (relationship === 'Primary') return <SemanticBadge tone="success">Primary contact</SemanticBadge>
-  if (relationship === 'Client record') return <SemanticBadge tone="neutral">Client record</SemanticBadge>
-  return <SemanticBadge tone="neutral">Secondary contact</SemanticBadge>
+  if (relationship === 'Client record') return null
+  return (
+    <>
+      <SemanticBadge tone="neutral">Secondary contact</SemanticBadge>
+      {relationship && !GENERIC_RELATIONSHIPS.has(relationship) && (
+        <SemanticBadge tone="info">{relationship}</SemanticBadge>
+      )}
+    </>
+  )
 }
 
 function HomeownerItem({ row }: { row: HomeownerAccountRow }) {
-  const isSecondary = row.relationship !== 'Primary' && row.relationship !== 'Client record'
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 transition-colors hover:bg-[#F8F7F3]/70 sm:flex-nowrap sm:px-5">
       <span
@@ -193,17 +200,12 @@ function HomeownerItem({ row }: { row: HomeownerAccountRow }) {
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <span className="truncate font-medium text-foreground">{row.name}</span>
-          <RelationshipBadge relationship={row.relationship} />
-          <SemanticBadge tone="info">Homeowner</SemanticBadge>
+          <RelationshipBadges relationship={row.relationship} />
           {row.isLegacyInvite && <SemanticBadge tone="neutral">Invitation access</SemanticBadge>}
         </span>
         <span className="truncate text-sm text-[#64756D]">{row.email ?? 'No email on file'}</span>
-        {(isSecondary || row.permissions.length > 0) && (
-          <span className="truncate text-xs text-[#64756D]">
-            {[isSecondary ? row.relationship : null, row.permissions.length > 0 ? row.permissions.join(', ') : null]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
+        {row.permissions.length > 0 && (
+          <span className="truncate text-xs text-[#64756D]">{row.permissions.join(', ')}</span>
         )}
       </div>
       <div className="ml-14 flex shrink-0 flex-wrap items-center gap-3 sm:ml-0">
