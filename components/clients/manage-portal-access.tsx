@@ -15,7 +15,7 @@ import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { ActionButton } from '@/components/shared/inline-action'
 import { CredentialHandoff } from '@/components/account/credential-handoff'
 
-export type PortalContactOption = { value: string; label: string; hasEmail: boolean }
+export type PortalContactOption = { value: string; label: string; hasEmail: boolean; hasAccount: boolean }
 export type PortalProjectOption = { id: string; label: string }
 export type PortalAccountRow = {
   id: string
@@ -137,7 +137,7 @@ export function ManagePortalAccessPanel({
               label="Homeowner contact"
               placeholder="Select a contact"
               required
-              options={available.map((c) => ({ value: c.value, label: c.label }))}
+              options={available.map((c) => ({ value: c.value, label: c.label, disabled: c.hasAccount }))}
               error={state.fieldErrors?.contact}
             />
             <ProjectChecklist projects={projects} />

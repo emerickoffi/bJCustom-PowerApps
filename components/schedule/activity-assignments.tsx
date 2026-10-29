@@ -43,10 +43,12 @@ function AssignmentRow({
   projectId,
   assignment,
   companies,
+  canReassign,
 }: {
   projectId: string
   assignment: ActivityAssignment
   companies: CompanyOption[]
+  canReassign: boolean
 }) {
   const [mode, setMode] = useState<'view' | 'reassign' | 'revoke'>('view')
   const close = () => setMode('view')
@@ -63,10 +65,12 @@ function AssignmentRow({
         </div>
         {mode === 'view' && (
           <div className="flex shrink-0 gap-1">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setMode('reassign')}>
-              <Repeat data-icon="inline-start" />
-              Reassign
-            </Button>
+            {canReassign && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setMode('reassign')}>
+                <Repeat data-icon="inline-start" />
+                Reassign
+              </Button>
+            )}
             <Button type="button" variant="ghost" size="sm" onClick={() => setMode('revoke')} className="text-destructive hover:text-destructive">
               Revoke
             </Button>
@@ -120,12 +124,14 @@ export function ActivityAssignments({
   availability,
   assignments,
   companies,
+  acceptsNew,
 }: {
   projectId: string
   activityId: string
   availability: AssignmentAvailability
   assignments: ActivityAssignment[]
   companies: CompanyOption[]
+  acceptsNew: boolean
 }) {
   const [adding, setAdding] = useState(false)
 
@@ -148,7 +154,7 @@ export function ActivityAssignments({
       {assignments.length > 0 ? (
         <ul className="flex flex-col divide-y rounded-lg border">
           {assignments.map((a) => (
-            <AssignmentRow key={a.id} projectId={projectId} assignment={a} companies={companies} />
+            <AssignmentRow key={a.id} projectId={projectId} assignment={a} companies={companies} canReassign={acceptsNew} />
           ))}
         </ul>
       ) : (
@@ -158,7 +164,12 @@ export function ActivityAssignments({
         </p>
       )}
 
-      {companies.length === 0 ? (
+      {!acceptsNew ? (
+        <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+          New subcontractor work can only be assigned while the project is in preconstruction, construction, or closeout.
+          Existing assignments stay here as history.
+        </p>
+      ) : companies.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {'No active subcontractors yet. '}
           <Link href="/subcontractors/new" className="font-medium text-primary underline-offset-4 hover:underline">

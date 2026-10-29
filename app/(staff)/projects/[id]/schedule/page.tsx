@@ -97,7 +97,7 @@ export default async function SchedulePage({
 
   const { data: project } = await supabase
     .from('projects')
-    .select('id, name, project_number, address_line1, address_line2, city, state, postal_code, progress_percent, target_completion_date')
+    .select('id, name, project_number, status, address_line1, address_line2, city, state, postal_code, progress_percent, target_completion_date')
     .eq('id', id)
     .eq('organization_id', session.organizationId)
     .maybeSingle()
@@ -116,7 +116,7 @@ export default async function SchedulePage({
       .eq('project_id', id)
       .order('version', { ascending: false }),
     getStaffMembers(session.organizationId, ['org_admin', 'project_manager', 'builder_staff']),
-    loadProjectAssignments(supabase, session.organizationId, id, features, manager),
+    loadProjectAssignments(supabase, session.organizationId, id, features, manager, project.status),
   ])
 
   const activities = (activitiesRes.data ?? []) as ScheduleActivity[]
@@ -276,6 +276,7 @@ export default async function SchedulePage({
             assignmentAvailability={assignmentData.availability}
             assignments={assignmentData.assignments}
             companies={assignmentData.companies}
+            acceptsNewAssignments={assignmentData.acceptsNew}
           />
 
           {assignmentData.availability !== 'off' && (

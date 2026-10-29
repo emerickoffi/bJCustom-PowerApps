@@ -33,6 +33,7 @@ export type AssignmentProps = {
   availability: AssignmentAvailability
   byActivity: Map<string, ActivityAssignment[]>
   companies: CompanyOption[]
+  acceptsNew: boolean
 }
 
 type StaffOption = { value: string; label: string }
@@ -402,6 +403,7 @@ export function ActivityEditor({
                     availability={assignments.availability}
                     assignments={assignments.byActivity.get(activity.id) ?? []}
                     companies={assignments.companies}
+                    acceptsNew={assignments.acceptsNew}
                   />
                 </section>
               )}

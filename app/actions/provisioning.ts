@@ -200,7 +200,16 @@ export async function createPortalAccountAction(_prev: ProvisionState, formData:
   let contactId: string | null = null
   let fullName = `${client.first_name} ${client.last_name}`.trim()
   let email = client.email as string | null
-  if (contact !== 'primary') {
+  if (contact === 'primary') {
+    const { data: primary } = await supabase
+      .from('client_contacts')
+      .select('id')
+      .eq('client_id', client_id)
+      .eq('is_primary', true)
+      .is('archived_at', null)
+      .maybeSingle()
+    contactId = primary?.id ?? null
+  } else {
     if (!z.uuid().safeParse(contact).success) return { error: 'Select a homeowner contact.' }
     const { data: c } = await supabase
       .from('client_contacts')
@@ -216,6 +225,17 @@ export async function createPortalAccountAction(_prev: ProvisionState, formData:
   email = email?.trim().toLowerCase() ?? null
   if (!email || !z.email().safeParse(email).success) {
     return { error: 'This contact needs a valid email address before portal access can be created.' }
+  }
+
+  if (contactId) {
+    const { data: contactAccount } = await supabase
+      .from('portal_accounts')
+      .select('id')
+      .eq('organization_id', session.organizationId)
+      .eq('contact_id', contactId)
+      .limit(1)
+      .maybeSingle()
+    if (contactAccount) return { error: 'This homeowner already has portal access. Edit their projects below.' }
   }
 
   const { data: linked } = await supabase.from('project_clients').select('project_id').eq('client_id', client_id)

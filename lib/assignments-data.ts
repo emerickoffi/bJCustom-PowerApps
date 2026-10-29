@@ -2,6 +2,7 @@ import 'server-only'
 import type { createClient } from '@/lib/supabase/server'
 import type { FeatureMap } from '@/lib/feature-registry'
 import { isMissingTableError } from '@/lib/subcontractors'
+import { projectAcceptsNewAssignments } from '@/lib/domain'
 import {
   ASSIGNMENT_SELECT,
   toAssignment,
@@ -16,9 +17,11 @@ export type AssignmentData = {
   availability: AssignmentAvailability
   assignments: ActivityAssignment[]
   companies: CompanyOption[]
+  /** False on completed, cancelled, on-hold, or pre-sale projects; existing assignments still load. */
+  acceptsNew: boolean
 }
 
-const OFF: AssignmentData = { availability: 'off', assignments: [], companies: [] }
+const OFF: AssignmentData = { availability: 'off', assignments: [], companies: [], acceptsNew: false }
 
 /**
  * Active assignments for one project plus the active companies that can receive work.
@@ -30,8 +33,10 @@ export async function loadProjectAssignments(
   projectId: string,
   features: FeatureMap,
   manager: boolean,
+  projectStatus: string,
 ): Promise<AssignmentData> {
   if (!manager || !features.subcontractors || !features.schedule) return OFF
+  const acceptsNew = projectAcceptsNewAssignments(projectStatus)
   const [assignmentsRes, companiesRes] = await Promise.all([
     supabase
       .from('schedule_activity_assignments')
@@ -50,10 +55,11 @@ export async function loadProjectAssignments(
   ])
   if (assignmentsRes.error || companiesRes.error) {
     const missing = isMissingTableError(assignmentsRes.error) || isMissingTableError(companiesRes.error)
-    return { availability: missing ? 'setup-required' : 'error', assignments: [], companies: [] }
+    return { availability: missing ? 'setup-required' : 'error', assignments: [], companies: [], acceptsNew }
   }
   return {
     availability: 'ready',
+    acceptsNew,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- embedded relation typing from PostgREST
     assignments: (assignmentsRes.data ?? []).map((r) => toAssignment(r as any)),
     companies: (companiesRes.data ?? []).map((c) => ({ value: c.id, label: c.company_name, trade: c.trade })),
