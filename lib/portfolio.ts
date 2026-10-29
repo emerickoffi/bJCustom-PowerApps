@@ -20,6 +20,11 @@ export function parsePortfolioStatus(value: string | undefined): ProjectStatus |
   return ALL_PROJECT_STATUSES.includes(value as ProjectStatus) ? (value as ProjectStatus) : null
 }
 
+/** Omits `page` so the directory always opens on page 1; view, sort, and other filters keep their defaults. */
+export function portfolioViewAllHref(status: ProjectStatus | null): string {
+  return status ? `/projects?status=${encodeURIComponent(status)}` : '/projects'
+}
+
 /** Lower tiers sort first. Only real records move a project up; nothing is inferred. */
 export function portfolioTier(row: PortfolioRow, signals: PortfolioSignals): number {
   const open = !CLOSED.has(row.status)
