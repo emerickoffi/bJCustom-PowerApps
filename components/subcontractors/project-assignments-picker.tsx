@@ -29,7 +29,11 @@ export type ExistingAssignments = {
   history: ProjectAssignmentRecord[]
   /** Active scheduled activity names per project id, or null when they could not be loaded. */
   activeWork: Record<string, string[]> | null
+  /** The saved company status is inactive, so new projects cannot be added until it is activated. */
+  inactive: boolean
 }
+
+const INACTIVE_MESSAGE = 'Activate this subcontractor before assigning new projects.'
 
 export function ProjectAssignmentsPicker({
   projects: allProjects,
@@ -80,7 +84,13 @@ export function ProjectAssignmentsPicker({
   return (
     <div className="flex min-w-0 flex-col gap-6 sm:col-span-2">
       {existing && <CurrentProjects existing={existing} />}
-      <AddProjects projects={projects} defaultValue={defaultValue} error={error} editing={Boolean(existing)} />
+      <AddProjects
+        projects={projects}
+        defaultValue={defaultValue}
+        error={error}
+        editing={Boolean(existing)}
+        inactive={existing?.inactive ?? false}
+      />
       {existing && <ProjectHistory history={existing.history} />}
     </div>
   )
@@ -202,19 +212,49 @@ function AddProjects({
   defaultValue,
   error,
   editing,
+  inactive,
 }: {
   projects: AssignableProject[]
   defaultValue: string
   error?: string
   editing: boolean
+  inactive: boolean
 }) {
   const initial = useMemo(() => {
+    if (inactive) return []
     const wanted = new Set(defaultValue.split(',').filter(Boolean))
     return projects.filter((p) => wanted.has(p.id))
-  }, [defaultValue, projects])
+  }, [defaultValue, projects, inactive])
   const [selected, setSelected] = useState<AssignableProject[]>(initial)
   const describedBy = error ? 'project_ids-error' : 'project_ids-hint'
   const remove = (id: string) => setSelected((prev) => prev.filter((p) => p.id !== id))
+
+  if (inactive) {
+    return (
+      <div className="flex min-w-0 flex-col gap-1.5">
+        <Label htmlFor="project_ids" className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Plus className="size-4" aria-hidden="true" />
+          Add Project
+        </Label>
+        <input
+          id="project_ids"
+          disabled
+          aria-describedby="project_ids-hint"
+          placeholder="Search by project name or number"
+          className="h-10 w-full min-w-0 cursor-not-allowed rounded-lg border border-input bg-muted/50 px-2.5 text-sm text-muted-foreground opacity-70 placeholder:text-muted-foreground/80"
+        />
+        <p id="project_ids-hint" role="status" className="flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+          <AlertCircle className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+          {INACTIVE_MESSAGE} Current Projects and Project History are kept.
+        </p>
+        {error && (
+          <p id="project_ids-error" className="text-xs leading-relaxed text-destructive">
+            {error}
+          </p>
+        )}
+      </div>
+    )
+  }
 
   if (!projects.length) {
     return (
