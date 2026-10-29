@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { FolderKanban, Mail, Phone } from 'lucide-react'
+import { Eye, FolderKanban, Mail, Pencil, Phone } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { SUBCONTRACTOR_STATUS_LABELS, type SubcontractorCompany, type SubcontractorStatus } from '@/lib/subcontractors'
@@ -11,6 +11,9 @@ type Props = {
   rows: SubcontractorCompany[]
   projectsByCompany: Record<string, AssignedProject[]> | null
 }
+
+const inlineActionClass =
+  'inline-flex h-8 items-center gap-1.5 rounded-md border border-border/80 bg-card px-2.5 text-xs font-medium text-foreground/80 transition-colors hover:border-primary/30 hover:bg-[#F4F7F3] hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
 
 function CompanyAvatar({ name, status }: { name: string; status: SubcontractorStatus }) {
   return (
@@ -110,22 +113,22 @@ export function SubcontractorTable({ rows, projectsByCompany }: Props) {
         <Table className="table-fixed">
           <TableHeader>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
-              <TableHead scope="col" className="h-10 w-[34%] pl-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <TableHead scope="col" className="h-10 w-[30%] pl-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Company / Trade
               </TableHead>
-              <TableHead scope="col" className="h-10 w-[30%] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <TableHead scope="col" className="h-10 w-[26%] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Contact
               </TableHead>
               {showProjects && (
-                <TableHead scope="col" className="h-10 w-[18%] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <TableHead scope="col" className="h-10 w-[17%] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Projects
                 </TableHead>
               )}
-              <TableHead scope="col" className="h-10 w-[11%] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <TableHead scope="col" className="h-10 w-[10%] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Status
               </TableHead>
-              <TableHead scope="col" className="h-10 w-16 pr-5 text-right">
-                <span className="sr-only">Actions</span>
+              <TableHead scope="col" className="h-10 w-[200px] pr-5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Actions
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -147,8 +150,29 @@ export function SubcontractorTable({ rows, projectsByCompany }: Props) {
                   <StatusBadge status={row.status} />
                 </TableCell>
                 <TableCell className="py-3.5 pr-4 text-right">
-                  <div className="flex justify-end">
-                    <SubcontractorRowActions companyId={row.id} companyName={row.company_name} status={row.status} />
+                  <div className="flex items-center justify-end gap-1.5">
+                    <Link
+                      href={`/subcontractors/${row.id}`}
+                      aria-label={`View ${row.company_name}`}
+                      className={inlineActionClass}
+                    >
+                      <Eye className="size-3.5" aria-hidden="true" />
+                      View
+                    </Link>
+                    <Link
+                      href={`/subcontractors/${row.id}/edit`}
+                      aria-label={`Edit ${row.company_name}`}
+                      className={inlineActionClass}
+                    >
+                      <Pencil className="size-3.5" aria-hidden="true" />
+                      Edit
+                    </Link>
+                    <SubcontractorRowActions
+                      companyId={row.id}
+                      companyName={row.company_name}
+                      status={row.status}
+                      includeNavigation={false}
+                    />
                   </div>
                 </TableCell>
               </TableRow>
