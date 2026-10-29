@@ -88,15 +88,13 @@ export function NotificationsCard({
             )}
             aria-hidden="true"
           >
-            {total > 0 ? <BellRing className="size-5" /> : <CircleCheck className="size-5" />}
+            <BellRing className="size-5" />
           </span>
           <div className="flex flex-col gap-1">
             <h2 id="attention-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
               Needs Your Attention
             </h2>
-            <p className="text-sm text-muted-foreground">
-              {total > 0 ? 'Open tasks across your projects' : 'Nothing is waiting on you'}
-            </p>
+            {total > 0 && <p className="text-sm text-muted-foreground">Open tasks across your projects</p>}
           </div>
         </div>
         {total > 0 && (
@@ -113,9 +111,16 @@ export function NotificationsCard({
       </div>
 
       {items.length === 0 ? (
-        <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-          {"You're all caught up. Delayed schedule work, warranty claims, and documents that need follow-up will appear here."}
-        </p>
+        <div className="-mt-1 flex items-start gap-3 rounded-xl bg-sage/60 p-4" role="status">
+          <CircleCheck className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <p className="text-sm font-semibold text-foreground">All caught up!</p>
+            <p className="text-pretty text-sm text-muted-foreground">No actions require your attention right now.</p>
+            <p className="text-pretty text-xs text-muted-foreground">
+              {"We'll highlight important tasks here as they arise."}
+            </p>
+          </div>
+        </div>
       ) : (
         <>
           <ul className="flex flex-col divide-y">
