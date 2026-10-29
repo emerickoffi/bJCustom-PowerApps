@@ -46,19 +46,14 @@ export const PLANNED_MODULES: PlannedModule[] = [
     stage: 3,
     summary: 'Scope and price changes with electronic homeowner approval and budget impact.',
   },
-  {
-    slug: 'daily-logs',
-    label: 'Daily Logs',
-    icon: 'daily-logs',
-    stage: 4,
-    summary: 'Site activity, weather, crews on site, and progress photos recorded each day.',
-  },
 ]
 
 /** Former placeholder slugs that now have a real module; old bookmarks redirect there. */
 export const GRADUATED_MODULE_ROUTES: Record<string, string> = {
   schedule: '/schedule',
   invoices: '/invoices',
+  // Daily logs live inside each project, so the old placeholder points to the project list.
+  'daily-logs': '/projects',
 }
 
 export const MY_WORK_NAV: NavItem = { href: '/my-work', label: 'My Work', icon: 'my-work', roles: ['project_manager'] }
