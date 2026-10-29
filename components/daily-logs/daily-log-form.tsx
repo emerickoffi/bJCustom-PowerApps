@@ -21,7 +21,7 @@ type CrewRow = {
   /** Snapshot name for a saved company that is no longer in the active list. */
   company_name?: string
 }
-type CompanyOption = { id: string; company_name: string; trade: string }
+type CompanyOption = { id: string; company_name: string; trade: string; assigned?: boolean }
 
 export type DailyLogFormDefaults = {
   id?: string
@@ -243,6 +243,13 @@ function CompanySelect({
   onChange: (id: string) => void
 }) {
   const missing = value && !companies.some((c) => c.id === value)
+  const assigned = companies.filter((c) => c.assigned)
+  const others = companies.filter((c) => !c.assigned)
+  const renderOption = (c: CompanyOption) => (
+    <option key={c.id} value={c.id}>
+      {c.trade ? `${c.company_name} · ${c.trade}` : c.company_name}
+    </option>
+  )
   return (
     <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
       Subcontractor
@@ -254,11 +261,14 @@ function CompanySelect({
       >
         <option value="">Own crew / not listed</option>
         {missing && <option value={value}>{`${savedName ?? 'Saved subcontractor'} (inactive)`}</option>}
-        {companies.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.company_name}
-          </option>
-        ))}
+        {assigned.length > 0 ? (
+          <>
+            <optgroup label="Assigned to this project">{assigned.map(renderOption)}</optgroup>
+            {others.length > 0 && <optgroup label="Other active subcontractors">{others.map(renderOption)}</optgroup>}
+          </>
+        ) : (
+          companies.map(renderOption)
+        )}
       </select>
     </label>
   )

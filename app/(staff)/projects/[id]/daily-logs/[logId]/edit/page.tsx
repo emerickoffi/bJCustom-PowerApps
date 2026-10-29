@@ -21,7 +21,7 @@ export default async function EditDailyLogPage({ params }: { params: Promise<{ i
     getOrgToday(session.organizationId),
     getScheduleActivityOptions(project.id),
     getDailyLogChildren(log.id),
-    getCrewCompanyOptions(session.organizationId),
+    getCrewCompanyOptions(session.organizationId, project.id),
   ])
 
   const text = Object.fromEntries(DAILY_LOG_TEXT_FIELDS.map((k) => [k, log[k] ?? ''])) as Record<(typeof DAILY_LOG_TEXT_FIELDS)[number], string>
