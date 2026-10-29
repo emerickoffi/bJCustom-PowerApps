@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { Hammer, Blocks as BlocksIcon } from 'lucide-react'
 import { requireStaff } from '@/lib/session'
-import { PLANNED_MODULES } from '@/lib/navigation'
+import { GRADUATED_MODULE_ROUTES, PLANNED_MODULES } from '@/lib/navigation'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -13,7 +13,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function PlannedModulePage({ params }: { params: Promise<{ slug: string }> }) {
   await requireStaff()
   const { slug } = await params
-  if (slug === 'schedule') redirect('/schedule')
+  const graduated = GRADUATED_MODULE_ROUTES[slug]
+  if (graduated) redirect(graduated)
   const mod = PLANNED_MODULES.find((m) => m.slug === slug)
   if (!mod) notFound()
 
