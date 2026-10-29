@@ -1,0 +1,4 @@
+Survey,State,6-Digit,County,Census Place,FIPS Place,FIPS MCD,Pop,CSA,CBSA,Footnote,Central,Zip,Region,Division,Source,Place,,1-unit,,,2-units,,,3-4 units,,,5+ units
+Date,Code,ID,Code,Code,Code,Code,  ,Code,Code,Code,City,Code,Code,Code,Code,Name,Bldgs,Units,Value,Bldgs,Units,Value,Bldgs,Units,Value,Bldgs,Units,Value
+202609,47,113000,147,0213,11980 ,00000 ,312 ,400,34980, , ,37032      ,3,6,5,Cedar Hill,0,0,0,0,0,0,0,0,0,0,0,0
+202609,48,115000,113,0765,13492 ,00000 ,47317 ,206,19100,2, ,75104      ,3,7,4,Cedar Hill,2,2,622849,0,0,0,0,0,0,0,0,0

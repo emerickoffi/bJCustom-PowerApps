@@ -26,9 +26,10 @@ const RECORD_TABLES: [FeatureKey, string, string][] = [
 export default async function FeaturesPage() {
   const session = await requireAdmin()
   const supabase = await createClient()
-  const [features, subcontractorProbe, ...counts] = await Promise.all([
+  const [features, subcontractorProbe, clientUpdatesProbe, ...counts] = await Promise.all([
     getOrgFeatures(session.organizationId),
     supabase.from('subcontractor_companies').select('id').eq('organization_id', session.organizationId).limit(1),
+    supabase.from('client_updates').select('id').eq('organization_id', session.organizationId).limit(1),
     ...RECORD_TABLES.map(([, table]) =>
       supabase.from(table).select('id', { count: 'exact', head: true }).eq('organization_id', session.organizationId),
     ),
@@ -51,6 +52,7 @@ export default async function FeaturesPage() {
           e_signatures: !getProviderConfig().configured,
           ai_assistant: !getAssistantProviderConfig().configured,
           subcontractors: isMissingTableError(subcontractorProbe.error),
+          client_updates: isMissingTableError(clientUpdatesProbe.error),
         }}
       />
     </div>

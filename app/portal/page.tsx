@@ -210,6 +210,11 @@ export default async function PortalPage() {
                           <ArrowRight data-icon="inline-end" />
                         </Button>
                       )}
+                      {features?.client_updates && (
+                        <Button size="lg" variant="outline" render={<Link href={`/portal/projects/${p.id}/updates`} />} nativeButton={false}>
+                          Progress updates
+                        </Button>
+                      )}
                       {features?.documents && (
                         <Button
                           size="lg"

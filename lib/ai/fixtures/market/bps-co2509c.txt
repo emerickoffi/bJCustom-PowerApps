@@ -1,0 +1,5 @@
+Survey,FIPS,FIPS,Region,Division,County,,1-unit,,,2-units,,,3-4 units,,,5+ units,,,1-unit rep,,,2-units rep,,,3-4 units rep,,, 5+units rep
+Date,State,County,Code,Code,Name,Bldgs,Units,Value,Bldgs,Units,Value,Bldgs,Units,Value,Bldgs,Units,Value,Bldgs,Units,Value,Bldgs,Units,Value,Bldgs,Units,Value,Bldgs,Units,Value
+ 
+202509,48,113,3,7,Dallas County                                               ,369,369,103451961,18,36,5816739,4,12,1845451,9,497,85599801,335,335,95242582,18,36,5816739,4,12,1845451,9,497,85599801
+202509,48,139,3,7,Ellis County                                                ,163,163,46056519,3,6,969457,0,0,0,0,0,0,124,124,38188413,3,6,969457,0,0,0,0,0,0

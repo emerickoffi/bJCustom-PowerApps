@@ -17,6 +17,7 @@ export type FeatureKey =
   | 'quickbooks'
   | 'ai_assistant'
   | 'subcontractors'
+  | 'client_updates'
   // Display-only entries below are not in public.feature_registry(), so they can never be switched or persisted.
   | 'client_records'
   | 'additional_contacts'
@@ -82,6 +83,7 @@ export const FEATURES: FeatureDefinition[] = [
   { key: 'change_orders', label: 'Change orders', description: 'Scope and price changes with electronic homeowner approval.', defaultEnabled: false, requires: [], group: 'Project workflow', available: false },
   { key: 'daily_logs', label: 'Daily logs', description: 'Site activity, weather, crews, and progress photos recorded each day.', defaultEnabled: false, requires: [], group: 'Project workflow', available: false },
 
+  { key: 'client_updates', label: 'Client updates', description: 'Builder-written progress reports with selected photos, reviewed and published to homeowners in the portal. Nothing is shared until a manager publishes it, and publishing never sends email or text messages.', defaultEnabled: false, requires: ['portal'], group: 'Homeowner experience', available: true, lockWhenSetupRequired: true, setupNote: 'The client updates database migration has not been applied in this environment, so this switch stays locked until it is.', disableNote: 'Client updates are hidden from staff and homeowners. Every draft and published update is kept.' },
   { key: 'portal', label: 'Homeowner portal', description: 'Homeowners sign in to see their projects. They only see the modules you have turned on, and only for projects they are linked to.', defaultEnabled: true, requires: [], group: 'Homeowner experience', available: true, disableNote: 'Homeowners cannot sign in to the portal. Their accounts, project links, and past approvals are kept.', configHref: '/team', configLabel: 'Manage portal accounts' },
   { key: 'documents', label: 'Documents', description: 'Project plans, permits, contracts, and reports with version history and per-document homeowner sharing.', defaultEnabled: false, requires: [], group: 'Homeowner experience', available: true, disableNote: 'Documents are hidden from staff and homeowners. Every file and version is kept exactly as it is.', configHref: '/documents', configLabel: 'Open documents' },
   { key: 'e_signatures', label: 'Electronic signatures', description: 'Send PDF documents for legally binding electronic signature through Dropbox Sign, track progress, and keep the signed copy and audit trail with the project.', defaultEnabled: false, requires: ['documents'], group: 'Homeowner experience', available: true, setupNote: 'Add DROPBOX_SIGN_API_KEY to the project environment to connect Dropbox Sign. Add DROPBOX_SIGN_CLIENT_ID as well to let homeowners sign inside the portal.', disableNote: 'New signature requests stop. Signed PDFs, signer records, and audit history are kept and stay viewable.', configHref: '/documents', configLabel: 'Open documents' },

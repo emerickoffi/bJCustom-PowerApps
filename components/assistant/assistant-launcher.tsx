@@ -29,6 +29,7 @@ import {
   suggestionsFor,
   type AssistantModule,
 } from '@/lib/ai/assistant-scope'
+import { isAllowedSourceUrl } from '@/lib/ai/market-source-urls'
 import { useAssistantProject, type AssistantProject } from './assistant-context'
 
 type QuickActionKey = 'overview' | 'schedule' | 'update' | 'warranty'
@@ -44,7 +45,29 @@ const HEALTH_STYLES = {
   insufficient_data: 'border-border bg-muted text-muted-foreground',
 } as const
 
-const SOURCE_PREFIX = 'https://fred.stlouisfed.org/series/'
+type MarketIndicator = { label: string; value: string; geography: string; period: string; change: string | null; preliminary: boolean; stale: boolean }
+type MarketPanel = { location: string; coverage: string[]; indicators: MarketIndicator[]; gaps: string[] }
+
+const isText = (v: unknown, max = 200): v is string => typeof v === 'string' && v.length > 0 && v.length <= max
+
+/** Validates the server's market summary shape before rendering; anything unexpected is dropped. */
+function parseMarket(raw: unknown): MarketPanel | undefined {
+  const m = raw as Partial<MarketPanel> | null
+  if (!m || !isText(m.location, 120) || !Array.isArray(m.indicators)) return undefined
+  const indicators = m.indicators
+    .filter(
+      (i): i is MarketIndicator =>
+        isText(i?.label) && isText(i?.value, 60) && isText(i?.geography, 120) && isText(i?.period, 40) && (i.change === null || isText(i.change, 60)),
+    )
+    .slice(0, 8)
+  if (!indicators.length) return undefined
+  return {
+    location: m.location,
+    coverage: Array.isArray(m.coverage) ? m.coverage.filter((c) => isText(c, 20)).slice(0, 5) : [],
+    indicators,
+    gaps: Array.isArray(m.gaps) ? m.gaps.filter((g) => isText(g, 240)).slice(0, 4) : [],
+  }
+}
 
 type Message =
   | { id: string; role: 'user'; text: string }
@@ -60,6 +83,7 @@ type Message =
       links?: AnswerLink[]
       sources?: AnswerSource[]
       health?: HealthBadge
+      market?: MarketPanel
     }
 
 const QUICK_ACTIONS: { key: QuickActionKey; label: string; hint: string; icon: LucideIcon }[] = [
@@ -197,6 +221,7 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
         links?: AnswerLink[]
         sources?: AnswerSource[]
         health?: HealthBadge
+        market?: unknown
         requestId?: string
       } | null
       if (!res.ok || !data?.text) {
@@ -221,13 +246,13 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
             typeof s?.href === 'string' &&
             typeof s?.label === 'string' &&
             typeof s?.period === 'string' &&
-            s.href.startsWith(SOURCE_PREFIX) &&
-            /^[A-Z0-9]{3,20}$/.test(s.href.slice(SOURCE_PREFIX.length)),
+            isAllowedSourceUrl(s.href),
         )
         .slice(0, 6)
       const health =
         data.health && typeof data.health.label === 'string' && data.health.indicator in HEALTH_STYLES ? data.health : undefined
-      settle({ id: loadingId, role: 'assistant', status: 'answer', text: answerText, reviewDraft, links, sources, health, options })
+      const market = parseMarket(data.market)
+      settle({ id: loadingId, role: 'assistant', status: 'answer', text: answerText, reviewDraft, links, sources, health, market, options })
     } catch {
       if (controller.signal.aborted) return
       settle({ id: loadingId, role: 'assistant', status: 'error', text: 'Network problem. Check your connection and try again.', question, reviewDraft })
@@ -516,6 +541,46 @@ function MessageBubble({
                   </li>
                 ))}
               </ul>
+            )}
+            {message.market && (
+              <section aria-label={`Market indicators for ${message.market.location}`} className="flex flex-col gap-2 rounded-xl border bg-card px-3 py-2.5">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+                  <span className="text-xs font-semibold text-foreground">Market data · {message.market.location}</span>
+                  {message.market.coverage.length > 0 && (
+                    <span className="text-[11px] text-muted-foreground">{message.market.coverage.join(' · ')}</span>
+                  )}
+                </div>
+                <ul className="flex flex-col divide-y">
+                  {message.market.indicators.map((i) => (
+                    <li key={`${i.label}-${i.geography}`} className="flex flex-col gap-0.5 py-1.5 first:pt-0 last:pb-0">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-xs leading-snug text-foreground">{i.label}</span>
+                        <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">{i.value}</span>
+                      </div>
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-[11px] leading-snug text-muted-foreground">
+                        <span>
+                          {i.geography} · {i.period}
+                          {i.preliminary && ' · preliminary'}
+                          {i.stale && ' · stale'}
+                        </span>
+                        {i.change && <span className="tabular-nums">{i.change}</span>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {message.market.gaps.length > 0 && (
+                  <div className="flex flex-col gap-0.5 border-t pt-2">
+                    <span className="text-[11px] font-semibold text-muted-foreground">Not available</span>
+                    <ul className="flex flex-col gap-0.5">
+                      {message.market.gaps.map((g) => (
+                        <li key={g} className="text-[11px] leading-snug text-muted-foreground">
+                          {g}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </section>
             )}
             {message.sources && message.sources.length > 0 && (
               <div className="flex flex-col gap-1 rounded-xl border border-dashed bg-card/60 px-3 py-2">
