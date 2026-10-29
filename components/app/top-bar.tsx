@@ -31,6 +31,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'my-work': 'My Work',
   projects: 'Projects',
   clients: 'Clients',
+  subcontractors: 'Subcontractors',
   team: 'Team',
   settings: 'Settings',
   profile: 'Profile',

@@ -13,6 +13,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { href: '/projects', label: 'Projects', icon: 'projects' },
   { href: '/clients', label: 'Clients', icon: 'clients' },
+  { href: '/subcontractors', label: 'Subcontractors', icon: 'subcontractors', roles: ['org_admin', 'project_manager'], feature: 'subcontractors' },
   { href: '/schedule', label: 'Schedule', icon: 'schedule', feature: 'schedule' },
   { href: '/estimates', label: 'Estimates', icon: 'estimates', feature: 'estimates' },
   { href: '/invoices', label: 'Invoices', icon: 'invoices', feature: 'invoices' },

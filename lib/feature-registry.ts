@@ -16,6 +16,7 @@ export type FeatureKey =
   | 'payments'
   | 'quickbooks'
   | 'ai_assistant'
+  | 'subcontractors'
   // Display-only entries below are not in public.feature_registry(), so they can never be switched or persisted.
   | 'client_records'
   | 'additional_contacts'
@@ -74,6 +75,7 @@ export const FEATURES: FeatureDefinition[] = [
   { key: 'walkthroughs', label: 'Walkthroughs', description: 'Homeowner walkthrough checklists with photos.', defaultEnabled: true, requires: [], group: 'Project workflow', available: true, disableNote: 'Walkthroughs and their photos are hidden from staff and homeowners.' },
   { key: 'reports', label: 'Walkthrough reports', description: 'Versioned PDF reports with homeowner acknowledgment and sign-off.', defaultEnabled: true, requires: ['walkthroughs'], group: 'Project workflow', available: true, disableNote: 'Reports, PDFs, and signatures are hidden but kept.' },
   { key: 'issues', label: 'Punch list and issues', description: 'Track deficiencies through repair and homeowner validation, during construction or after.', defaultEnabled: true, requires: [], group: 'Project workflow', available: true, disableNote: 'Punch list items are hidden. Warranty claims stay visible under Warranty.' },
+  { key: 'subcontractors', label: 'Subcontractors', description: 'A company directory of trade partners with their trade, contact details, and status. Visible only to administrators and project managers.', defaultEnabled: false, requires: [], group: 'Project workflow', available: true, lockWhenSetupRequired: true, setupNote: 'The subcontractor database migration has not been applied in this environment, so this switch stays locked until it is.', disableNote: 'The Subcontractors directory is hidden from project managers. Every saved company is kept.', configHref: '/subcontractors', configLabel: 'Open subcontractors' },
   { key: 'project_photos', label: 'Project photos', description: 'Manage project photographs and visual construction progress.', defaultEnabled: false, requires: [], group: 'Project workflow', available: false },
   { key: 'consultation', label: 'Consultations', description: 'Lead intake and consultation scheduling before a project is planned.', defaultEnabled: false, requires: [], group: 'Project workflow', available: false },
   { key: 'selections', label: 'Selections', description: 'Finish and fixture selections with deadlines, allowances, and homeowner approvals.', defaultEnabled: false, requires: [], group: 'Project workflow', available: false },

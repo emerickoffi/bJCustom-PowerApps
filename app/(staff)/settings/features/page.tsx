@@ -5,6 +5,7 @@ import { getProviderConfig } from '@/lib/esign/dropbox-sign'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import { createClient } from '@/lib/supabase/server'
 import type { FeatureKey } from '@/lib/feature-registry'
+import { isMissingTableError } from '@/lib/subcontractors'
 import { PageHeader } from '@/components/shared/page-header'
 import { FeatureToggles } from '@/components/settings/feature-toggles'
 import { SlidersHorizontal as SlidersHorizontalIcon } from 'lucide-react'
@@ -25,8 +26,9 @@ const RECORD_TABLES: [FeatureKey, string, string][] = [
 export default async function FeaturesPage() {
   const session = await requireAdmin()
   const supabase = await createClient()
-  const [features, ...counts] = await Promise.all([
+  const [features, subcontractorProbe, ...counts] = await Promise.all([
     getOrgFeatures(session.organizationId),
+    supabase.from('subcontractor_companies').select('id').eq('organization_id', session.organizationId).limit(1),
     ...RECORD_TABLES.map(([, table]) =>
       supabase.from(table).select('id', { count: 'exact', head: true }).eq('organization_id', session.organizationId),
     ),
@@ -48,6 +50,7 @@ export default async function FeaturesPage() {
       <FeatureToggles features={features} records={records} pendingSetup={{
           e_signatures: !getProviderConfig().configured,
           ai_assistant: !getAssistantProviderConfig().configured,
+          subcontractors: isMissingTableError(subcontractorProbe.error),
         }}
       />
     </div>

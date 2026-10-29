@@ -7,6 +7,7 @@ import { requireAdmin, requireStaff } from '@/lib/session'
 import { friendlyDbError, type ActionState } from '@/lib/action-state'
 import { FEATURES, type FeatureKey } from '@/lib/feature-registry'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
+import { isMissingTableError } from '@/lib/subcontractors'
 
 const featureKeys = FEATURES.filter((f) => f.available && !f.core).map((f) => f.key) as [FeatureKey, ...FeatureKey[]]
 
@@ -19,6 +20,12 @@ export async function setFeatureAction(key: string, enabled: boolean): Promise<A
   }
 
   const supabase = await createClient()
+  if (enabled && parsed.data === 'subcontractors') {
+    const probe = await supabase.from('subcontractor_companies').select('id').limit(1)
+    if (isMissingTableError(probe.error)) {
+      return { error: 'Apply the subcontractor database migration before turning on Subcontractors.' }
+    }
+  }
   const { error } = await supabase
     .from('organization_features')
     .upsert({ organization_id: session.organizationId, feature_key: parsed.data, enabled }, { onConflict: 'organization_id,feature_key' })
