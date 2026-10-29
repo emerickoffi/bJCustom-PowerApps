@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parsePortfolioStatus, portfolioStatusCounts, rankPortfolio, type PortfolioRow, type PortfolioSignals } from './portfolio.ts'
+import { parsePortfolioStatus, portfolioStatusCounts, portfolioViewAllHref, rankPortfolio, type PortfolioRow, type PortfolioSignals } from './portfolio.ts'
 
 const none: PortfolioSignals = { attention: new Set(), upcoming: new Map() }
 
@@ -76,4 +76,14 @@ test('unknown status values are ignored', () => {
   assert.equal(parsePortfolioStatus('bogus'), null)
   assert.equal(parsePortfolioStatus(undefined), null)
   assert.equal(parsePortfolioStatus('on_hold'), 'on_hold')
+})
+
+test('View All Projects carries the selected portfolio status and starts on page 1', () => {
+  assert.equal(portfolioViewAllHref(null), '/projects')
+  assert.equal(portfolioViewAllHref(parsePortfolioStatus('consultation')), '/projects?status=consultation')
+  assert.equal(portfolioViewAllHref(parsePortfolioStatus('preconstruction')), '/projects?status=preconstruction')
+  assert.equal(portfolioViewAllHref(parsePortfolioStatus('completed')), '/projects?status=completed')
+  assert.equal(portfolioViewAllHref(parsePortfolioStatus('on_hold')), '/projects?status=on_hold')
+  assert.equal(portfolioViewAllHref(parsePortfolioStatus('<script>')), '/projects')
+  assert.ok(!portfolioViewAllHref('completed').includes('page='))
 })

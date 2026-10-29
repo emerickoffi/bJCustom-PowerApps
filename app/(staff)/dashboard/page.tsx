@@ -12,7 +12,13 @@ import { NotificationsCard } from '@/components/walkthroughs/notifications-card'
 import { CompactProjectCard } from '@/components/dashboard/compact-project-card'
 import { ProgressRing } from '@/components/shared/progress'
 import { ACTIVE_PROJECT_STATUSES, PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
-import { parsePortfolioStatus, portfolioStatusCounts, rankPortfolio, type PortfolioRow } from '@/lib/portfolio'
+import {
+  parsePortfolioStatus,
+  portfolioStatusCounts,
+  portfolioViewAllHref,
+  rankPortfolio,
+  type PortfolioRow,
+} from '@/lib/portfolio'
 import { loadPortfolioSignals } from '@/lib/portfolio-data'
 import { PortfolioStatusFilter } from '@/components/dashboard/portfolio-status-filter'
 import { PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
@@ -96,7 +102,7 @@ export default async function DashboardPage({
     ((portfolioData ?? []) as unknown as (ProjectSummary & { completion_date: string | null })[]).map((p) => [p.id, p]),
   )
   const recent = rankedIds.flatMap((id) => byId.get(id) ?? [])
-  const viewAllHref = selectedStatus ? `/projects?status=${selectedStatus}` : '/projects'
+  const viewAllHref = portfolioViewAllHref(selectedStatus)
   const [photos, cardDetails, attention] = await Promise.all([
     getProjectCoverPhotos(recent.map((p) => p.id)),
     getDashboardCardDetails(orgId, recent, features),

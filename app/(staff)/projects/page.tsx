@@ -17,6 +17,7 @@ import {
   resultRange,
   sortOptions,
   totalPages,
+  type SortOrder,
 } from '@/lib/directory'
 import { FolderKanban, Home, Plus, UserRound, FolderKanban as FolderKanbanIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -108,7 +109,7 @@ export default async function ProjectsPage({
     query = query.or(
       `name.ilike.*${q}*,project_number.ilike.*${q}*,address_line1.ilike.*${q}*,city.ilike.*${q}*,state.ilike.*${q}*`,
     )
-  for (const order of PROJECT_SORTS[sort].orders) {
+  for (const order of PROJECT_SORTS[sort].orders as readonly SortOrder[]) {
     query = query.order(order.column, { ascending: order.ascending, nullsFirst: order.nullsFirst })
   }
   const { data, count, error } = await query.range(from, to)
