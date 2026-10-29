@@ -34,7 +34,7 @@ import {
   CONTACT_PORTAL_PERMISSIONS,
   CONTACT_RELATIONSHIP_LABELS,
 } from '@/lib/domain'
-import { formatDateTime } from '@/lib/format'
+import { formatDateTime, formatPhone } from '@/lib/format'
 import { ActionButton, InlineActionForm } from '@/components/shared/inline-action'
 import { SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { SubmitButton } from '@/components/shared/form-message'
@@ -286,7 +286,7 @@ function ContactCard({
             onClick={() => setEditing((v) => !v)}
           >
             <Pencil aria-hidden="true" />
-            {editing ? 'Close' : 'Edit'}
+            {editing ? 'Close' : 'Edit contact'}
           </Button>
         )}
       </div>
@@ -308,7 +308,7 @@ function ContactCard({
             className="inline-flex items-center gap-2 text-foreground underline-offset-4 hover:underline"
           >
             <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="tabular">{phone}</span>
+            <span className="tabular">{formatPhone(phone)}</span>
           </a>
         ))}
         {!c.email && phones.length === 0 && <span className="text-muted-foreground">No contact details</span>}
@@ -318,6 +318,15 @@ function ContactCard({
             accountStatus={accountStatus}
             onManage={canEdit ? () => setEditing(true) : undefined}
           />
+          {canEdit && accountStatus && accountStatus !== 'none' && accountStatus !== 'portal_off' && (
+            <a
+              href="#portal-access"
+              className="mt-2 inline-flex min-h-9 items-center gap-1.5 text-xs font-medium text-primary underline-offset-4 hover:underline"
+            >
+              <ShieldCheck className="size-3.5" aria-hidden="true" />
+              Manage access
+            </a>
+          )}
         </div>
       </div>
 
@@ -375,9 +384,9 @@ export function ContactsPanel({
     return id in accountStatusByContact ? (accountStatusByContact[id] ?? undefined) : 'none'
   }
   const [adding, setAdding] = useState(false)
-  const active = contacts
-    .filter((c) => !c.archived_at)
-    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
+  const active = contacts.filter((c) => !c.archived_at)
+  const primary = active.find((c) => c.is_primary)
+  const secondary = active.filter((c) => c !== primary)
   const archived = contacts.filter((c) => c.archived_at)
   return (
     <div id="contacts" className="scroll-mt-24">
@@ -410,15 +419,32 @@ export function ContactsPanel({
           </InlineActionForm>
         </div>
       )}
-      {active.length ? (
-        <ul className="flex flex-col gap-3">
-          {active.map((c) => (
-            <ContactCard key={c.id} clientId={clientId} contact={c} canEdit={canEdit} accountStatus={statusFor(c.id)} />
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm text-muted-foreground">No contacts yet.</p>
-      )}
+      <div className="flex flex-col gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Primary contact</h3>
+        {primary ? (
+          <ul className="flex flex-col gap-3">
+            <ContactCard clientId={clientId} contact={primary} canEdit={canEdit} accountStatus={statusFor(primary.id)} />
+          </ul>
+        ) : (
+          <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+            {secondary.length
+              ? 'No primary contact is set. Choose Make primary on one of the contacts below.'
+              : 'The primary contact record for this client has not been created yet. The client details above are still used for portal access.'}
+          </p>
+        )}
+      </div>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Secondary contacts</h3>
+        {secondary.length ? (
+          <ul className="flex flex-col gap-3">
+            {secondary.map((c) => (
+              <ContactCard key={c.id} clientId={clientId} contact={c} canEdit={canEdit} accountStatus={statusFor(c.id)} />
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">No secondary contacts yet.</p>
+        )}
+      </div>
       {archived.length > 0 && (
         <details className="border-t pt-4">
           <summary className="cursor-pointer list-none text-sm text-muted-foreground">

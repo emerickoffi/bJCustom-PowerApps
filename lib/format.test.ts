@@ -1,6 +1,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { formatDate, formatDateTime } from './format.ts'
+import { formatDate, formatDateTime, formatPhone } from './format.ts'
+
+test('US phone numbers render consistently; other formats are left as entered', () => {
+  assert.equal(formatPhone('5555551234'), '(555) 555-1234')
+  assert.equal(formatPhone('555.555.1234'), '(555) 555-1234')
+  assert.equal(formatPhone('+1 555 555 1234'), '(555) 555-1234')
+  assert.equal(formatPhone('+44 20 7946 0958'), '+44 20 7946 0958')
+  assert.equal(formatPhone('555-1234 ext 9'), '555-1234 ext 9')
+  assert.equal(formatPhone(null), '')
+})
 
 test('timestamps render in the organization zone, not the runtime zone', () => {
   // 11:06 UTC on Oct 29 2026 is 6:06 AM CDT — the observed "6:06 AM vs 1:06 AM" signing copy.
