@@ -64,7 +64,7 @@ export function ProjectAssignmentsPicker({
       <p role="status" className="flex items-start gap-2 rounded-lg bg-muted px-3 py-2.5 text-sm text-muted-foreground sm:col-span-2">
         <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
         {availability === 'setup-required'
-          ? 'Project assignment storage is not set up in this environment yet. You can still save the company and assign projects later.'
+          ? 'Project assignments need a database update before they can be used. An administrator must apply the subcontractor project assignments migration. You can still save the company now and assign projects afterward.'
           : 'Projects could not be loaded. You can still save the company and assign projects later.'}
       </p>
     )
