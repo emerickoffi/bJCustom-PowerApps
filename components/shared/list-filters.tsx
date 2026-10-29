@@ -11,6 +11,7 @@ export function ListFilters({
   statusOptions,
   location,
   clearHref,
+  preserve,
 }: {
   searchPlaceholder: string
   defaultQuery: string
@@ -18,9 +19,14 @@ export function ListFilters({
   statusOptions: { value: string; label: string }[]
   location?: { options: LocationOption[]; defaultState: string; defaultCity: string }
   clearHref?: string
+  /** Non-filter URL state (e.g. sort, view) carried through Apply; page is intentionally dropped. */
+  preserve?: Record<string, string | null | undefined>
 }) {
   return (
     <form role="search" className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      {Object.entries(preserve ?? {}).map(([name, value]) =>
+        value ? <input key={name} type="hidden" name={name} value={value} /> : null,
+      )}
       <SearchInput
         key={defaultQuery}
         id="q"

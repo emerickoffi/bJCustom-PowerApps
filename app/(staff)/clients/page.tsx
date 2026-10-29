@@ -1,42 +1,59 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { Plus, Users, Users as UsersIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { ListFilters } from '@/components/shared/list-filters'
+import { DirectoryViews } from '@/components/shared/directory-views'
+import { DirectorySort } from '@/components/shared/directory-sort'
+import { DirectoryPagination } from '@/components/shared/directory-pagination'
 import { ClientCard, type DirectoryContact } from '@/components/clients/client-card'
+import { ClientTable } from '@/components/clients/client-table'
 import type { ClientProject } from '@/components/clients/client-projects-disclosure'
 import { CLIENT_STATUS_LABELS, type ClientStatus } from '@/lib/domain'
 import { sanitizeSearch } from '@/lib/format'
 import type { ClientSummary } from '@/lib/queries'
+import {
+  CLIENT_SORTS,
+  DIRECTORY_VIEW_COOKIE,
+  directoryHref,
+  pageBounds,
+  parsePage,
+  parseSort,
+  parseView,
+  resultRange,
+  sortOptions,
+  totalPages,
+} from '@/lib/directory'
 
 export const metadata: Metadata = { title: 'Clients' }
 
 const CLIENT_STATUSES = Object.keys(CLIENT_STATUS_LABELS) as ClientStatus[]
+const CLIENT_COLUMNS =
+  'id, client_number, first_name, last_name, company_name, email, phone, city, state, status, portal_user_id, created_at'
 
 export default async function ClientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>
+  searchParams: Promise<{ q?: string; status?: string; sort?: string; page?: string; view?: string }>
 }) {
   const session = await requireStaff()
   const params = await searchParams
   const q = sanitizeSearch(params.q)
   const status = CLIENT_STATUSES.includes(params.status as ClientStatus) ? (params.status as ClientStatus) : null
+  const sort = parseSort(params.sort, CLIENT_SORTS, 'name_asc')
+  const page = parsePage(params.page)
+  const urlView = parseView(params.view)
+  const initialView = urlView ?? parseView((await cookies()).get(DIRECTORY_VIEW_COOKIE.clients)?.value)
+  const stateParams = { q, status, sort: sort === 'name_asc' ? null : sort, view: urlView }
+  const hrefFor = (p: number) => directoryHref('/clients', { ...stateParams, page: p })
 
   const supabase = await createClient()
-  let query = supabase
-    .from('clients')
-    .select(
-      'id, client_number, first_name, last_name, company_name, email, phone, city, state, status, portal_user_id, created_at',
-    )
-    .eq('organization_id', session.organizationId)
-    .order('last_name')
-    .limit(300)
-  if (status) query = query.eq('status', status)
-  else query = query.neq('status', 'archived')
+  let contactClientIds: string[] = []
   if (q) {
     const { data: contactMatches } = await supabase
       .from('client_contacts')
@@ -45,7 +62,17 @@ export default async function ClientsPage({
       .is('archived_at', null)
       .or(`first_name.ilike.*${q}*,last_name.ilike.*${q}*,email.ilike.*${q}*,phone.ilike.*${q}*`)
       .limit(300)
-    const contactClientIds = [...new Set((contactMatches ?? []).map((c) => c.client_id as string))]
+    contactClientIds = [...new Set((contactMatches ?? []).map((c) => c.client_id as string))]
+  }
+
+  const { from, to } = pageBounds(page)
+  let query = supabase
+    .from('clients')
+    .select(CLIENT_COLUMNS, { count: 'exact' })
+    .eq('organization_id', session.organizationId)
+  if (status) query = query.eq('status', status)
+  else query = query.neq('status', 'archived')
+  if (q) {
     query = query.or(
       [
         `first_name.ilike.*${q}*`,
@@ -57,7 +84,14 @@ export default async function ClientsPage({
       ].join(','),
     )
   }
-  const { data } = await query
+  for (const order of CLIENT_SORTS[sort].orders) {
+    query = query.order(order.column, { ascending: order.ascending })
+  }
+  const { data, count, error } = await query.range(from, to)
+  const total = count ?? 0
+  const pageCount = totalPages(total)
+  if (page > 1 && (error || page > pageCount)) redirect(hrefFor(Math.min(page, pageCount)))
+
   const clients = (data ?? []) as ClientSummary[]
   const manager = canManage(session.role)
   const filtered = Boolean(q || status)
@@ -127,6 +161,19 @@ export default async function ClientsPage({
     addProject(link.client_id, link.project_id)
   }
 
+  const rows = clients.map((client) => {
+    const contacts = contactsByClient.get(client.id) ?? []
+    return {
+      client,
+      primary: contacts.find((c) => c.is_primary) ?? null,
+      secondary: contacts.find((c) => !c.is_primary) ?? null,
+      projects: [...(projectsByClient.get(client.id) ?? [])]
+        .map((id) => projectById.get(id) as ClientProject)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    }
+  })
+  const range = resultRange(page, clients.length, total)
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={UsersIcon}
@@ -146,31 +193,45 @@ export default async function ClientsPage({
         defaultQuery={q}
         defaultStatus={status ?? ''}
         statusOptions={CLIENT_STATUSES.map((s) => ({ value: s, label: CLIENT_STATUS_LABELS[s] }))}
+        clearHref={filtered ? directoryHref('/clients', { sort: stateParams.sort, view: urlView }) : undefined}
+        preserve={{ sort: stateParams.sort, view: urlView }}
       />
       {clients.length ? (
-        <ul className="grid gap-4 2xl:grid-cols-2" aria-label={`${clients.length} clients`}>
-          {clients.map((client) => {
-            const contacts = contactsByClient.get(client.id) ?? []
-            const primary = contacts.find((c) => c.is_primary) ?? null
-            const secondary = contacts.find((c) => !c.is_primary) ?? null
-            return (
-              <li key={client.id} className="flex">
-                <div className="flex w-full flex-col [&>article]:flex-1">
-                  <ClientCard
-                    client={client}
-                    primary={primary}
-                    secondary={secondary}
-                    projects={[...(projectsByClient.get(client.id) ?? [])]
-                      .map((id) => projectById.get(id) as ClientProject)
-                      .sort((a, b) => a.name.localeCompare(b.name))}
-                    projectsFailed={projectsFailed}
-                    canManageContacts={manager}
-                  />
-                </div>
-              </li>
-            )
-          })}
-        </ul>
+        <div className="flex flex-col gap-4">
+          <DirectoryViews
+            module="clients"
+            initialView={initialView}
+            desktopDefault="table"
+            summary={`Showing ${range.start}–${range.end} of ${total} ${total === 1 ? 'client' : 'clients'}`}
+            controls={<DirectorySort value={sort} options={sortOptions(CLIENT_SORTS)} />}
+            cards={
+              <ul className="grid gap-4 2xl:grid-cols-2" aria-label={`${clients.length} clients`}>
+                {rows.map((row) => (
+                  <li key={row.client.id} className="flex">
+                    <div className="flex w-full flex-col [&>article]:flex-1">
+                      <ClientCard
+                        client={row.client}
+                        primary={row.primary}
+                        secondary={row.secondary}
+                        projects={row.projects}
+                        projectsFailed={projectsFailed}
+                        canManageContacts={manager}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            }
+            table={
+              <ClientTable
+                rows={rows.map((row) => ({ client: row.client, primary: row.primary, projectCount: row.projects.length }))}
+                projectsFailed={projectsFailed}
+                canManageContacts={manager}
+              />
+            }
+          />
+          <DirectoryPagination page={page} pageCount={pageCount} hrefFor={hrefFor} label="Clients pagination" />
+        </div>
       ) : (
         <EmptyState
           icon={Users}
@@ -183,11 +244,16 @@ export default async function ClientsPage({
                 : 'Clients on projects you are assigned to will appear here.'
           }
           action={
-            manager &&
-            !filtered && (
-              <Button render={<Link href="/clients/new" />} nativeButton={false}>
-                Add client
+            filtered ? (
+              <Button variant="outline" render={<Link href="/clients" />} nativeButton={false}>
+                Clear filters
               </Button>
+            ) : (
+              manager && (
+                <Button render={<Link href="/clients/new" />} nativeButton={false}>
+                  Add client
+                </Button>
+              )
             )
           }
         />

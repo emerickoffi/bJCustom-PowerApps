@@ -1,5 +1,23 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { DirectoryViews } from '@/components/shared/directory-views'
+import { DirectorySort } from '@/components/shared/directory-sort'
+import { DirectoryPagination } from '@/components/shared/directory-pagination'
+import { ProjectTable } from '@/components/projects/project-table'
+import {
+  DIRECTORY_VIEW_COOKIE,
+  PROJECT_SORTS,
+  directoryHref,
+  pageBounds,
+  parsePage,
+  parseSort,
+  parseView,
+  resultRange,
+  sortOptions,
+  totalPages,
+} from '@/lib/directory'
 import { FolderKanban, Home, Plus, UserRound, FolderKanban as FolderKanbanIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
@@ -20,7 +38,15 @@ export const metadata: Metadata = { title: 'Projects' }
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; state?: string; city?: string }>
+  searchParams: Promise<{
+    q?: string
+    status?: string
+    state?: string
+    city?: string
+    sort?: string
+    page?: string
+    view?: string
+  }>
 }) {
   const session = await requireStaff()
   const params = await searchParams
@@ -28,6 +54,10 @@ export default async function ProjectsPage({
   const status = ALL_PROJECT_STATUSES.includes(params.status as ProjectStatus)
     ? (params.status as ProjectStatus)
     : null
+  const sort = parseSort(params.sort, PROJECT_SORTS, 'updated')
+  const page = parsePage(params.page)
+  const urlView = parseView(params.view)
+  const initialView = urlView ?? parseView((await cookies()).get(DIRECTORY_VIEW_COOKIE.projects)?.value)
 
   const supabase = await createClient()
   const { data: locationRows } = await supabase
@@ -55,13 +85,22 @@ export default async function ProjectsPage({
     )?.city ?? ''
   const escapeLike = (value: string) => value.replace(/[\\%_]/g, '\\$&')
 
+  const stateParams = {
+    q,
+    status,
+    state: stateFilter || null,
+    city: cityFilter || null,
+    sort: sort === 'updated' ? null : sort,
+    view: urlView,
+  }
+  const hrefFor = (p: number) => directoryHref('/projects', { ...stateParams, page: p })
+
+  const { from, to } = pageBounds(page)
   let query = supabase
     .from('projects')
-    .select(`${PROJECT_SUMMARY_COLUMNS}, completion_date`)
+    .select(`${PROJECT_SUMMARY_COLUMNS}, completion_date`, { count: 'exact' })
     .eq('organization_id', session.organizationId)
     .is('archived_at', null)
-    .order('updated_at', { ascending: false })
-    .limit(200)
   if (status) query = query.eq('status', status)
   if (stateFilter) query = query.ilike('state', escapeLike(stateFilter))
   if (cityFilter) query = query.ilike('city', escapeLike(cityFilter))
@@ -69,8 +108,17 @@ export default async function ProjectsPage({
     query = query.or(
       `name.ilike.*${q}*,project_number.ilike.*${q}*,address_line1.ilike.*${q}*,city.ilike.*${q}*,state.ilike.*${q}*`,
     )
-  const { data } = await query
-  const projects = (data ?? []) as unknown as (ProjectSummary & { completion_date: string | null })[]
+  for (const order of PROJECT_SORTS[sort].orders) {
+    query = query.order(order.column, { ascending: order.ascending, nullsFirst: order.nullsFirst })
+  }
+  const { data, count, error } = await query.range(from, to)
+  const total = count ?? 0
+  const pageCount = totalPages(total)
+  if (page > 1 && (error || page > pageCount)) redirect(hrefFor(Math.min(page, pageCount)))
+  const projects = (data ?? []) as unknown as (ProjectSummary & {
+    completion_date: string | null
+    target_completion_date?: string | null
+  })[]
   const features = await getOrgFeatures(session.organizationId)
   const [managerNames, photos, cardDetails] = await Promise.all([
     getProfileNames(projects.map((p) => p.project_manager_id)),
@@ -79,6 +127,17 @@ export default async function ProjectsPage({
   ])
   const manager = canManage(session.role)
   const filtered = Boolean(q || status || stateFilter || cityFilter)
+  const range = resultRange(page, projects.length, total)
+  const rows = projects.map((p) => ({
+    ...p,
+    completion_date: p.completion_date ?? null,
+    target_completion_date: p.target_completion_date ?? null,
+    photoUrl: photos.get(p.id)?.url ?? null,
+    photoKind: photos.get(p.id)?.kind ?? null,
+    details: cardDetails.get(p.id)!,
+    warrantyEnabled: features.warranty,
+    managerName: p.project_manager_id ? (managerNames.get(p.project_manager_id) ?? null) : null,
+  }))
 
   return (
     <div className="flex flex-col gap-8">
@@ -100,26 +159,30 @@ export default async function ProjectsPage({
         defaultStatus={status ?? ''}
         statusOptions={ALL_PROJECT_STATUSES.map((s) => ({ value: s, label: PROJECT_STATUS_LABELS[s] }))}
         location={{ options: locations, defaultState: stateFilter, defaultCity: cityFilter }}
-        clearHref={filtered ? '/projects' : undefined}
+        clearHref={filtered ? directoryHref('/projects', { sort: stateParams.sort, view: urlView }) : undefined}
+        preserve={{ sort: stateParams.sort, view: urlView }}
       />
       {projects.length ? (
+        <div className="flex flex-col gap-4">
+        <DirectoryViews
+          module="projects"
+          initialView={initialView}
+          desktopDefault="cards"
+          summary={`Showing ${range.start}–${range.end} of ${total} ${total === 1 ? 'project' : 'projects'}`}
+          controls={<DirectorySort value={sort} options={sortOptions(PROJECT_SORTS)} />}
+          table={<ProjectTable rows={rows} />}
+          cards={
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {projects.map((p) => {
+          {rows.map((row) => {
+            const p = row
             const clientName = p.primary_client
               ? `${p.primary_client.first_name} ${p.primary_client.last_name}`
               : null
-            const managerName = p.project_manager_id ? (managerNames.get(p.project_manager_id) ?? null) : null
+            const managerName = row.managerName
             return (
               <CompactProjectCard
                 key={p.id}
-                project={{
-                  ...p,
-                  completion_date: p.completion_date ?? null,
-                  photoUrl: photos.get(p.id)?.url ?? null,
-                  photoKind: photos.get(p.id)?.kind ?? null,
-                  details: cardDetails.get(p.id)!,
-                  warrantyEnabled: features.warranty,
-                }}
+                project={row}
                 footer={
                   <dl className="grid grid-cols-2 gap-4 border-t pt-3">
                     <div className="flex min-w-0 flex-col gap-0.5">
@@ -151,6 +214,10 @@ export default async function ProjectsPage({
               />
             )
           })}
+        </div>
+          }
+        />
+          <DirectoryPagination page={page} pageCount={pageCount} hrefFor={hrefFor} label="Projects pagination" />
         </div>
       ) : (
         <EmptyState

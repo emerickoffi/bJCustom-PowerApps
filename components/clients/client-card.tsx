@@ -20,7 +20,7 @@ export type DirectoryContact = {
   is_primary: boolean
 }
 
-function fullName(c: { first_name: string; middle_name?: string | null; last_name: string }) {
+export function fullName(c: { first_name: string; middle_name?: string | null; last_name: string }) {
   return [c.first_name, c.middle_name, c.last_name].filter(Boolean).join(' ')
 }
 
@@ -58,7 +58,7 @@ function relationshipLabel(relationship: string | null | undefined) {
   return CONTACT_RELATIONSHIP_LABELS[relationship] ?? 'Relationship not specified'
 }
 
-function preferenceLabel(method: string | null | undefined) {
+export function preferenceLabel(method: string | null | undefined) {
   if (!method) return null
   const label = (COMMUNICATION_LABELS as Record<string, string>)[method]
   if (!label) return null
