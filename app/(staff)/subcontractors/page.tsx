@@ -19,6 +19,7 @@ import {
   type SubcontractorCompany,
   type SubcontractorStatus,
 } from '@/lib/subcontractors'
+import { groupAssignedProjects } from '@/lib/subcontractor-projects'
 
 export const metadata: Metadata = { title: 'Subcontractors' }
 
@@ -27,7 +28,7 @@ const LIMIT = 500
 export default async function SubcontractorsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; added?: string }>
+  searchParams: Promise<{ q?: string; status?: string; added?: string; projects?: string }>
 }) {
   const session = await requireManager()
   const features = await requireFeature(session.organizationId, 'subcontractors')
@@ -48,8 +49,20 @@ export default async function SubcontractorsPage({
     .limit(LIMIT)
   if (status) query = query.eq('status', status)
   if (q) query = query.or(`company_name.ilike.*${q}*,trade.ilike.*${q}*,email.ilike.*${q}*,phone.ilike.*${q}*`)
-  const [{ data, error }, work] = await Promise.all([query, loadDirectoryWork(supabase, session.organizationId, features)])
+  const [{ data, error }, work, assignmentsRes] = await Promise.all([
+    query,
+    loadDirectoryWork(supabase, session.organizationId, features),
+    supabase
+      .from('subcontractor_project_assignments')
+      .select('subcontractor_company_id, project:projects(id, name, project_number)')
+      .eq('organization_id', session.organizationId)
+      .limit(5000),
+  ])
   const rows = (data ?? []) as SubcontractorCompany[]
+  const projectsByCompany = assignmentsRes.error
+    ? null
+    : groupAssignedProjects((assignmentsRes.data ?? []) as unknown as Parameters<typeof groupAssignedProjects>[0])
+  const addedProjects = Number.parseInt(params.projects ?? '', 10)
 
   const addButton = (
     <Button size="lg" render={<Link href="/subcontractors/new" />} nativeButton={false}>
@@ -70,7 +83,8 @@ export default async function SubcontractorsPage({
       {added && !error && (
         <p role="status" className="flex items-start gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          {added} was added to your subcontractors.
+          {added} was added to your subcontractors
+          {addedProjects > 0 ? ` and assigned to ${addedProjects} ${addedProjects === 1 ? 'project' : 'projects'}.` : '.'}
         </p>
       )}
 
@@ -104,7 +118,7 @@ export default async function SubcontractorsPage({
                   ? `Showing the first ${LIMIT} subcontractors. Narrow your search to find others.`
                   : `${rows.length} ${rows.length === 1 ? 'subcontractor' : 'subcontractors'}`}
               </p>
-              <SubcontractorTable rows={rows} />
+              <SubcontractorTable rows={rows} projectsByCompany={projectsByCompany} />
             </div>
           ) : null}
           {work.availability !== 'off' && <AssignedWorkCard availability={work.availability} items={work.items} />}
