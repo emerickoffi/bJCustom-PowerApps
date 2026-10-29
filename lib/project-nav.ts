@@ -1,6 +1,6 @@
 import type { FeatureMap } from '@/lib/feature-registry'
 
-export type ProjectNavKey = 'overview' | 'schedule' | 'estimates' | 'documents' | 'team' | 'walkthroughs' | 'warranty'
+export type ProjectNavKey = 'overview' | 'schedule' | 'estimates' | 'change_orders' | 'documents' | 'team' | 'walkthroughs' | 'warranty'
 
 export type ProjectNavItem = {
   key: ProjectNavKey
@@ -11,9 +11,12 @@ export type ProjectNavItem = {
 }
 
 export type ProjectNavAccess = {
-  features: Pick<FeatureMap, 'schedule' | 'estimates' | 'documents' | 'walkthroughs' | 'warranty'>
+  features: Pick<FeatureMap, 'schedule' | 'estimates' | 'documents' | 'walkthroughs' | 'warranty'> &
+    Partial<Pick<FeatureMap, 'change_orders'>>
   projectStatus: string
   canViewInternal: boolean
+  // Administrators and project managers only; change orders carry internal costs.
+  canViewFinancials?: boolean
 }
 
 // Anchors on the overview page; these must match the ids rendered by the overview panels.
@@ -53,6 +56,12 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
       href: `/estimates?project=${encodeURIComponent(projectId)}`,
       activePrefix: null,
     },
+    Boolean(features.change_orders && access.canViewFinancials && access.canViewInternal) && {
+        key: 'change_orders',
+        label: 'Change orders',
+        href: `${base}/change-orders`,
+        activePrefix: `${base}/change-orders`,
+      },
     features.documents &&
       access.canViewInternal && {
         key: 'documents',

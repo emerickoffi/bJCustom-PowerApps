@@ -35,6 +35,7 @@ export default async function ProjectLayout({
     features,
     projectStatus: project.status,
     canViewInternal: Boolean(canViewInternal),
+    canViewFinancials: canManage(session.role),
   })
 
   // Each action mirrors the guard on its destination page, so only workflows the user can complete are offered.
