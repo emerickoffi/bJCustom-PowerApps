@@ -12,6 +12,7 @@ import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { ListFilters } from '@/components/shared/list-filters'
 import { ALL_PROJECT_STATUSES, PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { sanitizeSearch } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { PROJECT_SUMMARY_COLUMNS, getProfileNames, type ProjectSummary } from '@/lib/queries'
 
 export const metadata: Metadata = { title: 'Projects' }
@@ -120,16 +121,30 @@ export default async function ProjectsPage({
                   warrantyEnabled: features.warranty,
                 }}
                 footer={
-                  <dl className="grid grid-cols-2 gap-3 border-t pt-3 text-xs">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <Home className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                      <dt className="sr-only">Homeowner</dt>
-                      <dd className="truncate text-foreground">{clientName ?? 'No homeowner'}</dd>
+                  <dl className="grid grid-cols-2 gap-4 border-t pt-3">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <dt className="flex items-center gap-1 text-[0.68rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        <Home className="size-3 shrink-0" aria-hidden="true" />
+                        Homeowner
+                      </dt>
+                      <dd
+                        className={cn('truncate text-sm', clientName ? 'font-medium text-foreground' : 'text-muted-foreground')}
+                        title={clientName ?? undefined}
+                      >
+                        {clientName ?? 'Not linked'}
+                      </dd>
                     </div>
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <UserRound className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                      <dt className="sr-only">Project manager</dt>
-                      <dd className="truncate text-foreground">{managerName ?? 'Unassigned'}</dd>
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <dt className="flex items-center gap-1 text-[0.68rem] font-medium uppercase tracking-wide text-muted-foreground">
+                        <UserRound className="size-3 shrink-0" aria-hidden="true" />
+                        Project manager
+                      </dt>
+                      <dd
+                        className={cn('truncate text-sm', managerName ? 'font-medium text-foreground' : 'text-muted-foreground')}
+                        title={managerName ?? undefined}
+                      >
+                        {managerName ?? 'Unassigned'}
+                      </dd>
                     </div>
                   </dl>
                 }

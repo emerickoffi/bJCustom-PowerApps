@@ -10,6 +10,9 @@ export type WarrantySummary = { stage: string; milestoneLabel: string | null; mi
 export type DashboardCardDetails = {
   /** True only when the project has real schedule activities, so progress_percent is meaningful. */
   hasSchedule: boolean
+  /** Activities exist but none has a planned date or has moved past "not started". */
+  scheduleNotStarted: boolean
+  activityCount: number
   nextActivity: NextActivity | null
   behindSchedule: boolean
   holdReason: string | null
@@ -26,6 +29,8 @@ type ActivityRow = {
 
 const EMPTY: DashboardCardDetails = {
   hasSchedule: false,
+  scheduleNotStarted: false,
+  activityCount: 0,
   nextActivity: null,
   behindSchedule: false,
   holdReason: null,
@@ -85,6 +90,8 @@ export async function getDashboardCardDetails(
     const details = result.get(projectId)
     if (!details) continue
     details.hasSchedule = true
+    details.activityCount = list.length
+    details.scheduleNotStarted = list.every((a) => !a.planned_end && a.status === 'not_started')
     const open = list
       .filter((a) => a.status !== 'completed' && a.status !== 'skipped')
       .sort((a, b) => {
