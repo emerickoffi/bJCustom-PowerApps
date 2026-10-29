@@ -94,6 +94,19 @@ export const requireDailyLogProject = cache(async (projectId: string): Promise<{
   return { session, project: project as DailyLogProject }
 })
 
+/** Projects the signed-in staff member can see (RLS-scoped, same rule as can_view_project_internal). */
+export const getDailyLogProjectOptions = cache(async (organizationId: string): Promise<DailyLogProject[]> => {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('projects')
+    .select('id, name, project_number, archived_at')
+    .eq('organization_id', organizationId)
+    .order('name')
+    .limit(500)
+  if (error) return []
+  return (data ?? []) as DailyLogProject[]
+})
+
 export const getOrgToday = cache(async (organizationId: string) => {
   const supabase = await createClient()
   const { data } = await supabase.from('organization_settings').select('timezone').eq('organization_id', organizationId).maybeSingle()
