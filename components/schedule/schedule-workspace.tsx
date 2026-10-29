@@ -21,6 +21,7 @@ export function ScheduleWorkspace({
   assignmentAvailability = 'off',
   assignments = [],
   companies = [],
+  acceptsNewAssignments = false,
 }: {
   projectId: string
   activities: ScheduleActivity[]
@@ -31,10 +32,16 @@ export function ScheduleWorkspace({
   assignmentAvailability?: AssignmentAvailability
   assignments?: ActivityAssignment[]
   companies?: CompanyOption[]
+  acceptsNewAssignments?: boolean
 }) {
   const assignmentProps = useMemo(
-    () => ({ availability: assignmentAvailability, byActivity: groupByActivity(assignments), companies }),
-    [assignmentAvailability, assignments, companies],
+    () => ({
+      availability: assignmentAvailability,
+      byActivity: groupByActivity(assignments),
+      companies,
+      acceptsNew: acceptsNewAssignments,
+    }),
+    [assignmentAvailability, assignments, companies, acceptsNewAssignments],
   )
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)

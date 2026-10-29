@@ -79,6 +79,16 @@ export const ACTIVE_PROJECT_STATUSES: ProjectStatus[] = [
   'substantially_complete',
 ]
 
+/**
+ * Stages where new subcontractor construction work may be assigned: preconstruction, construction, and closeout.
+ * Mirrors public.project_accepts_new_assignments in the database. Existing assignments on other stages are kept.
+ */
+export const ASSIGNABLE_PROJECT_STATUSES: readonly ProjectStatus[] = ACTIVE_PROJECT_STATUSES
+
+export function projectAcceptsNewAssignments(status: string | null | undefined): boolean {
+  return ASSIGNABLE_PROJECT_STATUSES.includes(status as ProjectStatus)
+}
+
 export const PROJECT_TYPE_LABELS: Record<string, string> = {
   new_custom_home: 'New Custom Home',
   renovation: 'Renovation',

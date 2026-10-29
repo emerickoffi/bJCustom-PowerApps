@@ -8,6 +8,7 @@ import { getOrgFeatures } from '@/lib/features'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { assignSchema, revokeSchema } from '@/lib/assignments'
 import { isMissingTableError } from '@/lib/subcontractors'
+import { projectAcceptsNewAssignments } from '@/lib/domain'
 
 const idSchema = z.uuid()
 
@@ -23,6 +24,25 @@ async function authorize(): Promise<{ error: string } | { organizationId: string
     return { error: 'Subcontractor assignments require the Schedule and Subcontractors features.' }
   }
   return { organizationId: session.organizationId }
+}
+
+const INELIGIBLE_PROJECT =
+  'New subcontractor work can only be assigned while a project is in preconstruction, construction, or closeout.'
+
+/** Loads the project through RLS, so projects the viewer cannot access are treated as not found. */
+async function checkProjectEligibility(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  projectId: string,
+): Promise<string | null> {
+  const { data: project } = await supabase
+    .from('projects')
+    .select('status')
+    .eq('id', projectId)
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+  if (!project) return 'This project could not be found.'
+  return projectAcceptsNewAssignments(project.status) ? null : INELIGIBLE_PROJECT
 }
 
 function dbError(error: { code?: string; message?: string }): string {
@@ -54,6 +74,9 @@ export async function assignSubcontractorAction(
   if (!parsed.success) return { ...fromZodError(parsed.error), values }
 
   const supabase = await createClient()
+  const ineligible = await checkProjectEligibility(supabase, auth.organizationId, projectId)
+  if (ineligible) return { error: ineligible, values }
+
   const { data: activity } = await supabase
     .from('schedule_activities')
     .select('id')
@@ -93,6 +116,9 @@ export async function reassignSubcontractorAction(
   if (!parsed.success) return { ...fromZodError(parsed.error), values }
 
   const supabase = await createClient()
+  const ineligible = await checkProjectEligibility(supabase, auth.organizationId, projectId)
+  if (ineligible) return { error: ineligible, values }
+
   const { error } = await supabase.rpc('reassign_schedule_assignment', {
     p_id: assignmentId,
     p_company: parsed.data.subcontractor_company_id,
