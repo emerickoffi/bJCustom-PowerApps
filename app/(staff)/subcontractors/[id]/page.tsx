@@ -7,11 +7,11 @@ import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/format'
-import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
+import { PROJECT_STATUS_LABELS, projectAcceptsNewAssignments, type ProjectStatus } from '@/lib/domain'
 import { SUBCONTRACTOR_STATUS_LABELS } from '@/lib/subcontractors'
-import { isUuid } from '@/lib/subcontractor-projects'
+import { isUuid, splitProjectAssignments, type ProjectAssignmentRecord } from '@/lib/subcontractor-projects'
 import { companyInitials, projectCountLabel } from '@/lib/subcontractor-directory'
-import { loadAssociatedProjects, loadSubcontractor } from '@/lib/subcontractor-detail-data'
+import { loadProjectAssignments, loadSubcontractor } from '@/lib/subcontractor-detail-data'
 import { DetailList, PageHeader, SectionHeading, Surface } from '@/components/shared/page-header'
 import { SubcontractorStatusButton } from '@/components/subcontractors/subcontractor-status-dialog'
 
@@ -33,7 +33,8 @@ export default async function SubcontractorDetailPage({
   const supabase = await createClient()
   const company = await loadSubcontractor(supabase, session.organizationId, id)
   if (!company) notFound()
-  const { availability, projects } = await loadAssociatedProjects(supabase, session.organizationId, id)
+  const { availability, records } = await loadProjectAssignments(supabase, session.organizationId, id)
+  const { current, history } = splitProjectAssignments(records, projectAcceptsNewAssignments)
   const addedProjects = Number.parseInt(sp.projects ?? '', 10)
 
   return (
@@ -104,42 +105,69 @@ export default async function SubcontractorDetailPage({
       <Surface aria-labelledby="projects-heading">
         <SectionHeading
           id="projects-heading"
-          title="Projects"
+          title="Current Projects"
           description={
             availability === 'ready'
-              ? `${projectCountLabel(projects.length)}. Project association is separate from schedule activity assignments.`
+              ? `${projectCountLabel(current.length)}. Project assignment is separate from schedule activity assignments.`
               : undefined
           }
         />
         {availability === 'setup-required' ? (
           <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-            Project associations are not set up in this environment yet. Company details are unaffected.
+            Project assignments are not set up in this environment yet. Company details are unaffected.
           </p>
         ) : availability === 'error' ? (
           <p className="text-sm text-muted-foreground">Projects could not be loaded. Refresh the page to try again.</p>
-        ) : projects.length === 0 ? (
-          <p className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">Not associated with any project yet.</p>
+        ) : current.length === 0 ? (
+          <p className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">Not assigned to any current project.</p>
         ) : (
-          <ul className="flex flex-col divide-y rounded-lg border">
-            {projects.map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <Link
-                  href={`/projects/${p.id}`}
-                  className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
-                >
-                  <FolderKanban className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  <span className="truncate">
-                    <span className="text-muted-foreground">{p.project_number}</span> {p.name}
-                  </span>
-                </Link>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {PROJECT_STATUS_LABELS[p.status as ProjectStatus] ?? p.status}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <AssignmentList records={current} />
         )}
       </Surface>
+
+      {availability === 'ready' && (
+        <Surface aria-labelledby="history-heading">
+          <SectionHeading
+            id="history-heading"
+            title="Project History"
+            description="Ended assignments and completed projects, kept for reference."
+          />
+          {history.length === 0 ? (
+            <p className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">No previous assignments yet.</p>
+          ) : (
+            <AssignmentList records={history} />
+          )}
+        </Surface>
+      )}
     </div>
+  )
+}
+
+function AssignmentList({ records }: { records: ProjectAssignmentRecord[] }) {
+  return (
+    <ul className="flex flex-col divide-y rounded-lg border">
+      {records.map((r) => (
+        <li key={r.assignment_id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3">
+          <Link
+            href={`/projects/${r.project.id}`}
+            className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+          >
+            <FolderKanban className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="truncate">
+              <span className="text-muted-foreground">{r.project.project_number}</span> {r.project.name}
+            </span>
+          </Link>
+          <span className="flex shrink-0 flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
+            <span>{PROJECT_STATUS_LABELS[r.project.status as ProjectStatus] ?? r.project.status}</span>
+            <span>
+              {r.ended_at
+                ? `${formatDate(r.associated_at)} – ${formatDate(r.ended_at)}`
+                : `Since ${formatDate(r.associated_at)}`}
+              {r.end_reason ? ` · ${r.end_reason}` : ''}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ul>
   )
 }

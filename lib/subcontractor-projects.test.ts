@@ -7,6 +7,9 @@ import {
   newProjectIds,
   parseProjectIds,
   MAX_PROJECT_ASSIGNMENTS,
+  isAssignmentSetupError,
+  parseEndReason,
+  splitProjectAssignments,
 } from './subcontractor-projects.ts'
 
 const A = '11111111-1111-4111-8111-111111111111'
@@ -84,4 +87,50 @@ test('isUuid accepts UUIDs and rejects route garbage', () => {
   assert.equal(isUuid('new'), false)
   assert.equal(isUuid("1' or 1=1"), false)
   assert.equal(isUuid(undefined), false)
+})
+
+const record = (id: string, status: string, ended_at: string | null, number = id) => ({
+  assignment_id: `a-${id}`,
+  project: { id, name: `Project ${id}`, project_number: number, status },
+  associated_at: '2026-10-01T00:00:00Z',
+  ended_at,
+  end_reason: null,
+})
+
+test('active associations on assignable projects are current; ended and completed ones are history', () => {
+  const { current, history } = splitProjectAssignments(
+    [
+      record('p2', 'under_construction', null, 'BJ-2'),
+      record('p1', 'preconstruction', null, 'BJ-10'),
+      record('p3', 'completed', null),
+      record('p4', 'under_construction', '2026-10-20T00:00:00Z'),
+      record('p5', 'cancelled', '2026-10-25T00:00:00Z'),
+    ],
+    eligible,
+  )
+  assert.deepEqual(current.map((r) => r.project.id), ['p2', 'p1'])
+  assert.deepEqual(history.map((r) => r.project.id), ['p5', 'p4', 'p3'])
+})
+
+test('a project can be current and in history when it was ended and assigned again', () => {
+  const { current, history } = splitProjectAssignments(
+    [record('p1', 'under_construction', '2026-10-05T00:00:00Z'), record('p1', 'under_construction', null)],
+    eligible,
+  )
+  assert.equal(current.length, 1)
+  assert.equal(history.length, 1)
+})
+
+test('end reasons are optional, trimmed, and length-limited', () => {
+  assert.deepEqual(parseEndReason(undefined), { ok: true, reason: null })
+  assert.deepEqual(parseEndReason('   '), { ok: true, reason: null })
+  assert.deepEqual(parseEndReason(' Scope complete '), { ok: true, reason: 'Scope complete' })
+  assert.equal(parseEndReason('x'.repeat(501)).ok, false)
+  assert.equal(parseEndReason(42).ok, false)
+})
+
+test('missing table, column, or function errors mean setup is required', () => {
+  for (const code of ['PGRST205', '42P01', '42703', 'PGRST204', 'PGRST202']) assert.equal(isAssignmentSetupError({ code }), true)
+  assert.equal(isAssignmentSetupError({ code: '42501' }), false)
+  assert.equal(isAssignmentSetupError(null), false)
 })

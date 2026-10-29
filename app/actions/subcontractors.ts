@@ -8,7 +8,14 @@ import { getOrgFeatures } from '@/lib/features'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { isMissingTableError, subcontractorSchema } from '@/lib/subcontractors'
 import { projectAcceptsNewAssignments } from '@/lib/domain'
-import { checkSelectedProjects, isUuid, newProjectIds, parseProjectIds } from '@/lib/subcontractor-projects'
+import {
+  checkSelectedProjects,
+  isAssignmentSetupError,
+  isUuid,
+  newProjectIds,
+  parseEndReason,
+  parseProjectIds,
+} from '@/lib/subcontractor-projects'
 import type { StaffSession } from '@/lib/session'
 
 /** PostgREST code for "function not found", meaning the project assignments migration has not been applied. */
@@ -155,8 +162,9 @@ export async function updateSubcontractorAction(
       .select('project_id')
       .eq('organization_id', session.organizationId)
       .eq('subcontractor_company_id', companyId)
+      .is('ended_at', null)
     if (existingError) {
-      return isMissingTableError(existingError)
+      return isAssignmentSetupError(existingError)
         ? {
             error: 'Project assignment storage is not set up yet, so nothing was saved. Remove the selected projects to save the company details now.',
             values,
@@ -213,7 +221,12 @@ export async function updateSubcontractorAction(
     if (insertError) {
       revalidatePath('/subcontractors')
       revalidatePath(`/subcontractors/${companyId}`)
-      const reason = insertError.code === 'P0001' && insertError.message ? ` ${insertError.message}.` : ''
+      const reason =
+        insertError.code === '23505'
+          ? ' One of them is already a current project for this subcontractor.'
+          : insertError.code === 'P0001' && insertError.message
+            ? ` ${insertError.message}.`
+            : ''
       return {
         error: `Company details were saved, but the new projects were not added.${reason} Open the subcontractor again to retry.`,
         values,
@@ -226,6 +239,65 @@ export async function updateSubcontractorAction(
   const params = new URLSearchParams({ saved: '1' })
   if (toAdd.length) params.set('projects', String(toAdd.length))
   redirect(`/subcontractors/${companyId}?${params.toString()}`)
+}
+
+export type EndAssignmentResult = ActionState & { activeWorkConflict?: boolean }
+
+/**
+ * Ends one current project assignment. The row is kept as history; scheduled activities, daily logs, and financial
+ * records are untouched. When the company still has active scheduled work on the project, the database refuses
+ * unless keepActiveWork is explicitly true.
+ */
+export async function endProjectAssignmentAction(
+  companyId: string,
+  assignmentId: string,
+  input: { reason?: string; keepActiveWork?: boolean },
+): Promise<EndAssignmentResult> {
+  const gate = await requireSubcontractorManager('manage project assignments for')
+  if (!gate.ok) return { error: gate.error }
+  if (!isUuid(companyId) || !isUuid(assignmentId)) return { error: 'This project assignment could not be found.' }
+  const reason = parseEndReason(input?.reason)
+  if (!reason.ok) return { error: reason.error }
+  const keepActiveWork = input?.keepActiveWork === true
+
+  const supabase = await createClient()
+  const { data: row, error: lookupError } = await supabase
+    .from('subcontractor_project_assignments')
+    .select('id, ended_at, project:projects(name)')
+    .eq('organization_id', gate.session.organizationId)
+    .eq('subcontractor_company_id', companyId)
+    .eq('id', assignmentId)
+    .maybeSingle()
+  if (lookupError) {
+    return isAssignmentSetupError(lookupError)
+      ? { error: 'Project assignment storage is not set up yet. Ask an administrator to apply the database migrations.' }
+      : { error: `Nothing was changed. ${friendlyDbError(lookupError)}` }
+  }
+  if (!row) return { error: 'This project assignment could not be found or you cannot change it.' }
+  if (row.ended_at) return { error: 'This project assignment has already ended.' }
+
+  const { error } = await supabase.rpc('end_subcontractor_project_assignment', {
+    p_assignment_id: assignmentId,
+    p_reason: reason.reason,
+    p_keep_active_work: keepActiveWork,
+  })
+  if (error) {
+    if (error.code === 'BJ409') {
+      return { error: `Nothing was changed. ${error.message}. Choose how to handle that work first.`, activeWorkConflict: true }
+    }
+    if (isAssignmentSetupError(error)) {
+      return { error: 'Ending assignments needs a database update. Ask an administrator to apply the project assignment history migration.' }
+    }
+    if (error.code === 'P0001' && error.message) return { error: `Nothing was changed. ${error.message}.` }
+    return { error: `Nothing was changed. ${friendlyDbError(error)}` }
+  }
+
+  revalidatePath('/subcontractors')
+  revalidatePath(`/subcontractors/${companyId}`)
+  revalidatePath(`/subcontractors/${companyId}/edit`)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- embedded relation typing from PostgREST
+  const name = ((row as any).project?.name as string | undefined) ?? 'the project'
+  return { success: `Assignment to ${name} ended. It is kept in Project History.` }
 }
 
 /**

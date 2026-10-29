@@ -4,8 +4,7 @@ import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { ASSIGNABLE_PROJECT_STATUSES } from '@/lib/domain'
-import { isMissingTableError } from '@/lib/subcontractors'
-import type { AssignableProject } from '@/lib/subcontractor-projects'
+import { isAssignmentSetupError, type AssignableProject } from '@/lib/subcontractor-projects'
 import { createSubcontractorAction } from '@/app/actions/subcontractors'
 import { PageHeader } from '@/components/shared/page-header'
 import { SubcontractorForm } from '@/components/subcontractors/subcontractor-form'
@@ -26,10 +25,10 @@ export default async function NewSubcontractorPage() {
       .in('status', [...ASSIGNABLE_PROJECT_STATUSES])
       .order('project_number')
       .limit(500),
-    supabase.from('subcontractor_project_assignments').select('id', { head: true, count: 'exact' }).limit(1),
+    supabase.from('subcontractor_project_assignments').select('id, ended_at').limit(1),
   ])
 
-  const availability: ProjectPickerAvailability = isMissingTableError(storageProbe.error)
+  const availability: ProjectPickerAvailability = isAssignmentSetupError(storageProbe.error)
     ? 'setup-required'
     : projectsRes.error || storageProbe.error
       ? 'error'
