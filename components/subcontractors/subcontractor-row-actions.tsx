@@ -17,10 +17,12 @@ export function SubcontractorRowActions({
   companyId,
   companyName,
   status,
+  includeNavigation = true,
 }: {
   companyId: string
   companyName: string
   status: SubcontractorStatus
+  includeNavigation?: boolean
 }) {
   const [statusOpen, setStatusOpen] = useState(false)
   const active = status === 'active'
@@ -35,22 +37,26 @@ export function SubcontractorRowActions({
           <MoreHorizontal className="size-4" aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48 p-1">
-          <DropdownMenuItem render={<Link href={`/subcontractors/${companyId}`} />} className="min-h-10 gap-2.5 px-2.5 md:min-h-8">
-            <Eye aria-hidden="true" />
-            View details
-          </DropdownMenuItem>
-          <DropdownMenuItem render={<Link href={`/subcontractors/${companyId}/edit`} />} className="min-h-10 gap-2.5 px-2.5 md:min-h-8">
-            <Pencil aria-hidden="true" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          {includeNavigation && (
+            <>
+              <DropdownMenuItem render={<Link href={`/subcontractors/${companyId}`} />} className="min-h-10 gap-2.5 px-2.5 md:min-h-8">
+                <Eye aria-hidden="true" />
+                View details
+              </DropdownMenuItem>
+              <DropdownMenuItem render={<Link href={`/subcontractors/${companyId}/edit`} />} className="min-h-10 gap-2.5 px-2.5 md:min-h-8">
+                <Pencil aria-hidden="true" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuItem
             variant={active ? 'destructive' : 'default'}
             onClick={() => setStatusOpen(true)}
             className="min-h-10 gap-2.5 px-2.5 md:min-h-8"
           >
             {active ? <CircleOff aria-hidden="true" /> : <CircleCheck aria-hidden="true" />}
-            {active ? 'Deactivate' : 'Activate'}
+            {active ? 'Deactivate' : 'Reactivate'}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

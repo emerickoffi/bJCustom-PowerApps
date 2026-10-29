@@ -15,7 +15,7 @@ export type ProjectTableRow = CompactProjectCardData & {
   managerName: string | null
 }
 
-const TH = 'h-10 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wide text-[#64756D]'
+const TH = 'h-10 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wide text-[#174D32]'
 
 const PANEL_TEXT = {
   neutral: 'text-foreground',
@@ -36,7 +36,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[72rem] text-sm">
           <caption className="sr-only">Projects</caption>
-          <thead className="border-b border-[#E2E8E2] bg-[#F8F7F3]">
+          <thead className="border-b border-[#C3D6C7] bg-[#DCE8DE]">
             <tr>
               <th scope="col" className={TH}>Project</th>
               <th scope="col" className={TH}>Location</th>
