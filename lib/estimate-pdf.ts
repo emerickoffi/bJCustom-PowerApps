@@ -1,6 +1,6 @@
 const MAX_SEGMENT_LENGTH = 60
 
-function toFilenameSegment(value: string | null | undefined): string {
+export function toFilenameSegment(value: string | null | undefined): string {
   return (value ?? '')
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')

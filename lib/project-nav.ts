@@ -1,6 +1,15 @@
 import type { FeatureMap } from '@/lib/feature-registry'
 
-export type ProjectNavKey = 'overview' | 'schedule' | 'estimates' | 'change_orders' | 'documents' | 'team' | 'walkthroughs' | 'warranty'
+export type ProjectNavKey =
+  | 'overview'
+  | 'schedule'
+  | 'daily_logs'
+  | 'estimates'
+  | 'change_orders'
+  | 'documents'
+  | 'team'
+  | 'walkthroughs'
+  | 'warranty'
 
 export type ProjectNavItem = {
   key: ProjectNavKey
@@ -12,7 +21,7 @@ export type ProjectNavItem = {
 
 export type ProjectNavAccess = {
   features: Pick<FeatureMap, 'schedule' | 'estimates' | 'documents' | 'walkthroughs' | 'warranty'> &
-    Partial<Pick<FeatureMap, 'change_orders'>>
+    Partial<Pick<FeatureMap, 'change_orders' | 'daily_logs'>>
   projectStatus: string
   canViewInternal: boolean
   // Administrators and project managers only; change orders carry internal costs.
@@ -49,6 +58,12 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
   const items: (ProjectNavItem | false)[] = [
     { key: 'overview', label: 'Overview', href: base, activePrefix: null },
     features.schedule && { key: 'schedule', label: 'Schedule', href: `${base}/schedule`, activePrefix: `${base}/schedule` },
+    Boolean(features.daily_logs && access.canViewInternal) && {
+      key: 'daily_logs',
+      label: 'Daily logs',
+      href: `${base}/daily-logs`,
+      activePrefix: `${base}/daily-logs`,
+    },
     features.estimates && {
       key: 'estimates',
       label: 'Estimates',
