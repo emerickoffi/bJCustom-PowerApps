@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { OTHER_TRADE, canonicalizeTrade } from '@/lib/subcontractor-trades'
 
 export const SUBCONTRACTOR_STATUS_LABELS = {
   active: 'Active',
@@ -31,7 +32,13 @@ const optional = (max: number) =>
 
 export const subcontractorSchema = z.object({
   company_name: z.string().trim().min(1, 'Enter the company name').max(160, 'Must be 160 characters or fewer'),
-  trade: z.string().trim().min(1, 'Enter the trade or specialty').max(120, 'Must be 120 characters or fewer'),
+  trade: z
+    .string()
+    .trim()
+    .min(1, 'Choose a trade, or enter a specialty name')
+    .max(120, 'Must be 120 characters or fewer')
+    .refine((v) => v !== OTHER_TRADE, 'Enter the specialty name')
+    .transform(canonicalizeTrade),
   email: optional(254)
     .transform((v) => v?.toLowerCase() ?? null)
     .refine((v) => v === null || z.email().safeParse(v).success, 'Enter a valid email address'),

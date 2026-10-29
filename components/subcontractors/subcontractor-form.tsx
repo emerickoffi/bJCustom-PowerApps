@@ -8,6 +8,7 @@ import { initialActionState, type ActionState } from '@/lib/action-state'
 import { SUBCONTRACTOR_STATUS_LABELS } from '@/lib/subcontractors'
 import { FormActions, FormSection, SelectField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
+import { TradeCombobox } from '@/components/subcontractors/trade-combobox'
 
 export function SubcontractorForm({
   action,
@@ -25,7 +26,7 @@ export function SubcontractorForm({
     <form key={formKey} action={formAction} className="flex flex-col gap-5" noValidate>
       <FormSection icon={HardHatIcon} title="Company" description="The trade partner your team hires for project work.">
         <TextField name="company_name" label="Company name" required defaultValue={v.company_name ?? ''} error={fe.company_name} autoComplete="organization" maxLength={160} />
-        <TextField name="trade" label="Trade or specialty" required defaultValue={v.trade ?? ''} error={fe.trade} hint="For example: Electrical, Plumbing, Framing." maxLength={120} />
+        <TradeCombobox values={v} error={fe.trade} />
         <SelectField
           name="status"
           label="Status"

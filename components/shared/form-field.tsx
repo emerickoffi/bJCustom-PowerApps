@@ -13,7 +13,7 @@ type BaseProps = {
   className?: string
 }
 
-function FieldShell({
+export function FieldShell({
   name,
   label,
   error,
