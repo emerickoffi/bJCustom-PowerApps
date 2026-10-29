@@ -11,7 +11,10 @@ import { RecentActivity } from '@/components/dashboard/recent-activity'
 import { NotificationsCard } from '@/components/walkthroughs/notifications-card'
 import { CompactProjectCard } from '@/components/dashboard/compact-project-card'
 import { ProgressRing } from '@/components/shared/progress'
-import { ACTIVE_PROJECT_STATUSES, type ProjectStatus } from '@/lib/domain'
+import { ACTIVE_PROJECT_STATUSES, PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
+import { parsePortfolioStatus, portfolioStatusCounts, rankPortfolio, type PortfolioRow } from '@/lib/portfolio'
+import { loadPortfolioSignals } from '@/lib/portfolio-data'
+import { PortfolioStatusFilter } from '@/components/dashboard/portfolio-status-filter'
 import { PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
 import { getOrgFeatures } from '@/lib/features'
 import { getDashboardCardDetails } from '@/lib/dashboard-cards'
@@ -29,13 +32,23 @@ function greeting() {
   return 'Good evening'
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ portfolio?: string }>
+}) {
   const session = await requireStaff()
   const supabase = await createClient()
   const orgId = session.organizationId
+  const selectedStatus = parsePortfolioStatus((await searchParams).portfolio)
+  const features = await getOrgFeatures(orgId)
 
-  const [projectsRes, clientCountRes, leadCountRes, recentRes, activityRes] = await Promise.all([
-    supabase.from('projects').select('status, progress_percent').eq('organization_id', orgId).is('archived_at', null),
+  const [projectsRes, clientCountRes, leadCountRes, activityRes, signals] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('id, status, progress_percent, updated_at')
+      .eq('organization_id', orgId)
+      .is('archived_at', null),
     supabase
       .from('clients')
       .select('id', { count: 'exact', head: true })
@@ -47,21 +60,15 @@ export default async function DashboardPage() {
       .eq('organization_id', orgId)
       .eq('status', 'lead'),
     supabase
-      .from('projects')
-      .select(`${PROJECT_SUMMARY_COLUMNS}, completion_date`)
-      .eq('organization_id', orgId)
-      .is('archived_at', null)
-      .order('updated_at', { ascending: false })
-      .limit(6),
-    supabase
       .from('client_activity')
       .select('id, activity_type, summary, created_at, client_id, clients(first_name, last_name)')
       .eq('organization_id', orgId)
       .order('created_at', { ascending: false })
       .limit(8),
+    loadPortfolioSignals(orgId, session.userId, features.schedule),
   ])
 
-  const rows = projectsRes.data ?? []
+  const rows = (projectsRes.data ?? []) as (PortfolioRow & { progress_percent: number | null })[]
   const counts = rows.reduce<Partial<Record<ProjectStatus, number>>>((acc, r) => {
     const s = r.status as ProjectStatus
     acc[s] = (acc[s] ?? 0) + 1
@@ -76,8 +83,20 @@ export default async function DashboardPage() {
   const manager = canManage(session.role)
   const firstName = session.fullName?.split(' ')[0]
 
-  const recent = (recentRes.data ?? []) as unknown as (ProjectSummary & { completion_date: string | null })[]
-  const features = await getOrgFeatures(orgId)
+  const statusCounts = portfolioStatusCounts(rows)
+  const rankedIds = rankPortfolio(rows, signals, selectedStatus)
+  const { data: portfolioData } = rankedIds.length
+    ? await supabase
+        .from('projects')
+        .select(`${PROJECT_SUMMARY_COLUMNS}, completion_date`)
+        .eq('organization_id', orgId)
+        .in('id', rankedIds)
+    : { data: [] }
+  const byId = new Map(
+    ((portfolioData ?? []) as unknown as (ProjectSummary & { completion_date: string | null })[]).map((p) => [p.id, p]),
+  )
+  const recent = rankedIds.flatMap((id) => byId.get(id) ?? [])
+  const viewAllHref = selectedStatus ? `/projects?status=${selectedStatus}` : '/projects'
   const [photos, cardDetails, attention] = await Promise.all([
     getProjectCoverPhotos(recent.map((p) => p.id)),
     getDashboardCardDetails(orgId, recent, features),
@@ -174,14 +193,17 @@ export default async function DashboardPage() {
           description="Your construction projects at every stage."
           action={
             <Link
-              href="/projects"
-              className="group flex items-center gap-1.5 text-sm font-medium text-primary"
+              href={viewAllHref}
+              className="group flex shrink-0 items-center gap-1.5 text-sm font-medium text-primary"
             >
               View All Projects
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </Link>
           }
         />
+        {rows.length > 0 && (
+          <PortfolioStatusFilter counts={statusCounts} total={rows.length} selected={selectedStatus} />
+        )}
         {recent.length ? (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {recent.map((p) => (
@@ -198,6 +220,17 @@ export default async function DashboardPage() {
               />
             ))}
           </div>
+        ) : selectedStatus && rows.length ? (
+          <EmptyState
+            icon={FolderKanban}
+            title="No projects in this status."
+            description={`There are no ${PROJECT_STATUS_LABELS[selectedStatus]} projects right now.`}
+            action={
+              <Button variant="outline" render={<Link href="/dashboard" scroll={false} />} nativeButton={false}>
+                Show all projects
+              </Button>
+            }
+          />
         ) : (
           <EmptyState
             icon={FolderKanban}

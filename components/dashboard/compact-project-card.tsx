@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, CircleArrowRight, CircleCheck, PauseCircle, ShieldCheck } from 'lucide-react'
+import { ArrowRight, CalendarPlus, CircleArrowRight, CircleCheck, PauseCircle, ShieldCheck } from 'lucide-react'
 import { ArchitecturalPlaceholder } from '@/components/projects/project-card'
 import { CoverImage } from '@/components/projects/cover-image'
 import { PROJECT_STATUS_STYLES } from '@/components/shared/project-status-banner'
@@ -62,6 +62,15 @@ function buildPanel(p: CompactProjectCardData): Panel {
       meta: p.warrantyEnabled ? 'Warranty not yet activated' : null,
       href: p.warrantyEnabled ? `/projects/${p.id}/warranty` : undefined,
       tone: 'success',
+    }
+  }
+  if (details.scheduleNotStarted) {
+    return {
+      icon: CalendarPlus,
+      title: 'Set up construction schedule',
+      meta: `${details.activityCount} ${details.activityCount === 1 ? 'activity' : 'activities'} · no dates planned yet`,
+      href: `/projects/${p.id}/schedule`,
+      tone: 'neutral',
     }
   }
   const next = details.nextActivity
@@ -132,7 +141,7 @@ export function CompactProjectCard({
       <div className="flex items-start gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="font-mono text-xs text-muted-foreground">{project.project_number}</span>
-          <h3 className="text-pretty font-serif text-lg font-semibold leading-snug">
+          <h3 className="line-clamp-2 text-pretty break-words font-serif text-lg font-semibold leading-snug">
             <Link
               href={`/projects/${project.id}`}
               className="outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']"
@@ -142,7 +151,7 @@ export function CompactProjectCard({
           </h3>
           <span className="truncate text-xs text-muted-foreground">{`${project.city}, ${project.state}`}</span>
         </div>
-        <div className="relative aspect-[4/3] w-20 shrink-0 overflow-hidden rounded-xl bg-muted sm:w-24">
+        <div className="relative aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-xl bg-muted sm:w-28">
           {project.photoUrl ? (
             <CoverImage
               src={project.photoUrl}
