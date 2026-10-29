@@ -3,10 +3,11 @@ import { Eye, FolderKanban, Mail, Pencil, Phone } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { DIRECTORY_TH_TEXT, DIRECTORY_THEAD_ROW } from '@/lib/directory-table-styles'
-import { SUBCONTRACTOR_STATUS_LABELS, type SubcontractorCompany, type SubcontractorStatus } from '@/lib/subcontractors'
+import type { SubcontractorCompany, SubcontractorStatus } from '@/lib/subcontractors'
 import type { AssignedProject } from '@/lib/subcontractor-projects'
 import { companyInitials, projectCountLabel } from '@/lib/subcontractor-directory'
 import { SubcontractorRowActions } from '@/components/subcontractors/subcontractor-row-actions'
+import { SubcontractorStatusBadge } from '@/components/subcontractors/subcontractor-status-badge'
 
 type Props = {
   rows: SubcontractorCompany[]
@@ -31,18 +32,7 @@ function CompanyAvatar({ name, status }: { name: string; status: SubcontractorSt
 }
 
 function StatusBadge({ status }: { status: SubcontractorStatus }) {
-  const active = status === 'active'
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
-        active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
-      )}
-    >
-      <span className={cn('size-1.5 rounded-full', active ? 'bg-primary' : 'bg-muted-foreground/60')} aria-hidden="true" />
-      {SUBCONTRACTOR_STATUS_LABELS[status]}
-    </span>
-  )
+  return <SubcontractorStatusBadge status={status} />
 }
 
 function CompanyCell({ row }: { row: SubcontractorCompany }) {
