@@ -9,7 +9,11 @@ import { SUBCONTRACTOR_STATUS_LABELS } from '@/lib/subcontractors'
 import { FormActions, FormSection, SelectField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { TradeCombobox } from '@/components/subcontractors/trade-combobox'
-import { ProjectAssignmentsPicker, type ProjectPickerAvailability } from '@/components/subcontractors/project-assignments-picker'
+import {
+  ProjectAssignmentsPicker,
+  type ExistingAssignments,
+  type ProjectPickerAvailability,
+} from '@/components/subcontractors/project-assignments-picker'
 import type { AssignableProject } from '@/lib/subcontractor-projects'
 import type { SubcontractorCompany } from '@/lib/subcontractors'
 
@@ -19,7 +23,7 @@ export function SubcontractorForm({
   projects,
   projectAvailability,
   company,
-  lockedProjects,
+  existingAssignments,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   cancelHref: string
@@ -27,7 +31,7 @@ export function SubcontractorForm({
   projectAvailability: ProjectPickerAvailability
   /** Present when editing; prefills the fields. */
   company?: SubcontractorCompany
-  lockedProjects?: AssignableProject[]
+  existingAssignments?: ExistingAssignments
 }) {
   const [state, formAction] = useActionState(action, initialActionState)
   const fe = state.fieldErrors ?? {}
@@ -66,8 +70,8 @@ export function SubcontractorForm({
         title="Project Assignments"
         description={
           isEdit
-            ? 'Existing projects stay as history. Add any new projects this subcontractor will work on.'
-            : 'Choose the projects this subcontractor will work on. You can also assign projects later.'
+            ? 'Manage the projects this subcontractor is assigned to. Previous assignments are preserved for reference.'
+            : 'Select the projects this subcontractor will work on. You can update assignments later.'
         }
       >
         <ProjectAssignmentsPicker
@@ -75,7 +79,7 @@ export function SubcontractorForm({
           availability={projectAvailability}
           defaultValue={v.project_ids ?? ''}
           error={fe.project_ids}
-          lockedProjects={lockedProjects}
+          existing={existingAssignments}
         />
       </FormSection>
 

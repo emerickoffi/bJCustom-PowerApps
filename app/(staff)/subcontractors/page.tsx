@@ -58,6 +58,7 @@ export default async function SubcontractorsPage({
       .from('subcontractor_project_assignments')
       .select('subcontractor_company_id, project:projects(id, name, project_number)')
       .eq('organization_id', session.organizationId)
+      .is('ended_at', null)
       .limit(5000),
   ])
   const rows = (data ?? []) as SubcontractorCompany[]
