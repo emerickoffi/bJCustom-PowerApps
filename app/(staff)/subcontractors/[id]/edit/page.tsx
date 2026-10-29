@@ -52,7 +52,7 @@ export default async function EditSubcontractorPage({ params }: { params: Promis
         cancelHref={`/subcontractors/${company.id}`}
         company={company}
         projects={assignable.projects.filter((p) => !currentIds.has(p.id))}
-        existingAssignments={{ companyId: company.id, current, history, activeWork }}
+        existingAssignments={{ companyId: company.id, current, history, activeWork, inactive: company.status !== 'active' }}
         projectAvailability={availability}
       />
     </div>
