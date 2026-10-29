@@ -26,7 +26,7 @@ export type CompactProjectCardData = {
   warrantyEnabled: boolean
 }
 
-type Panel = {
+export type Panel = {
   icon: typeof CircleArrowRight
   title: string
   meta: string | null
@@ -34,7 +34,7 @@ type Panel = {
   tone: 'neutral' | 'danger' | 'success'
 }
 
-function buildPanel(p: CompactProjectCardData): Panel {
+export function buildPanel(p: CompactProjectCardData): Panel {
   const { details } = p
   if (p.status === 'on_hold') {
     return {
