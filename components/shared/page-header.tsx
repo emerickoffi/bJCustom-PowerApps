@@ -13,9 +13,22 @@ type PageHeaderProps = {
   tone?: 'plain' | 'sage'
   /** Replaces the icon tile, e.g. with a person's initials. */
   avatar?: React.ReactNode
+  /** Rendered inline after the title, e.g. a status badge. */
+  titleAddon?: React.ReactNode
 }
 
-export function PageHeader({ title, description, eyebrow, icon: Icon, avatar, backHref, backLabel, actions, tone = 'sage' }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  description,
+  eyebrow,
+  icon: Icon,
+  avatar,
+  titleAddon,
+  backHref,
+  backLabel,
+  actions,
+  tone = 'sage',
+}: PageHeaderProps) {
   const sage = tone === 'sage'
   return (
     <header
@@ -46,9 +59,18 @@ export function PageHeader({ title, description, eyebrow, icon: Icon, avatar, ba
                 {eyebrow}
               </div>
             )}
-            <h1 className="text-balance font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-3xl">
-              {title}
-            </h1>
+            {titleAddon ? (
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+                <h1 className="min-w-0 text-balance font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-3xl">
+                  {title}
+                </h1>
+                {titleAddon}
+              </div>
+            ) : (
+              <h1 className="text-balance font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-3xl">
+                {title}
+              </h1>
+            )}
             {description && (
               <div className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground md:text-[0.95rem]">
                 {description}
