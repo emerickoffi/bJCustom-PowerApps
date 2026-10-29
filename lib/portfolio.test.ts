@@ -78,7 +78,7 @@ test('unknown status values are ignored', () => {
   assert.equal(parsePortfolioStatus('on_hold'), 'on_hold')
 })
 
-test('View All Projects carries the selected portfolio status and starts on page 1', () => {
+test('Open Project Directory carries the selected portfolio status and starts on page 1', () => {
   assert.equal(portfolioViewAllHref(null), '/projects')
   assert.equal(portfolioViewAllHref(parsePortfolioStatus('consultation')), '/projects?status=consultation')
   assert.equal(portfolioViewAllHref(parsePortfolioStatus('preconstruction')), '/projects?status=preconstruction')
