@@ -2,10 +2,10 @@
 
 import { useActionState, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Plus, Trash2 } from 'lucide-react'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { TextField, TextAreaField, NativeSelect, FormSection } from '@/components/shared/form-field'
+import { TextField, TextAreaField, NativeSelect, FormSection, FormActions } from '@/components/shared/form-field'
 import { saveInvoiceDraft } from '@/app/actions/invoices'
 import { initialActionState } from '@/lib/action-state'
 import { formatCentsExact } from '@/lib/estimates'
@@ -41,6 +41,8 @@ export type InvoiceFormDefaults = {
   notes?: string | null
   lines?: InvoiceLineInput[]
 }
+
+const LINE_GRID = 'lg:grid-cols-[minmax(16rem,1fr)_6rem_9rem_5rem_2.5rem]'
 
 const emptyLine = (): InvoiceLineInput => ({ description: '', quantity: '1', unitRate: '', taxable: true })
 
@@ -99,8 +101,8 @@ export function InvoiceForm({
       )}
 
       <FormSection title="Who and what" description="The homeowner is taken from the project's primary client when the invoice is issued.">
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
+        <div className="grid gap-5 sm:col-span-2 sm:grid-cols-2">
+          <div className="flex min-w-0 flex-col gap-1.5">
             <label htmlFor="project_id" className="text-sm font-medium">
               Project<span className="text-destructive" aria-hidden="true">*</span>
             </label>
@@ -132,7 +134,7 @@ export function InvoiceForm({
             )}
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex min-w-0 flex-col gap-1.5">
             <label htmlFor="estimate_id" className="text-sm font-medium">
               Bill against approved estimate
             </label>
@@ -169,7 +171,7 @@ export function InvoiceForm({
             className="sm:col-span-2"
           />
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex min-w-0 flex-col gap-1.5">
             <label htmlFor="invoice_type" className="text-sm font-medium">
               Invoice type
             </label>
@@ -184,8 +186,25 @@ export function InvoiceForm({
             </NativeSelect>
           </div>
 
+          <TextField
+            name="invoice_date"
+            label="Invoice date"
+            type="date"
+            required
+            defaultValue={v?.invoice_date ?? defaults.invoice_date ?? today}
+            error={fe.invoice_date}
+          />
+          <TextField
+            name="due_date"
+            label="Due date"
+            type="date"
+            required
+            defaultValue={v?.due_date ?? defaults.due_date ?? due}
+            error={fe.due_date}
+          />
+
           {type === 'draw' ? (
-            <div className="flex flex-col gap-1.5">
+            <div className="flex min-w-0 flex-col gap-1.5">
               <label htmlFor="draw_milestone" className="text-sm font-medium">
                 Draw milestone<span className="text-destructive" aria-hidden="true">*</span>
               </label>
@@ -209,82 +228,86 @@ export function InvoiceForm({
           ) : (
             <input type="hidden" name="draw_milestone" value="" />
           )}
-
-          <TextField
-            name="invoice_date"
-            label="Invoice date"
-            type="date"
-            required
-            defaultValue={v?.invoice_date ?? defaults.invoice_date ?? today}
-            error={fe.invoice_date}
-          />
-          <TextField
-            name="due_date"
-            label="Due date"
-            type="date"
-            required
-            defaultValue={v?.due_date ?? defaults.due_date ?? due}
-            error={fe.due_date}
-          />
         </div>
       </FormSection>
 
       <FormSection title="Line items" description="Amounts are calculated in whole cents and match the saved invoice exactly.">
-        <div className="flex flex-col gap-3">
-          <div className="hidden grid-cols-[1fr_96px_140px_80px_40px] gap-3 px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground md:grid">
+        <div className="flex min-w-0 flex-col gap-3 sm:col-span-2">
+          <div
+            aria-hidden="true"
+            className={`hidden gap-3 border-b border-border/60 px-1 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground lg:grid ${LINE_GRID}`}
+          >
             <span>Description</span>
             <span className="text-right">Qty</span>
             <span className="text-right">Rate ($)</span>
             <span className="text-center">Taxable</span>
-            <span className="sr-only">Remove</span>
+            <span />
           </div>
           {lines.map((line, i) => (
             <fieldset
               key={i}
-              className="grid grid-cols-2 gap-3 rounded-lg border p-3 md:grid-cols-[1fr_96px_140px_80px_40px] md:items-center md:border-0 md:p-1"
+              className={`grid min-w-0 grid-cols-2 gap-3 rounded-lg border border-border/80 bg-background p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center lg:rounded-none lg:border-0 lg:bg-transparent lg:p-1 ${LINE_GRID}`}
             >
               <legend className="sr-only">Line {i + 1}</legend>
-              <Input
-                aria-label={`Line ${i + 1} description`}
-                value={line.description}
-                onChange={(e) => updateLine(i, { description: e.target.value })}
-                placeholder="Framing labor and materials"
-                className="col-span-2 md:col-span-1"
-              />
-              <Input
-                aria-label={`Line ${i + 1} quantity`}
-                inputMode="decimal"
-                value={line.quantity}
-                onChange={(e) => updateLine(i, { quantity: e.target.value })}
-                className="text-right tabular-nums"
-              />
-              <Input
-                aria-label={`Line ${i + 1} rate in dollars`}
-                inputMode="decimal"
-                value={line.unitRate}
-                onChange={(e) => updateLine(i, { unitRate: e.target.value })}
-                placeholder="0.00"
-                className="text-right tabular-nums"
-              />
-              <label className="flex items-center gap-2 text-sm md:justify-center">
-                <input
-                  type="checkbox"
-                  checked={line.taxable}
-                  onChange={(e) => updateLine(i, { taxable: e.target.checked })}
-                  className="size-4 accent-primary"
+              <div className="col-span-2 flex min-w-0 flex-col gap-1 sm:col-span-3 lg:col-span-1">
+                <label htmlFor={`line-${i}-description`} className="text-xs font-medium text-muted-foreground lg:sr-only">
+                  Description
+                </label>
+                <Input
+                  id={`line-${i}-description`}
+                  value={line.description}
+                  onChange={(e) => updateLine(i, { description: e.target.value })}
+                  title={line.description || undefined}
+                  placeholder="Framing labor and materials"
+                  className="min-w-0"
                 />
-                <span className="md:sr-only">Taxable</span>
-              </label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setLines((prev) => (prev.length === 1 ? [emptyLine()] : prev.filter((_, j) => j !== i)))}
-                aria-label={`Remove line ${i + 1}`}
-                className="justify-self-end"
-              >
-                <Trash2 />
-              </Button>
+              </div>
+              <div className="flex min-w-0 flex-col gap-1">
+                <label htmlFor={`line-${i}-quantity`} className="text-xs font-medium text-muted-foreground lg:sr-only">
+                  Qty
+                </label>
+                <Input
+                  id={`line-${i}-quantity`}
+                  inputMode="decimal"
+                  value={line.quantity}
+                  onChange={(e) => updateLine(i, { quantity: e.target.value })}
+                  className="min-w-0 text-right tabular-nums"
+                />
+              </div>
+              <div className="flex min-w-0 flex-col gap-1">
+                <label htmlFor={`line-${i}-rate`} className="text-xs font-medium text-muted-foreground lg:sr-only">
+                  Rate ($)
+                </label>
+                <Input
+                  id={`line-${i}-rate`}
+                  inputMode="decimal"
+                  value={line.unitRate}
+                  onChange={(e) => updateLine(i, { unitRate: e.target.value })}
+                  placeholder="0.00"
+                  className="min-w-0 text-right tabular-nums"
+                />
+              </div>
+              <div className="col-span-2 flex items-center justify-between gap-3 border-t border-border/60 pt-2 sm:col-span-1 sm:border-0 sm:pt-0 sm:self-end lg:contents">
+                <label className="flex h-10 items-center gap-2 text-sm lg:justify-center">
+                  <input
+                    type="checkbox"
+                    checked={line.taxable}
+                    onChange={(e) => updateLine(i, { taxable: e.target.checked })}
+                    className="size-4 accent-primary"
+                  />
+                  <span className="lg:sr-only">Taxable</span>
+                </label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setLines((prev) => (prev.length === 1 ? [emptyLine()] : prev.filter((_, j) => j !== i)))}
+                  aria-label={`Remove line ${i + 1}`}
+                  className="justify-self-end text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 />
+                </Button>
+              </div>
             </fieldset>
           ))}
           <div className="flex flex-wrap gap-2">
@@ -313,7 +336,7 @@ export function InvoiceForm({
             )}
           </div>
 
-          <div className="mt-2 flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="mt-2 flex flex-col gap-4 border-t border-border/60 pt-4 sm:flex-row sm:items-start sm:justify-between">
             <TextField
               name="tax_percent"
               label="Tax rate (%)"
@@ -322,15 +345,20 @@ export function InvoiceForm({
               onChange={(e) => setTaxPercent(e.target.value)}
               error={fe.tax_percent}
               hint="Applied to taxable lines only."
-              className="sm:max-w-40"
+              className="sm:w-44"
             />
-            <dl className="grid min-w-56 grid-cols-[1fr_auto] gap-x-6 gap-y-1 text-sm" aria-live="polite">
+            <dl
+              className="grid w-full grid-cols-[1fr_auto] gap-x-8 gap-y-1.5 rounded-lg bg-sage/60 p-4 text-sm sm:w-72"
+              aria-live="polite"
+            >
               <dt className="text-muted-foreground">Subtotal</dt>
               <dd className="text-right tabular-nums">{formatCentsExact(totals.subtotal)}</dd>
               <dt className="text-muted-foreground">Tax</dt>
               <dd className="text-right tabular-nums">{formatCentsExact(totals.tax)}</dd>
-              <dt className="border-t pt-1 font-semibold">Total</dt>
-              <dd className="border-t pt-1 text-right font-semibold tabular-nums">{formatCentsExact(totals.total)}</dd>
+              <dt className="mt-1 border-t border-border pt-2 font-semibold text-foreground">Total</dt>
+              <dd className="mt-1 border-t border-border pt-2 text-right text-base font-semibold text-primary tabular-nums">
+                {formatCentsExact(totals.total)}
+              </dd>
             </dl>
           </div>
           {estimate && remaining !== null && totals.subtotal > remaining && (
@@ -343,7 +371,7 @@ export function InvoiceForm({
       </FormSection>
 
       <FormSection title="Payment details" description="Shown to the homeowner. Payments are recorded by staff; no card processing happens here.">
-        <div className="grid gap-5">
+        <div className="grid gap-5 sm:col-span-2">
           <TextField
             name="payment_terms"
             label="Payment terms"
@@ -368,14 +396,15 @@ export function InvoiceForm({
         </div>
       </FormSection>
 
-      <div className="flex flex-wrap justify-end gap-2 border-t pt-6">
+      <FormActions>
         <Button variant="outline" render={<Link href={cancelHref} />} nativeButton={false}>
           Cancel
         </Button>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} aria-busy={pending || undefined}>
+          {pending && <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />}
           {pending ? 'Saving…' : 'Save draft'}
         </Button>
-      </div>
+      </FormActions>
     </form>
   )
 }
