@@ -110,7 +110,7 @@ export default async function DashboardPage({
   const weekActivityCount = new Set(agendaData.agenda.week.map((e) => e.id)).size
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <section
         aria-labelledby="welcome-heading"
         className="relative overflow-hidden rounded-3xl bg-brand-deep text-white shadow-lift"
@@ -192,33 +192,20 @@ export default async function DashboardPage({
         />
       </section>
 
-      {/* Each column stacks independently so a short card never leaves a gap beside a tall one. On small screens the
-          wrappers dissolve (`contents`) and `order` keeps the reading sequence Attention → Agenda → Health → Activity. */}
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
-        <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-6">
-          <div className="order-1 min-w-0 xl:order-none">
-            <NotificationsCard
-              items={attention.items}
-              total={attention.total}
-              totalIsLowerBound={attention.totalIsLowerBound}
-            />
-          </div>
-          <div className="order-3 min-w-0 xl:order-none">
-            <ProjectHealthList projects={health.projects} total={health.total} flagged={health.flagged} />
-          </div>
+        <div className="min-w-0">
+          <NotificationsCard
+            items={attention.items}
+            total={attention.total}
+            totalIsLowerBound={attention.totalIsLowerBound}
+          />
         </div>
-        <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-6">
-          <div className="order-2 min-w-0 xl:order-none">
-            <MyAgenda agenda={agendaData.agenda} today={agendaData.today} scheduleEnabled={features.schedule} />
-          </div>
-          <div className="order-4 min-w-0 xl:order-none">
-            <RecentActivity
-              items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
-              updates={attention.updates}
-            />
-          </div>
+        <div className="min-w-0">
+          <MyAgenda agenda={agendaData.agenda} today={agendaData.today} scheduleEnabled={features.schedule} />
         </div>
       </div>
+
+      <ProjectHealthList projects={health.projects} total={health.total} flagged={health.flagged} />
 
       <section aria-labelledby="homes-heading" className="flex flex-col gap-5">
         <SectionHeading
@@ -284,6 +271,11 @@ export default async function DashboardPage({
           />
         )}
       </section>
+
+      <RecentActivity
+        items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
+        updates={attention.updates}
+      />
     </div>
   )
 }

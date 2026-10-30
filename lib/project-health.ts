@@ -12,6 +12,8 @@ export type ProjectHealthSignals = {
   scheduleEnabled: boolean
   /** Activities on the project's schedule, any status. 0 means no schedule to judge against. */
   activityCount: number
+  /** Activities with a planned finish date. Without any, there is no schedule baseline to measure against. */
+  datedActivityCount: number
   delayedCount: number
   /** Open activities past planned finish, excluding those already counted as delayed. */
   overdueCount: number
@@ -55,7 +57,10 @@ export function computeProjectHealth(s: ProjectHealthSignals): ProjectHealth {
   if (risk.length) return { level: 'at_risk', reasons: [...risk, ...attention] }
   if (attention.length) return { level: 'needs_attention', reasons: attention }
   if (!s.scheduleEnabled) return { level: 'insufficient_data', reasons: ['Schedule module is off, so progress cannot be measured'] }
-  if (s.activityCount === 0) return { level: 'insufficient_data', reasons: ['No schedule activities to measure progress against'] }
+  if (s.activityCount === 0) return { level: 'insufficient_data', reasons: ['Schedule not configured: no activities yet'] }
+  if (s.datedActivityCount === 0) {
+    return { level: 'insufficient_data', reasons: ['Schedule not configured: no planned dates yet'] }
+  }
   return { level: 'on_track', reasons: ['Schedule current with no open issues'] }
 }
 
