@@ -56,7 +56,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
               status={person.status}
               activeProjectCount={person.projects.filter((p) => p.status === 'active').length}
             />
-            <Button size="lg" render={<Link href={`/contacts/people/${person.id}/edit`} />}>
+            <Button size="lg" render={<Link href={`/contacts/people/${person.id}/edit`} />} nativeButton={false}>
               <Pencil data-icon="inline-start" />
               Edit
             </Button>

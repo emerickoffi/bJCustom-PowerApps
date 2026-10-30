@@ -132,7 +132,7 @@ export function PersonForm({
       </FormSection>
 
       <FormActions message={<FormMessage state={state} />}>
-        <Button variant="outline" size="lg" render={<Link href={cancelHref} />}>
+        <Button variant="outline" size="lg" render={<Link href={cancelHref} />} nativeButton={false}>
           Cancel
         </Button>
         <SubmitButton pendingLabel={isEdit ? 'Saving changes…' : 'Saving contact…'}>{isEdit ? 'Save changes' : 'Add contact'}</SubmitButton>

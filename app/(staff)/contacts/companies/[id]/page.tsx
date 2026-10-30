@@ -38,14 +38,14 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
         backLabel="Contacts"
         actions={
           linked ? (
-            <Button size="lg" render={<Link href={`/subcontractors/${linked}`} />}>
+            <Button size="lg" render={<Link href={`/subcontractors/${linked}`} />} nativeButton={false}>
               <HardHat data-icon="inline-start" />
               Open subcontractor
             </Button>
           ) : (
             <>
               <ContactStatusButton kind="company" id={company.id} name={company.company_name} status={company.status} />
-              <Button size="lg" render={<Link href={`/contacts/companies/${company.id}/edit`} />}>
+              <Button size="lg" render={<Link href={`/contacts/companies/${company.id}/edit`} />} nativeButton={false}>
                 <Pencil data-icon="inline-start" />
                 Edit
               </Button>
