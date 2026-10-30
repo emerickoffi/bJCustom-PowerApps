@@ -29,15 +29,15 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
         actions={
           availability === 'ready' && (
             <>
-              <Button variant="outline" size="lg" render={<Link href="/contacts/import" />}>
+              <Button variant="outline" size="lg" render={<Link href="/contacts/import" />} nativeButton={false}>
                 <FileUp data-icon="inline-start" />
                 Import CSV
               </Button>
-              <Button variant="outline" size="lg" render={<Link href="/contacts/companies/new" />}>
+              <Button variant="outline" size="lg" render={<Link href="/contacts/companies/new" />} nativeButton={false}>
                 <Building2 data-icon="inline-start" />
                 Add company
               </Button>
-              <Button size="lg" render={<Link href="/contacts/people/new" />}>
+              <Button size="lg" render={<Link href="/contacts/people/new" />} nativeButton={false}>
                 <UserPlus data-icon="inline-start" />
                 Add contact
               </Button>

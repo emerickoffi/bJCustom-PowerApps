@@ -137,7 +137,7 @@ export default async function CompanyDocumentsPage({ searchParams }: { searchPar
             title="No project documents yet."
             description="Open a project to upload plans, permits, reports, and construction files."
             action={
-              <Button variant="outline" render={<Link href="/projects" />}>
+              <Button variant="outline" render={<Link href="/projects" />} nativeButton={false}>
                 Go to Projects
               </Button>
             }

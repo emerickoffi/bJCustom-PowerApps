@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { NativeSelect, TextField } from '@/components/shared/form-field'
+import { ProjectRoleField, StartDateField } from '@/components/contacts/project-role-field'
 import { formatPhone } from '@/lib/format'
 import type { ActionState } from '@/lib/action-state'
 import type { AssignablePerson, ProjectCompanyContacts, ProjectContact } from '@/lib/project-contacts-data'
 import { assignProjectContactAction, endPersonProjectAction } from '@/app/actions/contacts'
 
-type Prefill = { personId: string; relationshipId: string; role: string } | null
+export type Prefill = { personId: string; relationshipId: string; role: string } | null
 
 export function ProjectContactsPanel({
   projectId,
@@ -76,6 +77,10 @@ export function ProjectContactsPanel({
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {activeCount} active {activeCount === 1 ? 'contact' : 'contacts'} from the directory
+            {' · '}
+            <Link href={`/projects/${encodeURIComponent(projectId)}/contacts`} className="font-medium text-primary underline-offset-4 hover:underline">
+              Open table
+            </Link>
           </p>
         </div>
         {canEdit && acceptsAssignments && (
@@ -275,11 +280,12 @@ export function ProjectContactsPanel({
   )
 }
 
-function AssignDialog({
+export function AssignDialog({
   projectId,
   assignable,
   excluded,
   prefill,
+  initialMode = 'existing',
   onClose,
   onDone,
 }: {
@@ -287,10 +293,11 @@ function AssignDialog({
   assignable: AssignablePerson[]
   excluded: Set<string>
   prefill: Prefill
+  initialMode?: 'existing' | 'new'
   onClose: () => void
   onDone: () => void
 }) {
-  const [mode, setMode] = useState<'existing' | 'new'>('existing')
+  const [mode, setMode] = useState<'existing' | 'new'>(prefill ? 'existing' : initialMode)
   const [personId, setPersonId] = useState(prefill?.personId ?? '')
   const [state, action, pending] = useActionState<ActionState, FormData>(assignProjectContactAction.bind(null, projectId), {})
   const options = useMemo(() => assignable.filter((p) => !excluded.has(p.id) || p.id === prefill?.personId), [assignable, excluded, prefill])
@@ -384,14 +391,10 @@ function AssignDialog({
             </div>
           )}
 
-          <TextField
-            name="project_role"
-            label="Project role"
-            required
-            placeholder="e.g. Site supervisor, Insurance adjuster"
-            defaultValue={state.values?.project_role ?? prefill?.role ?? ''}
-            error={fe.project_role}
-          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ProjectRoleField key={prefill?.personId ?? 'role'} defaultValue={state.values?.project_role ?? prefill?.role ?? ''} error={fe.project_role} />
+            <StartDateField defaultValue={state.values?.started_at} error={fe.started_at} />
+          </div>
 
           {state.error && (
             <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">

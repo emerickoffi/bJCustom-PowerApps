@@ -297,7 +297,7 @@ export function ImportWizard() {
             >
               Import another file
             </Button>
-            <Button render={<Link href="/contacts?view=people" />}>View contacts</Button>
+            <Button render={<Link href="/contacts?view=people" />} nativeButton={false}>View contacts</Button>
           </div>
         </section>
       )}

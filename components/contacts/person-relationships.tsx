@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { initialActionState, type ActionState } from '@/lib/action-state'
 import { formatDate } from '@/lib/format'
 import { TextField } from '@/components/shared/form-field'
+import { ProjectRoleField, StartDateField } from '@/components/contacts/project-role-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { ConfirmActionButton } from '@/components/shared/confirm-action-button'
 import {
@@ -326,7 +327,8 @@ export function PersonProjects({
               </select>
               {fe.project_id && <p className="text-xs text-destructive">{fe.project_id}</p>}
             </div>
-            <TextField name="project_role" label="Project role" required defaultValue={v.project_role ?? ''} error={fe.project_role} hint="For example Architect of record or Site supervisor." maxLength={120} />
+            <ProjectRoleField defaultValue={v.project_role ?? ''} error={fe.project_role} />
+            <StartDateField defaultValue={v.started_at} error={fe.started_at} />
             {activeRels.length > 0 && (
               <div className="flex flex-col gap-2">
                 <label htmlFor="pp-via" className="text-sm font-medium">

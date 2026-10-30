@@ -819,7 +819,9 @@ function NameCell({ row }: { row: DirectoryRow }) {
           {rowName(row)}
         </Link>
         {row.kind === 'company' && row.company.subcontractor_company_id && (
-          <span className="text-xs text-muted-foreground">Linked subcontractor</span>
+          <span className="text-xs text-muted-foreground">
+            {row.company.trade ? `Subcontractor · ${row.company.trade}` : 'Linked subcontractor'}
+          </span>
         )}
       </div>
     </div>

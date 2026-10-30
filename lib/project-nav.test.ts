@@ -14,7 +14,7 @@ const allOn: ProjectNavAccess = {
 const keys = (access: ProjectNavAccess) => getProjectNavItems(ID, access).map((i) => i.key)
 
 test('shows every tab in order when all features are on', () => {
-  assert.deepEqual(keys(allOn), ['overview', 'schedule', 'estimates', 'documents', 'team', 'walkthroughs', 'warranty'])
+  assert.deepEqual(keys(allOn), ['overview', 'schedule', 'estimates', 'documents', 'team', 'contacts', 'walkthroughs', 'warranty'])
 })
 
 test('every tab is scoped to the current project', () => {
@@ -30,7 +30,7 @@ test('hides tabs for disabled organization features', () => {
     ...allOn,
     features: { schedule: false, estimates: false, documents: false, walkthroughs: false, warranty: false },
   }
-  assert.deepEqual(keys(access), ['overview', 'team'])
+  assert.deepEqual(keys(access), ['overview', 'team', 'contacts'])
 })
 
 test('hides Documents when the user cannot view internal project data', () => {

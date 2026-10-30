@@ -99,6 +99,7 @@ export async function createSubcontractorAction(_prev: ActionState, formData: Fo
   }
 
   revalidatePath('/subcontractors')
+  revalidatePath('/contacts')
   const added = new URLSearchParams({ added: parsed.data.company_name })
   if (ids.length) added.set('projects', String(ids.length))
   redirect(`/subcontractors?${added.toString()}`)
@@ -220,6 +221,7 @@ export async function updateSubcontractorAction(
     )
     if (insertError) {
       revalidatePath('/subcontractors')
+  revalidatePath('/contacts')
       revalidatePath(`/subcontractors/${companyId}`)
       const reason =
         insertError.code === '23505'
@@ -235,6 +237,7 @@ export async function updateSubcontractorAction(
   }
 
   revalidatePath('/subcontractors')
+  revalidatePath('/contacts')
   revalidatePath(`/subcontractors/${companyId}`)
   const params = new URLSearchParams({ saved: '1' })
   if (toAdd.length) params.set('projects', String(toAdd.length))
@@ -293,6 +296,7 @@ export async function endProjectAssignmentAction(
   }
 
   revalidatePath('/subcontractors')
+  revalidatePath('/contacts')
   revalidatePath(`/subcontractors/${companyId}`)
   revalidatePath(`/subcontractors/${companyId}/edit`)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- embedded relation typing from PostgREST
@@ -320,6 +324,7 @@ export async function setSubcontractorStatusAction(companyId: string, status: 'a
   if (error) return { error: `Nothing was changed. ${friendlyDbError(error)}` }
   if (!data?.length) return { error: 'Nothing was changed. This subcontractor could not be found or you cannot edit it.' }
   revalidatePath('/subcontractors')
+  revalidatePath('/contacts')
   revalidatePath(`/subcontractors/${companyId}`)
   const name = data[0].company_name as string
   return {

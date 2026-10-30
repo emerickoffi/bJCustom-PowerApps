@@ -103,7 +103,7 @@ export function CompanyForm({
       </FormSection>
 
       <FormActions message={<FormMessage state={state} />}>
-        <Button variant="outline" size="lg" render={<Link href={cancelHref} />}>
+        <Button variant="outline" size="lg" render={<Link href={cancelHref} />} nativeButton={false}>
           Cancel
         </Button>
         <SubmitButton pendingLabel={company ? 'Saving changes…' : 'Saving company…'}>{company ? 'Save changes' : 'Add company'}</SubmitButton>

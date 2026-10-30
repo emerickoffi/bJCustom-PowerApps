@@ -10,6 +10,7 @@ export type ProjectNavKey =
   | 'financials'
   | 'documents'
   | 'team'
+  | 'contacts'
   | 'walkthroughs'
   | 'warranty'
 
@@ -99,6 +100,7 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
         activePrefix: `${base}/documents`,
       },
     { key: 'team', label: 'Team', href: `${base}#${PROJECT_SECTION_ANCHORS.team}`, activePrefix: null },
+    { key: 'contacts', label: 'Contacts', href: `${base}/contacts`, activePrefix: `${base}/contacts` },
     features.walkthroughs && {
       key: 'walkthroughs',
       label: 'Walkthroughs',
