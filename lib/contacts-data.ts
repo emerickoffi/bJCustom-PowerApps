@@ -34,6 +34,7 @@ type PersonRow = {
   specialty: string | null
   status: ContactStatus
   updated_at: string
+  created_at?: string
 }
 type CompanyRow = {
   id: string
@@ -42,6 +43,7 @@ type CompanyRow = {
   company_phone: string | null
   status: ContactStatus
   subcontractor_company_id: string | null
+  created_at?: string
   /** Read from the linked subcontractor; only visible to roles that can read subcontractor records. */
   trade?: string | null
 }
@@ -77,10 +79,10 @@ export async function loadDirectory(
   organizationId: string,
 ): Promise<{ availability: DirectoryAvailability; people: PersonView[]; companies: CompanyView[] }> {
   const [people, companies, rels, cats, personProjects, subAssignments] = await Promise.all([
-    supabase.from('business_people').select(PERSON_COLUMNS).eq('organization_id', organizationId).limit(MAX_ROWS),
+    supabase.from('business_people').select(`${PERSON_COLUMNS}, created_at`).eq('organization_id', organizationId).limit(MAX_ROWS),
     supabase
       .from('business_companies')
-      .select(`${COMPANY_COLUMNS}, subcontractor:subcontractor_companies(trade)`)
+      .select(`${COMPANY_COLUMNS}, created_at, subcontractor:subcontractor_companies(trade)`)
       .eq('organization_id', organizationId)
       .limit(MAX_ROWS),
     supabase

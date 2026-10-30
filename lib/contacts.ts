@@ -1,11 +1,10 @@
 import { z } from 'zod'
 
 export type ContactStatus = 'active' | 'inactive'
-export type DirectoryView = 'all' | 'people' | 'companies'
+export type DirectoryView = 'people' | 'companies'
 export type CategoryKey = 'professionals' | 'suppliers' | 'subcontractors' | 'other'
 
 export const DIRECTORY_VIEWS: { value: DirectoryView; label: string }[] = [
-  { value: 'all', label: 'All Contacts' },
   { value: 'people', label: 'People' },
   { value: 'companies', label: 'Companies' },
 ]
@@ -60,8 +59,9 @@ export const PROFESSIONAL_SPECIALTIES = [
 
 export const COMPANY_CONTACT_ROLES = [...new Set<string>([...SUBCONTRACTOR_CONTACT_ROLES, ...SUPPLIER_CONTACT_ROLES])]
 
+/** Unknown and legacy values (including the retired `all` view) normalize to People. */
 export function parseView(raw: string | undefined | null): DirectoryView {
-  return raw === 'people' || raw === 'companies' ? raw : 'all'
+  return raw === 'companies' ? 'companies' : 'people'
 }
 
 export function parseCategory(raw: string | undefined | null): CategoryKey | null {
@@ -280,6 +280,7 @@ export type PersonView = {
   specialty: string | null
   status: ContactStatus
   updated_at: string
+  created_at?: string
   companies: PersonCompanyLink[]
   categories: CategoryKey[]
   projects: ProjectLink[]
@@ -293,6 +294,7 @@ export type CompanyView = {
   status: ContactStatus
   subcontractor_company_id: string | null
   trade?: string | null
+  created_at?: string
   categories: CategoryKey[]
   product_categories: string[]
   primary_contact: { person_id: string; name: string } | null
@@ -451,10 +453,46 @@ export function filterByAttributes(rows: DirectoryRow[], f: AttributeFilters, co
   })
 }
 
-export type SortKey = 'name' | 'first_name' | 'last_name' | 'specialty' | 'company' | 'category' | 'projects' | 'status'
+export type SortKey = 'name' | 'first_name' | 'last_name' | 'specialty' | 'company' | 'category' | 'projects' | 'status' | 'recent'
 export type SortDir = 'asc' | 'desc'
+export type SortOption = { value: `${SortKey}:${SortDir}`; label: string }
+
+/** The first option of each list is that view's default. Person-name sorts never appear for companies. */
+export const SORT_OPTIONS: Record<DirectoryView, SortOption[]> = {
+  people: [
+    { value: 'last_name:asc', label: 'Last Name (A–Z)' },
+    { value: 'last_name:desc', label: 'Last Name (Z–A)' },
+    { value: 'first_name:asc', label: 'First Name (A–Z)' },
+    { value: 'first_name:desc', label: 'First Name (Z–A)' },
+    { value: 'recent:desc', label: 'Recently Added' },
+  ],
+  companies: [
+    { value: 'name:asc', label: 'Company Name (A–Z)' },
+    { value: 'name:desc', label: 'Company Name (Z–A)' },
+    { value: 'recent:desc', label: 'Recently Added' },
+  ],
+}
+
+/** Column-header sorts that make sense in each view, beyond the options in the sort menu. */
+const HEADER_SORTS: Record<DirectoryView, SortKey[]> = {
+  people: ['name', 'company', 'category', 'specialty', 'projects', 'status'],
+  companies: ['category', 'projects', 'status'],
+}
+
+export function defaultSort(view: DirectoryView): { key: SortKey; dir: SortDir } {
+  const [key, dir] = SORT_OPTIONS[view][0].value.split(':') as [SortKey, SortDir]
+  return { key, dir }
+}
+
+/** Keeps a sort that is valid in the target view; otherwise falls back to that view's default. */
+export function sortForView(view: DirectoryView, sort: { key: SortKey; dir: SortDir }): { key: SortKey; dir: SortDir } {
+  const value = `${sort.key}:${sort.dir}`
+  if (SORT_OPTIONS[view].some((o) => o.value === value) || HEADER_SORTS[view].includes(sort.key)) return sort
+  return defaultSort(view)
+}
 
 export function sortValue(row: DirectoryRow, key: SortKey): string | number {
+  if (key === 'recent') return (row.kind === 'person' ? row.person.created_at : row.company.created_at) ?? ''
   if (row.kind === 'person') {
     const p = row.person
     switch (key) {
@@ -504,11 +542,16 @@ export function sortRows(rows: DirectoryRow[], key: SortKey, dir: SortDir): Dire
 }
 
 export function buildRows(view: DirectoryView, people: PersonView[], companies: CompanyView[]): DirectoryRow[] {
-  const personRows = people.map((person): DirectoryRow => ({ kind: 'person', id: person.id, person }))
-  const companyRows = companies.map((company): DirectoryRow => ({ kind: 'company', id: company.id, company }))
-  if (view === 'people') return personRows
-  if (view === 'companies') return companyRows
-  return [...personRows, ...companyRows]
+  return view === 'people'
+    ? people.map((person): DirectoryRow => ({ kind: 'person', id: person.id, person }))
+    : companies.map((company): DirectoryRow => ({ kind: 'company', id: company.id, company }))
+}
+
+/** Per-category counts within one view. A record in several categories counts in each; `total` counts records once. */
+export function categoryCounts(rows: DirectoryRow[]): { total: number; byCat: Record<CategoryKey, number> } {
+  const byCat = Object.fromEntries(CATEGORY_KEYS.map((k) => [k, 0])) as Record<CategoryKey, number>
+  for (const row of rows) for (const k of new Set(rowCategories(row))) byCat[k]++
+  return { total: rows.length, byCat }
 }
 
 export const PAGE_SIZES = [25, 50, 100] as const

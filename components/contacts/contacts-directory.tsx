@@ -17,6 +17,7 @@ import {
   Phone,
   Search,
   User,
+  UserPlus,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -48,8 +49,12 @@ import {
   CATEGORY_LABELS,
   DIRECTORY_VIEWS,
   PAGE_SIZES,
+  SORT_OPTIONS,
   buildRows,
+  categoryCounts,
   companySummary,
+  defaultSort,
+  sortForView,
   filterByAttributes,
   filterRows,
   paginate,
@@ -89,15 +94,6 @@ type ColumnKey =
 type ColumnDef = { key: ColumnKey; label: string; sort?: SortKey; width?: string }
 
 const COLUMNS: Record<DirectoryView, ColumnDef[]> = {
-  all: [
-    { key: 'type', label: 'Type', width: 'w-28' },
-    { key: 'company', label: 'Company / Contact', sort: 'company' },
-    { key: 'category', label: 'Category', sort: 'category' },
-    { key: 'email', label: 'Email' },
-    { key: 'phone', label: 'Phone', width: 'w-40' },
-    { key: 'projects', label: 'Projects', sort: 'projects', width: 'w-32' },
-    { key: 'status', label: 'Status', sort: 'status', width: 'w-28' },
-  ],
   people: [
     { key: 'company', label: 'Company', sort: 'company' },
     { key: 'category', label: 'Category', sort: 'category' },
@@ -121,22 +117,9 @@ const COLUMNS: Record<DirectoryView, ColumnDef[]> = {
 }
 
 const DEFAULT_HIDDEN: Record<DirectoryView, ColumnKey[]> = {
-  all: [],
   people: ['secondary_phone'],
   companies: ['products'],
 }
-
-const SORT_OPTIONS: { value: `${SortKey}:${SortDir}`; label: string }[] = [
-  { value: 'last_name:asc', label: 'Last name (A–Z)' },
-  { value: 'last_name:desc', label: 'Last name (Z–A)' },
-  { value: 'first_name:asc', label: 'First name (A–Z)' },
-  { value: 'first_name:desc', label: 'First name (Z–A)' },
-  { value: 'company:asc', label: 'Company (A–Z)' },
-  { value: 'specialty:asc', label: 'Profession / trade' },
-  { value: 'category:asc', label: 'Category' },
-  { value: 'projects:desc', label: 'Most projects' },
-  { value: 'status:asc', label: 'Status' },
-]
 
 function uniqueSorted(values: (string | null | undefined)[]) {
   const seen = new Map<string, string>()
@@ -209,7 +192,7 @@ export function ContactsDirectory({
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query)
   const [status, setStatus] = useState<StatusFilter>('active')
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'name', dir: 'asc' })
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>(() => defaultSort(initialView))
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(25)
   const [hidden, setHidden] = useState(DEFAULT_HIDDEN)
@@ -263,30 +246,42 @@ export function ContactsDirectory({
   const pageKeys = items.map(rowKey)
   const allOnPageSelected = pageKeys.length > 0 && pageKeys.every((k) => selected.has(k))
 
-  const counts = useMemo(() => {
-    const base = buildRows(view, mergedPeople, companies)
-    const byCat = Object.fromEntries(CATEGORY_KEYS.map((k) => [k, 0])) as Record<CategoryKey, number>
-    let total = 0
-    for (const row of filterRows(base, { query: '', status, category: null })) {
-      total++
-      for (const k of row.kind === 'person' ? row.person.categories : row.company.categories) byCat[k]++
-    }
-    return { total, byCat }
-  }, [view, mergedPeople, companies, status])
+  const counts = useMemo(() => categoryCounts(filterRows(allRows, { query: '', status, category: null })), [allRows, status])
 
   function syncUrl(nextView: DirectoryView, nextCategory: CategoryKey | null) {
-    const params = new URLSearchParams()
-    if (nextView !== 'all') params.set('view', nextView)
+    const params = new URLSearchParams(window.location.search)
+    params.delete('view')
+    params.delete('category')
+    if (nextView !== 'people') params.set('view', nextView)
     if (nextCategory) params.set('category', nextCategory)
     const qs = params.toString()
     window.history.replaceState(null, '', qs ? `/contacts?${qs}` : '/contacts')
   }
 
+  /** Search and status carry over; category, page, selection, and filters that would be meaningless in the new view reset. */
   function changeView(next: DirectoryView) {
+    if (next === view) return
+    const nextRows = buildRows(next, mergedPeople, companies)
     setView(next)
+    setCategory(null)
+    setSort((s) => sortForView(next, s))
     setPage(1)
     setSelected(new Set())
-    syncUrl(next, category)
+    setSpecialtyFilter('')
+    if (projectFilter && !nextRows.some((r) => (r.kind === 'person' ? r.person.projects : r.company.projects).some((p) => p.project_id === projectFilter))) {
+      setProjectFilter('')
+    }
+    syncUrl(next, null)
+  }
+
+  function clearFilters() {
+    setQuery('')
+    setStatus('active')
+    setProjectFilter('')
+    setSpecialtyFilter('')
+    setProductFilter('')
+    setCompanyFilter('')
+    changeCategory(null)
   }
 
   function changeCategory(next: CategoryKey | null) {
@@ -386,6 +381,9 @@ export function ContactsDirectory({
   }
 
   const hasFilters = Boolean(query || category || status !== 'active' || projectFilter || specialtyFilter || productFilter || companyFilter)
+  const sortMenuValue = SORT_OPTIONS[view].some((o) => o.value === `${sort.key}:${sort.dir}`) ? `${sort.key}:${sort.dir}` : ''
+  const noun = view === 'people' ? 'contacts' : 'companies'
+  const directoryEmpty = allRows.length === 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -502,17 +500,19 @@ export function ContactsDirectory({
       </div>
 
       <div className="flex flex-wrap items-center gap-2" aria-label="More filters">
-        <FilterSelect
-          id="contacts-specialty"
-          label="Profession / trade"
-          value={specialtyFilter}
-          onChange={(v) => {
-            setSpecialtyFilter(v)
-            setPage(1)
-          }}
-          options={specialtyOptions.map((s) => [s, s] as const)}
-          allLabel="All professions"
-        />
+        {view === 'people' && (
+          <FilterSelect
+            id="contacts-specialty"
+            label="Profession / trade"
+            value={specialtyFilter}
+            onChange={(v) => {
+              setSpecialtyFilter(v)
+              setPage(1)
+            }}
+            options={specialtyOptions.map((s) => [s, s] as const)}
+            allLabel="All professions"
+          />
+        )}
         <FilterSelect
           id="contacts-product"
           label="Product category"
@@ -540,14 +540,20 @@ export function ContactsDirectory({
         </label>
         <NativeSelect
           id="contacts-sort"
-          value={`${sort.key}:${sort.dir}`}
+          value={sortMenuValue}
           onChange={(e) => {
+            if (!e.target.value) return
             const [key, dir] = e.target.value.split(':') as [SortKey, SortDir]
             setSort({ key, dir })
           }}
-          className="w-48 bg-card"
+          className="w-52 bg-card"
         >
-          {SORT_OPTIONS.map((o) => (
+          {!sortMenuValue && (
+            <option value="" disabled>
+              Sorted by column
+            </option>
+          )}
+          {SORT_OPTIONS[view].map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
@@ -558,20 +564,14 @@ export function ContactsDirectory({
       <div className="flex min-h-9 flex-wrap items-center justify-between gap-2 text-sm">
         <p className="text-muted-foreground" aria-live="polite">
           {filtered.length === 0
-            ? 'No matching records'
+            ? directoryEmpty
+              ? `No ${noun} yet`
+              : `No matching ${noun}`
             : `Showing ${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length}`}
           {hasFilters && (
             <button
               type="button"
-              onClick={() => {
-                setQuery('')
-                setStatus('active')
-                setProjectFilter('')
-                setSpecialtyFilter('')
-                setProductFilter('')
-                setCompanyFilter('')
-                changeCategory(null)
-              }}
+              onClick={clearFilters}
               className="ml-2 inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
             >
               <X className="size-3.5" aria-hidden="true" />
@@ -599,12 +599,7 @@ export function ContactsDirectory({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-input bg-card/70 px-6 py-14 text-center">
-          <p className="font-serif text-lg font-semibold text-foreground">No contacts found</p>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            {hasFilters ? 'Try a different search or clear the filters.' : 'Add a contact or import a CSV to build your directory.'}
-          </p>
-        </div>
+        <DirectoryEmptyState view={view} directoryEmpty={directoryEmpty} onClearFilters={clearFilters} />
       ) : (
         <>
           <div className="hidden overflow-x-auto rounded-xl border border-border/70 bg-card shadow-xs md:block">
@@ -1006,5 +1001,50 @@ function MobileCard({
         <ProjectsButton title={rowName(row)} projects={projects} onShow={onShowProjects} />
       </div>
     </li>
+  )
+}
+
+function DirectoryEmptyState({
+  view,
+  directoryEmpty,
+  onClearFilters,
+}: {
+  view: DirectoryView
+  directoryEmpty: boolean
+  onClearFilters: () => void
+}) {
+  const isPeople = view === 'people'
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-input bg-card/70 px-6 py-14 text-center">
+      <div className="flex size-10 items-center justify-center rounded-full bg-sage text-primary">
+        {isPeople ? <User className="size-5" aria-hidden="true" /> : <Building2 className="size-5" aria-hidden="true" />}
+      </div>
+      {directoryEmpty ? (
+        <>
+          <p className="font-serif text-lg font-semibold text-foreground">{isPeople ? 'No contacts yet' : 'No companies yet'}</p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            {isPeople
+              ? 'Add the people your team works with, or import them from a CSV.'
+              : 'Add the suppliers, subcontractors, and firms your team works with.'}
+          </p>
+          <Button
+            render={<Link href={isPeople ? '/contacts?new=contact' : '/contacts/companies/new'} scroll={isPeople ? false : undefined} />}
+            nativeButton={false}
+          >
+            {isPeople ? <UserPlus data-icon="inline-start" /> : <Building2 data-icon="inline-start" />}
+            {isPeople ? 'Add contact' : 'Add company'}
+          </Button>
+        </>
+      ) : (
+        <>
+          <p className="font-serif text-lg font-semibold text-foreground">{isPeople ? 'No matching contacts' : 'No matching companies'}</p>
+          <p className="max-w-sm text-sm text-muted-foreground">Try a different search, or clear the filters to see everything in this view.</p>
+          <Button variant="outline" onClick={onClearFilters}>
+            <X data-icon="inline-start" />
+            Clear filters
+          </Button>
+        </>
+      )}
+    </div>
   )
 }

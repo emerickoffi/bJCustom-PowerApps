@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { requireManager } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { loadAssignableProjectOptions, loadCompanyOptions, loadDirectory, loadPersonProfile } from '@/lib/contacts-data'
-import { CATEGORY_KEYS, DIRECTORY_VIEWS, type CategoryKey, type DirectoryView } from '@/lib/contacts'
+import { CATEGORY_KEYS, parseView, type CategoryKey, type DirectoryView } from '@/lib/contacts'
 import { isUuid } from '@/lib/subcontractor-projects'
 import { EmptyState, PageContainer, PageHeader } from '@/components/shared/page-header'
 import { ContactsDirectory } from '@/components/contacts/contacts-directory'
@@ -28,7 +28,7 @@ export default async function ContactsPage({
 }) {
   const session = await requireManager()
   const params = await searchParams
-  const view: DirectoryView = DIRECTORY_VIEWS.some((v) => v.value === params.view) ? (params.view as DirectoryView) : 'all'
+  const view: DirectoryView = parseView(typeof params.view === 'string' ? params.view : undefined)
   const category = CATEGORY_KEYS.includes(params.category as CategoryKey) ? (params.category as CategoryKey) : null
   const personId = [params.edit, params.contact].find((id) => id && isUuid(id)) ?? null
   const needsOptions = params.new === 'contact' || Boolean(params.edit && personId)
