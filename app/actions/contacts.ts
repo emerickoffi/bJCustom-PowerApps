@@ -590,6 +590,36 @@ export async function setStatusBulkAction(
 
 // ============ Companies ============
 
+/**
+ * Case-insensitive name match against the directory and the subcontractor list. A subcontractor that has no directory
+ * record yet still counts, so its canonical company is reused instead of creating an unlinked duplicate.
+ */
+async function findDuplicateCompany(gate: Extract<Gate, { ok: true }>, name: string): Promise<NonNullable<ActionState['duplicate']> | null> {
+  const { supabase, session } = gate
+  const pattern = escapeLike(name.trim())
+  const [directory, subcontractors] = await Promise.all([
+    supabase
+      .from('business_companies')
+      .select('id, company_name, status, subcontractor_company_id')
+      .eq('organization_id', session.organizationId)
+      .ilike('company_name', pattern)
+      .limit(1),
+    supabase.from('subcontractor_companies').select('id, company_name').eq('organization_id', session.organizationId).ilike('company_name', pattern).limit(1),
+  ])
+  const row = directory.data?.[0] as { id: string; company_name: string; status: string; subcontractor_company_id: string | null } | undefined
+  if (row) {
+    return {
+      id: row.id,
+      name: row.company_name,
+      href: `/contacts/companies/${row.id}`,
+      kind: row.subcontractor_company_id ? 'subcontractor' : 'company',
+      inactive: row.status !== 'active',
+    }
+  }
+  const sub = subcontractors.data?.[0] as { id: string; company_name: string } | undefined
+  return sub ? { id: sub.id, name: sub.company_name, href: `/subcontractors/${sub.id}`, kind: 'subcontractor' } : null
+}
+
 export async function createCompanyAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const values: Record<string, string> = { ...formValues(formData), categories: formData.getAll('categories').join(',') }
   const gate = await requireContactsManager('add')
@@ -597,6 +627,22 @@ export async function createCompanyAction(_prev: ActionState, formData: FormData
   const { session, supabase } = gate
   const parsed = companySchema.safeParse(values)
   if (!parsed.success) return { ...fromZodError(parsed.error), values }
+  const overlay = values[OVERLAY_FIELD] === '1'
+
+  const duplicateResult = async (): Promise<ActionState | null> => {
+    const duplicate = await findDuplicateCompany(gate, parsed.data.company_name)
+    if (!duplicate) return null
+    const message =
+      duplicate.kind === 'subcontractor'
+        ? `${duplicate.name} is already a subcontractor. Open it instead of creating a separate company.`
+        : duplicate.inactive
+          ? `${duplicate.name} already exists but is inactive. Open it to reactivate it.`
+          : `${duplicate.name} is already in your directory.`
+    return { error: 'This company already exists. Nothing was saved.', fieldErrors: { company_name: message }, values, duplicate }
+  }
+
+  const blocked = await duplicateResult()
+  if (blocked) return blocked
 
   const { data: company, error } = await supabase
     .from('business_companies')
@@ -604,7 +650,9 @@ export async function createCompanyAction(_prev: ActionState, formData: FormData
     .select('id')
     .single()
   if (error || !company) {
-    if (error?.code === '23505') return { error: 'Please correct the highlighted fields.', fieldErrors: { company_name: COMPANY_TAKEN }, values }
+    if (error?.code === '23505') {
+      return (await duplicateResult()) ?? { error: 'Please correct the highlighted fields.', fieldErrors: { company_name: COMPANY_TAKEN }, values }
+    }
     return { error: `Nothing was saved. ${dbError(error)}`, values }
   }
   const catError = await syncCompanyCategories(
@@ -615,6 +663,9 @@ export async function createCompanyAction(_prev: ActionState, formData: FormData
     parseProductCategories(values.product_categories),
   )
   revalidateDirectory()
+  if (overlay) {
+    return { savedId: company.id, success: 'Company added.', warning: catError ? `Company saved, but categories were not. ${catError}` : undefined }
+  }
   if (catError) redirect(`/contacts/companies/${company.id}?warning=${encodeURIComponent(`Company saved, but categories were not. ${catError}`)}`)
   redirect(`/contacts/companies/${company.id}?added=1`)
 }

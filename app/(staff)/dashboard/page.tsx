@@ -192,21 +192,32 @@ export default async function DashboardPage({
         />
       </section>
 
+      {/* Each column stacks independently so a short card never leaves a gap beside a tall one. On small screens the
+          wrappers dissolve (`contents`) and `order` keeps the reading sequence Attention → Agenda → Health → Activity. */}
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
-        <NotificationsCard
-          items={attention.items}
-          total={attention.total}
-          totalIsLowerBound={attention.totalIsLowerBound}
-        />
-        <MyAgenda agenda={agendaData.agenda} today={agendaData.today} scheduleEnabled={features.schedule} />
-      </div>
-
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
-        <ProjectHealthList projects={health.projects} total={health.total} flagged={health.flagged} />
-        <RecentActivity
-          items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
-          updates={attention.updates}
-        />
+        <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-6">
+          <div className="order-1 min-w-0 xl:order-none">
+            <NotificationsCard
+              items={attention.items}
+              total={attention.total}
+              totalIsLowerBound={attention.totalIsLowerBound}
+            />
+          </div>
+          <div className="order-3 min-w-0 xl:order-none">
+            <ProjectHealthList projects={health.projects} total={health.total} flagged={health.flagged} />
+          </div>
+        </div>
+        <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-6">
+          <div className="order-2 min-w-0 xl:order-none">
+            <MyAgenda agenda={agendaData.agenda} today={agendaData.today} scheduleEnabled={features.schedule} />
+          </div>
+          <div className="order-4 min-w-0 xl:order-none">
+            <RecentActivity
+              items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
+              updates={attention.updates}
+            />
+          </div>
+        </div>
       </div>
 
       <section aria-labelledby="homes-heading" className="flex flex-col gap-5">

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Activity, Bell, Calendar, Mail, MapPin, Phone, StickyNote } from 'lucide-react'
+import { Activity, Bell, Calendar, ChevronDown, Mail, MapPin, Phone, StickyNote } from 'lucide-react'
 import { markNotificationReadAction } from '@/app/actions/walkthroughs'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/domain'
 import { formatDateTime } from '@/lib/format'
@@ -73,11 +73,54 @@ function UpdateRow({ update }: { update: ProjectUpdate }) {
   )
 }
 
+const VISIBLE_LIMIT = 5
+const TIMELINE =
+  'relative flex flex-col gap-5 before:absolute before:bottom-3 before:left-3.5 before:top-3 before:w-px before:bg-border'
+
+function ActivityRow({ item }: { item: ActivityItem }) {
+  const Icon = ACTIVITY_ICONS[item.activity_type] ?? Activity
+  return (
+    <li className="relative flex gap-3">
+      <span
+        className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-sage text-primary ring-4 ring-card"
+        aria-hidden="true"
+      >
+        <Icon className="size-3.5" />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 text-xs">
+          <span className="font-medium text-primary">{ACTIVITY_TYPE_LABELS[item.activity_type] ?? item.activity_type}</span>
+          <time dateTime={item.created_at} className="text-muted-foreground">
+            {formatDateTime(item.created_at)}
+          </time>
+        </div>
+        <p className="text-pretty text-sm leading-relaxed text-foreground">{item.summary}</p>
+        {item.clients && (
+          <Link
+            href={`/clients/${item.client_id}`}
+            className="w-fit text-xs font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
+          >
+            {`${item.clients.first_name} ${item.clients.last_name}`}
+          </Link>
+        )}
+      </div>
+    </li>
+  )
+}
+
 export function RecentActivity({ items, updates = [] }: { items: ActivityItem[]; updates?: ProjectUpdate[] }) {
   const entries = [
     ...items.map((item) => ({ type: 'activity' as const, at: item.created_at, item })),
     ...updates.map((update) => ({ type: 'update' as const, at: update.created_at, update })),
   ].sort((a, b) => b.at.localeCompare(a.at))
+  const visible = entries.slice(0, VISIBLE_LIMIT)
+  const earlier = entries.slice(VISIBLE_LIMIT)
+
+  const renderEntry = (entry: (typeof entries)[number]) => {
+    if (entry.type === 'update') return <UpdateRow key={`u-${entry.update.id}`} update={entry.update} />
+    return <ActivityRow key={entry.item.id} item={entry.item} />
+  }
+
   return (
     <section aria-labelledby="activity-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
       <div className="flex flex-col gap-1 border-b pb-4">
@@ -91,42 +134,19 @@ export function RecentActivity({ items, updates = [] }: { items: ActivityItem[];
           Client notes, calls, and project events will show here.
         </p>
       ) : (
-        <ol className="relative flex flex-col gap-5 before:absolute before:bottom-3 before:left-3.5 before:top-3 before:w-px before:bg-border">
-          {entries.map((entry) => {
-            if (entry.type === 'update') return <UpdateRow key={`u-${entry.update.id}`} update={entry.update} />
-            const item = entry.item
-            const Icon = ACTIVITY_ICONS[item.activity_type] ?? Activity
-            return (
-              <li key={item.id} className="relative flex gap-3">
-                <span
-                  className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-sage text-primary ring-4 ring-card"
-                  aria-hidden="true"
-                >
-                  <Icon className="size-3.5" />
-                </span>
-                <div className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
-                  <div className="flex flex-wrap items-center justify-between gap-x-2 text-xs">
-                    <span className="font-medium text-primary">
-                      {ACTIVITY_TYPE_LABELS[item.activity_type] ?? item.activity_type}
-                    </span>
-                    <time dateTime={item.created_at} className="text-muted-foreground">
-                      {formatDateTime(item.created_at)}
-                    </time>
-                  </div>
-                  <p className="text-pretty text-sm leading-relaxed text-foreground">{item.summary}</p>
-                  {item.clients && (
-                    <Link
-                      href={`/clients/${item.client_id}`}
-                      className="w-fit text-xs font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
-                    >
-                      {`${item.clients.first_name} ${item.clients.last_name}`}
-                    </Link>
-                  )}
-                </div>
-              </li>
-            )
-          })}
-        </ol>
+        <div className="flex flex-col gap-4">
+          <ol className={TIMELINE}>{visible.map(renderEntry)}</ol>
+          {earlier.length > 0 && (
+            <details className="group flex flex-col gap-4 border-t pt-3">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-center gap-1.5 rounded-md text-sm font-medium text-primary hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+                <span className="group-open:hidden">{`View all (${entries.length})`}</span>
+                <span className="hidden group-open:inline">Show less</span>
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <ol className={`${TIMELINE} mt-4`}>{earlier.map(renderEntry)}</ol>
+            </details>
+          )}
+        </div>
       )}
     </section>
   )
