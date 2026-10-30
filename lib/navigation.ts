@@ -14,6 +14,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: '/projects', label: 'Projects', icon: 'projects' },
   { href: '/clients', label: 'Clients', icon: 'clients' },
   { href: '/subcontractors', label: 'Subcontractors', icon: 'subcontractors', roles: ['org_admin', 'project_manager'], feature: 'subcontractors' },
+  { href: '/contacts', label: 'Contacts', icon: 'contacts', roles: ['org_admin', 'project_manager'] },
   { href: '/schedule', label: 'Schedule', icon: 'schedule', feature: 'schedule' },
   { href: '/daily-logs', label: 'Daily Logs', icon: 'daily-logs', roles: ['org_admin', 'project_manager', 'builder_staff'], feature: 'daily_logs' },
   { href: '/estimates', label: 'Estimates', icon: 'estimates', feature: 'estimates' },

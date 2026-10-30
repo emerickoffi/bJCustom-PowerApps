@@ -15,6 +15,8 @@ import { PageHeader, Surface } from '@/components/shared/page-header'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { SubcontractorStatusButton } from '@/components/subcontractors/subcontractor-status-dialog'
 import { SubcontractorStatusBadge } from '@/components/subcontractors/subcontractor-status-badge'
+import { CompanyContacts } from '@/components/contacts/company-contacts'
+import { loadCompanyProfile, loadPersonOptions } from '@/lib/contacts-data'
 
 export const metadata: Metadata = { title: 'Subcontractor' }
 
@@ -34,7 +36,11 @@ export default async function SubcontractorDetailPage({
   const supabase = await createClient()
   const company = await loadSubcontractor(supabase, session.organizationId, id)
   if (!company) notFound()
-  const { availability, records } = await loadProjectAssignments(supabase, session.organizationId, id)
+  const [{ availability, records }, businessCompany, people] = await Promise.all([
+    loadProjectAssignments(supabase, session.organizationId, id),
+    loadCompanyProfile(supabase, session.organizationId, { subcontractorId: id }),
+    loadPersonOptions(supabase, session.organizationId),
+  ])
   const { current, history } = splitProjectAssignments(records, projectAcceptsNewAssignments)
   const addedProjects = Number.parseInt(sp.projects ?? '', 10)
   const editHref = `/subcontractors/${company.id}/edit`
@@ -112,6 +118,15 @@ export default async function SubcontractorDetailPage({
           </InfoItem>
         </dl>
       </Surface>
+
+      <CompanyContacts
+        target={{ subcontractorId: company.id }}
+        contacts={businessCompany?.contacts ?? []}
+        people={people}
+        canEdit
+        companyInactive={company.status === 'inactive'}
+        subcontractor
+      />
 
       <Surface aria-labelledby="projects-heading" className="gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">

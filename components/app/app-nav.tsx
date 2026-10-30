@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
+  BookUser,
   Building2,
   CalendarRange,
   Calculator,
@@ -29,6 +30,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   projects: FolderKanban,
   clients: Users,
   subcontractors: HardHat,
+  contacts: BookUser,
   team: UsersRound,
   settings: Settings,
   schedule: CalendarRange,
