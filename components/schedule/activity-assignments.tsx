@@ -15,6 +15,26 @@ import {
 import type { ActivityAssignment, AssignmentAvailability, CompanyOption } from '@/lib/assignments'
 import { formatDate } from '@/lib/format'
 
+function QualificationNotes({ companies }: { companies: CompanyOption[] }) {
+  const flagged = companies.filter((c) => c.qualificationNote)
+  if (!flagged.length) return null
+  const blocking = flagged.some((c) => c.qualificationNote?.level === 'block')
+  return (
+    <p
+      role="note"
+      className={
+        blocking
+          ? 'rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-800'
+          : 'rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900'
+      }
+    >
+      {blocking
+        ? 'Your company requires qualification before new project work. Companies marked Blocked cannot be assigned until they are Qualified.'
+        : `${flagged.length} ${flagged.length === 1 ? 'subcontractor is' : 'subcontractors are'} not fully qualified. You can still assign work; review their qualification first.`}
+    </p>
+  )
+}
+
 function CompanyFields({ companies, defaultCompany, defaultScope }: { companies: CompanyOption[]; defaultCompany?: string; defaultScope?: string }) {
   return (
     <>
@@ -24,8 +44,14 @@ function CompanyFields({ companies, defaultCompany, defaultScope }: { companies:
         required
         placeholder="Choose an active subcontractor"
         defaultValue={defaultCompany}
-        options={companies.map((c) => ({ value: c.value, label: `${c.label} · ${c.trade}` }))}
+        options={companies.map((c) => ({
+          value: c.value,
+          label: c.qualificationNote
+            ? `${c.label} · ${c.trade} · ${c.qualificationNote.level === 'block' ? 'Blocked: ' : ''}${c.qualificationNote.short}`
+            : `${c.label} · ${c.trade}`,
+        }))}
       />
+      <QualificationNotes companies={companies} />
       <TextAreaField
         name="scope_of_work"
         label="Scope of work"

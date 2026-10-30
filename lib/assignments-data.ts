@@ -10,6 +10,8 @@ import {
   type AssignmentAvailability,
   type CompanyOption,
 } from '@/lib/assignments'
+import { loadQualificationSummaries } from '@/lib/subcontractor-qualification-data'
+import { QUALIFICATION_STATUS_LABELS, assignmentWarning } from '@/lib/subcontractor-qualification'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
@@ -37,7 +39,7 @@ export async function loadProjectAssignments(
 ): Promise<AssignmentData> {
   if (!manager || !features.subcontractors || !features.schedule) return OFF
   const acceptsNew = projectAcceptsNewAssignments(projectStatus)
-  const [assignmentsRes, companiesRes] = await Promise.all([
+  const [assignmentsRes, companiesRes, qualification] = await Promise.all([
     supabase
       .from('schedule_activity_assignments')
       .select(ASSIGNMENT_SELECT)
@@ -52,6 +54,7 @@ export async function loadProjectAssignments(
       .eq('status', 'active')
       .order('company_name')
       .limit(500),
+    loadQualificationSummaries(supabase, organizationId),
   ])
   if (assignmentsRes.error || companiesRes.error) {
     const missing = isMissingTableError(assignmentsRes.error) || isMissingTableError(companiesRes.error)
@@ -62,7 +65,17 @@ export async function loadProjectAssignments(
     acceptsNew,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- embedded relation typing from PostgREST
     assignments: (assignmentsRes.data ?? []).map((r) => toAssignment(r as any)),
-    companies: (companiesRes.data ?? []).map((c) => ({ value: c.id, label: c.company_name, trade: c.trade })),
+    companies: (companiesRes.data ?? []).map((c) => {
+      const option: CompanyOption = { value: c.id, label: c.company_name, trade: c.trade }
+      if (qualification.availability !== 'ready') return option
+      const summary = qualification.byCompany[c.id] ?? null
+      const warning = assignmentWarning(summary, qualification.mode)
+      if (!warning) return option
+      const status = summary?.status ?? 'not_started'
+      const short =
+        status === 'qualified' ? 'Docs expiring soon' : QUALIFICATION_STATUS_LABELS[status]
+      return { ...option, qualificationNote: { level: warning.level, short, message: warning.message } }
+    }),
   }
 }
 

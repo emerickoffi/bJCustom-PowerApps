@@ -81,10 +81,21 @@ export function isActionableNotification(n: Pick<AttentionNotification, 'kind' |
 export function notificationFeatureEnabled(kind: string, features: FeatureFlags): boolean {
   if (WARRANTY_KINDS.has(kind)) return features.warranty
   if (kind === 'signature_request') return features.documents && features.e_signatures
+  if (kind === QUALIFICATION_KIND) return features.subcontractors !== false
   return true
 }
 
+const QUALIFICATION_KIND = 'subcontractor_qualification'
+
+function issueTypeFor(kind: string): string {
+  if (WARRANTY_KINDS.has(kind)) return 'Warranty'
+  if (kind === 'signature_request') return 'Documents'
+  if (kind === QUALIFICATION_KIND) return 'Qualification'
+  return 'Task'
+}
+
 function actionLabelFor(n: AttentionNotification): string {
+  if (n.kind === QUALIFICATION_KIND) return 'Review qualification'
   if (n.kind === 'warranty_claim') return 'Review claim'
   if (WARRANTY_KINDS.has(n.kind)) return 'Open warranty'
   if (n.kind === 'signature_request') return 'Review document'
@@ -147,7 +158,7 @@ export function buildAttentionItems(
     .map((n) => ({
       key: `n-${n.id}`,
       priority: 'pending' as const,
-      issueType: WARRANTY_KINDS.has(n.kind) ? 'Warranty' : n.kind === 'signature_request' ? 'Documents' : 'Task',
+      issueType: issueTypeFor(n.kind),
       title: n.title,
       project: n.projectName,
       description: n.body ?? '',

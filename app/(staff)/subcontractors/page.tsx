@@ -22,6 +22,14 @@ import {
 import { groupAssignedProjects } from '@/lib/subcontractor-projects'
 import { summarizeDirectory } from '@/lib/subcontractor-directory'
 import { DirectorySummary } from '@/components/subcontractors/directory-summary'
+import { loadQualificationSummaries } from '@/lib/subcontractor-qualification-data'
+import {
+  QUALIFICATION_FILTERS,
+  matchesQualificationFilter,
+  parseQualificationFilter,
+  type QualificationFilter,
+} from '@/lib/subcontractor-qualification'
+import { QualificationFilterChips } from '@/components/subcontractors/qualification-filter'
 
 export const metadata: Metadata = { title: 'Subcontractors' }
 
@@ -30,7 +38,7 @@ const LIMIT = 500
 export default async function SubcontractorsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; added?: string; projects?: string }>
+  searchParams: Promise<{ q?: string; status?: string; added?: string; projects?: string; qualification?: string }>
 }) {
   const session = await requireManager()
   const features = await requireFeature(session.organizationId, 'subcontractors')
@@ -40,7 +48,8 @@ export default async function SubcontractorsPage({
     ? (params.status as SubcontractorStatus)
     : null
   const added = params.added?.slice(0, 160)
-  const filtered = Boolean(q || status)
+  const qualificationFilter = parseQualificationFilter(params.qualification)
+  const filtered = Boolean(q || status || qualificationFilter)
 
   const supabase = await createClient()
   let query = supabase
@@ -51,7 +60,7 @@ export default async function SubcontractorsPage({
     .limit(LIMIT)
   if (status) query = query.eq('status', status)
   if (q) query = query.or(`company_name.ilike.*${q}*,trade.ilike.*${q}*,email.ilike.*${q}*,phone.ilike.*${q}*`)
-  const [{ data, error }, work, assignmentsRes] = await Promise.all([
+  const [{ data, error }, work, assignmentsRes, qualification] = await Promise.all([
     query,
     loadDirectoryWork(supabase, session.organizationId, features),
     supabase
@@ -60,14 +69,20 @@ export default async function SubcontractorsPage({
       .eq('organization_id', session.organizationId)
       .is('ended_at', null)
       .limit(5000),
+    loadQualificationSummaries(supabase, session.organizationId),
   ])
-  const rows = (data ?? []) as SubcontractorCompany[]
+  const qualificationReady = qualification.availability === 'ready'
+  const loadedRows = (data ?? []) as SubcontractorCompany[]
+  const rows =
+    qualificationFilter && qualificationReady
+      ? loadedRows.filter((r) => matchesQualificationFilter(qualification.byCompany[r.id], qualificationFilter))
+      : loadedRows
   const projectsByCompany = assignmentsRes.error
     ? null
     : groupAssignedProjects((assignmentsRes.data ?? []) as unknown as Parameters<typeof groupAssignedProjects>[0])
   // Metrics describe the whole directory, so reuse the unfiltered rows when we already have all of them.
-  let summaryCompanies: { id: string; status: string }[] = rows
-  if (!error && (filtered || rows.length === LIMIT)) {
+  let summaryCompanies: { id: string; status: string }[] = loadedRows
+  if (!error && (filtered || loadedRows.length === LIMIT)) {
     const all = await supabase
       .from('subcontractor_companies')
       .select('id, status')
@@ -77,6 +92,12 @@ export default async function SubcontractorsPage({
   }
   const summary = summarizeDirectory(summaryCompanies, projectsByCompany)
   const addedProjects = Number.parseInt(params.projects ?? '', 10)
+  const qualificationCounts = Object.fromEntries(
+    QUALIFICATION_FILTERS.map((f) => [
+      f,
+      summaryCompanies.filter((c) => matchesQualificationFilter(qualification.byCompany[c.id], f)).length,
+    ]),
+  ) as Record<QualificationFilter, number>
 
   const addButton = (
     <Button size="lg" render={<Link href="/subcontractors/new" scroll={false} />} nativeButton={false}>
@@ -126,14 +147,25 @@ export default async function SubcontractorsPage({
             statusOptions={SUBCONTRACTOR_STATUSES.map((s) => ({ value: s, label: SUBCONTRACTOR_STATUS_LABELS[s] }))}
             clearHref={filtered ? '/subcontractors' : undefined}
           />
+          {qualificationReady && summary.total > 0 && (
+            <QualificationFilterChips
+              active={qualificationFilter}
+              baseParams={{ q: q || undefined, status: status ?? undefined }}
+              counts={qualificationCounts}
+            />
+          )}
           {rows.length ? (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-muted-foreground">
-                {rows.length === LIMIT
+                {loadedRows.length === LIMIT
                   ? `Showing the first ${LIMIT} subcontractors. Narrow your search to find others.`
                   : `${rows.length} ${rows.length === 1 ? 'subcontractor' : 'subcontractors'}`}
               </p>
-              <SubcontractorTable rows={rows} projectsByCompany={projectsByCompany} />
+              <SubcontractorTable
+                rows={rows}
+                projectsByCompany={projectsByCompany}
+                qualificationByCompany={qualificationReady ? qualification.byCompany : null}
+              />
             </div>
           ) : null}
           {work.availability !== 'off' && <AssignedWorkCard availability={work.availability} items={work.items} />}
@@ -143,7 +175,7 @@ export default async function SubcontractorsPage({
               title={filtered ? 'No matching subcontractors' : 'No subcontractors yet'}
               description={
                 filtered
-                  ? 'Try a different search or status filter.'
+                  ? 'Try a different search, status, or qualification filter.'
                   : 'Add the trade partners you hire so your team has one place to find their details.'
               }
               action={

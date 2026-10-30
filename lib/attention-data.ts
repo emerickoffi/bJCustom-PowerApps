@@ -46,6 +46,13 @@ export async function loadDashboardAttention(
 ): Promise<DashboardAttention> {
   const supabase = await createClient()
   const today = todayIso()
+  if (features.subcontractors) {
+    // Deduplicated server-side and a no-op for non-managers; failures (e.g. migration not yet applied) are non-fatal.
+    await supabase.rpc('refresh_subcontractor_qualification_notices', { p_organization_id: orgId }).then(
+      () => undefined,
+      () => undefined,
+    )
+  }
   const [notificationsRes, activitiesRes, logDelaysRes] = await Promise.all([
     supabase
       .from('notifications')

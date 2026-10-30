@@ -8,10 +8,14 @@ import type { AssignedProject } from '@/lib/subcontractor-projects'
 import { companyInitials, projectCountLabel } from '@/lib/subcontractor-directory'
 import { SubcontractorRowActions } from '@/components/subcontractors/subcontractor-row-actions'
 import { SubcontractorStatusBadge } from '@/components/subcontractors/subcontractor-status-badge'
+import { QualificationBadge } from '@/components/subcontractors/qualification-badge'
+import type { QualificationSummary } from '@/lib/subcontractor-qualification'
 
 type Props = {
   rows: SubcontractorCompany[]
   projectsByCompany: Record<string, AssignedProject[]> | null
+  /** Null when vetting is unavailable; the column is hidden rather than showing guesses. */
+  qualificationByCompany?: Record<string, QualificationSummary> | null
 }
 
 const inlineActionClass =
@@ -96,8 +100,9 @@ function ProjectsSummary({ projects }: { projects: AssignedProject[] | undefined
   )
 }
 
-export function SubcontractorTable({ rows, projectsByCompany }: Props) {
+export function SubcontractorTable({ rows, projectsByCompany, qualificationByCompany = null }: Props) {
   const showProjects = projectsByCompany !== null
+  const showQualification = qualificationByCompany !== null
   return (
     <>
       <div className="hidden overflow-hidden rounded-xl border border-border/70 bg-card shadow-xs md:block">
@@ -107,9 +112,14 @@ export function SubcontractorTable({ rows, projectsByCompany }: Props) {
               <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[30%] pl-5")}>
                 Company / Trade
               </TableHead>
-              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[26%]")}>
+              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, showQualification ? "w-[22%]" : "w-[26%]")}>
                 Contact
               </TableHead>
+              {showQualification && (
+                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[14%]")}>
+                  Qualification
+                </TableHead>
+              )}
               {showProjects && (
                 <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[17%]")}>
                   Projects
@@ -132,6 +142,11 @@ export function SubcontractorTable({ rows, projectsByCompany }: Props) {
                 <TableCell className="py-3.5">
                   <ContactLines row={row} />
                 </TableCell>
+                {showQualification && (
+                  <TableCell className="py-3.5">
+                    <QualificationBadge summary={qualificationByCompany[row.id] ?? null} />
+                  </TableCell>
+                )}
                 {showProjects && (
                   <TableCell className="py-3.5">
                     <ProjectsSummary projects={projectsByCompany[row.id]} />
@@ -184,7 +199,10 @@ export function SubcontractorTable({ rows, projectsByCompany }: Props) {
             <ContactLines row={row} />
             <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-3">
               {showProjects ? <ProjectsSummary projects={projectsByCompany[row.id]} /> : <span />}
-              <StatusBadge status={row.status} />
+              <span className="flex flex-wrap items-center justify-end gap-1.5">
+                {showQualification && <QualificationBadge summary={qualificationByCompany[row.id] ?? null} />}
+                <StatusBadge status={row.status} />
+              </span>
             </div>
           </li>
         ))}

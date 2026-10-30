@@ -15,7 +15,13 @@ export type ActivityAssignment = {
   company_status: 'active' | 'inactive'
 }
 
-export type CompanyOption = { value: string; label: string; trade: string }
+export type CompanyOption = {
+  value: string
+  label: string
+  trade: string
+  /** Qualification guidance; absent when vetting is unavailable or the company is fully qualified. */
+  qualificationNote?: { level: 'block' | 'warn'; short: string; message: string }
+}
 
 /** Why assignments are not shown: the feature is off, the viewer cannot manage, or the migration is missing. */
 export type AssignmentAvailability = 'ready' | 'off' | 'setup-required' | 'error'
