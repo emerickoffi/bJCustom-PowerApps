@@ -111,6 +111,28 @@ export const CONTACT_RELATIONSHIP_LABELS: Record<string, string> = {
   other: 'Other',
 }
 
+// Still valid in the database and shown on existing contacts, but no longer offered for new selections.
+// Business professionals (agents, attorneys, property managers) belong in the Business Contacts directory.
+export const LEGACY_CONTACT_RELATIONSHIPS: readonly string[] = ['agent', 'attorney', 'property_manager']
+
+export function isSelectableContactRelationship(value: string, current?: string | null): boolean {
+  if (!(value in CONTACT_RELATIONSHIP_LABELS)) return false
+  return !LEGACY_CONTACT_RELATIONSHIPS.includes(value) || value === current
+}
+
+export function contactRelationshipOptions(
+  current?: string | null,
+  { includePrimaryOwner = true }: { includePrimaryOwner?: boolean } = {},
+): { value: string; label: string }[] {
+  return Object.entries(CONTACT_RELATIONSHIP_LABELS)
+    .filter(([value]) => includePrimaryOwner || value !== 'primary_owner')
+    .filter(([value]) => isSelectableContactRelationship(value, current))
+    .map(([value, label]) => ({
+      value,
+      label: LEGACY_CONTACT_RELATIONSHIPS.includes(value) ? `${label} (no longer offered)` : label,
+    }))
+}
+
 export const CONTACT_PORTAL_PERMISSIONS = [
   { key: 'portal_view_reports', label: 'View reports' },
   { key: 'portal_validate_issues', label: 'Validate repairs' },
