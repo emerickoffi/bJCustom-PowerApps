@@ -148,6 +148,58 @@ export const PROJECT_ROLE_OPTIONS = [
   'Attorney',
 ] as const
 
+/** Suggestions for a person's position at a company. Free text is still accepted. */
+export const COMPANY_POSITION_SUGGESTIONS = [
+  'Owner',
+  'Foreman',
+  'Supervisor',
+  'Sales Representative',
+  'Account Manager',
+  'Engineer',
+  'Office Contact',
+  'Billing Contact',
+  'Other',
+] as const
+
+export const MAX_FORM_PROJECT_ASSIGNMENTS = 25
+
+export type PendingProjectAssignment = { project_id: string; project_role: string }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Parses the contact form's serialized project assignments. Blank input means no assignments. Rejects duplicates,
+ * malformed ids, and missing roles so nothing is half-saved.
+ */
+export function parseProjectAssignments(
+  raw: string | undefined | null,
+): { ok: true; value: PendingProjectAssignment[] } | { ok: false; error: string } {
+  const text = (raw ?? '').trim()
+  if (!text) return { ok: true, value: [] }
+  let data: unknown
+  try {
+    data = JSON.parse(text)
+  } catch {
+    return { ok: false, error: 'Project assignments could not be read. Remove them and try again.' }
+  }
+  if (!Array.isArray(data)) return { ok: false, error: 'Project assignments could not be read. Remove them and try again.' }
+  if (data.length > MAX_FORM_PROJECT_ASSIGNMENTS) {
+    return { ok: false, error: `Assign at most ${MAX_FORM_PROJECT_ASSIGNMENTS} projects at a time.` }
+  }
+  const seen = new Set<string>()
+  const value: PendingProjectAssignment[] = []
+  for (const item of data) {
+    const projectId = typeof item?.project_id === 'string' ? item.project_id : ''
+    if (!UUID_RE.test(projectId)) return { ok: false, error: 'Choose each project from the list.' }
+    if (seen.has(projectId)) return { ok: false, error: 'Each project can only be assigned once.' }
+    seen.add(projectId)
+    const role = projectRoleSchema.safeParse(typeof item?.project_role === 'string' ? item.project_role : '')
+    if (!role.success) return { ok: false, error: `Enter a role for every project. ${role.error.issues[0]?.message ?? ''}`.trim() }
+    value.push({ project_id: projectId, project_role: role.data })
+  }
+  return { ok: true, value }
+}
+
 /** Optional YYYY-MM-DD start date; blank means today. Rejects impossible dates and dates more than a year out. */
 export function parseStartDate(raw: string | undefined, today: string): { ok: true; value: string } | { ok: false; error: string } {
   const v = (raw ?? '').trim()

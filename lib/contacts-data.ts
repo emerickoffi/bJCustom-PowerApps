@@ -1,5 +1,6 @@
 import 'server-only'
 import type { createClient } from '@/lib/supabase/server'
+import { ASSIGNABLE_PROJECT_STATUSES } from '@/lib/domain'
 import {
   categoryKeyFromName,
   deriveCompanyCategories,
@@ -404,15 +405,63 @@ export async function loadCompanyContacts(supabase: Supabase, organizationId: st
   }))
 }
 
+export type CompanyOption = {
+  id: string
+  company_name: string
+  status: ContactStatus
+  /** First business category label, shown as a hint in pickers. */
+  category: string | null
+  primary_contact: { person_id: string; name: string } | null
+}
+
 /** Lightweight option lists for pickers. */
-export async function loadCompanyOptions(supabase: Supabase, organizationId: string) {
+export async function loadCompanyOptions(supabase: Supabase, organizationId: string): Promise<CompanyOption[]> {
+  const [companies, categories, primaries] = await Promise.all([
+    supabase
+      .from('business_companies')
+      .select('id, company_name, status')
+      .eq('organization_id', organizationId)
+      .order('company_name')
+      .limit(MAX_ROWS),
+    supabase
+      .from('business_company_categories')
+      .select('company_id, category:business_categories(kind, name)')
+      .eq('organization_id', organizationId)
+      .limit(MAX_ROWS * 2),
+    supabase
+      .from('business_person_companies')
+      .select('company_id, person_id, person:business_people(first_name, last_name)')
+      .eq('organization_id', organizationId)
+      .eq('status', 'active')
+      .eq('is_primary_contact', true)
+      .limit(MAX_ROWS),
+  ])
+  const categoryByCompany = new Map<string, string>()
+  for (const link of (categories.data ?? []) as unknown as CategoryLinkRow[]) {
+    if (link.category?.kind === 'business' && !categoryByCompany.has(link.company_id)) categoryByCompany.set(link.company_id, link.category.name)
+  }
+  const primaryByCompany = new Map<string, { person_id: string; name: string }>()
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any -- embedded relation typing from PostgREST */
+  for (const p of (primaries.data ?? []) as any[]) {
+    primaryByCompany.set(p.company_id, { person_id: p.person_id, name: p.person ? personName(p.person) : 'Another contact' })
+  }
+  return ((companies.data ?? []) as { id: string; company_name: string; status: ContactStatus }[]).map((c) => ({
+    ...c,
+    category: categoryByCompany.get(c.id) ?? null,
+    primary_contact: primaryByCompany.get(c.id) ?? null,
+  }))
+}
+
+/** Projects a contact can be newly assigned to, for the contact form's project picker. */
+export async function loadAssignableProjectOptions(supabase: Supabase, organizationId: string) {
   const { data } = await supabase
-    .from('business_companies')
-    .select('id, company_name, status')
+    .from('projects')
+    .select('id, name, project_number')
     .eq('organization_id', organizationId)
-    .order('company_name')
+    .in('status', [...ASSIGNABLE_PROJECT_STATUSES])
+    .order('name')
     .limit(MAX_ROWS)
-  return (data ?? []) as { id: string; company_name: string; status: ContactStatus }[]
+  return (data ?? []) as { id: string; name: string; project_number: string | null }[]
 }
 
 export async function loadPersonOptions(supabase: Supabase, organizationId: string) {

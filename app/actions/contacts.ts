@@ -15,6 +15,8 @@ import {
   isInlinePersonField,
   parseCategory,
   parseProductCategories,
+  parseProjectAssignments,
+  personName,
   personSchema,
   projectRoleSchema,
   parseStartDate,
@@ -24,7 +26,9 @@ import {
   type CategoryKey,
   type ImportFieldKey,
   type ImportRow,
+  type PendingProjectAssignment,
 } from '@/lib/contacts'
+import type { CompanyOption } from '@/lib/contacts-data'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 type Gate = { ok: true; session: StaffSession; supabase: Supabase } | { ok: false; error: string }
@@ -141,9 +145,190 @@ function parseBusinessCategories(formData: FormData): CategoryKey[] {
 
 // ============ People ============
 
+type AssociationPlan = {
+  company: { id: string; name: string; role: string | null; isPrimary: boolean; replacePrimary: boolean } | null
+  projects: (PendingProjectAssignment & { label: string })[]
+}
+
 /**
- * Creates a person and, optionally, links them to an existing company or a new one. The person is saved first; if the
- * company step fails the response says exactly what was saved.
+ * Validates the optional company link and project assignments submitted with the contact form before anything is
+ * written, so an invalid choice never leaves a half-saved contact. `personId` is set when editing an existing person.
+ */
+async function planAssociations(
+  gate: Extract<Gate, { ok: true }>,
+  values: Record<string, string>,
+  personId: string | null,
+): Promise<{ plan: AssociationPlan; fieldErrors: Record<string, string> }> {
+  const { session, supabase } = gate
+  const fieldErrors: Record<string, string> = {}
+  const plan: AssociationPlan = { company: null, projects: [] }
+
+  const companyId = (values.company_id ?? '').trim()
+  const role = roleSchema.safeParse(values.role)
+  if (companyId) {
+    if (!isUuid(companyId)) {
+      fieldErrors.company_id = 'Choose a company from the list'
+    } else if (!role.success) {
+      fieldErrors.role = role.error.issues[0]?.message ?? 'Invalid role'
+    } else {
+      const { data: company, error } = await supabase
+        .from('business_companies')
+        .select('id, company_name, status')
+        .eq('organization_id', session.organizationId)
+        .eq('id', companyId)
+        .maybeSingle()
+      if (error) fieldErrors.company_id = dbError(error)
+      else if (!company) fieldErrors.company_id = 'This company could not be found'
+      else if (company.status !== 'active') fieldErrors.company_id = 'This company is inactive. Activate it before adding contacts.'
+      else {
+        const isPrimary = values.is_primary === 'on'
+        const replacePrimary = values.replace_primary === 'on'
+        if (personId) {
+          const { data: existing } = await supabase
+            .from('business_person_companies')
+            .select('id')
+            .eq('organization_id', session.organizationId)
+            .eq('person_id', personId)
+            .eq('company_id', companyId)
+            .eq('status', 'active')
+            .limit(1)
+          if (existing?.length) fieldErrors.company_id = 'This person is already linked to this company'
+        }
+        if (isPrimary && !fieldErrors.company_id) {
+          const { data: primary } = await supabase
+            .from('business_person_companies')
+            .select('person_id, person:business_people(first_name, last_name)')
+            .eq('organization_id', session.organizationId)
+            .eq('company_id', companyId)
+            .eq('status', 'active')
+            .eq('is_primary_contact', true)
+            .maybeSingle()
+          if (primary && primary.person_id !== personId && !replacePrimary) {
+            /* eslint-disable-next-line @typescript-eslint/no-explicit-any -- embedded relation typing from PostgREST */
+            const current = (primary as any).person ? personName((primary as any).person) : 'Another contact'
+            fieldErrors.is_primary = `${current} is already the primary contact. Confirm the replacement or uncheck Primary.`
+          }
+        }
+        plan.company = { id: company.id, name: company.company_name, role: role.data, isPrimary, replacePrimary }
+      }
+    }
+  }
+
+  const assignments = parseProjectAssignments(values.project_assignments)
+  if (!assignments.ok) {
+    fieldErrors.project_assignments = assignments.error
+  } else if (assignments.value.length) {
+    const ids = assignments.value.map((a) => a.project_id)
+    const [{ data: projects, error }, person, existing] = await Promise.all([
+      supabase.from('projects').select('id, name, project_number, status').eq('organization_id', session.organizationId).in('id', ids),
+      personId
+        ? supabase.from('business_people').select('status').eq('organization_id', session.organizationId).eq('id', personId).maybeSingle()
+        : Promise.resolve({ data: null }),
+      personId
+        ? supabase
+            .from('business_person_projects')
+            .select('project_id')
+            .eq('organization_id', session.organizationId)
+            .eq('person_id', personId)
+            .eq('status', 'active')
+            .in('project_id', ids)
+        : Promise.resolve({ data: [] as { project_id: string }[] }),
+    ])
+    const byId = new Map((projects ?? []).map((p) => [p.id as string, p]))
+    const already = new Set((existing.data ?? []).map((r) => r.project_id as string))
+    if (error) fieldErrors.project_assignments = dbError(error)
+    else if (personId && person.data && person.data.status !== 'active') {
+      fieldErrors.project_assignments = 'Inactive contacts cannot be assigned to projects. Activate them first.'
+    } else {
+      for (const a of assignments.value) {
+        const project = byId.get(a.project_id)
+        const label = project ? [project.project_number, project.name].filter(Boolean).join(' · ') : 'A project'
+        if (!project) fieldErrors.project_assignments = 'One of the selected projects could not be found. Remove it and try again.'
+        else if (!projectAcceptsNewAssignments(project.status as string)) fieldErrors.project_assignments = `${label} is not accepting new assignments.`
+        else if (already.has(a.project_id)) fieldErrors.project_assignments = `This person is already on ${label}.`
+        else plan.projects.push({ ...a, label })
+        if (fieldErrors.project_assignments) break
+      }
+    }
+  }
+  return { plan, fieldErrors }
+}
+
+/**
+ * Writes the planned company link and project assignments for a saved person. Projects are inserted in a single
+ * statement, so they are saved all together or not at all. Returns plain-language notes for anything not saved.
+ */
+async function saveAssociations(
+  gate: Extract<Gate, { ok: true }>,
+  personId: string,
+  plan: AssociationPlan,
+): Promise<{ problems: string[]; paths: (string | null | undefined)[] }> {
+  const { session, supabase } = gate
+  const problems: string[] = []
+  const paths: (string | null | undefined)[] = []
+  if (plan.company) {
+    const c = plan.company
+    let clearError: { code?: string; message?: string } | null = null
+    if (c.isPrimary && c.replacePrimary) {
+      ;({ error: clearError } = await supabase
+        .from('business_person_companies')
+        .update({ is_primary_contact: false, updated_by: session.userId })
+        .eq('organization_id', session.organizationId)
+        .eq('company_id', c.id)
+        .eq('status', 'active')
+        .eq('is_primary_contact', true)
+        .neq('person_id', personId))
+    }
+    if (clearError) {
+      problems.push(`the link to ${c.name} was not added (${relationshipError(clearError)})`)
+    } else {
+      const { error } = await supabase.from('business_person_companies').insert({
+        organization_id: session.organizationId,
+        person_id: personId,
+        company_id: c.id,
+        position_or_role: c.role,
+        is_primary_contact: c.isPrimary,
+        created_by: session.userId,
+        updated_by: session.userId,
+      })
+      if (error) problems.push(`the link to ${c.name} was not added (${relationshipError(error)})`)
+      paths.push(...(await relationshipPaths(supabase, c.id, personId)))
+    }
+  }
+  if (plan.projects.length) {
+    const start = today()
+    const { error } = await supabase.from('business_person_projects').insert(
+      plan.projects.map((p) => ({
+        organization_id: session.organizationId,
+        person_id: personId,
+        project_id: p.project_id,
+        project_role: p.project_role,
+        started_at: start,
+        created_by: session.userId,
+        updated_by: session.userId,
+      })),
+    )
+    if (error) {
+      const why = error.code === '23505' ? 'the person is already on one of them' : error.code === 'P0001' ? error.message : dbError(error)
+      problems.push(`the project assignments were not added (${why}). Add them from the profile`)
+    } else {
+      paths.push(...plan.projects.map((p) => `/projects/${p.project_id}`))
+    }
+  }
+  return { problems, paths }
+}
+
+function afterSave(personId: string, flag: 'added' | 'saved', problems: string[]): never {
+  if (problems.length) {
+    const lead = flag === 'added' ? 'Contact saved, but' : 'Changes saved, but'
+    redirect(`/contacts/people/${personId}?warning=${encodeURIComponent(`${lead} ${problems.join('; ')}.`)}`)
+  }
+  redirect(`/contacts/people/${personId}?${flag}=1`)
+}
+
+/**
+ * Creates a person with an optional company link and optional project assignments. Every choice is validated before
+ * the first write; if a later write still fails, the profile explains exactly what was not saved.
  */
 export async function createPersonAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const values = formValues(formData)
@@ -152,16 +337,18 @@ export async function createPersonAction(_prev: ActionState, formData: FormData)
   const { session, supabase } = gate
 
   const parsed = personSchema.safeParse(values)
-  const role = roleSchema.safeParse(values.role)
-  const companyId = values.company_id && values.company_id !== '__new' ? values.company_id : null
-  const newCompany = values.company_id === '__new' ? (values.new_company_name ?? '').trim() : ''
-  const fieldErrors: Record<string, string> = parsed.success ? {} : (fromZodError(parsed.error).fieldErrors ?? {})
-  if (!role.success) fieldErrors.role = role.error.issues[0]?.message ?? 'Invalid role'
-  if (companyId && !isUuid(companyId)) fieldErrors.company_id = 'Choose a company from the list'
-  if (values.company_id === '__new' && (!newCompany || newCompany.length > 160)) {
-    fieldErrors.new_company_name = newCompany ? 'Must be 160 characters or fewer' : 'Enter the new company name'
+  const { plan, fieldErrors: planErrors } = await planAssociations(gate, values, null)
+  const fieldErrors: Record<string, string> = { ...(parsed.success ? {} : (fromZodError(parsed.error).fieldErrors ?? {})), ...planErrors }
+  if (parsed.success && parsed.data.email) {
+    const { data: taken } = await supabase
+      .from('business_people')
+      .select('id')
+      .eq('organization_id', session.organizationId)
+      .eq('email', parsed.data.email)
+      .limit(1)
+    if (taken?.length) fieldErrors.email = EMAIL_TAKEN
   }
-  if (!parsed.success || Object.keys(fieldErrors).length) return { error: 'Please correct the highlighted fields.', fieldErrors, values }
+  if (!parsed.success || Object.keys(fieldErrors).length) return { error: 'Please correct the highlighted fields. Nothing was saved.', fieldErrors, values }
 
   const { data: person, error } = await supabase
     .from('business_people')
@@ -173,50 +360,93 @@ export async function createPersonAction(_prev: ActionState, formData: FormData)
     return { error: `Nothing was saved. ${dbError(error)}`, values }
   }
 
-  let targetCompany = companyId
-  if (newCompany) {
-    const { data: created, error: companyError } = await supabase
-      .from('business_companies')
-      .insert({ organization_id: session.organizationId, company_name: newCompany, created_by: session.userId, updated_by: session.userId })
-      .select('id')
-      .single()
-    if (companyError || !created) {
-      revalidateDirectory()
-      const why = companyError?.code === '23505' ? `${COMPANY_TAKEN}; choose it from the list instead.` : dbError(companyError)
-      redirect(`/contacts/people/${person.id}?warning=${encodeURIComponent(`Contact saved, but the company was not created. ${why}`)}`)
-    }
-    targetCompany = created.id
-  }
-
-  if (targetCompany) {
-    const { error: relError } = await supabase.from('business_person_companies').insert({
-      organization_id: session.organizationId,
-      person_id: person.id,
-      company_id: targetCompany,
-      position_or_role: role.data,
-      is_primary_contact: values.is_primary === 'on',
-      created_by: session.userId,
-      updated_by: session.userId,
-    })
-    if (relError) {
-      revalidateDirectory()
-      const why =
-        relError.code === '23505' ? 'That company already has a primary contact.' : relError.code === 'P0001' ? `${relError.message}.` : dbError(relError)
-      redirect(`/contacts/people/${person.id}?warning=${encodeURIComponent(`Contact saved, but the company link was not added. ${why}`)}`)
-    }
-  }
-
-  revalidateDirectory(targetCompany ? `/contacts/companies/${targetCompany}` : null)
-  redirect(`/contacts/people/${person.id}?added=1`)
+  const { problems, paths } = await saveAssociations(gate, person.id, plan)
+  revalidateDirectory(`/contacts/people/${person.id}`, ...paths)
+  afterSave(person.id, 'added', problems)
 }
 
+export type QuickCompanyResult =
+  | { ok: true; company: CompanyOption }
+  | { ok: false; error: string; existing?: CompanyOption }
+
+function escapeLike(value: string) {
+  return value.replace(/[\\%_]/g, (m) => `\\${m}`)
+}
+
+/**
+ * Creates a company with just a name and optional business category, for the contact form's inline "Add New Company".
+ * Returns the existing record instead when the name is already taken (case-insensitive), so duplicates are never made.
+ */
+export async function quickCreateCompanyAction(input: { company_name: string; category?: string }): Promise<QuickCompanyResult> {
+  const gate = await requireContactsManager('add')
+  if (!gate.ok) return { ok: false, error: gate.error }
+  const { session, supabase } = gate
+  const name = companySchema.shape.company_name.safeParse(input?.company_name ?? '')
+  if (!name.success) return { ok: false, error: name.error.issues[0]?.message ?? 'Company name is required' }
+  const category = parseCategory(input?.category ?? '')
+
+  const findExisting = async (): Promise<CompanyOption | null> => {
+    const { data } = await supabase
+      .from('business_companies')
+      .select('id, company_name, status')
+      .eq('organization_id', session.organizationId)
+      .ilike('company_name', escapeLike(name.data))
+      .limit(1)
+    const row = data?.[0]
+    return row ? { id: row.id, company_name: row.company_name, status: row.status, category: null, primary_contact: null } : null
+  }
+  const duplicate = (existing: CompanyOption): QuickCompanyResult => ({
+    ok: false,
+    error:
+      existing.status === 'active'
+        ? `${existing.company_name} already exists. Select it instead.`
+        : `${existing.company_name} already exists but is inactive. Activate it from its profile first.`,
+    existing: existing.status === 'active' ? existing : undefined,
+  })
+
+  const existing = await findExisting()
+  if (existing) return duplicate(existing)
+
+  const { data: company, error } = await supabase
+    .from('business_companies')
+    .insert({ organization_id: session.organizationId, company_name: name.data, created_by: session.userId, updated_by: session.userId })
+    .select('id, company_name, status')
+    .single()
+  if (error || !company) {
+    if (error?.code === '23505') {
+      const raced = await findExisting()
+      if (raced) return duplicate(raced)
+      return { ok: false, error: COMPANY_TAKEN }
+    }
+    return { ok: false, error: `The company was not created. ${dbError(error)}` }
+  }
+  const catError = category ? await syncCompanyCategories(supabase, session.organizationId, company.id, [category], []) : null
+  revalidateDirectory()
+  return {
+    ok: true,
+    company: {
+      id: company.id,
+      company_name: company.company_name,
+      status: company.status,
+      category: category && !catError ? CATEGORY_LABELS[category] : null,
+      primary_contact: null,
+    },
+  }
+}
+
+/**
+ * Saves a person's details and, optionally, adds one more company relationship and new project assignments. Existing
+ * relationships and assignments are never removed here; they are managed from the profile.
+ */
 export async function updatePersonAction(personId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const values = formValues(formData)
   const gate = await requireContactsManager('edit')
   if (!gate.ok) return { error: gate.error, values }
   if (!isUuid(personId)) return { error: 'This contact could not be found.', values }
   const parsed = personSchema.safeParse(values)
-  if (!parsed.success) return { ...fromZodError(parsed.error), values }
+  const { plan, fieldErrors: planErrors } = await planAssociations(gate, values, personId)
+  const fieldErrors: Record<string, string> = { ...(parsed.success ? {} : (fromZodError(parsed.error).fieldErrors ?? {})), ...planErrors }
+  if (!parsed.success || Object.keys(fieldErrors).length) return { error: 'Please correct the highlighted fields. Nothing was saved.', fieldErrors, values }
 
   let query = gate.supabase
     .from('business_people')
@@ -235,8 +465,9 @@ export async function updatePersonAction(personId: string, _prev: ActionState, f
       values,
     }
   }
-  revalidateDirectory(`/contacts/people/${personId}`)
-  redirect(`/contacts/people/${personId}?saved=1`)
+  const { problems, paths } = await saveAssociations(gate, personId, plan)
+  revalidateDirectory(`/contacts/people/${personId}`, ...paths)
+  afterSave(personId, 'saved', problems)
 }
 
 export type InlineEditResult = { ok: true; value: string | null; updated_at: string } | { ok: false; error: string; stale?: boolean }

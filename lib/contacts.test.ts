@@ -179,3 +179,29 @@ test('validateImportRows reports errors and duplicates', () => {
   assert.equal(out[3].duplicate, 'existing')
   assert.ok(out[3].errors.some((e) => e.includes('requires a company')))
 })
+
+import { parseProjectAssignments as parseAssignments, MAX_FORM_PROJECT_ASSIGNMENTS as MAX_ASSIGN } from './contacts.ts'
+
+const PID_A = '11111111-1111-4111-8111-111111111111'
+const PID_B = '22222222-2222-4222-8222-222222222222'
+
+test('parseProjectAssignments: blank input means no assignments', () => {
+  assert.deepEqual(parseAssignments(''), { ok: true, value: [] })
+  assert.deepEqual(parseAssignments(undefined), { ok: true, value: [] })
+})
+
+test('parseProjectAssignments: accepts valid rows and trims roles', () => {
+  const r = parseAssignments(JSON.stringify([{ project_id: PID_A, project_role: '  Inspector ' }, { project_id: PID_B, project_role: 'Engineer' }]))
+  assert.equal(r.ok, true)
+  if (r.ok) assert.deepEqual(r.value.map((v) => v.project_role), ['Inspector', 'Engineer'])
+})
+
+test('parseProjectAssignments: rejects duplicates, bad ids, missing roles, bad JSON, too many', () => {
+  assert.equal(parseAssignments(JSON.stringify([{ project_id: PID_A, project_role: 'X' }, { project_id: PID_A, project_role: 'Y' }])).ok, false)
+  assert.equal(parseAssignments(JSON.stringify([{ project_id: 'nope', project_role: 'X' }])).ok, false)
+  assert.equal(parseAssignments(JSON.stringify([{ project_id: PID_A, project_role: '  ' }])).ok, false)
+  assert.equal(parseAssignments('{oops').ok, false)
+  assert.equal(parseAssignments('{}').ok, false)
+  const many = Array.from({ length: MAX_ASSIGN + 1 }, (_, i) => ({ project_id: `${String(i).padStart(8, '0')}-1111-4111-8111-111111111111`, project_role: 'X' }))
+  assert.equal(parseAssignments(JSON.stringify(many)).ok, false)
+})
