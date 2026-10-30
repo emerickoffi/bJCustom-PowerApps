@@ -5,7 +5,9 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { canManage, getSession } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
-import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
+import { OVERLAY_FIELD, fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
+import { CONTACT_PERSONS_FIELD, parseContactPersons } from '@/lib/subcontractor-contact-persons'
+import { precheckContactPersons, saveContactPersons } from '@/lib/subcontractor-contact-persons-save'
 import { isMissingTableError, subcontractorSchema } from '@/lib/subcontractors'
 import { projectAcceptsNewAssignments } from '@/lib/domain'
 import {
@@ -23,7 +25,7 @@ const MISSING_FUNCTION = 'PGRST202'
 
 export async function createSubcontractorAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const projectIdsRaw = formData.getAll('project_ids')
-  const values = { ...formValues(formData), project_ids: projectIdsRaw.filter((v) => typeof v === 'string').join(',') }
+  const values: Record<string, string> = { ...formValues(formData), project_ids: projectIdsRaw.filter((v) => typeof v === 'string').join(',') }
   const session = await getSession()
   if (!session) return { error: 'Your session has expired. Please sign in again.', values }
   if (!session.organizationId || !session.role || session.role === 'client') {
@@ -36,14 +38,20 @@ export async function createSubcontractorAction(_prev: ActionState, formData: Fo
 
   const parsed = subcontractorSchema.safeParse(values)
   const projectIds = parseProjectIds(projectIdsRaw)
-  if (!parsed.success || !projectIds.ok) {
-    const base = parsed.success ? { error: 'Please correct the highlighted fields.', fieldErrors: {} } : fromZodError(parsed.error)
-    const fieldErrors = { ...base.fieldErrors, ...(projectIds.ok ? {} : { project_ids: projectIds.error }) }
-    return { ...base, fieldErrors, values }
-  }
+  const contacts = parseContactPersons(values[CONTACT_PERSONS_FIELD])
+  const invalid = invalidFormState(parsed, projectIds, contacts, values)
+  if (invalid || !parsed.success || !contacts.ok) return invalid ?? { error: 'Please correct the highlighted fields.', values }
+  const contactItems = contacts.items.filter((i) => i.kind !== 'current')
 
   const supabase = await createClient()
   const ids = projectIds.ok ? projectIds.ids : []
+
+  const contactProblem = await precheckContactPersons(supabase, session.organizationId, contactItems)
+  if (contactProblem) {
+    return 'error' in contactProblem
+      ? { error: contactProblem.error as string, values }
+      : { error: 'Please correct the highlighted contact persons.', fieldErrors: contactProblem, values }
+  }
 
   if (ids.length) {
     if (parsed.data.status !== 'active') {
@@ -63,7 +71,7 @@ export async function createSubcontractorAction(_prev: ActionState, formData: Fo
     if (problem) return { error: 'Please correct the highlighted fields.', fieldErrors: { project_ids: problem }, values }
   }
 
-  const { error } = ids.length
+  const { data: createdId, error } = ids.length
     ? await supabase.rpc('create_subcontractor_with_projects', {
         p_organization_id: session.organizationId,
         p_company_name: parsed.data.company_name,
@@ -73,7 +81,12 @@ export async function createSubcontractorAction(_prev: ActionState, formData: Fo
         p_status: parsed.data.status,
         p_project_ids: ids,
       })
-    : await supabase.from('subcontractor_companies').insert({ ...parsed.data, organization_id: session.organizationId })
+    : await supabase
+        .from('subcontractor_companies')
+        .insert({ ...parsed.data, organization_id: session.organizationId })
+        .select('id')
+        .single()
+        .then((r) => ({ data: (r.data?.id as string | undefined) ?? null, error: r.error }))
 
   if (error) {
     if (error.code === '23505') {
@@ -98,11 +111,51 @@ export async function createSubcontractorAction(_prev: ActionState, formData: Fo
     return { error: friendlyDbError(error), values }
   }
 
+  const newId = typeof createdId === 'string' ? createdId : null
+  const saved = newId
+    ? await saveContactPersons(supabase, session as StaffSession, newId, contactItems)
+    : { problem: contactItems.length ? 'Contact persons were not saved. Open the subcontractor to add them.' : null, personIds: [] }
+
   revalidatePath('/subcontractors')
   revalidatePath('/contacts')
-  const added = new URLSearchParams({ added: parsed.data.company_name })
+  for (const id of saved.personIds) revalidatePath(`/contacts/people/${id}`)
+  const name = parsed.data.company_name
+  if (values[OVERLAY_FIELD] === '1') {
+    return {
+      success: createdSummary(name, ids.length, saved.problem ? 0 : contactItems.length),
+      savedId: newId ?? 'created',
+      warning: saved.problem ? `${name} was saved. ${saved.problem}` : undefined,
+    }
+  }
+  if (saved.problem && newId) redirect(`/subcontractors/${newId}?${new URLSearchParams({ warning: saved.problem }).toString()}`)
+  const added = new URLSearchParams({ added: name })
   if (ids.length) added.set('projects', String(ids.length))
   redirect(`/subcontractors?${added.toString()}`)
+}
+
+function createdSummary(name: string, projects: number, people: number) {
+  const parts: string[] = []
+  if (people) parts.push(`${people} ${people === 1 ? 'contact person' : 'contact persons'}`)
+  if (projects) parts.push(`${projects} ${projects === 1 ? 'project' : 'projects'}`)
+  return parts.length ? `${name} was added with ${parts.join(' and ')}.` : `${name} was added to your subcontractors.`
+}
+
+/** Combines company, project, and contact-person validation into one response so every problem shows at once. */
+function invalidFormState(
+  parsed: ReturnType<typeof subcontractorSchema.safeParse>,
+  projectIds: ReturnType<typeof parseProjectIds>,
+  contacts: ReturnType<typeof parseContactPersons>,
+  values: Record<string, string>,
+): ActionState | null {
+  if (parsed.success && projectIds.ok && contacts.ok) return null
+  const base = parsed.success ? { error: 'Please correct the highlighted fields.', fieldErrors: {} } : fromZodError(parsed.error)
+  const fieldErrors = {
+    ...base.fieldErrors,
+    ...(projectIds.ok ? {} : { project_ids: projectIds.error }),
+    ...(contacts.ok ? {} : contacts.fieldErrors),
+  }
+  const error = !parsed.success || !projectIds.ok ? base.error : contacts.ok ? base.error : contacts.error
+  return { error, fieldErrors, values }
 }
 
 type ManagerCheck = { ok: true; session: StaffSession } | { ok: false; error: string }
@@ -131,7 +184,7 @@ export async function updateSubcontractorAction(
   formData: FormData,
 ): Promise<ActionState> {
   const projectIdsRaw = formData.getAll('project_ids')
-  const values = { ...formValues(formData), project_ids: projectIdsRaw.filter((v) => typeof v === 'string').join(',') }
+  const values: Record<string, string> = { ...formValues(formData), project_ids: projectIdsRaw.filter((v) => typeof v === 'string').join(',') }
   const gate = await requireSubcontractorManager('edit')
   if (!gate.ok) return { error: gate.error, values }
   const { session } = gate
@@ -139,10 +192,15 @@ export async function updateSubcontractorAction(
 
   const parsed = subcontractorSchema.safeParse(values)
   const projectIds = parseProjectIds(projectIdsRaw)
-  if (!parsed.success || !projectIds.ok) {
-    const base = parsed.success ? { error: 'Please correct the highlighted fields.', fieldErrors: {} } : fromZodError(parsed.error)
-    const fieldErrors = { ...base.fieldErrors, ...(projectIds.ok ? {} : { project_ids: projectIds.error }) }
-    return { ...base, fieldErrors, values }
+  const contacts = parseContactPersons(values[CONTACT_PERSONS_FIELD])
+  const invalid = invalidFormState(parsed, projectIds, contacts, values)
+  if (invalid || !parsed.success || !projectIds.ok || !contacts.ok) return invalid ?? { error: 'Please correct the highlighted fields.', values }
+
+  const contactCheck = await precheckContactPersons(await createClient(), session.organizationId, contacts.items)
+  if (contactCheck) {
+    return 'error' in contactCheck
+      ? { error: contactCheck.error as string, values }
+      : { error: 'Please correct the highlighted contact persons.', fieldErrors: contactCheck, values }
   }
 
   const supabase = await createClient()
@@ -236,11 +294,19 @@ export async function updateSubcontractorAction(
     }
   }
 
+  const saved = await saveContactPersons(supabase, session, companyId, contacts.items)
+
   revalidatePath('/subcontractors')
   revalidatePath('/contacts')
   revalidatePath(`/subcontractors/${companyId}`)
+  for (const id of saved.personIds) revalidatePath(`/contacts/people/${id}`)
+  const warning = saved.problem ? `Company details were saved. ${saved.problem}` : undefined
+  if (values[OVERLAY_FIELD] === '1') {
+    return { success: `${parsed.data.company_name} was saved.`, savedId: companyId, warning }
+  }
   const params = new URLSearchParams({ saved: '1' })
   if (toAdd.length) params.set('projects', String(toAdd.length))
+  if (warning) params.set('warning', warning)
   redirect(`/subcontractors/${companyId}?${params.toString()}`)
 }
 

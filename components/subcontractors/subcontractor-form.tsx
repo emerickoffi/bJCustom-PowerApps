@@ -2,7 +2,9 @@
 
 import { useActionState } from 'react'
 import Link from 'next/link'
-import { FolderKanban as FolderKanbanIcon, HardHat as HardHatIcon, Phone as PhoneIcon } from 'lucide-react'
+import { FolderKanban as FolderKanbanIcon, HardHat as HardHatIcon, Phone as PhoneIcon, Users as UsersIcon } from 'lucide-react'
+import { ContactPersonsSection } from '@/components/subcontractors/contact-persons-section'
+import type { SubcontractorFormData } from '@/lib/subcontractor-form-data'
 import { Button } from '@/components/ui/button'
 import { initialActionState, type ActionState } from '@/lib/action-state'
 import { SUBCONTRACTOR_STATUS_LABELS } from '@/lib/subcontractors'
@@ -24,15 +26,13 @@ export function SubcontractorForm({
   projectAvailability,
   company,
   existingAssignments,
+  people,
+  contactsAvailability,
+  currentContacts,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   cancelHref: string
-  projects: AssignableProject[]
-  projectAvailability: ProjectPickerAvailability
-  /** Present when editing; prefills the fields. */
-  company?: SubcontractorCompany
-  existingAssignments?: ExistingAssignments
-}) {
+} & SubcontractorFormData) {
   const [state, formAction] = useActionState(action, initialActionState)
   const fe = state.fieldErrors ?? {}
   const v: Record<string, string> = state.values ?? {
@@ -63,6 +63,20 @@ export function SubcontractorForm({
       <FormSection icon={PhoneIcon} title="Contact" description="How your team reaches this company. Both are optional.">
         <TextField name="email" label="Email" type="email" defaultValue={v.email ?? ''} error={fe.email} autoComplete="email" maxLength={254} />
         <TextField name="phone" label="Phone" type="tel" defaultValue={v.phone ?? ''} error={fe.phone} autoComplete="tel" maxLength={30} />
+      </FormSection>
+
+      <FormSection
+        icon={UsersIcon}
+        title="Contact Persons"
+        description="People your team works with at this company. They are saved to your Contacts directory."
+      >
+        <ContactPersonsSection
+          people={people}
+          currentContacts={currentContacts}
+          availability={contactsAvailability}
+          savedValue={state.values ? (v.contact_persons ?? '') : undefined}
+          errors={fe}
+        />
       </FormSection>
 
       <FormSection
