@@ -33,6 +33,7 @@ import {
   COMMUNICATION_LABELS,
   CONTACT_PORTAL_PERMISSIONS,
   CONTACT_RELATIONSHIP_LABELS,
+  contactRelationshipOptions,
 } from '@/lib/domain'
 import { formatDateTime, formatPhone } from '@/lib/format'
 import { ActionButton, InlineActionForm } from '@/components/shared/inline-action'
@@ -107,7 +108,7 @@ function ContactFields({ contact }: { contact?: ContactRow }) {
         name="relationship"
         label="Relationship"
         defaultValue={contact?.relationship ?? 'spouse'}
-        options={Object.entries(CONTACT_RELATIONSHIP_LABELS).map(([value, label]) => ({ value, label }))}
+        options={contactRelationshipOptions(contact?.relationship)}
       />
       <TextField name="email" label="Email" type="email" defaultValue={contact?.email ?? ''} />
       <SelectField

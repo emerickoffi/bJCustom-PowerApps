@@ -10,8 +10,11 @@ import { activitySchema, clientSchema, contactSchema } from '@/lib/validation'
 import { getOrgFeatures } from '@/lib/features'
 import { ADDITIONAL_CONTACT_PREFIX, MAX_ADDITIONAL_CONTACTS } from '@/lib/additional-contacts'
 import { buildPrimaryContact } from '@/lib/primary-contact'
+import { isSelectableContactRelationship } from '@/lib/domain'
 
 const uuid = z.uuid()
+const UNAVAILABLE_RELATIONSHIP =
+  'This relationship is no longer available for homeowner contacts. Add agents, attorneys, and property managers as business contacts instead.'
 
 export async function createClientAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const values = formValues(formData)
@@ -162,6 +165,10 @@ function parseAdditionalContacts(values: Record<string, string>) {
       }
       continue
     }
+    if (!isSelectableContactRelationship(result.data.relationship)) {
+      fieldErrors[`${ADDITIONAL_CONTACT_PREFIX}${id}_relationship`] = UNAVAILABLE_RELATIONSHIP
+      continue
+    }
     entries.push({ id, contact: result.data })
   }
   return { entries, fieldErrors, tooMany: ids.size > MAX_ADDITIONAL_CONTACTS }
@@ -219,6 +226,9 @@ export async function addContactAction(
   if (!uuid.safeParse(clientId).success) return { error: 'Invalid client.' }
   const parsed = contactSchema.safeParse(formValues(formData))
   if (!parsed.success) return fromZodError(parsed.error)
+  if (!isSelectableContactRelationship(parsed.data.relationship)) {
+    return { error: UNAVAILABLE_RELATIONSHIP, fieldErrors: { relationship: UNAVAILABLE_RELATIONSHIP } }
+  }
 
   const supabase = await createClient()
   const { error } = await supabase.from('client_contacts').insert({
@@ -245,6 +255,19 @@ export async function updateContactAction(
   if (!parsed.success) return fromZodError(parsed.error)
 
   const supabase = await createClient()
+  if (!isSelectableContactRelationship(parsed.data.relationship)) {
+    const { data: current } = await supabase
+      .from('client_contacts')
+      .select('relationship')
+      .eq('id', contactId)
+      .eq('client_id', clientId)
+      .eq('organization_id', session.organizationId)
+      .maybeSingle()
+    if (!current) return { error: 'Contact not found.' }
+    if (!isSelectableContactRelationship(parsed.data.relationship, current.relationship)) {
+      return { error: UNAVAILABLE_RELATIONSHIP, fieldErrors: { relationship: UNAVAILABLE_RELATIONSHIP } }
+    }
+  }
   const { error } = await supabase
     .from('client_contacts')
     .update(parsed.data)

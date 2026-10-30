@@ -3,13 +3,11 @@
 import { useState } from 'react'
 import { Plus as PlusIcon, Users as UsersIcon, X as XIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { COMMUNICATION_LABELS, CONTACT_RELATIONSHIP_LABELS } from '@/lib/domain'
+import { COMMUNICATION_LABELS, contactRelationshipOptions } from '@/lib/domain'
 import { SelectField, TextField } from '@/components/shared/form-field'
 import { ADDITIONAL_CONTACT_PREFIX, MAX_ADDITIONAL_CONTACTS } from '@/lib/additional-contacts'
 
-const RELATIONSHIP_OPTIONS = Object.entries(CONTACT_RELATIONSHIP_LABELS)
-  .filter(([value]) => value !== 'primary_owner')
-  .map(([value, label]) => ({ value, label }))
+const RELATIONSHIP_OPTIONS = contactRelationshipOptions(null, { includePrimaryOwner: false })
 
 const COMMUNICATION_OPTIONS = Object.entries(COMMUNICATION_LABELS).map(([value, label]) => ({ value, label }))
 
