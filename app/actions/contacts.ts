@@ -17,6 +17,7 @@ import {
   parseProductCategories,
   personSchema,
   projectRoleSchema,
+  parseStartDate,
   roleSchema,
   validateImportRows,
   validateInlineField,
@@ -629,7 +630,18 @@ export async function addPersonProjectAction(personId: string, _prev: ActionStat
   if (!role.success) fieldErrors.project_role = role.error.issues[0]?.message ?? 'Project role is required'
   const via = values.person_company_id ? values.person_company_id : null
   if (via && !isUuid(via)) fieldErrors.person_company_id = 'Choose a company relationship'
-  if (Object.keys(fieldErrors).length || !role.success) return { error: 'Please correct the highlighted fields.', fieldErrors, values }
+  const start = parseStartDate(values.started_at, today())
+  if (!start.ok) fieldErrors.started_at = start.error
+  if (Object.keys(fieldErrors).length || !role.success || !start.ok) return { error: 'Please correct the highlighted fields.', fieldErrors, values }
+
+  const { data: person } = await supabase
+    .from('business_people')
+    .select('status')
+    .eq('organization_id', session.organizationId)
+    .eq('id', personId)
+    .maybeSingle()
+  if (!person) return { error: 'This contact could not be found.', values }
+  if (person.status !== 'active') return { error: 'Nothing was saved. Inactive contacts cannot be assigned to projects. Activate them first.', values }
 
   const { data: project } = await supabase
     .from('projects')
@@ -648,6 +660,7 @@ export async function addPersonProjectAction(personId: string, _prev: ActionStat
     project_id: values.project_id,
     person_company_id: via,
     project_role: role.data,
+    started_at: start.value,
     created_by: session.userId,
     updated_by: session.userId,
   })
@@ -697,7 +710,22 @@ export async function assignProjectContactAction(projectId: string, _prev: Actio
   if (mode === 'existing' && !isUuid(values.person_id ?? '')) fieldErrors.person_id = 'Choose a contact'
   const person = mode === 'new' ? personSchema.safeParse(values) : null
   if (person && !person.success) Object.assign(fieldErrors, fromZodError(person.error).fieldErrors ?? {})
-  if (Object.keys(fieldErrors).length || !role.success) return { error: 'Please correct the highlighted fields.', fieldErrors, values }
+  const start = parseStartDate(values.started_at, today())
+  if (!start.ok) fieldErrors.started_at = start.error
+  if (Object.keys(fieldErrors).length || !role.success || !start.ok) return { error: 'Please correct the highlighted fields.', fieldErrors, values }
+
+  if (mode === 'existing') {
+    const { data: existingPerson } = await supabase
+      .from('business_people')
+      .select('status')
+      .eq('organization_id', session.organizationId)
+      .eq('id', values.person_id)
+      .maybeSingle()
+    if (!existingPerson) return { error: 'Please correct the highlighted fields.', fieldErrors: { person_id: 'This contact could not be found' }, values }
+    if (existingPerson.status !== 'active') {
+      return { error: 'Nothing was saved. Inactive contacts cannot be assigned to projects. Activate them first.', values }
+    }
+  }
 
   const { data: project } = await supabase
     .from('projects')
@@ -728,6 +756,7 @@ export async function assignProjectContactAction(projectId: string, _prev: Actio
     project_id: projectId,
     person_company_id: via,
     project_role: role.data,
+    started_at: start.value,
     created_by: session.userId,
     updated_by: session.userId,
   })

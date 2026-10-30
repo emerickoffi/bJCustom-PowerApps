@@ -131,6 +131,37 @@ export const projectRoleSchema = z
   .min(1, 'Project role is required')
   .max(120, 'Must be 120 characters or fewer')
 
+/**
+ * Standard business roles a person can hold on a project. Stored as text so builders can still enter a custom role via
+ * "Other"; these are not homeowner relationship values.
+ */
+export const PROJECT_ROLE_OPTIONS = [
+  'Owner/Company Representative',
+  'Foreman',
+  'Project Supervisor',
+  'Engineer',
+  'Architect',
+  'Realtor',
+  'Surveyor',
+  'Supplier Representative',
+  'Consultant',
+  'Attorney',
+] as const
+
+/** Optional YYYY-MM-DD start date; blank means today. Rejects impossible dates and dates more than a year out. */
+export function parseStartDate(raw: string | undefined, today: string): { ok: true; value: string } | { ok: false; error: string } {
+  const v = (raw ?? '').trim()
+  if (!v) return { ok: true, value: today }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return { ok: false, error: 'Enter a valid start date' }
+  const d = new Date(`${v}T00:00:00Z`)
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== v) return { ok: false, error: 'Enter a valid start date' }
+  const limit = new Date(`${today}T00:00:00Z`)
+  limit.setUTCFullYear(limit.getUTCFullYear() + 1)
+  if (d > limit) return { ok: false, error: 'Start date cannot be more than a year away' }
+  if (v < '1990-01-01') return { ok: false, error: 'Enter a valid start date' }
+  return { ok: true, value: v }
+}
+
 export const INLINE_PERSON_FIELDS = [
   'first_name',
   'last_name',

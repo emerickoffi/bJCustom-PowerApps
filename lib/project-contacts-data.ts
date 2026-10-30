@@ -8,6 +8,8 @@ export type ProjectContact = {
   association_id: string
   person_id: string
   name: string
+  first_name: string
+  last_name: string
   email: string | null
   primary_phone: string | null
   secondary_phone: string | null
@@ -89,6 +91,8 @@ export async function loadProjectContacts(supabase: Supabase, organizationId: st
     association_id: r.id,
     person_id: r.person_id,
     name: r.person ? personName(r.person) : 'Unknown contact',
+    first_name: r.person?.first_name ?? '',
+    last_name: r.person?.last_name ?? 'Unknown contact',
     email: r.person?.email ?? null,
     primary_phone: r.person?.primary_phone ?? null,
     secondary_phone: r.person?.secondary_phone ?? null,
