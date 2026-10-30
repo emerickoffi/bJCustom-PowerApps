@@ -4,6 +4,8 @@ import path from 'node:path'
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { RESPONSE_LABELS, ISSUE_STATUS_LABELS, PRIORITY_LABELS, VALIDATION_LABELS, WALKTHROUGH_TYPE_LABELS } from '@/lib/walkthroughs'
+import { compareItemNumbers, withItemNumbers } from '@/lib/punch-list'
+import { getStaffMembers } from '@/lib/queries'
 
 export const REPORTS_BUCKET = 'project-documents'
 
@@ -12,8 +14,12 @@ export type ReportSnapshot = {
   project: { id: string; name: string; number: string; address: string }
   homeowner: string
   walkthrough: { id: string; title: string; type: string; scheduledDate: string | null; submittedAt: string | null }
-  sections: { category: string; items: { label: string; response: string; attachments: number }[] }[]
+  // number/location/responsible are optional so snapshots stored before numbering still render.
+  sections: { category: string; items: { number?: string; location?: string | null; label: string; response: string; attachments: number }[] }[]
   issues: {
+    number?: string
+    location?: string | null
+    responsible?: string | null
     category: string
     item: string
     description: string
@@ -44,22 +50,30 @@ export async function buildWalkthroughSnapshot(supabase: SupabaseClient, walkthr
     id: string; name: string; project_number: string; address_line1: string | null; city: string | null; state: string | null; postal_code: string | null; primary_client_id: string | null
   }
 
-  const [orgRes, clientRes, itemsRes, respRes, issuesRes, wAttRes] = await Promise.all([
+  const [orgRes, clientRes, itemsRes, respRes, issuesRes, wAttRes, staff] = await Promise.all([
     supabase.from('organizations').select('display_name').eq('id', organizationId).maybeSingle(),
     project.primary_client_id
       ? supabase.from('clients').select('first_name, last_name').eq('id', project.primary_client_id).maybeSingle()
       : Promise.resolve({ data: null }),
-    supabase.from('walkthrough_items').select('id, category, label').eq('walkthrough_id', walkthroughId).order('sort_order'),
+    supabase.from('walkthrough_items').select('*').eq('walkthrough_id', walkthroughId).order('sort_order'),
     supabase.from('walkthrough_responses').select('item_id, response').eq('walkthrough_id', walkthroughId),
     supabase
       .from('project_issues')
-      .select('id, category, item_label, homeowner_description, status, priority, due_date, corrective_action, homeowner_validation')
+      .select('id, item_id, category, item_label, homeowner_description, status, priority, due_date, responsible_user_id, corrective_action, homeowner_validation')
       .eq('walkthrough_id', walkthroughId)
       .order('reported_at'),
     supabase.from('walkthrough_attachments').select('item_id').eq('walkthrough_id', walkthroughId),
+    getStaffMembers(organizationId),
   ])
 
-  const issues = issuesRes.data ?? []
+  const items = withItemNumbers(
+    (itemsRes.data ?? []) as { id: string; category: string; label: string; item_number?: string | null; location?: string | null }[],
+  )
+  const itemById = new Map(items.map((i) => [i.id, i]))
+  const staffName = new Map(staff.map((m) => [m.user_id, m.full_name || m.email || 'Team member']))
+  const issues = (issuesRes.data ?? [])
+    .map((i) => ({ ...i, numbered: i.item_id ? itemById.get(i.item_id) : undefined }))
+    .sort((a, b) => compareItemNumbers(a.numbered?.number ?? '', b.numbered?.number ?? ''))
   const issueIds = issues.map((i) => i.id)
   const iAttRes = issueIds.length
     ? await supabase.from('issue_attachments').select('issue_id').in('issue_id', issueIds)
@@ -76,7 +90,7 @@ export async function buildWalkthroughSnapshot(supabase: SupabaseClient, walkthr
 
   const totals = { items: 0, satisfactory: 0, needsAttention: 0, notApplicable: 0, unanswered: 0, outstandingIssues: 0 }
   const sectionMap = new Map<string, ReportSnapshot['sections'][number]>()
-  for (const item of itemsRes.data ?? []) {
+  for (const item of items) {
     const r = responses.get(item.id) ?? null
     totals.items++
     if (r === 'satisfactory') totals.satisfactory++
@@ -85,6 +99,8 @@ export async function buildWalkthroughSnapshot(supabase: SupabaseClient, walkthr
     else totals.unanswered++
     if (!sectionMap.has(item.category)) sectionMap.set(item.category, { category: item.category, items: [] })
     sectionMap.get(item.category)!.items.push({
+      number: item.number,
+      location: item.place,
       label: item.label,
       response: r ? RESPONSE_LABELS[r] : 'Not answered',
       attachments: itemAtt.get(item.id) ?? 0,
@@ -111,6 +127,9 @@ export async function buildWalkthroughSnapshot(supabase: SupabaseClient, walkthr
     },
     sections: [...sectionMap.values()],
     issues: issues.map((i) => ({
+      number: i.numbered?.number,
+      location: i.numbered?.place ?? null,
+      responsible: i.responsible_user_id ? staffName.get(i.responsible_user_id) ?? 'Former team member' : null,
       category: i.category,
       item: i.item_label,
       description: i.homeowner_description,
@@ -246,10 +265,13 @@ export async function renderWalkthroughPdf(s: ReportSnapshot, version: number): 
     for (const item of section.items) {
       const right = item.response + (item.attachments ? `  (${item.attachments} file${item.attachments === 1 ? '' : 's'})` : '')
       const rw = font.widthOfTextAtSize(pdfSafe(right), 9.5)
-      const lines = wrap(item.label, font, 9.5, contentW - rw - 24)
+      const numW = item.number ? 34 : 0
+      const labelText = item.location ? `${item.label} - ${item.location}` : item.label
+      const lines = wrap(labelText, font, 9.5, contentW - rw - 24 - numW)
       ensure(lines.length * 13)
       page.drawText(pdfSafe(right), { x: W - M - rw, y: y - 9.5, size: 9.5, font: item.response === 'Needs attention' ? bold : font, color: ink })
-      for (const l of lines) { page.drawText(l, { x: M + 10, y: y - 9.5, size: 9.5, font, color: ink }); y -= 13 }
+      if (item.number) page.drawText(pdfSafe(item.number), { x: M + 10, y: y - 9.5, size: 9.5, font: bold, color: muted })
+      for (const l of lines) { page.drawText(l, { x: M + 10 + numW, y: y - 9.5, size: 9.5, font, color: ink }); y -= 13 }
     }
     y -= 6
   }
@@ -258,8 +280,10 @@ export async function renderWalkthroughPdf(s: ReportSnapshot, version: number): 
   if (!s.issues.length) text('No issues were reported in this walkthrough.', { color: muted })
   for (const [i, issue] of s.issues.entries()) {
     ensure(70)
-    text(`${i + 1}. ${issue.category} - ${issue.item}`, { f: bold, size: 10.5, gap: 1 })
+    text(`${issue.number ?? i + 1}. ${issue.category} - ${issue.item}`, { f: bold, size: 10.5, gap: 1 })
+    if (issue.location) field('Location', issue.location)
     field('Status', `${issue.status}  |  Priority: ${issue.priority}  |  Due: ${fmtDate(issue.dueDate)}`)
+    if (issue.responsible !== undefined) field('Responsible', issue.responsible ?? 'Unassigned')
     field('Homeowner note', issue.description)
     if (issue.correctiveAction) field('Corrective action', issue.correctiveAction)
     field('Homeowner validation', issue.validation)

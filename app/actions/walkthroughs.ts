@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSession, requireManager, requireStaff } from '@/lib/session'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { ISSUE_DESCRIPTION_MAX, STAFF_SETTABLE_ISSUE_STATUSES, WALKTHROUGH_TYPE_LABELS } from '@/lib/walkthroughs'
+import { ITEM_NUMBER_HINT, ITEM_NUMBER_PATTERN, LOCATION_MAX, assignItemNumbers, findDuplicateNumber } from '@/lib/punch-list'
 
 const uuid = z.uuid()
 
@@ -31,7 +32,14 @@ const walkthroughSchema = z.object({
     })
     .pipe(
       z
-        .array(z.object({ category: z.string().trim().min(1).max(80), label: z.string().trim().min(1).max(160) }))
+        .array(
+          z.object({
+            category: z.string().trim().min(1).max(80),
+            label: z.string().trim().min(1).max(160),
+            item_number: z.string().trim().regex(ITEM_NUMBER_PATTERN, ITEM_NUMBER_HINT).optional(),
+            location: z.string().trim().max(LOCATION_MAX, `Locations are limited to ${LOCATION_MAX} characters`).optional(),
+          }),
+        )
         .min(1, 'Add at least one checklist item')
         .max(300),
     ),
@@ -54,6 +62,8 @@ export async function createWalkthroughAction(
     if (keys.has(key)) return { error: `"${item.label}" appears twice in ${item.category}.`, values }
     keys.add(key)
   }
+  const duplicate = findDuplicateNumber(assignItemNumbers(parsed.data.items.map((i) => i.item_number)))
+  if (duplicate) return { error: `Item number ${duplicate} is used more than once.`, values }
 
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('create_walkthrough', {
