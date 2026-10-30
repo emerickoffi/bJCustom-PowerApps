@@ -2,11 +2,10 @@
 
 import { House as HouseIcon, FileText as FileTextIcon, Percent as PercentIcon } from 'lucide-react'
 import { useActionState, useState } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { FormActions, FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
+import { FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { initialActionState, type ActionState } from '@/lib/action-state'
+import { SmartFormLayout, useSmartForm } from '@/components/shared/smart-form'
 
 export type EstimateProjectOption = {
   id: string
@@ -47,10 +46,19 @@ export function EstimateForm({
   const v = state.values ?? {}
   const [projectId, setProjectId] = useState(v.project_id ?? defaults.project_id ?? '')
   const selected = projects?.find((p) => p.id === projectId)
+  const formKey = state.values ? JSON.stringify(state.values) : 'initial'
+  const { inOverlay: flat, dirty, formProps } = useSmartForm(state, formKey)
 
   return (
-    <form action={formAction} className="flex flex-col gap-5" noValidate>
+    <form key={formKey} action={formAction} {...formProps}>
+      <SmartFormLayout
+        dirty={dirty}
+        cancelHref={cancelHref}
+        message={<FormMessage state={state} />}
+        submit={<SubmitButton pendingLabel="Saving…">{submitLabel}</SubmitButton>}
+      >
       <FormSection
+        flat={flat}
         icon={HouseIcon} title="Project & client"
         description="Estimates attach to an existing project. The homeowner is taken from the project's primary client."
       >
@@ -95,7 +103,7 @@ export function EstimateForm({
         </div>
       </FormSection>
 
-      <FormSection icon={FileTextIcon} title="Estimate details">
+      <FormSection flat={flat} icon={FileTextIcon} title="Estimate details">
         <TextField
           name="name"
           label="Estimate name"
@@ -137,6 +145,7 @@ export function EstimateForm({
       </FormSection>
 
       <FormSection
+        flat={flat}
         icon={PercentIcon} title="Markup, contingency & land"
         description="Markup applies to direct costs. Contingency applies to direct costs, allowances and markup. Land is shown separately from construction cost."
       >
@@ -181,12 +190,7 @@ export function EstimateForm({
         />
       </FormSection>
 
-      <FormActions message={<FormMessage state={state} />}>
-        <Button variant="outline" size="lg" render={<Link href={cancelHref} />} nativeButton={false}>
-          Cancel
-        </Button>
-        <SubmitButton>{submitLabel}</SubmitButton>
-      </FormActions>
+      </SmartFormLayout>
     </form>
   )
 }

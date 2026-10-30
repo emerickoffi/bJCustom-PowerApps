@@ -24,9 +24,11 @@ function idsFromValues(values: Record<string, string> | undefined): number[] {
 export function AdditionalContactsSection({
   values,
   fieldErrors,
+  flat = false,
 }: {
   values?: Record<string, string>
   fieldErrors: Record<string, string>
+  flat?: boolean
 }) {
   const [ids, setIds] = useState<number[]>(() => idsFromValues(values))
   const [nextId, setNextId] = useState(() => Math.max(0, ...idsFromValues(values)) + 1)
@@ -42,7 +44,9 @@ export function AdditionalContactsSection({
   const err = (id: number, field: string) => fieldErrors[`${ADDITIONAL_CONTACT_PREFIX}${id}_${field}`]
 
   return (
-    <section className="rounded-xl border border-border/80 bg-card p-5 shadow-xs sm:p-6" aria-labelledby="additional-contact-heading">
+    <section
+      className={flat ? 'border-b border-border/60 py-5 last:border-b-0' : 'rounded-xl border border-border/80 bg-card p-5 shadow-xs sm:p-6'}
+      aria-labelledby="additional-contact-heading">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary ring-1 ring-inset ring-primary/10">

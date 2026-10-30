@@ -2,13 +2,12 @@
 
 import { UserRound as UserRoundIcon, Phone as PhoneIcon, MapPin as MapPinIcon, ClipboardList as ClipboardListIcon } from 'lucide-react'
 import { useActionState } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { initialActionState, type ActionState } from '@/lib/action-state'
 import { CLIENT_STATUS_LABELS, COMMUNICATION_LABELS } from '@/lib/domain'
-import { FormActions, FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
+import { FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { AdditionalContactsSection } from '@/components/clients/additional-contacts-section'
+import { SmartFormLayout, useSmartForm } from '@/components/shared/smart-form'
 
 export type ClientFormValues = {
   first_name?: string
@@ -49,17 +48,24 @@ export function ClientForm({
   const d = (v: string | null | undefined) => v ?? ''
   const defaults: ClientFormValues = { ...initialDefaults, ...state.values }
   const formKey = state.values ? JSON.stringify(state.values) : 'initial'
+  const { inOverlay: flat, dirty, formProps } = useSmartForm(state, formKey)
 
   return (
-    <form key={formKey} action={formAction} className="flex flex-col gap-5">
-      <FormSection icon={UserRoundIcon} title="Homeowner" description="The primary person this client record represents.">
+    <form key={formKey} action={formAction} {...formProps}>
+      <SmartFormLayout
+        dirty={dirty}
+        cancelHref={cancelHref}
+        message={<FormMessage state={state} />}
+        submit={<SubmitButton pendingLabel={pendingLabel}>{submitLabel}</SubmitButton>}
+      >
+      <FormSection flat={flat} icon={UserRoundIcon} title="Homeowner information" description="The primary person this client record represents.">
         <TextField name="first_name" label="First name" required defaultValue={d(defaults.first_name)} error={fe.first_name} autoComplete="off" />
         <TextField name="middle_name" label="Middle name" defaultValue={d(defaults.middle_name)} error={fe.middle_name} autoComplete="off" />
         <TextField name="last_name" label="Last name" required defaultValue={d(defaults.last_name)} error={fe.last_name} autoComplete="off" />
         <TextField name="company_name" label="Company or trust" defaultValue={d(defaults.company_name)} error={fe.company_name} hint="Optional, if the home is owned by an entity." />
       </FormSection>
 
-      <FormSection icon={PhoneIcon} title="Contact" description="How your team reaches this homeowner.">
+      <FormSection flat={flat} icon={PhoneIcon} title="Contact details" description="How your team reaches this homeowner.">
         <TextField name="email" label="Email" type="email" defaultValue={d(defaults.email)} error={fe.email} hint="Required to invite them to the homeowner portal." />
         <SelectField
           name="preferred_communication"
@@ -71,9 +77,7 @@ export function ClientForm({
         <TextField name="alternate_phone" label="Alternate phone" type="tel" defaultValue={d(defaults.alternate_phone)} error={fe.alternate_phone} />
       </FormSection>
 
-      {additionalContacts && <AdditionalContactsSection values={state.values} fieldErrors={fe} />}
-
-      <FormSection icon={MapPinIcon} title="Mailing address" description="Where the homeowner currently lives, not the build site.">
+      <FormSection flat={flat} icon={MapPinIcon} title="Mailing address" description="Where the homeowner currently lives, not the build site.">
         <TextField name="address_line1" label="Street address" defaultValue={d(defaults.address_line1)} error={fe.address_line1} className="sm:col-span-2" />
         <TextField name="address_line2" label="Apt, suite, etc." defaultValue={d(defaults.address_line2)} error={fe.address_line2} className="sm:col-span-2" />
         <TextField name="city" label="City" defaultValue={d(defaults.city)} error={fe.city} />
@@ -82,7 +86,9 @@ export function ClientForm({
         <TextField name="country" label="Country" defaultValue={defaults.country ?? 'United States'} error={fe.country} />
       </FormSection>
 
-      <FormSection icon={ClipboardListIcon} title="Record" description="Status and internal notes are only visible to your team.">
+      {additionalContacts && <AdditionalContactsSection values={state.values} fieldErrors={fe} flat={flat} />}
+
+      <FormSection flat={flat} icon={ClipboardListIcon} title="Internal notes & record" description="Status and internal notes are only visible to your team.">
         <SelectField
           name="status"
           label="Client status"
@@ -93,12 +99,7 @@ export function ClientForm({
         <TextAreaField name="notes" label="Internal notes" defaultValue={d(defaults.notes)} error={fe.notes} className="sm:col-span-2" />
       </FormSection>
 
-      <FormActions message={<FormMessage state={state} />}>
-        <Button variant="outline" size="lg" render={<Link href={cancelHref} />} nativeButton={false}>
-          Cancel
-        </Button>
-        <SubmitButton pendingLabel={pendingLabel}>{submitLabel}</SubmitButton>
-      </FormActions>
+      </SmartFormLayout>
     </form>
   )
 }

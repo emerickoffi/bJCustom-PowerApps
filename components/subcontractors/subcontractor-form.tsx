@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useFormDirty } from '@/components/shared/smart-form'
 import Link from 'next/link'
 import {
   AlertCircle as AlertCircleIcon,
@@ -24,41 +25,6 @@ import { ProjectAssignmentsPicker } from '@/components/subcontractors/project-as
 import { cn } from '@/lib/utils'
 
 const DISCARD_PROMPT = 'You have unsaved changes. Discard them and leave this page?'
-
-/**
- * Tracks unsaved work by comparing the serialized form to its first render. This catches every control,
- * including comboboxes and card lists that only update hidden inputs, without false positives when a
- * change is undone.
- */
-function useFormDirty(formKey: string, onChange?: (dirty: boolean) => void) {
-  const formRef = useRef<HTMLFormElement>(null)
-  const initialRef = useRef<string | null>(null)
-  const [dirty, setDirty] = useState(false)
-
-  const serialize = () =>
-    formRef.current
-      ? JSON.stringify([...new FormData(formRef.current)].filter(([k]) => !k.startsWith('$ACTION')).map(([k, v]) => [k, String(v)]))
-      : ''
-
-  const check = useCallback(() => {
-    requestAnimationFrame(() => {
-      if (!formRef.current || initialRef.current === null) return
-      const next = serialize() !== initialRef.current
-      setDirty(next)
-      onChange?.(next)
-    })
-  }, [onChange])
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      if (initialRef.current === null) initialRef.current = serialize()
-      else check()
-    })
-    return () => cancelAnimationFrame(id)
-  }, [formKey, check])
-
-  return { formRef, dirty, check }
-}
 
 export function SubcontractorForm({
   action,

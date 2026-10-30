@@ -1,13 +1,13 @@
 'use client'
 
 import { useActionState, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { TextField, TextAreaField, NativeSelect, FormSection, FormActions } from '@/components/shared/form-field'
+import { TextField, TextAreaField, NativeSelect, FormSection } from '@/components/shared/form-field'
 import { saveInvoiceDraft } from '@/app/actions/invoices'
 import { initialActionState } from '@/lib/action-state'
+import { SmartFormLayout, useSmartForm } from '@/components/shared/smart-form'
 import { formatCentsExact } from '@/lib/estimates'
 import {
   DRAW_MILESTONES,
@@ -87,9 +87,21 @@ export function InvoiceForm({
 
   const today = new Date().toISOString().slice(0, 10)
   const due = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)
+  const formKey = v ? JSON.stringify(v) : 'initial'
+  const { inOverlay: flat, dirty, formProps } = useSmartForm(state, formKey)
 
   return (
-    <form action={formAction} className="flex flex-col gap-8" noValidate>
+    <form key={formKey} action={formAction} {...formProps}>
+      <SmartFormLayout
+        dirty={dirty}
+        cancelHref={cancelHref}
+        submit={
+          <Button type="submit" size="lg" disabled={pending} aria-busy={pending || undefined}>
+            {pending && <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />}
+            {pending ? 'Saving…' : 'Save draft'}
+          </Button>
+        }
+      >
       {defaults.id && <input type="hidden" name="id" value={defaults.id} />}
       {!defaults.id && <input type="hidden" name="id" value="" />}
       <input type="hidden" name="lines" value={JSON.stringify(lines)} />
@@ -100,7 +112,7 @@ export function InvoiceForm({
         </div>
       )}
 
-      <FormSection title="Who and what" description="The homeowner is taken from the project's primary client when the invoice is issued.">
+      <FormSection flat={flat} title="Project & billing source" description="The homeowner is taken from the project's primary client when the invoice is issued.">
         <div className="grid gap-5 sm:col-span-2 sm:grid-cols-2">
           <div className="flex min-w-0 flex-col gap-1.5">
             <label htmlFor="project_id" className="text-sm font-medium">
@@ -231,7 +243,7 @@ export function InvoiceForm({
         </div>
       </FormSection>
 
-      <FormSection title="Line items" description="Amounts are calculated in whole cents and match the saved invoice exactly.">
+      <FormSection flat={flat} title="Line items" description="Amounts are calculated in whole cents and match the saved invoice exactly.">
         <div className="flex min-w-0 flex-col gap-3 sm:col-span-2">
           <div
             aria-hidden="true"
@@ -370,7 +382,7 @@ export function InvoiceForm({
         </div>
       </FormSection>
 
-      <FormSection title="Payment details" description="Shown to the homeowner. Payments are recorded by staff; no card processing happens here.">
+      <FormSection flat={flat} title="Payment details" description="Shown to the homeowner. Payments are recorded by staff; no card processing happens here.">
         <div className="grid gap-5 sm:col-span-2">
           <TextField
             name="payment_terms"
@@ -396,15 +408,7 @@ export function InvoiceForm({
         </div>
       </FormSection>
 
-      <FormActions>
-        <Button variant="outline" render={<Link href={cancelHref} />} nativeButton={false}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={pending} aria-busy={pending || undefined}>
-          {pending && <Loader2 data-icon="inline-start" className="animate-spin" aria-hidden="true" />}
-          {pending ? 'Saving…' : 'Save draft'}
-        </Button>
-      </FormActions>
+      </SmartFormLayout>
     </form>
   )
 }

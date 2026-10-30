@@ -5,33 +5,17 @@ import { Button } from '@/components/ui/button'
 import { requireManager } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { createEstimateAction } from '@/app/actions/estimates'
+import { loadEstimateProjects } from '@/lib/estimate-form-data'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
-import { EstimateForm, type EstimateProjectOption } from '@/components/estimates/estimate-form'
+import { EstimateForm } from '@/components/estimates/estimate-form'
 
 export const metadata: Metadata = { title: 'Create estimate' }
-
-type ClientRef = { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null
 
 export default async function NewEstimatePage({ searchParams }: { searchParams: Promise<{ project?: string }> }) {
   const session = await requireManager()
   const { project } = await searchParams
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('projects')
-    .select('id, name, project_number, client:clients!projects_primary_client_id_fkey(first_name, last_name)')
-    .eq('organization_id', session.organizationId)
-    .not('status', 'eq', 'cancelled')
-    .order('name')
-
-  const projects: EstimateProjectOption[] = (data ?? []).map((p) => {
-    const c = Array.isArray(p.client) ? p.client[0] : (p.client as ClientRef)
-    const client = Array.isArray(c) ? c[0] : c
-    return {
-      id: p.id,
-      label: `${p.name} (${p.project_number})`,
-      clientName: client ? `${client.first_name} ${client.last_name}` : null,
-    }
-  })
+  const projects = await loadEstimateProjects(supabase, session.organizationId)
   const preselected = projects.some((p) => p.id === project) ? project : undefined
 
   return (
