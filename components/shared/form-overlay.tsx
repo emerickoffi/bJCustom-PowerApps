@@ -47,7 +47,8 @@ export function FormOverlay({
   title: React.ReactNode
   description?: React.ReactNode
   icon?: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' }>
-  size?: 'md' | 'lg'
+  /** `xl` is drawer-only, for forms with wide tables such as invoice line items. */
+  size?: 'md' | 'lg' | 'xl'
   children: React.ReactNode
 }) {
   const [dirty, setDirtyState] = useState(false)
@@ -101,7 +102,7 @@ export function FormOverlay({
             isDrawer
               ? cn(
                   'sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:border-l sm:border-border/80 sm:data-ending-style:translate-x-10 sm:data-ending-style:translate-y-0 sm:data-starting-style:translate-x-10 sm:data-starting-style:translate-y-0',
-                  size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-xl',
+                  size === 'xl' ? 'sm:max-w-4xl' : size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-xl',
                 )
               : cn(
                   'sm:inset-auto sm:top-1/2 sm:left-1/2 sm:h-auto sm:max-h-[min(88dvh,56rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:ring-1 sm:ring-foreground/10 sm:data-ending-style:scale-[0.98] sm:data-ending-style:-translate-y-1/2 sm:data-starting-style:scale-[0.98] sm:data-starting-style:-translate-y-1/2',

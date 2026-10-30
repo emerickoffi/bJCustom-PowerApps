@@ -148,16 +148,25 @@ export function FormSection({
   title,
   description,
   icon: Icon,
+  flat = false,
   children,
 }: {
   title: string
   description?: string
   icon?: LucideIcon
+  /** Divider style instead of a card, for sections stacked inside a drawer. */
+  flat?: boolean
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-xl border border-border/80 bg-card p-5 shadow-xs sm:p-6">
-      <header className="mb-5 flex items-start gap-3 border-b border-border/60 pb-4">
+    <section
+      className={
+        flat
+          ? 'border-b border-border/60 py-5 last:border-b-0'
+          : 'rounded-xl border border-border/80 bg-card p-5 shadow-xs sm:p-6'
+      }
+    >
+      <header className={cn('flex items-start gap-3', flat ? 'mb-4' : 'mb-5 border-b border-border/60 pb-4')}>
         {Icon && (
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary ring-1 ring-inset ring-primary/10">
             <Icon className="size-4" aria-hidden="true" />
