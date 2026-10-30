@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { FolderKanban } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireManager } from '@/lib/session'
+import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { createEstimateAction } from '@/app/actions/estimates'
 import { loadEstimateProjects } from '@/lib/estimate-form-data'
@@ -12,6 +13,7 @@ import { RouteFormDrawer } from '@/components/shared/route-form-drawer'
 
 export default async function NewEstimateDrawer({ searchParams }: { searchParams: Promise<{ project?: string }> }) {
   const session = await requireManager()
+  await requireFeature(session.organizationId, 'estimates')
   const { project } = await searchParams
   const supabase = await createClient()
   const projects = await loadEstimateProjects(supabase, session.organizationId)

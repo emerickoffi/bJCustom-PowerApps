@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { FileUp, Loader2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { FormOverlay, OverlayBody, OverlayFooter } from '@/components/shared/form-overlay'
 import { NativeSelect } from '@/components/shared/form-field'
 import { createClient } from '@/lib/supabase/client'
 import { discardDocumentUpload, prepareCompanyDocumentUpload, prepareDocumentUpload, registerDocumentVersion } from '@/app/actions/documents'
@@ -202,28 +202,23 @@ export function DocumentUploadDialog({
   }
 
   return (
-    <Dialog
+    <FormOverlay
       open={open}
-      onOpenChange={(next) => {
-        if (!next) return close()
-        if (!busy) onOpenChange(next)
-      }}
+      onClose={close}
+      variant="drawer"
+      size="lg"
+      icon={Upload}
+      title={version ? 'Upload new version' : isCompany ? 'Upload company document' : 'Upload project document'}
+      description={
+        version
+          ? `${version.name} is on version ${version.currentVersion}. Earlier versions are kept in the history.`
+          : isCompany
+            ? 'Company Library documents are internal and visible only to administrators and project managers. They are never shared with homeowners.'
+            : 'New documents are internal until you share them with the homeowner.'
+      }
     >
-      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-lg">
-            {version ? 'Upload new version' : isCompany ? 'Upload company document' : 'Upload project document'}
-          </DialogTitle>
-          <DialogDescription>
-            {version
-              ? `${version.name} is on version ${version.currentVersion}. Earlier versions are kept in the history.`
-              : isCompany
-                ? 'Company Library documents are internal and visible only to administrators and project managers. They are never shared with homeowners.'
-                : 'New documents are internal until you share them with the homeowner.'}
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+      <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col" noValidate>
+        <OverlayBody className="flex flex-col gap-4">
           <div
             onDragOver={(e) => {
               e.preventDefault()
@@ -440,18 +435,18 @@ export function DocumentUploadDialog({
               {error}
             </p>
           )}
+        </OverlayBody>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close} disabled={busy}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={busy || !isValid}>
-              {busy ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <Upload data-icon="inline-start" />}
-              {busy ? 'Uploading' : version ? 'Upload version' : 'Upload document'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <OverlayFooter>
+          <Button type="button" variant="outline" onClick={close} disabled={busy}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={busy || !isValid}>
+            {busy ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <Upload data-icon="inline-start" />}
+            {busy ? 'Uploading' : version ? 'Upload version' : 'Upload document'}
+          </Button>
+        </OverlayFooter>
+      </form>
+    </FormOverlay>
   )
 }

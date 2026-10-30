@@ -67,7 +67,11 @@ async function loadNotifications(userId: string): Promise<HeaderNotification[]> 
   return items
 }
 
-export default async function StaffLayout({ children }: { children: React.ReactNode }) {
+/**
+ * `modal` is the single slot for every create/edit drawer. Because it lives at the staff level, a soft
+ * navigation from any staff page (Dashboard, Quick Actions, a project's tabs) opens the drawer over that page.
+ */
+export default async function StaffLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const session = await requireStaff()
   const [cookieStore, notifications, features] = await Promise.all([
     cookies(),
@@ -134,6 +138,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           <main className="mx-auto w-full max-w-[90rem] flex-1 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8 lg:px-10 lg:pt-10">{children}</main>
         </div>
       </div>
+      {modal}
       <QuickActionsButton globalActions={globalQuickActions} aboveAssistant={showAssistant} />
       {showAssistant && <AssistantLauncher configured={getAssistantProviderConfig().configured} />}
       </QuickActionsProvider>

@@ -2,7 +2,7 @@ import { Archive } from 'lucide-react'
 import { requireStaff } from '@/lib/session'
 import { getInvoiceAccess } from '@/lib/invoice-access'
 
-export default async function InvoicesLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
+export default async function InvoicesLayout({ children }: { children: React.ReactNode }) {
   const session = await requireStaff()
   const { archive } = await getInvoiceAccess(session)
   return (
@@ -17,7 +17,6 @@ export default async function InvoicesLayout({ children, modal }: { children: Re
         </div>
       )}
       {children}
-      {modal}
     </div>
   )
 }

@@ -9,14 +9,14 @@ import {
   Image as ImageIcon,
 } from 'lucide-react'
 import { useActionState, useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { formValues, initialActionState, type ActionState } from '@/lib/action-state'
 import { validateCoverFile } from '@/lib/project-cover'
 import { CoverImageField, uploadProjectCover } from '@/components/projects/cover-image-field'
 import { PROJECT_TYPE_LABELS } from '@/lib/domain'
 import { cn } from '@/lib/utils'
-import { FormActions, FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
+import { FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
+import { SmartFormLayout, useSmartForm } from '@/components/shared/smart-form'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 
 export type ProjectFormValues = {
@@ -87,7 +87,6 @@ export function ProjectForm({
   /** Mailing addresses keyed by client id. Copied into the site fields only when the user asks. */
   clientAddresses?: Record<string, ClientMailingAddress>
 }) {
-  const formRef = useRef<HTMLFormElement>(null)
   const [addressNotice, setAddressNotice] = useState<{ tone: 'success' | 'info'; text: string } | null>(null)
 
   const copyClientMailingAddress = () => {
@@ -137,6 +136,9 @@ export function ProjectForm({
   }, initialActionState)
   const fe = state.fieldErrors ?? {}
   const sv = state.values
+  const formKey = sv ? JSON.stringify(sv) : 'initial'
+  const { inOverlay: flat, dirty, formProps } = useSmartForm(state, formKey)
+  const formRef = formProps.ref
   // After a failed submit, re-seed every field from what the builder entered so nothing is lost.
   const v = (key: keyof ProjectFormValues, fallback?: string | null) => (sv ? (sv[key] ?? '') : (fallback ?? ''))
   const budgetDefault = sv
@@ -149,8 +151,14 @@ export function ProjectForm({
   const [scheduleMode, setScheduleMode] = useState(sv?.schedule_setup ?? 'standard')
 
   return (
-    <form ref={formRef} key={sv ? JSON.stringify(sv) : 'initial'} action={formAction} className="flex flex-col gap-5" noValidate={false}>
-      <FormSection icon={HouseIcon} title="Project" description="Name the project and choose the homeowner it is being built for.">
+    <form key={formKey} action={formAction} {...formProps} noValidate={false}>
+      <SmartFormLayout
+        dirty={dirty}
+        cancelHref={cancelHref}
+        message={<FormMessage state={state} />}
+        submit={<SubmitButton pendingLabel={pendingLabel}>{submitLabel}</SubmitButton>}
+      >
+      <FormSection flat={flat} icon={HouseIcon} title="Project" description="Name the project and choose the homeowner it is being built for.">
         <TextField name="name" label="Project name" required defaultValue={v('name', defaults.name)} error={fe.name} className="sm:col-span-2" />
         <SelectField
           name="primary_client_id"
@@ -184,7 +192,7 @@ export function ProjectForm({
       </FormSection>
 
       {cover && (
-        <FormSection
+        <FormSection flat={flat}
           icon={ImageIcon}
           title="Project Cover Image"
           description="Upload an architectural rendering, 3D visualization, or photograph of the home."
@@ -211,7 +219,7 @@ export function ProjectForm({
         </FormSection>
       )}
 
-      <FormSection icon={MapPinIcon} title="Site" description="Where the home is being built. This is separate from the homeowner's mailing address.">
+      <FormSection flat={flat} icon={MapPinIcon} title="Site" description="Where the home is being built. This is separate from the homeowner's mailing address.">
         {clientAddresses && (
           <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center">
             <Button type="button" variant="outline" size="sm" className="self-start" onClick={copyClientMailingAddress}>
@@ -243,7 +251,7 @@ export function ProjectForm({
         <TextAreaField name="legal_description" label="Legal description" defaultValue={v('legal_description', defaults.legal_description)} error={fe.legal_description} className="sm:col-span-2" />
       </FormSection>
 
-      <FormSection icon={CalendarRangeIcon} title="Plan" description="Budget, target dates, and the project manager responsible.">
+      <FormSection flat={flat} icon={CalendarRangeIcon} title="Plan" description="Budget, target dates, and the project manager responsible.">
         <div className="flex min-w-0 flex-col">
           <TextField
             name="estimated_budget"
@@ -294,7 +302,7 @@ export function ProjectForm({
       </FormSection>
 
       {scheduleSetup !== undefined && (
-        <FormSection
+        <FormSection flat={flat}
           icon={ListChecksIcon}
           title="Construction schedule setup"
           description="Optional. Runs once after the project is saved, and you can change it later on the Schedule page."
@@ -361,12 +369,7 @@ export function ProjectForm({
         </FormSection>
       )}
 
-      <FormActions message={<FormMessage state={state} />}>
-        <Button variant="outline" size="lg" render={<Link href={cancelHref} />} nativeButton={false}>
-          Cancel
-        </Button>
-        <SubmitButton pendingLabel={pendingLabel}>{submitLabel}</SubmitButton>
-      </FormActions>
+      </SmartFormLayout>
     </form>
   )
 }
