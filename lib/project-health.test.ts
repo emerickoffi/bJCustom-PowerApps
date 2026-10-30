@@ -6,6 +6,7 @@ import { buildAgenda, type AgendaActivity } from './agenda.ts'
 const base: ProjectHealthSignals = {
   scheduleEnabled: true,
   activityCount: 20,
+  datedActivityCount: 20,
   delayedCount: 0,
   overdueCount: 0,
   maxDaysOverdue: 0,
@@ -21,6 +22,12 @@ test('on track only with a schedule and no signals', () => {
 test('missing schedule is insufficient data, never on track', () => {
   assert.equal(computeProjectHealth({ ...base, activityCount: 0 }).level, 'insufficient_data')
   assert.equal(computeProjectHealth({ ...base, scheduleEnabled: false }).level, 'insufficient_data')
+})
+
+test('activities without any planned dates are insufficient data, never on track', () => {
+  const h = computeProjectHealth({ ...base, datedActivityCount: 0 })
+  assert.equal(h.level, 'insufficient_data')
+  assert.match(h.reasons[0], /no planned dates/)
 })
 
 test('a delayed activity is at risk', () => {

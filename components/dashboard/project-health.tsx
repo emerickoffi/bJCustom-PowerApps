@@ -33,7 +33,7 @@ export function ProjectHealthList({
 }) {
   return (
     <section aria-labelledby="health-heading" className="surface flex flex-col gap-4 p-5 md:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h2 id="health-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
             Project Health
@@ -55,12 +55,12 @@ export function ProjectHealthList({
       {projects.length === 0 ? (
         <p className="rounded-xl bg-muted/50 p-4 text-sm text-muted-foreground">No active projects to assess.</p>
       ) : (
-        <ul className="flex flex-col divide-y">
+        <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {projects.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} className="min-w-0">
               <Link
                 href={`/projects/${p.id}`}
-                className="group flex flex-col gap-2 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+                className="group flex h-full flex-col gap-2 rounded-xl border p-3.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-start sm:justify-between sm:gap-4"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <span className="truncate text-sm font-semibold text-foreground group-hover:text-primary">{p.name}</span>
@@ -82,7 +82,7 @@ export function ProjectHealthList({
       )}
       <p className="text-xs text-muted-foreground">
         Based on schedule status, open punch list issues, Daily Log delays and your pending actions. Projects without a
-        schedule are marked Insufficient Data, never On Track.
+        schedule or planned dates are marked Insufficient Data, never On Track.
       </p>
     </section>
   )

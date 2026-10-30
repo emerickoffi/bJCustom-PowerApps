@@ -125,6 +125,7 @@ export async function loadProjectHealth(
       s = {
         scheduleEnabled: features.schedule,
         activityCount: 0,
+        datedActivityCount: 0,
         delayedCount: 0,
         overdueCount: 0,
         maxDaysOverdue: 0,
@@ -140,6 +141,7 @@ export async function loadProjectHealth(
   for (const a of (activitiesRes.data ?? []) as { project_id: string; status: string; planned_end: string | null }[]) {
     const s = get(a.project_id)
     s.activityCount++
+    if (a.planned_end) s.datedActivityCount++
     if (a.status === 'completed' || a.status === 'skipped') continue
     if (a.status === 'delayed') s.delayedCount++
     else if (a.planned_end && a.planned_end < today) {
