@@ -5,7 +5,14 @@ export type ActionState = {
   fieldErrors?: Record<string, string>
   success?: string
   values?: Record<string, string>
+  /** Set by overlay-mode actions that return instead of redirecting, so the modal or drawer can close. */
+  savedId?: string
+  /** Partial success: the main record saved but something related did not. */
+  warning?: string
 }
+
+/** Hidden field that asks a form action to return its result instead of redirecting. */
+export const OVERLAY_FIELD = '_overlay'
 
 export const initialActionState: ActionState = {}
 

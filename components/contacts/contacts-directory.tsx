@@ -70,6 +70,7 @@ import {
 import { setStatusBulkAction } from '@/app/actions/contacts'
 import { InlineEditCell } from '@/components/contacts/inline-edit-cell'
 import { ContactStatusBadge } from '@/components/contacts/contact-status-button'
+import { useOverlayHref } from '@/components/contacts/contact-overlays'
 
 type ColumnKey =
   | 'type'
@@ -801,6 +802,7 @@ function SortHeader({
 }
 
 function NameCell({ row }: { row: DirectoryRow }) {
+  const overlayHref = useOverlayHref()
   const isPerson = row.kind === 'person'
   const Icon = isPerson ? User : Building2
   return (
@@ -815,7 +817,7 @@ function NameCell({ row }: { row: DirectoryRow }) {
         <Icon className="size-4" />
       </span>
       <div className="flex min-w-0 flex-col">
-        <Link href={rowHref(row)} className="truncate font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:underline">
+        <Link href={isPerson ? overlayHref({ contact: row.id }) : rowHref(row)} scroll={isPerson ? false : undefined} className="truncate font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:underline">
           {rowName(row)}
         </Link>
         {row.kind === 'company' && row.company.subcontractor_company_id && (

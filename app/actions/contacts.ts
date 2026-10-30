@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { canManage, getSession, type StaffSession } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
-import { fromZodError, formValues, friendlyDbError, type ActionState } from '@/lib/action-state'
+import { OVERLAY_FIELD, fromZodError, formValues, friendlyDbError, type ActionState } from '@/lib/action-state'
 import { projectAcceptsNewAssignments } from '@/lib/domain'
 import { isUuid } from '@/lib/subcontractor-projects'
 import {
@@ -318,11 +318,14 @@ async function saveAssociations(
   return { problems, paths }
 }
 
-function afterSave(personId: string, flag: 'added' | 'saved', problems: string[]): never {
-  if (problems.length) {
-    const lead = flag === 'added' ? 'Contact saved, but' : 'Changes saved, but'
-    redirect(`/contacts/people/${personId}?warning=${encodeURIComponent(`${lead} ${problems.join('; ')}.`)}`)
+/** Overlay callers stay on their page, so they get the result back; full-page forms redirect to the profile. */
+function afterSave(personId: string, flag: 'added' | 'saved', problems: string[], overlay: boolean): ActionState {
+  const lead = flag === 'added' ? 'Contact saved, but' : 'Changes saved, but'
+  const warning = problems.length ? `${lead} ${problems.join('; ')}.` : undefined
+  if (overlay) {
+    return { savedId: personId, success: flag === 'added' ? 'Contact added.' : 'Changes saved.', warning }
   }
+  if (warning) redirect(`/contacts/people/${personId}?warning=${encodeURIComponent(warning)}`)
   redirect(`/contacts/people/${personId}?${flag}=1`)
 }
 
@@ -362,7 +365,7 @@ export async function createPersonAction(_prev: ActionState, formData: FormData)
 
   const { problems, paths } = await saveAssociations(gate, person.id, plan)
   revalidateDirectory(`/contacts/people/${person.id}`, ...paths)
-  afterSave(person.id, 'added', problems)
+  return afterSave(person.id, 'added', problems, values[OVERLAY_FIELD] === '1')
 }
 
 export type QuickCompanyResult =
@@ -467,7 +470,7 @@ export async function updatePersonAction(personId: string, _prev: ActionState, f
   }
   const { problems, paths } = await saveAssociations(gate, personId, plan)
   revalidateDirectory(`/contacts/people/${personId}`, ...paths)
-  afterSave(personId, 'saved', problems)
+  return afterSave(personId, 'saved', problems, values[OVERLAY_FIELD] === '1')
 }
 
 export type InlineEditResult = { ok: true; value: string | null; updated_at: string } | { ok: false; error: string; stale?: boolean }
