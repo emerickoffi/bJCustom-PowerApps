@@ -2,10 +2,16 @@
 
 import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { FilePlus2, Receipt, UserRoundPlus, type LucideIcon } from 'lucide-react'
+import { Building2, FilePlus2, FolderPlus, Receipt, UserRoundPlus, type LucideIcon } from 'lucide-react'
 import { FormOverlay } from '@/components/shared/form-overlay'
 
-const ICONS = { client: UserRoundPlus, estimate: FilePlus2, invoice: Receipt } satisfies Record<string, LucideIcon>
+const ICONS = {
+  client: UserRoundPlus,
+  estimate: FilePlus2,
+  invoice: Receipt,
+  project: FolderPlus,
+  company: Building2,
+} satisfies Record<string, LucideIcon>
 
 /**
  * Right-side drawer for an intercepted create route. The page underneath keeps its filters, search, and

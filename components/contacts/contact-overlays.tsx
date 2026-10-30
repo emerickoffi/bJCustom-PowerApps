@@ -96,7 +96,7 @@ export function ContactOverlays({
       <FormOverlay
         open={creating}
         onClose={closeAll}
-        variant="modal"
+        variant="drawer"
         size="lg"
         icon={UserPlus}
         title="Add contact"

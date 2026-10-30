@@ -1,8 +1,3 @@
-export default function ClientsLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
-  return (
-    <>
-      {children}
-      {modal}
-    </>
-  )
+export default function ClientsLayout({ children }: { children: React.ReactNode }) {
+  return children
 }
