@@ -243,6 +243,7 @@ export type ProjectAssociation = {
 }
 
 export type PersonProfile = PersonRow & {
+  middle_name: string | null
   notes: string | null
   created_at: string
   relationships: RelationshipHistory[]
@@ -256,7 +257,7 @@ export async function loadPersonProfile(
 ): Promise<PersonProfile | null> {
   const { data: person } = await supabase
     .from('business_people')
-    .select(`${PERSON_COLUMNS}, notes, created_at`)
+    .select(`${PERSON_COLUMNS}, middle_name, notes, created_at`)
     .eq('organization_id', organizationId)
     .eq('id', personId)
     .maybeSingle()
@@ -319,7 +320,16 @@ export type CompanyContact = {
   ended_at: string | null
 }
 
-export type CompanyProfile = CompanyRow & {
+export type CompanyDetails = {
+  secondary_company_phone: string | null
+  website: string | null
+  address_line1: string | null
+  city: string | null
+  state: string | null
+  postal_code: string | null
+}
+
+export type CompanyProfile = CompanyRow & CompanyDetails & {
   notes: string | null
   created_at: string
   business_categories: CategoryKey[]
@@ -332,7 +342,10 @@ export async function loadCompanyProfile(
   organizationId: string,
   filter: { id: string } | { subcontractorId: string },
 ): Promise<CompanyProfile | null> {
-  let query = supabase.from('business_companies').select(`${COMPANY_COLUMNS}, notes, created_at`).eq('organization_id', organizationId)
+  let query = supabase
+    .from('business_companies')
+    .select(`${COMPANY_COLUMNS}, secondary_company_phone, website, address_line1, city, state, postal_code, notes, created_at`)
+    .eq('organization_id', organizationId)
   query = 'id' in filter ? query.eq('id', filter.id) : query.eq('subcontractor_company_id', filter.subcontractorId)
   const { data: company } = await query.maybeSingle()
   if (!company) return null
@@ -346,7 +359,7 @@ export async function loadCompanyProfile(
   ])
   const links = (cats.data ?? []) as unknown as { category: { kind: string; name: string } | null }[]
   return {
-    ...(company as CompanyRow & { notes: string | null; created_at: string }),
+    ...(company as CompanyRow & CompanyDetails & { notes: string | null; created_at: string }),
     business_categories: links
       .filter((l) => l.category?.kind === 'business')
       .map((l) => categoryKeyFromName(l.category!.name))

@@ -407,14 +407,16 @@ export async function updateCompanyAction(companyId: string, _prev: ActionState,
   const linked = Boolean(existing.subcontractor_company_id)
   const parsed = companySchema.safeParse(
     linked
-      ? { company_name: existing.company_name, company_email: existing.company_email ?? '', company_phone: existing.company_phone ?? '', notes: values.notes }
+      ? { ...values, company_name: existing.company_name, company_email: existing.company_email ?? '', company_phone: existing.company_phone ?? '' }
       : values,
   )
   if (!parsed.success) return { ...fromZodError(parsed.error), values }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- identity fields of linked companies are owned by the subcontractor record
+  const { company_name, company_email, company_phone, ...editableWhenLinked } = parsed.data
   const { data, error } = await supabase
     .from('business_companies')
-    .update({ ...(linked ? { notes: parsed.data.notes } : parsed.data), updated_by: session.userId })
+    .update({ ...(linked ? editableWhenLinked : parsed.data), updated_by: session.userId })
     .eq('organization_id', session.organizationId)
     .eq('id', companyId)
     .select('id')

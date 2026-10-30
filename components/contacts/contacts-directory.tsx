@@ -50,6 +50,7 @@ import {
   PAGE_SIZES,
   buildRows,
   companySummary,
+  filterByAttributes,
   filterRows,
   paginate,
   personName,
@@ -102,7 +103,7 @@ const COLUMNS: Record<DirectoryView, ColumnDef[]> = {
     { key: 'email', label: 'Email' },
     { key: 'phone', label: 'Primary Phone', width: 'w-40' },
     { key: 'secondary_phone', label: 'Secondary Phone', width: 'w-40' },
-    { key: 'specialty', label: 'Specialty' },
+    { key: 'specialty', label: 'Profession / Trade', sort: 'specialty' },
     { key: 'projects', label: 'Projects', sort: 'projects', width: 'w-32' },
     { key: 'status', label: 'Status', sort: 'status', width: 'w-28' },
   ],
@@ -122,6 +123,60 @@ const DEFAULT_HIDDEN: Record<DirectoryView, ColumnKey[]> = {
   all: [],
   people: ['secondary_phone'],
   companies: ['products'],
+}
+
+const SORT_OPTIONS: { value: `${SortKey}:${SortDir}`; label: string }[] = [
+  { value: 'last_name:asc', label: 'Last name (A–Z)' },
+  { value: 'last_name:desc', label: 'Last name (Z–A)' },
+  { value: 'first_name:asc', label: 'First name (A–Z)' },
+  { value: 'first_name:desc', label: 'First name (Z–A)' },
+  { value: 'company:asc', label: 'Company (A–Z)' },
+  { value: 'specialty:asc', label: 'Profession / trade' },
+  { value: 'category:asc', label: 'Category' },
+  { value: 'projects:desc', label: 'Most projects' },
+  { value: 'status:asc', label: 'Status' },
+]
+
+function uniqueSorted(values: (string | null | undefined)[]) {
+  const seen = new Map<string, string>()
+  for (const v of values) {
+    const t = v?.trim()
+    if (t && !seen.has(t.toLowerCase())) seen.set(t.toLowerCase(), t)
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b))
+}
+
+function FilterSelect({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+  allLabel,
+}: {
+  id: string
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: readonly (readonly [string, string])[]
+  allLabel: string
+}) {
+  if (options.length === 0) return null
+  return (
+    <>
+      <label htmlFor={id} className="sr-only">
+        {label}
+      </label>
+      <NativeSelect id={id} value={value} onChange={(e) => onChange(e.target.value)} className="w-48 bg-card">
+        <option value="">{allLabel}</option>
+        {options.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+      </NativeSelect>
+    </>
+  )
 }
 
 function rowKey(row: DirectoryRow) {
@@ -181,14 +236,26 @@ export function ContactsDirectory({
     return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]))
   }, [people, companies])
 
+  const [specialtyFilter, setSpecialtyFilter] = useState('')
+  const [productFilter, setProductFilter] = useState('')
+  const [companyFilter, setCompanyFilter] = useState('')
+  const specialtyOptions = useMemo(() => uniqueSorted(people.map((p) => p.specialty)), [people])
+  const productOptions = useMemo(() => uniqueSorted(companies.flatMap((c) => c.product_categories)), [companies])
+  const companyOptions = useMemo(
+    () => [...companies].sort((a, b) => a.company_name.localeCompare(b.company_name)).map((c) => [c.id, c.company_name] as const),
+    [companies],
+  )
+
   const allRows = useMemo(() => buildRows(view, mergedPeople, companies), [view, mergedPeople, companies])
   const filtered = useMemo(() => {
     const base = filterRows(allRows, { query: deferredQuery, status, category })
-    const byProject = projectFilter
-      ? base.filter((r) => (r.kind === 'person' ? r.person.projects : r.company.projects).some((p) => p.project_id === projectFilter))
-      : base
-    return sortRows(byProject, sort.key, sort.dir)
-  }, [allRows, deferredQuery, status, category, sort, projectFilter])
+    const narrowed = filterByAttributes(
+      base,
+      { specialty: specialtyFilter, product: productFilter, companyId: companyFilter, projectId: projectFilter },
+      companies,
+    )
+    return sortRows(narrowed, sort.key, sort.dir)
+  }, [allRows, deferredQuery, status, category, sort, projectFilter, specialtyFilter, productFilter, companyFilter, companies])
   const { items, page: safePage, pages } = paginate(filtered, page, pageSize)
   const columns = COLUMNS[view].filter((c) => !hidden[view].includes(c.key))
   const selectedRows = filtered.filter((r) => selected.has(rowKey(r)))
@@ -317,7 +384,7 @@ export function ContactsDirectory({
     })
   }
 
-  const hasFilters = Boolean(query || category || status !== 'active' || projectFilter)
+  const hasFilters = Boolean(query || category || status !== 'active' || projectFilter || specialtyFilter || productFilter || companyFilter)
 
   return (
     <div className="flex flex-col gap-4">
@@ -433,6 +500,60 @@ export function ContactsDirectory({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2" aria-label="More filters">
+        <FilterSelect
+          id="contacts-specialty"
+          label="Profession / trade"
+          value={specialtyFilter}
+          onChange={(v) => {
+            setSpecialtyFilter(v)
+            setPage(1)
+          }}
+          options={specialtyOptions.map((s) => [s, s] as const)}
+          allLabel="All professions"
+        />
+        <FilterSelect
+          id="contacts-product"
+          label="Product category"
+          value={productFilter}
+          onChange={(v) => {
+            setProductFilter(v)
+            setPage(1)
+          }}
+          options={productOptions.map((s) => [s, s] as const)}
+          allLabel="All product categories"
+        />
+        <FilterSelect
+          id="contacts-company"
+          label="Company"
+          value={companyFilter}
+          onChange={(v) => {
+            setCompanyFilter(v)
+            setPage(1)
+          }}
+          options={companyOptions}
+          allLabel="All companies"
+        />
+        <label htmlFor="contacts-sort" className="sr-only">
+          Sort by
+        </label>
+        <NativeSelect
+          id="contacts-sort"
+          value={`${sort.key}:${sort.dir}`}
+          onChange={(e) => {
+            const [key, dir] = e.target.value.split(':') as [SortKey, SortDir]
+            setSort({ key, dir })
+          }}
+          className="w-48 bg-card"
+        >
+          {SORT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </NativeSelect>
+      </div>
+
       <div className="flex min-h-9 flex-wrap items-center justify-between gap-2 text-sm">
         <p className="text-muted-foreground" aria-live="polite">
           {filtered.length === 0
@@ -444,6 +565,10 @@ export function ContactsDirectory({
               onClick={() => {
                 setQuery('')
                 setStatus('active')
+                setProjectFilter('')
+                setSpecialtyFilter('')
+                setProductFilter('')
+                setCompanyFilter('')
                 changeCategory(null)
               }}
               className="ml-2 inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"

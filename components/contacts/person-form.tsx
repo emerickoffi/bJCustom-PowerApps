@@ -5,12 +5,14 @@ import Link from 'next/link'
 import { Building2, Phone, StickyNote, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { initialActionState, type ActionState } from '@/lib/action-state'
+import { COMPANY_CONTACT_ROLES, PROFESSIONAL_SPECIALTIES } from '@/lib/contacts'
 import { FormActions, FormSection, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 
 type PersonDefaults = {
   first_name: string
   last_name: string
+  middle_name: string | null
   email: string | null
   primary_phone: string | null
   secondary_phone: string | null
@@ -37,6 +39,7 @@ export function PersonForm({
   const v: Record<string, string> = state.values ?? {
     first_name: person?.first_name ?? '',
     last_name: person?.last_name ?? '',
+    middle_name: person?.middle_name ?? '',
     email: person?.email ?? '',
     primary_phone: person?.primary_phone ?? '',
     secondary_phone: person?.secondary_phone ?? '',
@@ -53,16 +56,23 @@ export function PersonForm({
       {person && <input type="hidden" name="expected_updated_at" value={person.updated_at} />}
       <FormSection icon={User} title="Person" description="Who this contact is and what they do.">
         <TextField name="first_name" label="First name" required defaultValue={v.first_name} error={fe.first_name} autoComplete="given-name" maxLength={80} />
+        <TextField name="middle_name" label="Middle name" defaultValue={v.middle_name} error={fe.middle_name} autoComplete="additional-name" maxLength={80} />
         <TextField name="last_name" label="Last name" required defaultValue={v.last_name} error={fe.last_name} autoComplete="family-name" maxLength={80} />
         <TextField
           name="specialty"
-          label="Specialty"
+          label="Profession / trade"
           defaultValue={v.specialty}
           error={fe.specialty}
-          hint="For example Architect, Structural Engineer, or Sales Rep."
+          hint="Choose a suggestion or type your own, for example Lawyer, Banker, or Realtor."
           maxLength={120}
+          list="specialty-options"
           className="sm:col-span-2"
         />
+        <datalist id="specialty-options">
+          {PROFESSIONAL_SPECIALTIES.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
       </FormSection>
 
       <FormSection icon={Phone} title="Contact details" description="All optional. Emails must be unique across your directory.">
@@ -102,7 +112,12 @@ export function PersonForm({
           )}
           {companyChoice && (
             <>
-              <TextField name="role" label="Role at company" defaultValue={v.role ?? ''} error={fe.role} hint="For example Owner, Estimator, or Office Contact." maxLength={120} />
+              <TextField name="role" label="Role at company" defaultValue={v.role ?? ''} error={fe.role} hint="For example Owner, Estimator, or Sales Representative." maxLength={120} list="company-role-options" />
+              <datalist id="company-role-options">
+                {COMPANY_CONTACT_ROLES.map((r) => (
+                  <option key={r} value={r} />
+                ))}
+              </datalist>
               <label className="flex items-center gap-2.5 self-end pb-2.5 text-sm text-foreground">
                 <input type="checkbox" name="is_primary" defaultChecked={v.is_primary === 'on'} className="size-4 accent-primary" />
                 Primary contact for this company
