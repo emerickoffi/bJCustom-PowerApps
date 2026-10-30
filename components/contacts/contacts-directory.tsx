@@ -172,11 +172,23 @@ export function ContactsDirectory({
     [people, edits],
   )
 
+  const [projectFilter, setProjectFilter] = useState('')
+  const projectOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const p of [...people.flatMap((x) => x.projects), ...companies.flatMap((x) => x.projects)]) {
+      if (!map.has(p.project_id)) map.set(p.project_id, p.project_number ? `${p.project_number} · ${p.name}` : p.name)
+    }
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+  }, [people, companies])
+
   const allRows = useMemo(() => buildRows(view, mergedPeople, companies), [view, mergedPeople, companies])
-  const filtered = useMemo(
-    () => sortRows(filterRows(allRows, { query: deferredQuery, status, category }), sort.key, sort.dir),
-    [allRows, deferredQuery, status, category, sort],
-  )
+  const filtered = useMemo(() => {
+    const base = filterRows(allRows, { query: deferredQuery, status, category })
+    const byProject = projectFilter
+      ? base.filter((r) => (r.kind === 'person' ? r.person.projects : r.company.projects).some((p) => p.project_id === projectFilter))
+      : base
+    return sortRows(byProject, sort.key, sort.dir)
+  }, [allRows, deferredQuery, status, category, sort, projectFilter])
   const { items, page: safePage, pages } = paginate(filtered, page, pageSize)
   const columns = COLUMNS[view].filter((c) => !hidden[view].includes(c.key))
   const selectedRows = filtered.filter((r) => selected.has(rowKey(r)))
@@ -305,7 +317,7 @@ export function ContactsDirectory({
     })
   }
 
-  const hasFilters = Boolean(query || category || status !== 'active')
+  const hasFilters = Boolean(query || category || status !== 'active' || projectFilter)
 
   return (
     <div className="flex flex-col gap-4">
@@ -354,6 +366,25 @@ export function ContactsDirectory({
           />
         </div>
         <div className="flex items-center gap-2">
+          <label htmlFor="contacts-project" className="sr-only">
+            Project
+          </label>
+          <NativeSelect
+            id="contacts-project"
+            value={projectFilter}
+            onChange={(e) => {
+              setProjectFilter(e.target.value)
+              setPage(1)
+            }}
+            className="w-48 bg-card"
+          >
+            <option value="">All projects</option>
+            {projectOptions.map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </NativeSelect>
           <label htmlFor="contacts-status" className="sr-only">
             Status
           </label>

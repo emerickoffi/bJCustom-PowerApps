@@ -41,7 +41,9 @@ import {
   ProjectTeamPanel,
   type ProjectClientLink,
 } from '@/components/projects/project-people'
-import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, type ProjectStatus } from '@/lib/domain'
+import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, projectAcceptsNewAssignments, type ProjectStatus } from '@/lib/domain'
+import { loadProjectContacts } from '@/lib/project-contacts-data'
+import { ProjectContactsPanel } from '@/components/projects/project-contacts-panel'
 import { formatAddress, formatCents, formatDate, formatDateTime } from '@/lib/format'
 import { PROJECT_SECTION_ANCHORS } from '@/lib/project-nav'
 import { ProjectSectionScroll } from '@/components/projects/project-section-scroll'
@@ -108,6 +110,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const manager = canManage(session.role)
   const features = await getOrgFeatures(session.organizationId)
   const signing = features.documents && features.e_signatures
+  const projectContactsPromise = loadProjectContacts(supabase, session.organizationId, id)
   const [linksRes, membersRes, historyRes, staff, clientOptions, activitiesRes, openIssuesRes, photos, reviewEstimatesRes, signaturesRes] = await Promise.all([
     supabase
       .from('project_clients')
@@ -148,6 +151,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           .limit(200)
       : Promise.resolve({ data: [] as { document_id: string; status: string; created_at: string }[] }),
   ])
+  const projectContacts = await projectContactsPromise
 
   const nameFor = (userId: string | null) => {
     if (!userId) return null
@@ -502,6 +506,16 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               canEdit={manager}
             />
           </div>
+          {projectContacts.availability === 'ready' && (
+            <ProjectContactsPanel
+              projectId={project.id}
+              contacts={projectContacts.contacts}
+              companies={projectContacts.companies}
+              assignable={projectContacts.assignable}
+              canEdit={manager}
+              acceptsAssignments={projectAcceptsNewAssignments(project.status as string)}
+            />
+          )}
         </aside>
       </div>
     </div>
