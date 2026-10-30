@@ -240,6 +240,7 @@ export type CompanyView = {
   company_phone: string | null
   status: ContactStatus
   subcontractor_company_id: string | null
+  trade?: string | null
   categories: CategoryKey[]
   product_categories: string[]
   primary_contact: { person_id: string; name: string } | null

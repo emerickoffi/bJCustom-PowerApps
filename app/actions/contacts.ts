@@ -278,7 +278,7 @@ async function setStatus(table: StatusTable, ids: string[], status: 'active' | '
   if (!gate.ok) return { error: gate.error }
   const clean = [...new Set(ids)].filter(isUuid).slice(0, 500)
   if (!clean.length || (status !== 'active' && status !== 'inactive')) return { error: 'Nothing was changed. No valid records were selected.' }
-  if (table === 'business_companies' && status === 'inactive') {
+  if (table === 'business_companies') {
     const { data: linked } = await gate.supabase
       .from('business_companies')
       .select('id')

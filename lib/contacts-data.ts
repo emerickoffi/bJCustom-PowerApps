@@ -41,6 +41,8 @@ type CompanyRow = {
   company_phone: string | null
   status: ContactStatus
   subcontractor_company_id: string | null
+  /** Read from the linked subcontractor; only visible to roles that can read subcontractor records. */
+  trade?: string | null
 }
 type RelationshipRow = {
   id: string
@@ -75,7 +77,11 @@ export async function loadDirectory(
 ): Promise<{ availability: DirectoryAvailability; people: PersonView[]; companies: CompanyView[] }> {
   const [people, companies, rels, cats, personProjects, subAssignments] = await Promise.all([
     supabase.from('business_people').select(PERSON_COLUMNS).eq('organization_id', organizationId).limit(MAX_ROWS),
-    supabase.from('business_companies').select(COMPANY_COLUMNS).eq('organization_id', organizationId).limit(MAX_ROWS),
+    supabase
+      .from('business_companies')
+      .select(`${COMPANY_COLUMNS}, subcontractor:subcontractor_companies(trade)`)
+      .eq('organization_id', organizationId)
+      .limit(MAX_ROWS),
     supabase
       .from('business_person_companies')
       .select('id, person_id, company_id, position_or_role, is_primary_contact')
@@ -109,7 +115,9 @@ export async function loadDirectory(
     availability: 'ready',
     ...assembleDirectory(
       (people.data ?? []) as PersonRow[],
-      (companies.data ?? []) as CompanyRow[],
+      ((companies.data ?? []) as unknown as (CompanyRow & { subcontractor: { trade: string | null } | null })[]).map(
+        ({ subcontractor, ...c }) => ({ ...c, trade: subcontractor?.trade ?? null }),
+      ),
       (rels.data ?? []) as RelationshipRow[],
       (cats.data ?? []) as unknown as CategoryLinkRow[],
       (personProjects.data ?? []) as unknown as PersonProjectRow[],
