@@ -1,12 +1,14 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowRight, FolderKanban, HardHat, Plus, UserPlus, Users } from 'lucide-react'
+import { ArrowRight, BellRing, CalendarDays, FolderKanban, Plus, UserPlus } from 'lucide-react'
+import { MyAgenda } from '@/components/dashboard/my-agenda'
+import { ProjectHealthList } from '@/components/dashboard/project-health'
+import { loadAgenda, loadProjectHealth } from '@/lib/dashboard-workspace-data'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { EmptyState, SectionHeading } from '@/components/shared/page-header'
 import { StatCard } from '@/components/dashboard/stat-card'
-import { PipelineOverview } from '@/components/dashboard/pipeline-overview'
 import { RecentActivity } from '@/components/dashboard/recent-activity'
 import { NotificationsCard } from '@/components/walkthroughs/notifications-card'
 import { CompactProjectCard } from '@/components/dashboard/compact-project-card'
@@ -49,17 +51,12 @@ export default async function DashboardPage({
   const selectedStatus = parsePortfolioStatus((await searchParams).portfolio)
   const features = await getOrgFeatures(orgId)
 
-  const [projectsRes, clientCountRes, leadCountRes, activityRes, signals] = await Promise.all([
+  const [projectsRes, leadCountRes, activityRes, signals, agendaData] = await Promise.all([
     supabase
       .from('projects')
       .select('id, status, progress_percent, updated_at')
       .eq('organization_id', orgId)
       .is('archived_at', null),
-    supabase
-      .from('clients')
-      .select('id', { count: 'exact', head: true })
-      .eq('organization_id', orgId)
-      .eq('status', 'active'),
     supabase
       .from('clients')
       .select('id', { count: 'exact', head: true })
@@ -72,6 +69,7 @@ export default async function DashboardPage({
       .order('created_at', { ascending: false })
       .limit(8),
     loadPortfolioSignals(orgId, session.userId, features.schedule),
+    loadAgenda(orgId, features.schedule),
   ])
 
   const rows = (projectsRes.data ?? []) as (PortfolioRow & { progress_percent: number | null })[]
@@ -103,11 +101,13 @@ export default async function DashboardPage({
   )
   const recent = rankedIds.flatMap((id) => byId.get(id) ?? [])
   const viewAllHref = portfolioViewAllHref(selectedStatus)
-  const [photos, cardDetails, attention] = await Promise.all([
+  const [photos, cardDetails, attention, health] = await Promise.all([
     getProjectCoverPhotos(recent.map((p) => p.id)),
     getDashboardCardDetails(orgId, recent, features),
     loadDashboardAttention(orgId, session.userId, features),
+    loadProjectHealth(orgId, session.userId, active.map((r) => r.id), features),
   ])
+  const weekActivityCount = new Set(agendaData.agenda.week.map((e) => e.id)).size
 
   return (
     <div className="flex flex-col gap-8">
@@ -169,28 +169,45 @@ export default async function DashboardPage({
       <section aria-label="Key figures" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Active projects" value={active.length} href="/projects" icon={FolderKanban} hint="Planning through punch list" />
         <StatCard
-          label="Under construction"
-          value={underConstruction}
-          href="/projects?status=under_construction"
-          icon={HardHat}
-          hint="Crews on site"
+          label="Needs attention"
+          value={attention.total}
+          href="#attention-heading"
+          icon={BellRing}
+          accent={attention.total > 0 ? 'champagne' : undefined}
+          hint={attention.totalIsLowerBound ? 'Verified items (at least)' : 'Verified items across projects'}
         />
         <StatCard
-          label="Active clients"
-          value={clientCountRes.count ?? 0}
-          href="/clients?status=active"
-          icon={Users}
-          hint="Homeowners with live projects"
+          label="Scheduled this week"
+          value={weekActivityCount}
+          href="/schedule"
+          icon={CalendarDays}
+          hint={features.schedule ? 'Open activities in the next 7 days' : 'Schedule module is off'}
         />
         <StatCard
           label="Open leads"
           value={leadCountRes.count ?? 0}
           href="/clients?status=lead"
           icon={UserPlus}
-          accent="champagne"
           hint="Prospective homeowners"
         />
       </section>
+
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
+        <NotificationsCard
+          items={attention.items}
+          total={attention.total}
+          totalIsLowerBound={attention.totalIsLowerBound}
+        />
+        <MyAgenda agenda={agendaData.agenda} today={agendaData.today} scheduleEnabled={features.schedule} />
+      </div>
+
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
+        <ProjectHealthList projects={health.projects} total={health.total} flagged={health.flagged} />
+        <RecentActivity
+          items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
+          updates={attention.updates}
+        />
+      </div>
 
       <section aria-labelledby="homes-heading" className="flex flex-col gap-5">
         <SectionHeading
@@ -256,21 +273,6 @@ export default async function DashboardPage({
           />
         )}
       </section>
-
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
-        <PipelineOverview counts={counts} />
-        <div className="flex flex-col gap-6">
-          <NotificationsCard
-            items={attention.items}
-            total={attention.total}
-            totalIsLowerBound={attention.totalIsLowerBound}
-          />
-          <RecentActivity
-            items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
-            updates={attention.updates}
-          />
-        </div>
-      </div>
     </div>
   )
 }
