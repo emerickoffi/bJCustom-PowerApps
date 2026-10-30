@@ -3,6 +3,10 @@ import assert from 'node:assert/strict'
 import {
   applyMapping,
   buildRows,
+  categoryCounts,
+  defaultSort,
+  sortForView,
+  SORT_OPTIONS,
   companySummary,
   csvCell,
   deriveCompanyCategories,
@@ -61,7 +65,10 @@ function company(over: Partial<CompanyView> = {}): CompanyView {
 
 test('parseView and parseCategory fall back safely', () => {
   assert.equal(parseView('people'), 'people')
-  assert.equal(parseView('bogus'), 'all')
+  assert.equal(parseView('bogus'), 'people')
+  assert.equal(parseView('all'), 'people')
+  assert.equal(parseView(undefined), 'people')
+  assert.equal(parseView('companies'), 'companies')
   assert.equal(parseCategory('suppliers'), 'suppliers')
   assert.equal(parseCategory('drop table'), null)
 })
@@ -105,25 +112,59 @@ test('parseProductCategories dedupes and caps', () => {
   assert.equal(parseProductCategories(Array.from({ length: 30 }, (_, i) => `c${i}`).join(',')).length, 20)
 })
 
-test('All view lists each person once alongside companies', () => {
+test('each view holds only its own record type, each person once', () => {
   const p = person({ companies: [
     { relationship_id: 'r1', company_id: 'c1', company_name: 'ABC Lumber', role: null, is_primary_contact: true },
     { relationship_id: 'r2', company_id: 'c2', company_name: 'Other Co', role: null, is_primary_contact: false },
   ] })
-  const rows = buildRows('all', [p], [company(), company({ id: 'c2', company_name: 'Other Co' })])
-  assert.equal(rows.filter((r) => r.kind === 'person').length, 1)
-  assert.equal(rows.length, 3)
+  const companies = [company(), company({ id: 'c2', company_name: 'Other Co' })]
+  const people = buildRows('people', [p], companies)
+  assert.equal(people.length, 1)
+  assert.ok(people.every((r) => r.kind === 'person'))
+  const comps = buildRows('companies', [p], companies)
+  assert.equal(comps.length, 2)
+  assert.ok(comps.every((r) => r.kind === 'company'))
+})
+
+test('category counts are scoped to the view and count multi-category records in each', () => {
+  const rows = buildRows('people', [
+    person({ categories: ['suppliers', 'subcontractors'] }),
+    person({ id: 'p2', categories: ['other'] }),
+  ], [company()])
+  const counts = categoryCounts(rows)
+  assert.equal(counts.total, 2)
+  assert.equal(counts.byCat.suppliers, 1)
+  assert.equal(counts.byCat.subcontractors, 1)
+  assert.equal(counts.byCat.other, 1)
+})
+
+test('sort options are view-specific and switching views resets invalid sorts', () => {
+  assert.deepEqual(defaultSort('people'), { key: 'last_name', dir: 'asc' })
+  assert.deepEqual(defaultSort('companies'), { key: 'name', dir: 'asc' })
+  assert.ok(!SORT_OPTIONS.companies.some((o) => o.value.startsWith('first_name') || o.value.startsWith('last_name')))
+  assert.deepEqual(sortForView('companies', { key: 'first_name', dir: 'desc' }), { key: 'name', dir: 'asc' })
+  assert.deepEqual(sortForView('companies', { key: 'recent', dir: 'desc' }), { key: 'recent', dir: 'desc' })
+  assert.deepEqual(sortForView('people', { key: 'projects', dir: 'desc' }), { key: 'projects', dir: 'desc' })
+})
+
+test('recently added sorts newest first', () => {
+  const rows = buildRows('people', [
+    person({ id: 'old', created_at: '2024-01-01T00:00:00Z' }),
+    person({ id: 'new', created_at: '2026-01-01T00:00:00Z' }),
+  ], [])
+  assert.deepEqual(sortRows(rows, 'recent', 'desc').map((r) => r.id), ['new', 'old'])
 })
 
 test('search matches names, companies, and phone digits; filters status and category', () => {
-  const rows = buildRows('all', [
+  const rows = buildRows('people', [
     person({ companies: [{ relationship_id: 'r', company_id: 'c1', company_name: 'ABC Lumber', role: 'Sales', is_primary_contact: false }] }),
     person({ id: 'p2', first_name: 'Sam', last_name: 'Ortiz', email: null, primary_phone: null, status: 'inactive', categories: ['other'] }),
   ], [company()])
-  assert.deepEqual(filterRows(rows, { query: 'abc', status: 'all', category: null }).map((r) => r.id), ['p1', 'c1'])
+  assert.deepEqual(filterRows(rows, { query: 'abc', status: 'all', category: null }).map((r) => r.id), ['p1'])
   assert.deepEqual(filterRows(rows, { query: '2013344', status: 'all', category: null }).map((r) => r.id), ['p1'])
   assert.deepEqual(filterRows(rows, { query: '', status: 'inactive', category: null }).map((r) => r.id), ['p2'])
-  assert.deepEqual(filterRows(rows, { query: '', status: 'all', category: 'suppliers' }).map((r) => r.id), ['c1'])
+  const companyRows = buildRows('companies', [], [company()])
+  assert.deepEqual(filterRows(companyRows, { query: '', status: 'all', category: 'suppliers' }).map((r) => r.id), ['c1'])
 })
 
 test('sortRows sorts by projects and name', () => {
