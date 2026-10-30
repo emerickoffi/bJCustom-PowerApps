@@ -17,6 +17,11 @@ import { SubcontractorStatusButton } from '@/components/subcontractors/subcontra
 import { SubcontractorStatusBadge } from '@/components/subcontractors/subcontractor-status-badge'
 import { CompanyContacts } from '@/components/contacts/company-contacts'
 import { loadCompanyProfile, loadPersonOptions } from '@/lib/contacts-data'
+import { loadQualificationDetail } from '@/lib/subcontractor-qualification-data'
+import { todayIn } from '@/lib/subcontractor-qualification'
+import { APP_TIME_ZONE } from '@/lib/format'
+import { QualificationBadge } from '@/components/subcontractors/qualification-badge'
+import { QualificationSection } from '@/components/subcontractors/qualification-section'
 
 export const metadata: Metadata = { title: 'Subcontractor' }
 
@@ -36,10 +41,11 @@ export default async function SubcontractorDetailPage({
   const supabase = await createClient()
   const company = await loadSubcontractor(supabase, session.organizationId, id)
   if (!company) notFound()
-  const [{ availability, records }, businessCompany, people] = await Promise.all([
+  const [{ availability, records }, businessCompany, people, qualification] = await Promise.all([
     loadProjectAssignments(supabase, session.organizationId, id),
     loadCompanyProfile(supabase, session.organizationId, { subcontractorId: id }),
     loadPersonOptions(supabase, session.organizationId),
+    loadQualificationDetail(supabase, session.organizationId, id),
   ])
   const { current, history } = splitProjectAssignments(records, projectAcceptsNewAssignments)
   const addedProjects = Number.parseInt(sp.projects ?? '', 10)
@@ -51,7 +57,16 @@ export default async function SubcontractorDetailPage({
         backHref="/subcontractors"
         backLabel="Subcontractors"
         title={company.company_name}
-        titleAddon={<SubcontractorStatusBadge status={company.status} />}
+        titleAddon={
+          <span className="flex flex-wrap items-center gap-2">
+            <SubcontractorStatusBadge status={company.status} />
+            {qualification.availability === 'ready' && (
+              <a href="#qualification" className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                <QualificationBadge summary={qualification.summary} />
+              </a>
+            )}
+          </span>
+        }
         description={company.trade}
         avatar={
           <span
@@ -118,6 +133,18 @@ export default async function SubcontractorDetailPage({
           </InfoItem>
         </dl>
       </Surface>
+
+      <QualificationSection
+        companyId={company.id}
+        companyName={company.company_name}
+        companyActive={company.status === 'active'}
+        availability={qualification.availability}
+        summary={qualification.summary}
+        items={qualification.items}
+        events={qualification.events}
+        isAdmin={session.role === 'org_admin'}
+        today={todayIn(APP_TIME_ZONE)}
+      />
 
       <CompanyContacts
         target={{ subcontractorId: company.id }}
