@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getOrgFeatures } from '@/lib/features'
-import { getClientOptions, getStaffMembers } from '@/lib/queries'
+import { getStaffMembers } from '@/lib/queries'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { coverAlt, coverDesignBadge } from '@/lib/project-cover'
 import { CoverImage } from '@/components/projects/cover-image'
@@ -43,6 +43,7 @@ import {
 } from '@/components/projects/project-people'
 import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, projectAcceptsNewAssignments, type ProjectStatus } from '@/lib/domain'
 import { loadProjectContacts } from '@/lib/project-contacts-data'
+import { loadProjectHomeowners } from '@/lib/project-homeowners-data'
 import { ProjectContactsPanel } from '@/components/projects/project-contacts-panel'
 import { formatAddress, formatCents, formatDate, formatDateTime } from '@/lib/format'
 import { PROJECT_SECTION_ANCHORS } from '@/lib/project-nav'
@@ -111,7 +112,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const features = await getOrgFeatures(session.organizationId)
   const signing = features.documents && features.e_signatures
   const projectContactsPromise = loadProjectContacts(supabase, session.organizationId, id)
-  const [linksRes, membersRes, historyRes, staff, clientOptions, activitiesRes, openIssuesRes, photos, reviewEstimatesRes, signaturesRes] = await Promise.all([
+  const [linksRes, membersRes, historyRes, staff, homeowners, activitiesRes, openIssuesRes, photos, reviewEstimatesRes, signaturesRes] = await Promise.all([
     supabase
       .from('project_clients')
       .select('id, relationship, client:clients(id, first_name, last_name, email)')
@@ -125,7 +126,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .order('created_at', { ascending: false })
       .limit(30),
     getStaffMembers(session.organizationId, ['org_admin', 'project_manager', 'builder_staff']),
-    manager ? getClientOptions(session.organizationId) : Promise.resolve([]),
+    loadProjectHomeowners(supabase, session.organizationId, id),
     supabase
       .from('schedule_activities')
       .select('name, status, planned_start, planned_end, sort_order')
@@ -496,7 +497,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </a>
             </section>
           )}
-          <ProjectClientsPanel projectId={project.id} links={links} clientOptions={clientOptions} canEdit={manager} />
+          <ProjectClientsPanel projectId={project.id} homeowners={homeowners} canEdit={manager} />
           <div id={PROJECT_SECTION_ANCHORS.team} className="scroll-mt-24">
             <ProjectTeamPanel
               projectId={project.id}

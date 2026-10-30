@@ -1,14 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { Mail, UserCog, Users } from 'lucide-react'
+import { KeyRound, Mail, Phone, UserCog, Users } from 'lucide-react'
 import {
-  addProjectClientAction,
   addProjectMemberAction,
   removeProjectClientAction,
   removeProjectMemberAction,
 } from '@/app/actions/projects'
-import { PROJECT_CLIENT_RELATIONSHIP_LABELS } from '@/lib/domain'
+import { CONTACT_RELATIONSHIP_LABELS, PROJECT_CLIENT_RELATIONSHIP_LABELS } from '@/lib/domain'
+import { HOMEOWNER_PORTAL_STATUS } from '@/lib/project-homeowners'
+import type { HomeownerContact, ProjectHomeowners } from '@/lib/project-homeowners-data'
+import { AddAdditionalContactDialog } from '@/components/projects/add-additional-contact-dialog'
 import { ActionButton, InlineActionForm } from '@/components/shared/inline-action'
 import { ConfirmActionButton } from '@/components/shared/confirm-action-button'
 import { SelectField } from '@/components/shared/form-field'
@@ -82,101 +84,144 @@ function PanelLink({ href, icon: Icon, children }: { href: string; icon: typeof 
   )
 }
 
+const PORTAL_TONE: Record<string, string> = {
+  sage: 'bg-[#EAF0E9] text-[#174D32]',
+  warning: 'bg-amber-50 text-amber-800',
+  danger: 'bg-destructive/10 text-destructive',
+  neutral: 'bg-[#F8F7F3] text-muted-foreground',
+}
+
+function Pill({ className, children }: { className: string; children: React.ReactNode }) {
+  return <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', className)}>{children}</span>
+}
+
+function ContactLine({ contact }: { contact: HomeownerContact }) {
+  const portal = contact.portalStatus ? HOMEOWNER_PORTAL_STATUS[contact.portalStatus] : null
+  return (
+    <li className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+      <Avatar name={contact.name} tone={contact.isPrimary ? 'primary' : 'sage'} />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="truncate font-medium text-foreground">{contact.name}</span>
+          <Pill className={contact.isPrimary ? PORTAL_TONE.sage : PORTAL_TONE.neutral}>
+            {contact.isPrimary ? 'Primary' : 'Additional'}
+          </Pill>
+          {contact.projectOnly && <Pill className={PORTAL_TONE.neutral}>This project</Pill>}
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {CONTACT_RELATIONSHIP_LABELS[contact.relationship] ?? contact.relationship}
+        </span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {contact.email && (
+            <a href={`mailto:${contact.email}`} className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+              <Mail className="size-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">{contact.email}</span>
+            </a>
+          )}
+          {[contact.phone, contact.alternate_phone].filter(Boolean).map((phone) => (
+            <a key={phone} href={`tel:${phone}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+              <Phone className="size-3 shrink-0" aria-hidden="true" />
+              {phone}
+            </a>
+          ))}
+        </div>
+        {portal && <Pill className={cn('mt-1 w-fit', PORTAL_TONE[portal.tone])}>{portal.label}</Pill>}
+      </div>
+    </li>
+  )
+}
+
 export function ProjectClientsPanel({
   projectId,
-  links,
-  clientOptions,
+  homeowners,
   canEdit,
 }: {
   projectId: string
-  links: ProjectClientLink[]
-  clientOptions: Option[]
+  homeowners: ProjectHomeowners
   canEdit: boolean
 }) {
-  const linked = new Set(links.map((l) => l.client?.id))
-  const available = clientOptions.filter((o) => !linked.has(o.value))
-  const primary = links.find((l) => l.relationship === 'primary_owner')?.client ?? links[0]?.client ?? null
+  const { groups, primaryClientId } = homeowners
+  const primaryGroup = groups.find((g) => g.client?.id === primaryClientId)
 
   return (
     <Panel
       title="Homeowners"
-      action={primary ? <PanelLink href={`/clients/${primary.id}`} icon={Users}>Manage contacts</PanelLink> : undefined}
+      action={
+        primaryClientId ? (
+          <PanelLink href={`/clients/${primaryClientId}`} icon={Users}>
+            Manage contacts
+          </PanelLink>
+        ) : undefined
+      }
     >
-      {links.length === 0 ? (
+      {groups.length === 0 ? (
         <p className="text-sm text-muted-foreground">No homeowners linked to this project.</p>
       ) : (
-        <ul className="flex flex-col divide-y">
-          {links.map((link) => {
-            const name = link.client ? `${link.client.first_name} ${link.client.last_name}` : 'Unavailable client'
-            const isPrimary = link.relationship === 'primary_owner'
+        <div className="flex flex-col gap-4">
+          {groups.map((group) => {
+            const isPrimaryLink = group.client?.id === primaryClientId
+            const contacts: HomeownerContact[] =
+              group.contacts.length > 0 || !group.client
+                ? group.contacts
+                : [
+                    {
+                      id: group.client.id,
+                      name: group.client.name,
+                      relationship: 'primary_owner',
+                      email: group.client.email,
+                      phone: group.client.phone,
+                      alternate_phone: null,
+                      isPrimary: true,
+                      projectOnly: false,
+                      portalStatus: null,
+                    },
+                  ]
             return (
-              <li key={link.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                <Avatar name={name} />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {link.client ? (
-                      <Link
-                        href={`/clients/${link.client.id}`}
-                        className="truncate font-medium text-foreground underline-offset-4 hover:underline"
-                      >
-                        {name}
-                      </Link>
-                    ) : (
-                      <span className="text-muted-foreground">{name}</span>
-                    )}
-                    <span
-                      className={cn(
-                        'rounded-full px-2 py-0.5 text-[11px] font-medium',
-                        isPrimary ? 'bg-[#EAF0E9] text-[#174D32]' : 'bg-[#F8F7F3] text-muted-foreground',
-                      )}
-                    >
-                      {isPrimary ? 'Primary' : 'Additional'}
+              <div key={group.linkId} className={cn('flex flex-col gap-2', !isPrimaryLink && 'border-t pt-4')}>
+                {!isPrimaryLink && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {'Linked homeowner · '}
+                      {PROJECT_CLIENT_RELATIONSHIP_LABELS[group.linkRelationship] ?? group.linkRelationship}
                     </span>
+                    {canEdit && group.client && (
+                      <ConfirmActionButton
+                        label="Unlink"
+                        title="Unlink homeowner?"
+                        description={`Remove ${group.client.name} from this project? Their client record is not deleted.`}
+                        warning="Review any related portal access before proceeding."
+                        confirmLabel="Unlink homeowner"
+                        action={() => removeProjectClientAction(projectId, group.linkId)}
+                      />
+                    )}
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {PROJECT_CLIENT_RELATIONSHIP_LABELS[link.relationship] ?? link.relationship}
-                  </span>
-                  {link.client?.email && (
-                    <a
-                      href={`mailto:${link.client.email}`}
-                      className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      <Mail className="size-3 shrink-0" aria-hidden="true" />
-                      <span className="truncate">{link.client.email}</span>
-                    </a>
-                  )}
-                </div>
-                {canEdit && !isPrimary && (
-                  <ConfirmActionButton
-                    label="Remove"
-                    title="Remove contact?"
-                    description={`Are you sure you want to remove ${name} from this project?`}
-                    warning="This action will remove the contact's association with this project. Review any related portal access before proceeding."
-                    confirmLabel="Remove contact"
-                    action={() => removeProjectClientAction(projectId, link.id)}
-                  />
                 )}
-              </li>
+                {group.client ? (
+                  <ul className="flex flex-col divide-y">
+                    {contacts.map((c) => (
+                      <ContactLine key={c.id} contact={c} />
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Unavailable client</p>
+                )}
+              </div>
             )
           })}
-        </ul>
+        </div>
       )}
-      {canEdit && available.length > 0 && (
-        <InlineActionForm action={addProjectClientAction.bind(null, projectId)} className="grid gap-3 border-t pt-4">
-          <SelectField name="client_id" label="Add client" required placeholder="Select a client" options={available} />
-          <SelectField
-            name="relationship"
-            label="Relationship"
-            options={[
-              { value: 'co_owner', label: 'Co-owner' },
-              { value: 'authorized_contact', label: 'Authorized contact' },
-            ]}
-            defaultValue="co_owner"
+      {canEdit && primaryGroup?.client && (
+        <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+          <AddAdditionalContactDialog
+            projectId={projectId}
+            homeownerName={primaryGroup.client.name}
+            existingContacts={homeowners.primaryContacts}
+            scopingAvailable={homeowners.scopingAvailable}
           />
-          <SubmitButton variant="outline" pendingLabel="Adding...">
-            Add to project
-          </SubmitButton>
-        </InlineActionForm>
+          <PanelLink href={`/clients/${primaryGroup.client.id}#portal-access`} icon={KeyRound}>
+            Manage access
+          </PanelLink>
+        </div>
       )}
     </Panel>
   )
