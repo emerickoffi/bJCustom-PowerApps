@@ -10,7 +10,8 @@ import type { ActionState } from '@/lib/action-state'
 import type { CompanyOption, PersonProfile } from '@/lib/contacts-data'
 import { personName } from '@/lib/contacts'
 import { formatDate, formatPhone } from '@/lib/format'
-import { createPersonAction, updatePersonAction } from '@/app/actions/contacts'
+import { createCompanyAction, createPersonAction, updatePersonAction } from '@/app/actions/contacts'
+import { CompanyForm } from '@/components/contacts/company-form'
 import { DetailList } from '@/components/shared/page-header'
 import { FormOverlay, OverlayBody, OverlayFooter } from '@/components/shared/form-overlay'
 import { PersonForm } from '@/components/contacts/person-form'
@@ -52,6 +53,7 @@ export function ContactOverlays({
   const go = useCallback((href: string) => router.replace(href, { scroll: false }), [router])
 
   const creating = searchParams.get('new') === 'contact'
+  const creatingCompany = searchParams.get('new') === 'company'
   const detailsId = searchParams.get('contact')
   const editId = searchParams.get('edit')
   const backToDetails = searchParams.get('back') === 'contact'
@@ -67,6 +69,17 @@ export function ContactOverlays({
       if (result.savedId) go(hrefWith({ contact: result.savedId }))
     },
     [go, hrefWith],
+  )
+
+  const onCompanyCreated = useCallback(
+    (result: ActionState) => {
+      const id = result.savedId
+      const open = id ? { label: 'Open profile', onClick: () => router.push(`/contacts/companies/${id}`) } : undefined
+      if (result.warning) toast.warning(result.warning, { action: open })
+      else toast.success(result.success ?? 'Company added.', { description: 'Add contact persons from its profile.', action: open })
+      closeAll()
+    },
+    [router, closeAll],
   )
 
   const onEdited = useCallback(
@@ -90,6 +103,18 @@ export function ContactOverlays({
         description="Add a person to your business directory. Only first and last name are required."
       >
         {creating && <PersonForm action={createPersonAction} companies={companies} projects={projects} onSaved={onCreated} />}
+      </FormOverlay>
+
+      <FormOverlay
+        open={creatingCompany}
+        onClose={closeAll}
+        variant="drawer"
+        size="lg"
+        icon={Building2}
+        title="Add company"
+        description="Add a business to your directory. Only the company name is required."
+      >
+        {creatingCompany && <CompanyForm action={createCompanyAction} companies={companies} onSaved={onCompanyCreated} />}
       </FormOverlay>
 
       <FormOverlay

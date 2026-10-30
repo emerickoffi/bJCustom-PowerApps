@@ -13,11 +13,11 @@ import { ContactOverlays } from '@/components/contacts/contact-overlays'
 
 export const metadata: Metadata = { title: 'Contacts' }
 
-function addContactHref(params: { view?: string; category?: string }) {
+function addHref(params: { view?: string; category?: string }, kind: 'contact' | 'company') {
   const qs = new URLSearchParams()
   if (params.view) qs.set('view', params.view)
   if (params.category) qs.set('category', params.category)
-  qs.set('new', 'contact')
+  qs.set('new', kind)
   return `/contacts?${qs}`
 }
 
@@ -36,7 +36,7 @@ export default async function ContactsPage({
   const supabase = await createClient()
   const [{ availability, people, companies }, companyOptions, projectOptions, person] = await Promise.all([
     loadDirectory(supabase, session.organizationId),
-    needsOptions ? loadCompanyOptions(supabase, session.organizationId) : Promise.resolve([]),
+    needsOptions || params.new === 'company' ? loadCompanyOptions(supabase, session.organizationId) : Promise.resolve([]),
     needsOptions ? loadAssignableProjectOptions(supabase, session.organizationId) : Promise.resolve([]),
     personId ? loadPersonProfile(supabase, session.organizationId, personId) : Promise.resolve(null),
   ])
@@ -54,11 +54,11 @@ export default async function ContactsPage({
                 <FileUp data-icon="inline-start" />
                 Import CSV
               </Button>
-              <Button variant="outline" size="lg" render={<Link href="/contacts/companies/new" />} nativeButton={false}>
+              <Button variant="outline" size="lg" render={<Link href={addHref(params, 'company')} scroll={false} />} nativeButton={false}>
                 <Building2 data-icon="inline-start" />
                 Add company
               </Button>
-              <Button size="lg" render={<Link href={addContactHref(params)} scroll={false} />} nativeButton={false}>
+              <Button size="lg" render={<Link href={addHref(params, 'contact')} scroll={false} />} nativeButton={false}>
                 <UserPlus data-icon="inline-start" />
                 Add contact
               </Button>

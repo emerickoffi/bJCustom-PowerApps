@@ -9,6 +9,8 @@ export type ActionState = {
   savedId?: string
   /** Partial success: the main record saved but something related did not. */
   warning?: string
+  /** An existing record that blocked creation, so the form can offer to open it instead of making a duplicate. */
+  duplicate?: { id: string; name: string; href: string; kind: 'company' | 'subcontractor'; inactive?: boolean }
 }
 
 /** Hidden field that asks a form action to return its result instead of redirecting. */

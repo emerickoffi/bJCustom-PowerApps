@@ -1002,7 +1002,7 @@ function DirectoryEmptyState({
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
             <Button
-              render={<Link href={isPeople ? '/contacts?new=contact' : '/contacts/companies/new'} scroll={isPeople ? false : undefined} />}
+              render={<Link href={isPeople ? '/contacts?view=people&new=contact' : '/contacts?view=companies&new=company'} scroll={false} />}
               nativeButton={false}
             >
               {isPeople ? <UserPlus data-icon="inline-start" /> : <Building2 data-icon="inline-start" />}
