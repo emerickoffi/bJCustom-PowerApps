@@ -27,11 +27,38 @@ export function categoryKeyFromName(name: string | null | undefined): CategoryKe
 export const SUBCONTRACTOR_CONTACT_ROLES = [
   'Owner',
   'Foreman',
-  'Project Supervisor',
+  'Supervisor',
+  'Estimator',
   'Office Contact',
   'Billing Contact',
   'Other',
 ] as const
+
+export const SUPPLIER_CONTACT_ROLES = [
+  'Owner',
+  'Sales Representative',
+  'Account Manager',
+  'Purchasing Contact',
+  'Billing Contact',
+  'Other',
+] as const
+
+/** Business professions. Separate from homeowner additional-contact relationships. */
+export const PROFESSIONAL_SPECIALTIES = [
+  'Lawyer',
+  'Banker',
+  'Realtor',
+  'Architect',
+  'Engineer',
+  'Surveyor',
+  'Insurance Agent',
+  'Mortgage Broker',
+  'Inspector',
+  'Consultant',
+  'Other',
+] as const
+
+export const COMPANY_CONTACT_ROLES = [...new Set<string>([...SUBCONTRACTOR_CONTACT_ROLES, ...SUPPLIER_CONTACT_ROLES])]
 
 export function parseView(raw: string | undefined | null): DirectoryView {
   return raw === 'people' || raw === 'companies' ? raw : 'all'
@@ -71,6 +98,7 @@ const requiredName = (label: string) =>
 export const personSchema = z.object({
   first_name: requiredName('First name'),
   last_name: requiredName('Last name'),
+  middle_name: optionalText(80),
   email: optionalEmail,
   primary_phone: optionalPhone,
   secondary_phone: optionalPhone,
@@ -83,6 +111,15 @@ export const companySchema = z.object({
   company_name: z.string({ error: 'Company name is required' }).trim().min(1, 'Company name is required').max(160),
   company_email: optionalEmail,
   company_phone: optionalPhone,
+  secondary_company_phone: optionalPhone,
+  website: optionalText(200).refine(
+    (v) => v === null || /^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(v),
+    'Enter a valid website, for example example.com',
+  ),
+  address_line1: optionalText(160),
+  city: optionalText(80),
+  state: optionalText(40),
+  postal_code: optionalText(20),
   notes: optionalText(2000),
 })
 export type CompanyInput = z.infer<typeof companySchema>
@@ -295,7 +332,42 @@ export function filterRows(
   )
 }
 
-export type SortKey = 'name' | 'company' | 'category' | 'projects' | 'status'
+export type AttributeFilters = {
+  specialty?: string
+  product?: string
+  companyId?: string
+  projectId?: string
+}
+
+/**
+ * Narrows rows by trade/specialty, product category, company, and project. A person matches a product category when
+ * one of their current companies carries it; a company matches a specialty when one of its product/trade categories does.
+ */
+export function filterByAttributes(rows: DirectoryRow[], f: AttributeFilters, companies: CompanyView[]): DirectoryRow[] {
+  if (!f.specialty && !f.product && !f.companyId && !f.projectId) return rows
+  const productsByCompany = new Map(companies.map((c) => [c.id, c.product_categories.map((p) => p.toLowerCase())]))
+  const specialty = f.specialty?.toLowerCase()
+  const product = f.product?.toLowerCase()
+  return rows.filter((row) => {
+    if (row.kind === 'person') {
+      const p = row.person
+      if (specialty && (p.specialty ?? '').toLowerCase() !== specialty) return false
+      if (product && !p.companies.some((c) => productsByCompany.get(c.company_id)?.includes(product))) return false
+      if (f.companyId && !p.companies.some((c) => c.company_id === f.companyId)) return false
+      if (f.projectId && !p.projects.some((pr) => pr.project_id === f.projectId)) return false
+      return true
+    }
+    const c = row.company
+    const cats = c.product_categories.map((x) => x.toLowerCase())
+    if (specialty && !cats.includes(specialty)) return false
+    if (product && !cats.includes(product)) return false
+    if (f.companyId && c.id !== f.companyId) return false
+    if (f.projectId && !c.projects.some((pr) => pr.project_id === f.projectId)) return false
+    return true
+  })
+}
+
+export type SortKey = 'name' | 'first_name' | 'last_name' | 'specialty' | 'company' | 'category' | 'projects' | 'status'
 export type SortDir = 'asc' | 'desc'
 
 export function sortValue(row: DirectoryRow, key: SortKey): string | number {
@@ -303,7 +375,12 @@ export function sortValue(row: DirectoryRow, key: SortKey): string | number {
     const p = row.person
     switch (key) {
       case 'name':
+      case 'last_name':
         return `${p.last_name} ${p.first_name}`.toLowerCase()
+      case 'first_name':
+        return `${p.first_name} ${p.last_name}`.toLowerCase()
+      case 'specialty':
+        return (p.specialty ?? '\uffff').toLowerCase()
       case 'company':
         return (p.companies[0]?.company_name ?? '\uffff').toLowerCase()
       case 'category':
@@ -317,8 +394,12 @@ export function sortValue(row: DirectoryRow, key: SortKey): string | number {
   const c = row.company
   switch (key) {
     case 'name':
+    case 'first_name':
+    case 'last_name':
     case 'company':
       return c.company_name.toLowerCase()
+    case 'specialty':
+      return (c.product_categories[0] ?? '\uffff').toLowerCase()
     case 'category':
       return CATEGORY_LABELS[c.categories[0] ?? 'other']
     case 'projects':
