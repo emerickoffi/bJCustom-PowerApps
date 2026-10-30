@@ -118,7 +118,7 @@ export function NotificationsCard({
           </span>
           <div className="flex flex-col gap-1">
             <h2 id="attention-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
-              Construction Command Center
+              Needs Your Attention
             </h2>
             <p className="text-sm text-muted-foreground">
               {total > 0 ? 'Verified issues across your projects' : 'Schedule, field and task signals in one place'}
