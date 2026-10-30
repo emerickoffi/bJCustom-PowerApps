@@ -43,7 +43,7 @@ export function SubcontractorRowActions({
                 <Eye aria-hidden="true" />
                 View details
               </DropdownMenuItem>
-              <DropdownMenuItem render={<Link href={`/subcontractors/${companyId}/edit`} />} className="min-h-10 gap-2.5 px-2.5 md:min-h-8">
+              <DropdownMenuItem render={<Link href={`/subcontractors/${companyId}/edit`} scroll={false} />} className="min-h-10 gap-2.5 px-2.5 md:min-h-8">
                 <Pencil aria-hidden="true" />
                 Edit
               </DropdownMenuItem>

@@ -79,7 +79,7 @@ export default async function SubcontractorsPage({
   const addedProjects = Number.parseInt(params.projects ?? '', 10)
 
   const addButton = (
-    <Button size="lg" render={<Link href="/subcontractors/new" />} nativeButton={false}>
+    <Button size="lg" render={<Link href="/subcontractors/new" scroll={false} />} nativeButton={false}>
       <Plus data-icon="inline-start" />
       Add subcontractor
     </Button>
