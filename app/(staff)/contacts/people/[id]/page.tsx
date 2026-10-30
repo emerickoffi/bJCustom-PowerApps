@@ -49,7 +49,13 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         backLabel="Contacts"
         actions={
           <>
-            <ContactStatusButton kind="person" id={person.id} name={name} status={person.status} />
+            <ContactStatusButton
+              kind="person"
+              id={person.id}
+              name={name}
+              status={person.status}
+              activeProjectCount={person.projects.filter((p) => p.status === 'active').length}
+            />
             <Button size="lg" render={<Link href={`/contacts/people/${person.id}/edit`} />}>
               <Pencil data-icon="inline-start" />
               Edit

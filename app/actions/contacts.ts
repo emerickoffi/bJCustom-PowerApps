@@ -300,9 +300,34 @@ async function setStatus(table: StatusTable, ids: string[], status: 'active' | '
   return { count: data.length }
 }
 
-export async function setPersonStatusAction(personId: string, status: 'active' | 'inactive'): Promise<ActionState> {
+/**
+ * When deactivating, `endProjects` records the explicit decision to end the person's active project responsibilities.
+ * Ended associations stay in the project history.
+ */
+export async function setPersonStatusAction(
+  personId: string,
+  status: 'active' | 'inactive',
+  options?: { endProjects?: boolean },
+): Promise<ActionState> {
   const r = await setStatus('business_people', [personId], status)
   if (r.error) return r
+  if (status === 'inactive' && options?.endProjects) {
+    const gate = await requireContactsManager('deactivate')
+    if (gate.ok) {
+      const { data, error } = await gate.supabase
+        .from('business_person_projects')
+        .update({ status: 'ended', ended_at: today(), updated_by: gate.session.userId })
+        .eq('organization_id', gate.session.organizationId)
+        .eq('person_id', personId)
+        .eq('status', 'active')
+        .select('project_id')
+      if (error) return { error: `Contact deactivated, but project associations were not ended. ${dbError(error)}` }
+      for (const row of data ?? []) revalidatePath(`/projects/${row.project_id}`)
+      if (data?.length) {
+        return { success: `Contact deactivated and ${data.length} project ${data.length === 1 ? 'association' : 'associations'} ended. History was kept.` }
+      }
+    }
+  }
   return {
     success: status === 'active' ? 'Contact is active again.' : 'Contact deactivated. Existing relationships and history were kept.',
   }
@@ -629,7 +654,7 @@ export async function addPersonProjectAction(personId: string, _prev: ActionStat
       error.code === '23505' ? 'This person is already on that project.' : error.code === 'P0001' ? `${error.message}.` : dbError(error)
     return { error: `Nothing was saved. ${why}`, values }
   }
-  revalidateDirectory(`/contacts/people/${personId}`)
+  revalidateDirectory(`/contacts/people/${personId}`, `/projects/${values.project_id}`)
   return { success: 'Project association added.' }
 }
 
@@ -643,11 +668,75 @@ export async function endPersonProjectAction(associationId: string): Promise<Act
     .eq('organization_id', gate.session.organizationId)
     .eq('id', associationId)
     .eq('status', 'active')
-    .select('person_id')
+    .select('person_id, project_id')
   if (error) return { error: `Nothing was changed. ${error.code === 'P0001' ? `${error.message}.` : dbError(error)}` }
   if (!data?.length) return { error: 'Nothing was changed. This association has already ended or could not be found.' }
-  revalidateDirectory(`/contacts/people/${data[0].person_id}`)
+  revalidateDirectory(`/contacts/people/${data[0].person_id}`, `/projects/${data[0].project_id}`)
   return { success: 'Project association ended. It is kept in the history.' }
+}
+
+/**
+ * Assigns a directory contact to a project from the project page. Either picks an existing active person or creates a
+ * new one first. Assigning a company never auto-assigns its people; each person is added explicitly here.
+ */
+export async function assignProjectContactAction(projectId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const values = formValues(formData)
+  const gate = await requireContactsManager('assign')
+  if (!gate.ok) return { error: gate.error, values }
+  const { session, supabase } = gate
+  if (!isUuid(projectId)) return { error: 'This project could not be found.', values }
+
+  const mode = values.mode === 'new' ? 'new' : 'existing'
+  const fieldErrors: Record<string, string> = {}
+  const role = projectRoleSchema.safeParse(values.project_role)
+  if (!role.success) fieldErrors.project_role = role.error.issues[0]?.message ?? 'Project role is required'
+  const via = mode === 'existing' && values.person_company_id ? values.person_company_id : null
+  if (via && !isUuid(via)) fieldErrors.person_company_id = 'Choose a company relationship'
+  if (mode === 'existing' && !isUuid(values.person_id ?? '')) fieldErrors.person_id = 'Choose a contact'
+  const person = mode === 'new' ? personSchema.safeParse(values) : null
+  if (person && !person.success) Object.assign(fieldErrors, fromZodError(person.error).fieldErrors ?? {})
+  if (Object.keys(fieldErrors).length || !role.success) return { error: 'Please correct the highlighted fields.', fieldErrors, values }
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id, status')
+    .eq('organization_id', session.organizationId)
+    .eq('id', projectId)
+    .maybeSingle()
+  if (!project) return { error: 'This project could not be found.', values }
+  if (!projectAcceptsNewAssignments(project.status as string)) return { error: 'This project is not accepting new assignments.', values }
+
+  let personId = values.person_id
+  if (mode === 'new' && person?.success) {
+    const { data: created, error } = await supabase
+      .from('business_people')
+      .insert({ ...person.data, organization_id: session.organizationId, created_by: session.userId, updated_by: session.userId })
+      .select('id')
+      .single()
+    if (error || !created) {
+      if (error?.code === '23505') return { error: 'Please correct the highlighted fields.', fieldErrors: { email: EMAIL_TAKEN }, values }
+      return { error: `Nothing was saved. ${dbError(error)}`, values }
+    }
+    personId = created.id
+  }
+
+  const { error } = await supabase.from('business_person_projects').insert({
+    organization_id: session.organizationId,
+    person_id: personId,
+    project_id: projectId,
+    person_company_id: via,
+    project_role: role.data,
+    created_by: session.userId,
+    updated_by: session.userId,
+  })
+  if (error) {
+    const why =
+      error.code === '23505' ? 'This person is already on this project.' : error.code === 'P0001' ? `${error.message}.` : dbError(error)
+    revalidateDirectory(`/projects/${projectId}`)
+    return { error: mode === 'new' ? `Contact created, but not assigned. ${why}` : `Nothing was saved. ${why}`, values }
+  }
+  revalidateDirectory(`/contacts/people/${personId}`, `/projects/${projectId}`)
+  return { success: mode === 'new' ? 'Contact created and assigned to this project.' : 'Contact assigned to this project.' }
 }
 
 // ============ Import ============
