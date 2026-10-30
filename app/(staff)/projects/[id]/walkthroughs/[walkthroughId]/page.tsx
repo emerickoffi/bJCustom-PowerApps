@@ -7,7 +7,10 @@ import { StaffReportsSection } from '@/components/reports/staff-reports-section'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader, DetailList } from '@/components/shared/page-header'
 import { IssueStatusBadge, ResponseBadge, WalkthroughStatusBadge } from '@/components/walkthroughs/badges'
-import { WALKTHROUGH_TYPE_LABELS, type IssueStatus, type ResponseValue, type WalkthroughStatus } from '@/lib/walkthroughs'
+import { WALKTHROUGH_TYPE_LABELS, type IssuePriority, type IssueStatus, type ResponseValue, type WalkthroughStatus } from '@/lib/walkthroughs'
+import { withItemNumbers } from '@/lib/punch-list'
+import { getStaffMembers } from '@/lib/queries'
+import { PunchListTable, type PunchListRow } from '@/components/walkthroughs/punch-list-table'
 import { formatDate, formatDateTime } from '@/lib/format'
 
 export const metadata: Metadata = { title: 'Walkthrough' }
@@ -26,16 +29,41 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
     .maybeSingle()
   if (!walkthrough) notFound()
 
-  const [itemsRes, responsesRes, issuesRes] = await Promise.all([
-    supabase.from('walkthrough_items').select('id, category, label').eq('walkthrough_id', walkthroughId).order('sort_order'),
+  const [itemsRes, responsesRes, issuesRes, staff] = await Promise.all([
+    // select('*') keeps this page working before and after the item_number/location migration.
+    supabase.from('walkthrough_items').select('*').eq('walkthrough_id', walkthroughId).order('sort_order'),
     supabase.from('walkthrough_responses').select('item_id, response').eq('walkthrough_id', walkthroughId),
-    supabase.from('project_issues').select('id, item_id, status').eq('walkthrough_id', walkthroughId),
+    supabase
+      .from('project_issues')
+      .select('id, item_id, status, priority, due_date, responsible_user_id, updated_at')
+      .eq('walkthrough_id', walkthroughId),
+    getStaffMembers(session.organizationId, ['org_admin', 'project_manager', 'builder_staff']),
   ])
 
   const status = walkthrough.status as WalkthroughStatus
   const responses = new Map((responsesRes.data ?? []).map((r) => [r.item_id, r.response as ResponseValue | null]))
   const issues = new Map((issuesRes.data ?? []).map((i) => [i.item_id, i]))
-  const items = itemsRes.data ?? []
+  const items = withItemNumbers(
+    (itemsRes.data ?? []) as { id: string; category: string; label: string; item_number?: string | null; location?: string | null }[],
+  )
+  const staffName = new Map(staff.map((s) => [s.user_id, s.full_name || s.email || 'Team member']))
+  const punchRows: PunchListRow[] = items.flatMap((item) => {
+    const issue = issues.get(item.id)
+    if (!issue) return []
+    return [{
+      issueId: issue.id,
+      number: item.number,
+      label: item.label,
+      category: item.category,
+      location: item.place,
+      status: issue.status as IssueStatus,
+      priority: issue.priority as IssuePriority,
+      dueDate: issue.due_date,
+      responsibleId: issue.responsible_user_id,
+      responsibleName: issue.responsible_user_id ? staffName.get(issue.responsible_user_id) ?? 'Former team member' : null,
+      updatedAt: issue.updated_at,
+    }]
+  })
   const answered = items.filter((i) => responses.get(i.id)).length
   const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
     ;(acc[item.category] ??= []).push(item)
@@ -78,6 +106,15 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
         </p>
       )}
 
+      {punchRows.length > 0 && (
+        <PunchListTable
+          projectId={project.id}
+          walkthroughId={walkthroughId}
+          rows={punchRows}
+          staffOptions={staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))}
+        />
+      )}
+
       <div className="flex flex-col gap-6">
         {Object.entries(grouped).map(([category, list]) => (
           <section key={category} aria-labelledby={`cat-${category}`} className="flex flex-col gap-3">
@@ -89,7 +126,13 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
                 const issue = issues.get(item.id)
                 const content = (
                   <>
-                    <span className="text-sm text-foreground">{item.label}</span>
+                    <span className="flex min-w-0 items-baseline gap-3">
+                      <span className="w-10 shrink-0 font-mono text-xs font-semibold text-muted-foreground">{item.number}</span>
+                      <span className="min-w-0">
+                        <span className="text-sm text-foreground">{item.label}</span>
+                        {item.place && <span className="block text-xs text-muted-foreground">{item.place}</span>}
+                      </span>
+                    </span>
                     <span className="flex items-center gap-2">
                       {issue && <IssueStatusBadge status={issue.status as IssueStatus} />}
                       <ResponseBadge response={responses.get(item.id) ?? null} />
