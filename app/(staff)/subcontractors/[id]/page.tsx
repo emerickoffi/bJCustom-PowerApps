@@ -22,6 +22,7 @@ import { todayIn } from '@/lib/subcontractor-qualification'
 import { APP_TIME_ZONE } from '@/lib/format'
 import { QualificationBadge } from '@/components/subcontractors/qualification-badge'
 import { QualificationSection } from '@/components/subcontractors/qualification-section'
+import { SubcontractorPortalAccess, type SubPortalAccountRow } from '@/components/subcontractor-work/portal-access'
 
 export const metadata: Metadata = { title: 'Subcontractor' }
 
@@ -41,12 +42,27 @@ export default async function SubcontractorDetailPage({
   const supabase = await createClient()
   const company = await loadSubcontractor(supabase, session.organizationId, id)
   if (!company) notFound()
-  const [{ availability, records }, businessCompany, people, qualification] = await Promise.all([
+  const [{ availability, records }, businessCompany, people, qualification, portalRes] = await Promise.all([
     loadProjectAssignments(supabase, session.organizationId, id),
     loadCompanyProfile(supabase, session.organizationId, { subcontractorId: id }),
     loadPersonOptions(supabase, session.organizationId),
     loadQualificationDetail(supabase, session.organizationId, id),
+    supabase
+      .from('subcontractor_portal_accounts')
+      .select('id, full_name, email, status')
+      .eq('organization_id', session.organizationId)
+      .eq('subcontractor_company_id', id)
+      .order('status')
+      .order('full_name'),
   ])
+  const portalAccounts: SubPortalAccountRow[] | null = portalRes.error
+    ? null
+    : (portalRes.data ?? []).map((a) => ({
+        id: a.id as string,
+        name: a.full_name as string,
+        email: a.email as string,
+        status: a.status as 'active' | 'revoked',
+      }))
   const { current, history } = splitProjectAssignments(records, projectAcceptsNewAssignments)
   const addedProjects = Number.parseInt(sp.projects ?? '', 10)
   const editHref = `/subcontractors/${company.id}/edit`
@@ -155,6 +171,15 @@ export default async function SubcontractorDetailPage({
         companyInactive={company.status === 'inactive'}
         subcontractor
       />
+
+      {portalAccounts && (
+        <SubcontractorPortalAccess
+          companyId={company.id}
+          accounts={portalAccounts}
+          canEdit
+          companyInactive={company.status === 'inactive'}
+        />
+      )}
 
       <Surface aria-labelledby="projects-heading" className="gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
