@@ -1,8 +1,9 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { useFormStatus } from 'react-dom'
 import Link from 'next/link'
-import { AlertTriangle, CalendarDays, CloudSun, HardHat, ListChecks, Plus, Trash2, Truck } from 'lucide-react'
+import { AlertTriangle, CalendarDays, Camera, CloudSun, HardHat, ListChecks, Plus, Trash2, Truck } from 'lucide-react'
 import { saveDailyLogAction } from '@/app/actions/daily-logs'
 import { initialActionState } from '@/lib/action-state'
 import { DAILY_LOG_CREW_LIMIT } from '@/lib/daily-logs'
@@ -218,6 +219,21 @@ export function DailyLogForm({
         <TextAreaField name="safety_observations" label="Safety observations" defaultValue={val('safety_observations')} error={fe.safety_observations} maxLength={4000} />
       </FormSection>
 
+      <FormSection
+        title="Photos"
+        icon={Camera}
+        description={
+          defaults.id
+            ? 'Photos are managed on the log page. Save your changes, then take or upload photos there.'
+            : 'Photos attach to a saved log. Use Save and add photos to save this draft and go straight to the camera and upload options.'
+        }
+      >
+        <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border bg-muted/40 p-4 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">Take site photos with your camera or upload them from your device, then add captions.</p>
+          <SaveAndAddPhotosButton />
+        </div>
+      </FormSection>
+
       <FormActions message={<FormMessage state={state} />} note="Saved logs stay as drafts until you finalize them.">
         <Link href={cancelHref} className={buttonVariants({ variant: 'ghost', size: 'lg' })}>
           Cancel
@@ -228,6 +244,16 @@ export function DailyLogForm({
         </SubmitButton>
       </FormActions>
     </form>
+  )
+}
+
+function SaveAndAddPhotosButton() {
+  const { pending } = useFormStatus()
+  return (
+    <Button type="submit" name="intent" value="photos" variant="outline" size="lg" disabled={pending} className="h-12 w-full shrink-0 sm:h-11 sm:w-auto">
+      <Camera aria-hidden="true" />
+      {pending ? 'Saving...' : 'Save and add photos'}
+    </Button>
   )
 }
 
