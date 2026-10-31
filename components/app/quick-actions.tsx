@@ -2,20 +2,32 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { CalendarPlus, FilePlus2, FolderPlus, Plus, Upload, UserPlus, type LucideIcon } from 'lucide-react'
+import {
+  Building2,
+  CalendarPlus,
+  ClipboardPen,
+  FilePlus2,
+  FolderPlus,
+  HardHat,
+  Plus,
+  Receipt,
+  Upload,
+  UserPlus,
+  type LucideIcon,
+} from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import type { QuickAction, QuickActionIcon } from '@/lib/quick-actions'
 
-export type QuickActionIcon = 'schedule' | 'estimate' | 'document' | 'project' | 'client'
-
-export type QuickAction = { key: string; label: string; href: string; icon: QuickActionIcon }
+export type { QuickAction, QuickActionIcon } from '@/lib/quick-actions'
 
 type ProjectScope = { projectName: string; actions: QuickAction[] }
 
@@ -25,6 +37,10 @@ const ICONS: Record<QuickActionIcon, LucideIcon> = {
   document: Upload,
   project: FolderPlus,
   client: UserPlus,
+  contact: Building2,
+  subcontractor: HardHat,
+  invoice: Receipt,
+  daily_log: ClipboardPen,
 }
 
 type QuickActionsContextValue = {
@@ -41,7 +57,7 @@ export function QuickActionsProvider({ children }: { children: React.ReactNode }
 
 /**
  * Rendered by the project layout with actions it already checked against the user's role,
- * enabled features, and project state. Replaces the global actions while mounted.
+ * enabled features, and project state. Takes priority over the remembered job while mounted.
  */
 export function ProjectQuickActionsScope({ projectName, actions }: ProjectScope) {
   const setScope = useContext(QuickActionsContext)?.setScope
@@ -56,63 +72,67 @@ export function ProjectQuickActionsScope({ projectName, actions }: ProjectScope)
   return null
 }
 
-/**
- * One floating control. When the AI Assistant launcher is shown it sits directly above it,
- * centred on the same column, so the two never overlap.
- */
-export function QuickActionsButton({ globalActions, aboveAssistant }: { globalActions: QuickAction[]; aboveAssistant: boolean }) {
-  const scope = useContext(QuickActionsContext)?.scope ?? null
-  const actions = scope ? scope.actions : globalActions
-  if (actions.length === 0) return null
+function ActionItem({ action }: { action: QuickAction }) {
+  const Icon = ICONS[action.icon]
+  return (
+    <DropdownMenuItem render={<Link href={action.href} />} className="min-h-11 gap-3 px-2.5 py-2 sm:min-h-0">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-sage text-primary" aria-hidden="true">
+        <Icon className="size-4" />
+      </span>
+      <span className="text-sm font-medium text-foreground">{action.label}</span>
+    </DropdownMenuItem>
+  )
+}
+
+/** Header "New" menu: actions for the current job first, then records that stand on their own. */
+export function QuickCreateMenu({
+  globalActions,
+  jobScope,
+}: {
+  globalActions: QuickAction[]
+  jobScope: ProjectScope | null
+}) {
+  const pageScope = useContext(QuickActionsContext)?.scope ?? null
+  const scope = pageScope ?? jobScope
+  const jobActions = scope?.actions ?? []
+  if (jobActions.length === 0 && globalActions.length === 0) return null
 
   return (
-    <div
-      data-floating-control
-      className={cn(
-        'group fixed right-[calc(max(1.25rem,env(safe-area-inset-right))+0.25rem)] z-40 print:hidden',
-        aboveAssistant
-          ? 'bottom-[calc(max(1.25rem,env(safe-area-inset-bottom))+4.25rem)]'
-          : 'bottom-[max(1.25rem,env(safe-area-inset-bottom))]',
-      )}
-    >
-      <span
-        role="presentation"
-        className="pointer-events-none absolute right-full top-1/2 mr-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-brand-deep px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 group-has-[[aria-expanded=true]]:opacity-0"
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label="Create new"
+        className={cn(
+          'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-sm font-medium text-primary-foreground transition-colors sm:px-3',
+          'hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30',
+        )}
       >
-        Quick actions
-      </span>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label="Quick actions"
-          className={cn(
-            'flex size-12 items-center justify-center rounded-2xl bg-card text-primary shadow-md ring-1 ring-champagne/50 transition-all',
-            'hover:-translate-y-0.5 hover:bg-champagne-soft hover:shadow-lg',
-            'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30',
-            'aria-expanded:bg-primary aria-expanded:text-primary-foreground aria-expanded:ring-primary',
-          )}
-        >
-          <Plus className="size-5 transition-transform group-has-[[aria-expanded=true]]:rotate-45" aria-hidden="true" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="end" sideOffset={10} className="w-64 max-w-[calc(100vw-2.5rem)] p-1.5">
+        <Plus className="size-4" aria-hidden="true" />
+        <span className="hidden sm:inline">New</span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" sideOffset={8} className="w-64 max-w-[calc(100vw-1.5rem)] p-1.5">
+        {jobActions.length > 0 && scope && (
           <DropdownMenuGroup>
             <DropdownMenuLabel className="flex flex-col gap-0.5 px-2.5 py-2">
-              <span className="text-sm font-semibold text-foreground">Quick actions</span>
-              {scope && <span className="truncate text-xs font-normal text-muted-foreground">{scope.projectName}</span>}
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">For this job</span>
+              <span className="truncate text-sm font-medium text-foreground">{scope.projectName}</span>
             </DropdownMenuLabel>
-            {actions.map((action) => {
-              const Icon = ICONS[action.icon]
-              return (
-                <DropdownMenuItem key={action.key} render={<Link href={action.href} />} className="min-h-11 gap-3 px-2.5 py-2 sm:min-h-0">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sage text-primary" aria-hidden="true">
-                    <Icon className="size-4" />
-                  </span>
-                  <span className="text-sm font-medium text-foreground">{action.label}</span>
-                </DropdownMenuItem>
-              )
-            })}
+            {jobActions.map((a) => (
+              <ActionItem key={a.key} action={a} />
+            ))}
           </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+        )}
+        {jobActions.length > 0 && globalActions.length > 0 && <DropdownMenuSeparator />}
+        {globalActions.length > 0 && (
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="px-2.5 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Create
+            </DropdownMenuLabel>
+            {globalActions.map((a) => (
+              <ActionItem key={a.key} action={a} />
+            ))}
+          </DropdownMenuGroup>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

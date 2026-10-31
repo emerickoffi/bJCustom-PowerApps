@@ -17,25 +17,36 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
+import { LIFECYCLE_GROUP_CLASSES, PROJECT_LIFECYCLE_GROUP } from '@/lib/project-lifecycle'
 
 type StatusStyle = { icon: LucideIcon; className: string }
 
-/** Single source of truth for project status colors. Solid fills keep text at WCAG AA contrast. */
-export const PROJECT_STATUS_STYLES: Record<ProjectStatus, StatusStyle> = {
-  lead: { icon: UserPlus, className: 'bg-stone-600 text-white' },
-  consultation: { icon: MessagesSquare, className: 'bg-stone-600 text-white' },
-  planning: { icon: Compass, className: 'bg-cyan-700 text-white' },
-  estimating: { icon: Ruler, className: 'bg-cyan-700 text-white' },
-  awaiting_approval: { icon: Hourglass, className: 'bg-yellow-300 text-yellow-950' },
-  preconstruction: { icon: CalendarClock, className: 'bg-amber-400 text-amber-950' },
-  under_construction: { icon: Hammer, className: 'bg-blue-600 text-white' },
-  final_inspection: { icon: ClipboardCheck, className: 'bg-purple-600 text-white' },
-  punch_list: { icon: ListChecks, className: 'bg-orange-500 text-orange-950' },
-  substantially_complete: { icon: Sparkles, className: 'bg-teal-700 text-white' },
-  completed: { icon: CheckCircle2, className: 'bg-green-700 text-white' },
-  on_hold: { icon: PauseCircle, className: 'bg-red-600 text-white' },
-  cancelled: { icon: Ban, className: 'bg-slate-500 text-white' },
+const STATUS_ICONS: Record<ProjectStatus, LucideIcon> = {
+  lead: UserPlus,
+  consultation: MessagesSquare,
+  planning: Compass,
+  estimating: Ruler,
+  awaiting_approval: Hourglass,
+  preconstruction: CalendarClock,
+  under_construction: Hammer,
+  final_inspection: ClipboardCheck,
+  punch_list: ListChecks,
+  substantially_complete: Sparkles,
+  completed: CheckCircle2,
+  on_hold: PauseCircle,
+  cancelled: Ban,
 }
+
+/**
+ * Single source of truth for project status colors. Color follows the lifecycle group (pipeline, active
+ * build, closed, on hold) and the icon plus label identify the exact stage, so status never relies on color.
+ */
+export const PROJECT_STATUS_STYLES = Object.fromEntries(
+  (Object.keys(STATUS_ICONS) as ProjectStatus[]).map((s) => [
+    s,
+    { icon: STATUS_ICONS[s], className: LIFECYCLE_GROUP_CLASSES[PROJECT_LIFECYCLE_GROUP[s]] },
+  ]),
+) as Record<ProjectStatus, StatusStyle>
 
 export function ProjectStatusBanner({
   status,

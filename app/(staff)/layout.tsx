@@ -1,7 +1,11 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
-import { canManage, requireStaff } from '@/lib/session'
-import { QuickActionsButton, QuickActionsProvider, type QuickAction } from '@/components/app/quick-actions'
+import { requireStaff, type StaffSession } from '@/lib/session'
+import { QuickActionsProvider, QuickCreateMenu } from '@/components/app/quick-actions'
+import { JobSwitcher } from '@/components/app/job-switcher'
+import { getRememberedJob, type JobSummary } from '@/lib/job-context'
+import { buildGlobalQuickActions, buildProjectQuickActions } from '@/lib/quick-actions'
+import type { FeatureMap } from '@/lib/feature-registry'
 import { landingPathForRole, navForRole } from '@/lib/navigation'
 import { WorkspaceSwitcher } from '@/components/app/workspace-switcher'
 import { getOrgFeatures } from '@/lib/features'
@@ -67,30 +71,43 @@ async function loadNotifications(userId: string): Promise<HeaderNotification[]> 
   return items
 }
 
+/** Job-scoped "New" actions for the remembered job, using the same guards as the project layout. */
+async function loadJobScope(job: JobSummary, role: StaffSession['role'], features: FeatureMap) {
+  const supabase = await createClient()
+  const { data: canViewInternal } = await supabase.rpc('can_view_project_internal', { p_project: job.id })
+  return {
+    projectName: job.name,
+    actions: buildProjectQuickActions({
+      projectId: job.id,
+      status: job.status,
+      archived: false,
+      role,
+      features,
+      canViewInternal: Boolean(canViewInternal),
+    }),
+  }
+}
+
 /**
  * `modal` is the single slot for every create/edit drawer. Because it lives at the staff level, a soft
  * navigation from any staff page (Dashboard, Quick Actions, a project's tabs) opens the drawer over that page.
  */
 export default async function StaffLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const session = await requireStaff()
-  const [cookieStore, notifications, features] = await Promise.all([
+  const [cookieStore, notifications, features, currentJob] = await Promise.all([
     cookies(),
     loadNotifications(session.userId),
     getOrgFeatures(session.organizationId),
+    getRememberedJob(session.organizationId),
   ])
+  const jobScope = currentJob ? await loadJobScope(currentJob, session.role, features) : null
   const collapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === '1'
   const items = navForRole(session.role, features)
   const logo = <CompanyLogo brand={session.brand} priority />
   const homeHref = landingPathForRole(session.role)
   const homeLabel = `${session.brand.displayName} ${homeHref === '/my-work' ? 'my work' : 'dashboard'}`
   const showAssistant = features.ai_assistant
-  // Same guard as /projects/new and /clients/new (requireManager).
-  const globalQuickActions: QuickAction[] = canManage(session.role)
-    ? [
-        { key: 'project', label: 'New project', href: '/projects/new', icon: 'project' },
-        { key: 'client', label: 'New client', href: '/clients/new', icon: 'client' },
-      ]
-    : []
+  const globalQuickActions = buildGlobalQuickActions({ role: session.role, features })
   const workspaces = session.workspaces.map((w) => ({
     organizationId: w.organizationId,
     organizationName: w.organizationName,
@@ -119,9 +136,15 @@ export default async function StaffLayout({ children, modal }: { children: React
                 {logo}
               </Link>
               <div className="hidden min-w-0 flex-1 lg:block">
-                <Breadcrumbs rootHref="/dashboard" rootLabel="Dashboard" />
+                <Breadcrumbs
+                  rootHref="/dashboard"
+                  rootLabel="Dashboard"
+                  labels={currentJob ? { [currentJob.id]: currentJob.name } : undefined}
+                />
               </div>
-              <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+              <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
+                <JobSwitcher currentJob={currentJob} />
+                <QuickCreateMenu globalActions={globalQuickActions} jobScope={jobScope} />
                 <HeaderSearch />
                 <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />
                 <NotificationBell items={notifications} emptyHref="/dashboard" />
@@ -139,7 +162,6 @@ export default async function StaffLayout({ children, modal }: { children: React
         </div>
       </div>
       {modal}
-      <QuickActionsButton globalActions={globalQuickActions} aboveAssistant={showAssistant} />
       {showAssistant && <AssistantLauncher configured={getAssistantProviderConfig().configured} />}
       </QuickActionsProvider>
       </AssistantProvider>

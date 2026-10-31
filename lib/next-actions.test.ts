@@ -99,3 +99,21 @@ test('homeowner actions respect disabled features', () => {
   })
   assert.deepEqual(actions, [])
 })
+
+test('schedule setup is a readiness step only for approved, active jobs', () => {
+  const keys = (status: string) => buildProjectNextActions(state({ activityCount: 0, status })).items.map((a) => a.key)
+  assert.ok(keys('preconstruction').includes('schedule-setup'))
+  assert.ok(!keys('lead').includes('schedule-setup'))
+  assert.ok(!keys('consultation').includes('schedule-setup'))
+  assert.ok(!keys('completed').includes('schedule-setup'))
+})
+
+test('completed jobs point to warranty only when the warranty module is on', () => {
+  const on = buildProjectNextActions(state({ status: 'completed', features: { ...ALL, warranty: true } }))
+  assert.deepEqual(on.items.map((a) => a.key), ['warranty'])
+  assert.equal(on.items[0].href, '/projects/p1/warranty')
+  const off = buildProjectNextActions(state({ status: 'completed' }))
+  assert.equal(off.items.length, 0)
+  const active = buildProjectNextActions(state({ status: 'under_construction', features: { ...ALL, warranty: true } }))
+  assert.equal(active.items.length, 0)
+})

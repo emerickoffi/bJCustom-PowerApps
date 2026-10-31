@@ -7,6 +7,7 @@ import {
   Building2,
   CalendarRange,
   Calculator,
+  ChevronDown,
   ClipboardList,
   FileText,
   FolderKanban,
@@ -22,7 +23,7 @@ import {
   UsersRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PLANNED_MODULES, type NavItem } from '@/lib/navigation'
+import { NAV_GROUPS, PLANNED_MODULES, type NavItem } from '@/lib/navigation'
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
@@ -105,33 +106,47 @@ export function AppNav({
   const pathname = usePathname()
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
+  const sections = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: items.filter((item) => (item.group ?? 'workspace') === group.key),
+  })).filter((section) => section.items.length > 0)
+  const upcomingActive = UPCOMING.some((module) => isActive(`/modules/${module.slug}`))
+
   return (
-    <nav aria-label="Main" className="flex flex-col gap-7">
-      <div className="flex flex-col gap-1">
-        {!collapsed && <p className="px-3 pb-1.5 text-xs font-medium text-muted-foreground">Workspace</p>}
-        {items.map((item) => (
-          <NavLink key={item.href} {...item} active={isActive(item.href)} collapsed={collapsed} onNavigate={onNavigate} />
-        ))}
-      </div>
-      <div className="flex flex-col gap-1">
-        {!collapsed ? (
-          <p className="px-3 pb-1.5 text-xs font-medium text-muted-foreground">Coming soon</p>
-        ) : (
-          <span className="mx-auto mb-1 h-px w-6 bg-border" aria-hidden="true" />
-        )}
-        {UPCOMING.map((module) => (
-          <NavLink
-            key={module.slug}
-            href={`/modules/${module.slug}`}
-            label={module.label}
-            icon={module.icon}
-            active={isActive(`/modules/${module.slug}`)}
-            muted
-            collapsed={collapsed}
-            onNavigate={onNavigate}
-          />
-        ))}
-      </div>
+    <nav aria-label="Main" className="flex flex-col gap-5">
+      {sections.map((section, index) => (
+        <div key={section.key} role="group" aria-label={section.label} className="flex flex-col gap-1">
+          {!collapsed ? (
+            <p className="px-3 pb-1 text-xs font-medium text-muted-foreground">{section.label}</p>
+          ) : (
+            index > 0 && <span className="mx-auto mb-1 h-px w-6 bg-border" aria-hidden="true" />
+          )}
+          {section.items.map((item) => (
+            <NavLink key={item.href} {...item} active={isActive(item.href)} collapsed={collapsed} onNavigate={onNavigate} />
+          ))}
+        </div>
+      ))}
+      {!collapsed && UPCOMING.length > 0 && (
+        <details open={upcomingActive} className="group/soon">
+          <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+            Coming soon
+            <ChevronDown className="size-3.5 transition-transform group-open/soon:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="mt-1 flex flex-col gap-1">
+            {UPCOMING.map((module) => (
+              <NavLink
+                key={module.slug}
+                href={`/modules/${module.slug}`}
+                label={module.label}
+                icon={module.icon}
+                active={isActive(`/modules/${module.slug}`)}
+                muted
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
+        </details>
+      )}
     </nav>
   )
 }

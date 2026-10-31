@@ -7,22 +7,33 @@ export type NavItem = {
   icon: string
   roles?: OrgRole[]
   feature?: FeatureKey
+  group?: NavGroup
 }
 
+export type NavGroup = 'workspace' | 'financials' | 'people' | 'services' | 'admin'
+
+export const NAV_GROUPS: { key: NavGroup; label: string }[] = [
+  { key: 'workspace', label: 'Workspace' },
+  { key: 'financials', label: 'Financials' },
+  { key: 'people', label: 'People & partners' },
+  { key: 'services', label: 'Project services' },
+  { key: 'admin', label: 'Administration' },
+]
+
 export const PRIMARY_NAV: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { href: '/projects', label: 'Projects', icon: 'projects' },
-  { href: '/clients', label: 'Clients', icon: 'clients' },
-  { href: '/contacts', label: 'Contacts', icon: 'contacts', roles: ['org_admin', 'project_manager'] },
-  { href: '/subcontractors', label: 'Subcontractors', icon: 'subcontractors', roles: ['org_admin', 'project_manager'], feature: 'subcontractors' },
-  { href: '/schedule', label: 'Schedule', icon: 'schedule', feature: 'schedule' },
-  { href: '/daily-logs', label: 'Daily Logs', icon: 'daily-logs', roles: ['org_admin', 'project_manager', 'builder_staff'], feature: 'daily_logs' },
-  { href: '/estimates', label: 'Estimates', icon: 'estimates', feature: 'estimates' },
-  { href: '/invoices', label: 'Invoices', icon: 'invoices', feature: 'invoices' },
-  { href: '/documents', label: 'Documents', icon: 'documents', feature: 'documents' },
-  { href: '/warranty', label: 'Warranty', icon: 'warranty', feature: 'warranty' },
-  { href: '/team', label: 'Users & Access', icon: 'team', roles: ['org_admin'] },
-  { href: '/settings', label: 'Settings', icon: 'settings', roles: ['org_admin'] },
+  { href: '/dashboard', label: 'Dashboard', icon: 'dashboard', group: 'workspace' },
+  { href: '/projects', label: 'Projects', icon: 'projects', group: 'workspace' },
+  { href: '/clients', label: 'Clients', icon: 'clients', group: 'people' },
+  { href: '/contacts', label: 'Contacts', icon: 'contacts', roles: ['org_admin', 'project_manager'], group: 'people' },
+  { href: '/subcontractors', label: 'Subcontractors', icon: 'subcontractors', roles: ['org_admin', 'project_manager'], feature: 'subcontractors', group: 'people' },
+  { href: '/schedule', label: 'Schedule', icon: 'schedule', feature: 'schedule', group: 'workspace' },
+  { href: '/daily-logs', label: 'Daily Logs', icon: 'daily-logs', roles: ['org_admin', 'project_manager', 'builder_staff'], feature: 'daily_logs', group: 'workspace' },
+  { href: '/estimates', label: 'Estimates', icon: 'estimates', feature: 'estimates', group: 'financials' },
+  { href: '/invoices', label: 'Invoices', icon: 'invoices', feature: 'invoices', group: 'financials' },
+  { href: '/documents', label: 'Documents', icon: 'documents', feature: 'documents', group: 'services' },
+  { href: '/warranty', label: 'Warranty', icon: 'warranty', feature: 'warranty', group: 'services' },
+  { href: '/team', label: 'Users & Access', icon: 'team', roles: ['org_admin'], group: 'admin' },
+  { href: '/settings', label: 'Settings', icon: 'settings', roles: ['org_admin'], group: 'admin' },
 ]
 
 export type PlannedModule = {
@@ -57,7 +68,7 @@ export const GRADUATED_MODULE_ROUTES: Record<string, string> = {
   'daily-logs': '/daily-logs',
 }
 
-export const MY_WORK_NAV: NavItem = { href: '/my-work', label: 'My Work', icon: 'my-work', roles: ['project_manager'] }
+export const MY_WORK_NAV: NavItem = { href: '/my-work', label: 'My Work', icon: 'my-work', roles: ['project_manager'], group: 'workspace' }
 
 const PROJECT_MANAGER_PRIORITY = ['/my-work', '/projects', '/schedule', '/documents']
 
