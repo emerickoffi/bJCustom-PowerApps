@@ -9,9 +9,9 @@ import { DECISION_METHOD_LABELS, formatCentsExact, isEditableStatus } from '@/li
 import { formatDate, formatDateTime } from '@/lib/format'
 import { PageHeader, DetailList } from '@/components/shared/page-header'
 import { EstimateStatusBadge } from '@/components/estimates/estimate-status-badge'
-import { EstimateSummary } from '@/components/estimates/estimate-summary'
 import { EstimateWorkflow } from '@/components/estimates/estimate-workflow'
-import { LineItemsEditor } from '@/components/estimates/line-items-editor'
+import { EstimateSheet } from '@/components/estimates/estimate-sheet'
+import { EstimateStatusStrip } from '@/components/estimates/estimate-status-strip'
 import { QuickBooksPanel } from '@/components/estimates/quickbooks-panel'
 import { getOrgFeatures } from '@/lib/features'
 import { getQuickBooksStatus } from '@/lib/quickbooks'
@@ -61,6 +61,21 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
   const editable = manager && isLatest && isEditableStatus(estimate.status)
   const clientName = clientDisplayName(estimate.client)
   const previous = family.find((f) => f.revision < estimate.revision)
+  const nextStep = !isLatest
+    ? 'This is an older revision. Open the latest revision to continue.'
+    : estimate.status === 'draft'
+      ? items.length === 0
+        ? 'Add line items, then save the draft.'
+        : 'Review line items and send for internal review or submit to the client.'
+      : estimate.status === 'internal_review'
+        ? 'Finish the internal review, then submit to the client.'
+        : estimate.status === 'submitted'
+          ? signing.summary?.status === 'completed'
+            ? 'The client signed. Record the approval to finalize.'
+            : 'Collect the client signature or record their decision.'
+          : estimate.status === 'approved'
+            ? 'Approved and locked. Create a revision if the scope changes.'
+            : 'Rejected and locked. Create a revision to rework the estimate.'
 
   return (
     <div className="flex flex-col gap-8">
@@ -115,9 +130,25 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
         }
       />
 
+      <EstimateStatusStrip
+        status={estimate.status}
+        submittedAt={estimate.submitted_at}
+        decisionAt={estimate.decision_at}
+        signature={signing.summary}
+        nextStep={nextStep}
+      />
+
+      <EstimateSheet
+        estimateId={id}
+        items={items}
+        status={estimate.status}
+        editable={editable}
+        updatedAt={estimate.updated_at}
+        serverTotals={estimate}
+      />
+
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="flex min-w-0 flex-col gap-8">
-          <LineItemsEditor estimateId={id} items={items} editable={editable} />
 
           <section aria-labelledby="details-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
             <h2 id="details-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
@@ -148,7 +179,6 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
         </div>
 
         <aside className="flex flex-col gap-6">
-          <EstimateSummary totals={estimate} />
 
           {(estimate.status === 'approved' || estimate.status === 'rejected') && (
             <section

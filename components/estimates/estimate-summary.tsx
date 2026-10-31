@@ -10,7 +10,13 @@ function Row({ label, value, strong, muted }: { label: string; value: string; st
   )
 }
 
-export function EstimateSummary({ totals }: { totals: EstimateTotals }) {
+export function EstimateSummary({
+  totals,
+  note = 'Excludes land. Calculated on the server.',
+}: {
+  totals: EstimateTotals
+  note?: string
+}) {
   return (
     <section aria-labelledby="summary-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
       <div className="flex flex-col gap-1 rounded-2xl bg-brand-deep p-5 text-white">
@@ -20,7 +26,7 @@ export function EstimateSummary({ totals }: { totals: EstimateTotals }) {
         <p className="font-serif text-4xl font-semibold tabular-nums tracking-tight">
           {formatCentsExact(totals.construction_total_cents)}
         </p>
-        <p className="text-xs text-white/60">Excludes land. Calculated on the server.</p>
+        <p className="text-xs text-white/60">{note}</p>
       </div>
 
       <dl className="flex flex-col gap-2.5">

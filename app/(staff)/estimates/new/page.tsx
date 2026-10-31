@@ -11,12 +11,21 @@ import { EstimateForm } from '@/components/estimates/estimate-form'
 
 export const metadata: Metadata = { title: 'Create estimate' }
 
+const ESTIMATE_VALIDITY_DAYS = 30
+
+function addDays(isoDate: string, days: number) {
+  const d = new Date(`${isoDate}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
 export default async function NewEstimatePage({ searchParams }: { searchParams: Promise<{ project?: string }> }) {
   const session = await requireManager()
   const { project } = await searchParams
   const supabase = await createClient()
   const projects = await loadEstimateProjects(supabase, session.organizationId)
   const preselected = projects.some((p) => p.id === project) ? project : undefined
+  const today = new Date().toISOString().slice(0, 10)
 
   return (
     <div className="flex flex-col gap-8">
@@ -41,7 +50,11 @@ export default async function NewEstimatePage({ searchParams }: { searchParams: 
         <EstimateForm
           action={createEstimateAction}
           projects={projects}
-          defaults={{ project_id: preselected, estimate_date: new Date().toISOString().slice(0, 10) }}
+          defaults={{
+            project_id: preselected,
+            estimate_date: today,
+            expiration_date: addDays(today, ESTIMATE_VALIDITY_DAYS),
+          }}
           cancelHref={preselected ? `/projects/${preselected}` : '/estimates'}
           submitLabel="Create estimate"
         />
