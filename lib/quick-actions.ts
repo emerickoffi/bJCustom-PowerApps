@@ -56,6 +56,32 @@ export function buildProjectQuickActions(input: {
   return actions
 }
 
+export type FieldActionKey = 'daily_log' | 'photos' | 'punch_list' | 'contacts'
+export type FieldQuickAction = { key: FieldActionKey; label: string; href: string | null }
+
+/**
+ * The four field shortcuts for the current job. Log and Photos reuse the per-job guards above, so they appear
+ * exactly when the destination would accept them. Contacts opens an in-place sheet (no href) and only shows
+ * when the job has someone to call. Unavailable actions are omitted rather than shown disabled.
+ */
+export function buildFieldQuickActions(input: Parameters<typeof buildProjectQuickActions>[0] & {
+  walkthroughs: boolean
+  hasContacts: boolean
+}): FieldQuickAction[] {
+  const base = buildProjectQuickActions(input)
+  const find = (key: string) => base.find((a) => a.key === key)
+  const actions: FieldQuickAction[] = []
+  const log = find('daily_log')
+  if (log) actions.push({ key: 'daily_log', label: 'Daily log', href: log.href })
+  const upload = find('document')
+  if (upload) actions.push({ key: 'photos', label: 'Photos', href: upload.href })
+  if (input.walkthroughs && !input.archived) {
+    actions.push({ key: 'punch_list', label: 'Punch list', href: `/projects/${encodeURIComponent(input.projectId)}#walkthroughs-heading` })
+  }
+  if (input.hasContacts) actions.push({ key: 'contacts', label: 'Contacts', href: null })
+  return actions
+}
+
 /** Records that do not belong to a single job. Same guards as their destination pages. */
 export function buildGlobalQuickActions(input: { role: OrgRole | null; features: QuickActionFeatures }): QuickAction[] {
   const { role, features } = input
