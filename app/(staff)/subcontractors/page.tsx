@@ -9,7 +9,6 @@ import { AssignedWorkCard } from '@/components/subcontractors/assigned-work-card
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeSearch } from '@/lib/format'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
-import { ListFilters } from '@/components/shared/list-filters'
 import { SubcontractorTable } from '@/components/subcontractors/subcontractor-table'
 import {
   SUBCONTRACTOR_COLUMNS,
@@ -31,7 +30,7 @@ import {
   parseQualificationSort,
   type QualificationFilter,
 } from '@/lib/subcontractor-qualification'
-import { QualificationFilterChips } from '@/components/subcontractors/qualification-filter'
+import { DirectoryToolbar } from '@/components/subcontractors/directory-toolbar'
 
 export const metadata: Metadata = { title: 'Subcontractors' }
 
@@ -122,7 +121,15 @@ export default async function SubcontractorsPage({
       <PageHeader
         icon={HardHat}
         title="Subcontractors"
-        description="Trade partners your company works with. Visible only to administrators and project managers."
+        titleAddon={
+          !error && summary.total > 0 ? (
+            <span className="rounded-full bg-white px-2.5 py-0.5 text-sm font-medium tabular-nums text-muted-foreground ring-1 ring-inset ring-[#174D32]/12">
+              <span className="sr-only">Total: </span>
+              {summary.total}
+            </span>
+          ) : undefined
+        }
+        description="Trade partners, their qualification, and where they are working. Visible to administrators and project managers."
         actions={!error && addButton}
       />
 
@@ -150,29 +157,32 @@ export default async function SubcontractorsPage({
         </div>
       ) : (
         <>
-          {summary.total > 0 && <DirectorySummary summary={summary} />}
-          <ListFilters
-            searchPlaceholder="Search by company, trade, email, or phone"
+          {summary.total > 0 && (
+            <DirectorySummary
+              summary={summary}
+              qualified={qualificationReady ? qualificationCounts.qualified : null}
+              needsAttention={qualificationReady ? qualificationCounts.in_review + qualificationCounts.missing_items : null}
+            />
+          )}
+          <DirectoryToolbar
             defaultQuery={q}
             defaultStatus={status ?? ''}
             statusOptions={SUBCONTRACTOR_STATUSES.map((s) => ({ value: s, label: SUBCONTRACTOR_STATUS_LABELS[s] }))}
-            clearHref={filtered ? '/subcontractors' : undefined}
+            qualification={
+              qualificationReady && summary.total > 0
+                ? { active: qualificationFilter, sort, counts: qualificationCounts, total: summary.total }
+                : null
+            }
           />
-          {qualificationReady && summary.total > 0 && (
-            <QualificationFilterChips
-              active={qualificationFilter}
-              sort={sort}
-              baseParams={{ q: q || undefined, status: status ?? undefined }}
-              counts={qualificationCounts}
-            />
-          )}
           {rows.length ? (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-muted-foreground">
-                {loadedRows.length === LIMIT
-                  ? `Showing the first ${LIMIT} subcontractors. Narrow your search to find others.`
-                  : `${rows.length} ${rows.length === 1 ? 'subcontractor' : 'subcontractors'}`}
-              </p>
+            <div className="flex flex-col gap-2">
+              {(filtered || loadedRows.length === LIMIT) && (
+                <p className="text-sm text-muted-foreground" role="status">
+                  {loadedRows.length === LIMIT
+                    ? `Showing the first ${LIMIT} subcontractors. Narrow your search to find others.`
+                    : `${rows.length} of ${summary.total} ${summary.total === 1 ? 'subcontractor' : 'subcontractors'} match`}
+                </p>
+              )}
               <SubcontractorTable
                 rows={rows}
                 projectsByCompany={projectsByCompany}

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ClipboardList } from 'lucide-react'
+import { ChevronDown, ClipboardList } from 'lucide-react'
 import type { AssignmentAvailability } from '@/lib/assignments'
 import type { CompanyWorkItem } from '@/lib/assignments-data'
 import { ACTIVITY_STATUS_LABELS, type ScheduleActivity } from '@/lib/schedule'
@@ -30,15 +30,27 @@ export function AssignedWorkCard({ availability, items }: { availability: Assign
     )
   }
 
+  const activityCount = ordered.reduce((n, [, g]) => n + g.items.length, 0)
   return (
-    <section aria-labelledby="assigned-work-heading" className="flex flex-col gap-4 rounded-xl border bg-card p-5">
-      <div className="flex flex-col gap-1">
-        <h2 id="assigned-work-heading" className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
-          <ClipboardList className="size-4 text-primary" aria-hidden="true" />
-          Assigned work
-        </h2>
+    <details aria-labelledby="assigned-work-heading" className="group rounded-xl border bg-card [&[open]]:pb-5">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-5 py-3.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
+          <h2 id="assigned-work-heading" className="flex items-center gap-2 font-serif text-base font-semibold text-foreground">
+            <ClipboardList className="size-4 text-primary" aria-hidden="true" />
+            Assigned work
+          </h2>
+          <span className="text-sm text-muted-foreground">
+            {availability === 'ready'
+              ? `${activityCount} active ${activityCount === 1 ? 'activity' : 'activities'} across ${ordered.length} ${ordered.length === 1 ? 'company' : 'companies'}`
+              : availability === 'setup-required'
+                ? 'Not set up yet'
+                : 'Could not be loaded'}
+          </span>
+        </span>
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <div className="flex flex-col gap-4 px-5">
         <p className="text-sm text-muted-foreground">Active schedule assignments across your projects. Assign work from a project schedule.</p>
-      </div>
       {availability === 'setup-required' ? (
         <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
           Assignments are not set up in this environment yet. The directory above is unaffected.
@@ -79,6 +91,7 @@ export function AssignedWorkCard({ availability, items }: { availability: Assign
           ))}
         </ul>
       )}
-    </section>
+      </div>
+    </details>
   )
 }

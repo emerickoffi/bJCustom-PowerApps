@@ -5,7 +5,8 @@ export const ASSISTANT_LIMITS = {
   perOrgPerDay: 500,
   maxMessages: 12,
   maxMessageChars: 2000,
-  maxOutputTokens: 1200,
+  /** Raised from 1,200 for multi-record analysis; simple answers stay short through the instructions. */
+  maxOutputTokens: 1600,
   timeoutMs: 45_000,
 } as const
 

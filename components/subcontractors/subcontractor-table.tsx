@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Eye, FolderKanban, Mail, Pencil, Phone } from 'lucide-react'
+import { FolderKanban, Mail, Pencil, Phone } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { DIRECTORY_TH_TEXT, DIRECTORY_THEAD_ROW } from '@/lib/directory-table-styles'
@@ -86,13 +86,32 @@ function ContactLines({ row }: { row: SubcontractorCompany }) {
 function QualificationCell({ summary }: { summary: QualificationSummary | null }) {
   const v = vettingStatusOf(summary)
   const showProgress = summary && summary.mandatory_total > 0 && v !== 'new'
+  const pct = showProgress ? Math.round((summary.mandatory_satisfied / summary.mandatory_total) * 100) : 0
+  const expiring = (summary?.expiring_soon_count ?? 0) > 0
   return (
-    <div className="flex min-w-0 flex-col items-start gap-1">
+    <div className="flex min-w-0 flex-col items-start gap-1.5">
       <QualificationBadge summary={summary} />
       {showProgress && (
-        <span className="text-xs tabular-nums text-muted-foreground">
-          {summary.mandatory_satisfied}/{summary.mandatory_total} approved
-          {summary.next_expiration ? ` · exp. ${formatDate(summary.next_expiration)}` : ''}
+        <div className="flex w-full max-w-44 items-center gap-2">
+          <div
+            role="progressbar"
+            aria-label="Required items approved"
+            aria-valuemin={0}
+            aria-valuemax={summary.mandatory_total}
+            aria-valuenow={summary.mandatory_satisfied}
+            className="h-1 flex-1 overflow-hidden rounded-full bg-muted"
+          >
+            <div className="h-full rounded-full bg-primary/70" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+            {summary.mandatory_satisfied}/{summary.mandatory_total} approved
+          </span>
+        </div>
+      )}
+      {summary?.next_expiration && (
+        <span className={cn('text-xs tabular-nums', expiring ? 'font-medium text-warning-foreground' : 'text-muted-foreground')}>
+          {expiring ? 'Expires ' : 'Next exp. '}
+          {formatDate(summary.next_expiration)}
         </span>
       )}
     </div>
@@ -126,26 +145,26 @@ export function SubcontractorTable({ rows, projectsByCompany, qualificationByCom
         <Table className="table-fixed">
           <TableHeader>
             <TableRow className={DIRECTORY_THEAD_ROW}>
-              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[30%] pl-5")}>
+              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[27%] pl-5")}>
                 Company / Trade
               </TableHead>
               <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, showQualification ? "w-[20%]" : "w-[26%]")}>
-                Contact
+                Primary Contact
               </TableHead>
               {showQualification && (
-                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[16%]")}>
+                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[20%]")}>
                   Qualification
                 </TableHead>
               )}
               {showProjects && (
-                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[17%]")}>
-                  Projects
+                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[16%]")}>
+                  Assigned Projects
                 </TableHead>
               )}
-              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[10%]")}>
-                Status
+              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[11%]")}>
+                <span className="sr-only">Operational </span>Status
               </TableHead>
-              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[200px] pr-5 text-right")}>
+              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[112px] pr-5 text-right")}>
                 Actions
               </TableHead>
             </TableRow>
@@ -173,15 +192,7 @@ export function SubcontractorTable({ rows, projectsByCompany, qualificationByCom
                   <StatusBadge status={row.status} />
                 </TableCell>
                 <TableCell className="py-3.5 pr-4 text-right">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <Link
-                      href={`/subcontractors/${row.id}`}
-                      aria-label={`View ${row.company_name}`}
-                      className={inlineActionClass}
-                    >
-                      <Eye className="size-3.5" aria-hidden="true" />
-                      View
-                    </Link>
+                  <div className="flex items-center justify-end gap-1">
                     <Link
                       href={`/subcontractors/${row.id}/edit`}
                       aria-label={`Edit ${row.company_name}`}
@@ -194,7 +205,6 @@ export function SubcontractorTable({ rows, projectsByCompany, qualificationByCom
                       companyId={row.id}
                       companyName={row.company_name}
                       status={row.status}
-                      includeNavigation={false}
                     />
                   </div>
                 </TableCell>

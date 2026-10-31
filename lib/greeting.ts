@@ -7,6 +7,18 @@ export function greeting(now: Date = new Date(), timeZone: string = APP_TIME_ZON
   return 'Good evening'
 }
 
+/** "Sat, Oct 31, 2026" for an ISO calendar date, without any timezone shift. */
+export function formatShortDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number)
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(y, m - 1, d)))
+}
+
 /** "Friday, October 30" for an ISO calendar date, without any timezone shift. */
 export function formatLongDate(isoDate: string): string {
   const [y, m, d] = isoDate.split('-').map(Number)
