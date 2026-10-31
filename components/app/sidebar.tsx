@@ -37,11 +37,11 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'sticky top-0 hidden h-svh shrink-0 flex-col border-r bg-sidebar transition-[width] duration-200 ease-out lg:flex',
+        'sticky top-0 hidden h-svh shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-out lg:flex',
         collapsed ? 'w-[4.75rem]' : 'w-[17rem]',
       )}
     >
-      <div className={cn('flex h-24 items-center border-b border-sidebar-border/70', collapsed ? 'justify-center px-2' : 'px-6')}>
+      <div className={cn('flex h-24 items-center border-b border-sidebar-border', collapsed ? 'justify-center px-2' : 'px-7')}>
         <Link href={homeHref} aria-label={homeLabel} className={cn('block', collapsed ? 'w-auto' : 'w-44')}>
           {collapsed ? (
             <span className="flex size-10 items-center justify-center rounded-xl bg-primary font-serif text-base font-semibold italic text-champagne">
@@ -55,14 +55,14 @@ export function Sidebar({
       <div className={cn('flex-1 overflow-y-auto py-6', collapsed ? 'px-3' : 'px-4')}>
         <AppNav items={items} collapsed={collapsed} closedGroups={closedGroups} />
       </div>
-      <div className={cn('border-t border-sidebar-border/70 p-3', collapsed && 'flex justify-center')}>
+      <div className={cn('border-t border-sidebar-border p-3', collapsed && 'flex justify-center')}>
         <button
           type="button"
           onClick={toggle}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-expanded={!collapsed}
           className={cn(
-            'flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-sage/70 hover:text-primary',
+            'flex h-9 items-center gap-2 rounded-[0.625rem] px-3.5 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/45',
             collapsed ? 'w-9 justify-center px-0' : 'w-full',
           )}
         >
