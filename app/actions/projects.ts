@@ -173,6 +173,9 @@ export async function changeProjectStatusAction(_prev: ActionState, formData: Fo
   await requireManager()
   const parsed = statusChangeSchema.safeParse(formValues(formData))
   if (!parsed.success) return fromZodError(parsed.error)
+  if (parsed.data.status === 'completed') {
+    return { error: 'Use the completion review to mark a project Completed.' }
+  }
 
   const supabase = await createClient()
   const { data: project } = await supabase

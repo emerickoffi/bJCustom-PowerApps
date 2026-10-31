@@ -1,4 +1,5 @@
-import { formatLongDate, greeting } from '@/lib/greeting'
+import { CalendarDays } from 'lucide-react'
+import { formatLongDate, formatShortDate, greeting } from '@/lib/greeting'
 
 export function CommandHeader({
   firstName,
@@ -22,22 +23,22 @@ export function CommandHeader({
       : `${count} ${actionTotal === 1 && !actionTotalIsLowerBound ? 'thing needs' : 'things need'} your attention.`
 
   return (
-    <header className="flex flex-col gap-4 border-b pb-5 md:flex-row md:items-end md:justify-between">
-      <div className="flex min-w-0 flex-col gap-1.5">
-        <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <span className="h-px w-5 bg-champagne" aria-hidden="true" />
-          <time dateTime={today}>{formatLongDate(today)}</time>
-        </p>
-        <h1 className="text-pretty font-serif text-2xl font-semibold leading-tight text-foreground md:text-[1.75rem]">
-          {hello}
-          {summary && (
-            <>
-              {' '}
-              <span className="text-primary">{summary}</span>
-            </>
-          )}
-        </h1>
-      </div>
+    <header className="flex flex-col gap-1.5 border-b pb-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+      <h1 className="min-w-0 text-pretty font-serif text-2xl font-semibold leading-tight text-foreground md:text-[1.75rem]">
+        {hello}
+        {summary && (
+          <>
+            {' '}
+            <span className="text-primary">{summary}</span>
+          </>
+        )}
+      </h1>
+      <p className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-muted-foreground">
+        <CalendarDays className="size-3.5" aria-hidden="true" />
+        <time dateTime={today} title={formatLongDate(today)}>
+          {formatShortDate(today)}
+        </time>
+      </p>
     </header>
   )
 }

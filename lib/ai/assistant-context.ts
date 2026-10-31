@@ -649,7 +649,7 @@ export type ProjectHealthResult =
   | { found: false; data: Record<string, unknown> }
 
 /** Matches a project the user can access by exact number or partial name, within their organization. */
-async function findHealthProject(supabase: SupabaseClient, organizationId: string, term: string) {
+export async function findHealthProject(supabase: SupabaseClient, organizationId: string, term: string) {
   const cleaned = term.replace(/[^\p{L}\p{N} #.'-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)
   if (cleaned.length < 2) return { rows: [] as HealthProjectRow[], error: null }
   const like = `%${cleaned.replace(/[%_\\]/g, (c) => `\\${c}`)}%`

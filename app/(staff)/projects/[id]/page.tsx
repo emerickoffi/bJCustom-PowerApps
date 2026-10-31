@@ -6,6 +6,7 @@ import {
   ArrowRight,
   CalendarClock,
   CalendarRange,
+  CircleCheck,
   ClipboardCheck,
   FolderOpen,
   Hammer,
@@ -51,13 +52,17 @@ import { ProjectSectionScroll } from '@/components/projects/project-section-scro
 import { ProjectNextActions } from '@/components/projects/next-actions'
 import { buildProjectNextActions } from '@/lib/next-actions'
 import { todayIso } from '@/lib/schedule'
+import { showsCompletionReadiness } from '@/lib/completion-readiness'
+import { loadCompletionReadiness, loadCompletionRecord } from '@/lib/completion-readiness-data'
+import { CompletionReadinessPanel } from '@/components/projects/completion-readiness-panel'
+import { CompletedProjectPanel, type CompletedExceptionView } from '@/components/projects/completed-project-panel'
 
 export const metadata: Metadata = { title: 'Project' }
 
 function Fact({ icon: Icon, label, value }: { icon: typeof Wallet; label: string; value: string }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-champagne">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-champagne">
         <Icon className="size-4" aria-hidden="true" />
       </span>
       <div className="flex min-w-0 flex-col">
@@ -153,6 +158,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       : Promise.resolve({ data: [] as { document_id: string; status: string; created_at: string }[] }),
   ])
   const projectContacts = await projectContactsPromise
+  const isCompleted = project.status === 'completed'
+  const [readiness, completionRecord, warrantyRes] = await Promise.all([
+    showsCompletionReadiness(project.status) ? loadCompletionReadiness(supabase, id, features, manager) : Promise.resolve(null),
+    isCompleted ? loadCompletionRecord(supabase, id) : Promise.resolve(null),
+    isCompleted && features.warranty
+      ? supabase.from('project_warranties').select('start_date').eq('project_id', id).maybeSingle()
+      : Promise.resolve({ data: null as { start_date: string } | null }),
+  ])
+  const warrantyStart = warrantyRes.data?.start_date ?? null
 
   const nameFor = (userId: string | null) => {
     if (!userId) return null
@@ -211,18 +225,42 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .filter(Boolean)
       .join(' · ') || null
 
+  const completionReview = completionRecord?.availability === 'ready' ? completionRecord.review : null
+  const exceptionViews: CompletedExceptionView[] =
+    completionRecord?.availability === 'ready'
+      ? completionRecord.exceptions.map((e) => ({
+          id: e.id,
+          label: e.requirement_label,
+          detail: e.requirement_detail,
+          reason: e.reason,
+          justification: e.justification,
+          followUpName: nameFor(e.follow_up_user_id) ?? 'Team member',
+          targetDate: e.target_resolution_date,
+          evidence: e.evidence_reference,
+          approvedByName: nameFor(e.approved_by) ?? 'Administrator',
+          approvedAt: e.approved_at,
+          status: e.status,
+          resolvedByName: nameFor(e.resolved_by),
+          resolvedAt: e.resolved_at,
+          resolutionNote: e.resolution_note,
+          canResolve: manager || e.follow_up_user_id === session.userId,
+        }))
+      : []
+  const openExceptionCount = exceptionViews.filter((e) => e.status === 'open').length
+  const completionDate = (project.completion_date as string | null) ?? null
+
   return (
     <div className="flex flex-col gap-8">
       <ProjectSectionScroll />
       <section aria-labelledby="project-heading" className="overflow-hidden rounded-3xl bg-brand-deep text-white shadow-lift">
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-          <div className="flex flex-col gap-8 p-6 sm:p-8 lg:p-10">
-            <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-5 p-5 sm:p-6 lg:px-8 lg:py-7">
+            <div className="flex flex-col gap-2.5">
               <div className="flex flex-wrap items-center gap-2.5">
                 <span className="font-mono text-xs text-white/60">{project.project_number}</span>
                 <ProjectStatusBadge status={status} />
               </div>
-              <h1 id="project-heading" className="text-balance font-serif text-3xl font-semibold leading-tight md:text-4xl">
+              <h1 id="project-heading" className="text-balance font-serif text-2xl font-semibold leading-tight md:text-3xl">
                 {project.name}
               </h1>
               <p className="flex items-start gap-2 text-sm text-white/70">
@@ -230,22 +268,48 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 {formatAddress(project)}
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-6">
+            {isCompleted ? (
+              <div className="flex flex-col gap-2">
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <CircleCheck className="size-4 text-champagne" aria-hidden="true" />
+                  {completionDate ? `Completed ${formatDate(completionDate)}` : 'Completed · date not recorded'}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {features.warranty && (
+                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/85">
+                      {warrantyStart ? `Warranty phase since ${formatDate(warrantyStart)}` : 'Warranty not set up'}
+                    </span>
+                  )}
+                  {openExceptionCount > 0 && (
+                    <span className="flex items-center gap-1 rounded-full bg-champagne/20 px-2.5 py-0.5 text-xs font-medium text-champagne">
+                      <AlertTriangle className="size-3" aria-hidden="true" />
+                      {`${openExceptionCount} open completion ${openExceptionCount === 1 ? 'exception' : 'exceptions'}`}
+                    </span>
+                  )}
+                  {openIssues > 0 && (
+                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/85">
+                      {`${openIssues} open ${openIssues === 1 ? 'issue' : 'issues'}`}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+            <div className="flex flex-wrap items-center gap-4">
               {progress === null ? (
-                <span className="flex size-[104px] shrink-0 items-center justify-center rounded-full border-[8px] border-white/15 px-2 text-center text-[0.7rem] font-medium leading-tight text-white/70">
+                <span className="flex size-[72px] shrink-0 items-center justify-center rounded-full border-[6px] border-white/15 px-1.5 text-center text-[0.65rem] font-medium leading-tight text-white/70">
                   Not configured
                 </span>
               ) : (
-                <ProgressRing value={progress} label="Construction progress" tone="light" size={104} stroke={8} />
+                <ProgressRing value={progress} label="Construction progress" tone="light" size={72} stroke={6} />
               )}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex min-w-0 flex-col gap-1">
                 <span className="text-sm font-medium">
                   {progress === null
                     ? 'Construction progress not configured'
                     : `${completed} of ${counted.length} schedule steps complete`}
                 </span>
                 {progress === null && (
-                  <span className="max-w-xs text-sm text-white/65">
+                  <span className="max-w-sm text-xs text-white/65">
                     Progress is calculated from weighted schedule milestones. Initialize the construction schedule to begin tracking.
                   </span>
                 )}
@@ -265,10 +329,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 </div>
               </div>
             </div>
-            <div className="grid gap-4 border-t border-white/10 pt-6 sm:grid-cols-2 xl:grid-cols-4">
+            )}
+            <div className="grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-2 xl:grid-cols-4">
               <Fact icon={Wallet} label="Estimated budget" value={formatCents(project.estimated_budget_cents)} />
               <Fact icon={CalendarRange} label="Proposed start" value={formatDate(project.proposed_start_date)} />
-              <Fact icon={CalendarClock} label="Target completion" value={formatDate(project.target_completion_date)} />
+              {isCompleted ? (
+                <Fact icon={CalendarClock} label="Completed" value={completionDate ? formatDate(completionDate) : 'Not recorded'} />
+              ) : (
+                <Fact icon={CalendarClock} label="Target completion" value={formatDate(project.target_completion_date)} />
+              )}
               <Fact
                 icon={ClipboardCheck}
                 label="Homeowner"
@@ -324,7 +393,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               )}
             </div>
           </div>
-          <div className="relative min-h-56 lg:min-h-full">
+          <div className="relative min-h-48 sm:min-h-56 lg:min-h-full">
             {cover ? (
               <CoverImage
                 src={cover.url}
@@ -348,6 +417,28 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       </section>
 
       <ProjectNextActions items={nextActions.items} hiddenCount={nextActions.hiddenCount} />
+
+      {readiness && <CompletionReadinessPanel summary={readiness} projectId={project.id} canReview={manager} />}
+      {isCompleted && (
+        <CompletedProjectPanel
+          projectId={project.id}
+          completionDate={completionDate}
+          warrantyStart={warrantyStart}
+          review={
+            completionRecord?.availability !== 'ready'
+              ? 'unavailable'
+              : completionReview
+                ? {
+                    outcome: completionReview.outcome,
+                    approvedByName: nameFor(completionReview.approved_by) ?? 'Team member',
+                    approvedAt: completionReview.approved_at,
+                    note: completionReview.note,
+                  }
+                : 'legacy'
+          }
+          exceptions={exceptionViews}
+        />
+      )}
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="flex flex-col gap-8">
