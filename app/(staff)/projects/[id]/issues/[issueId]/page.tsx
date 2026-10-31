@@ -119,7 +119,12 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
     issue.homeowner_validated_by,
     issue.reported_by,
   ])
-  const reporter = reporterRes.data ? fullName(reporterRes.data.first_name, reporterRes.data.last_name) : names.get(issue.reported_by) ?? 'Homeowner'
+  const staffReported = issue.reported_source === 'staff'
+  const reporter = staffReported
+    ? `${staff.find((s) => s.user_id === issue.reported_by)?.full_name || names.get(issue.reported_by) || 'Team member'} · Builder`
+    : reporterRes.data
+      ? fullName(reporterRes.data.first_name, reporterRes.data.last_name)
+      : names.get(issue.reported_by) ?? 'Homeowner'
   const nameFor = (userId: string | null) => {
     if (!userId) return null
     if (userId === issue.reported_by || userId === issue.homeowner_validated_by) return reporter
@@ -198,7 +203,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
           <Section
             id="observation-heading"
             step={1}
-            title="Homeowner observation"
+            title={staffReported ? 'Builder observation' : 'Homeowner observation'}
             aside={
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Lock className="size-3.5" aria-hidden="true" />
@@ -218,7 +223,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
             </blockquote>
             <div className="flex flex-col gap-2">
               <Label>Original photos &amp; video</Label>
-              <MediaGrid evidence="original" items={toMedia('original')} emptyLabel="The homeowner did not attach any files." />
+              <MediaGrid evidence="original" items={toMedia('original')} emptyLabel={staffReported ? 'No files were attached during the walkthrough.' : 'The homeowner did not attach any files.'} />
             </div>
             <div className="flex flex-col gap-3 border-t pt-5">
               <div className="flex flex-col gap-1">

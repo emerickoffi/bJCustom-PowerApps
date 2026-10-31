@@ -12,6 +12,8 @@ import { withItemNumbers } from '@/lib/punch-list'
 import { getStaffMembers } from '@/lib/queries'
 import { PunchListTable, type PunchListRow } from '@/components/walkthroughs/punch-list-table'
 import { formatDate, formatDateTime } from '@/lib/format'
+import { Button } from '@/components/ui/button'
+import { StartWalkthroughButton } from '@/components/walkthroughs/start-walkthrough-button'
 
 export const metadata: Metadata = { title: 'Walkthrough' }
 
@@ -29,7 +31,7 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
     .maybeSingle()
   if (!walkthrough) notFound()
 
-  const [itemsRes, responsesRes, issuesRes, staff] = await Promise.all([
+  const [itemsRes, responsesRes, issuesRes, staff, draftFilesRes] = await Promise.all([
     // select('*') keeps this page working before and after the item_number/location migration.
     supabase.from('walkthrough_items').select('*').eq('walkthrough_id', walkthroughId).order('sort_order'),
     supabase.from('walkthrough_responses').select('item_id, response').eq('walkthrough_id', walkthroughId),
@@ -38,6 +40,7 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
       .select('id, item_id, status, priority, due_date, responsible_user_id, updated_at')
       .eq('walkthrough_id', walkthroughId),
     getStaffMembers(session.organizationId, ['org_admin', 'project_manager', 'builder_staff']),
+    supabase.from('walkthrough_attachments').select('id', { count: 'exact', head: true }).eq('walkthrough_id', walkthroughId),
   ])
 
   const status = walkthrough.status as WalkthroughStatus
@@ -70,6 +73,15 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
     return acc
   }, {})
   const project = walkthrough.project as { id: string; name: string; project_number: string }
+  const staffLed = walkthrough.conducted_by === 'staff'
+  const isLead = staffLed && walkthrough.conducted_by_user === session.userId
+  const leadName = staffLed
+    ? isLead
+      ? 'You'
+      : (walkthrough.conducted_by_user && staffName.get(walkthrough.conducted_by_user)) || 'A team member'
+    : 'Homeowner'
+  const homeownerStarted = !staffLed && ((responsesRes.data?.length ?? 0) > 0 || (draftFilesRes.count ?? 0) > 0)
+  const canConduct = ['org_admin', 'project_manager', 'builder_staff'].includes(session.role)
 
   return (
     <div className="flex flex-col gap-8">
@@ -89,6 +101,7 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
       <section className="rounded-xl border bg-card p-5">
         <DetailList
           items={[
+            { label: 'Conducted by', value: staffLed ? `${leadName} · Builder-led` : 'Homeowner' },
             { label: 'Scheduled', value: formatDate(walkthrough.scheduled_date) },
             { label: 'Progress', value: `${answered} of ${items.length} items answered` },
             { label: 'Submitted', value: formatDateTime(walkthrough.submitted_at) },
@@ -101,9 +114,35 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
       </section>
 
       {status !== 'submitted' && (
-        <p className="rounded-lg bg-muted px-4 py-3 text-sm text-muted-foreground">
-          The homeowner&apos;s draft notes stay private until they submit. Issues will appear here once the walkthrough is submitted.
-        </p>
+        <section aria-labelledby="conduct-heading" className="flex flex-col gap-4 rounded-xl border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <h2 id="conduct-heading" className="font-medium text-foreground">
+              {staffLed ? (isLead ? 'You are leading this walkthrough' : `${leadName} is leading this walkthrough`) : 'Homeowner-led walkthrough'}
+            </h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {staffLed
+                ? 'Findings stay a draft until the lead submits. The homeowner sees them as builder observations afterwards.'
+                : homeownerStarted
+                  ? 'The homeowner has started this checklist. Their draft notes stay private until they submit, and cannot be replaced.'
+                  : 'The homeowner has not started yet. You can conduct it on site instead; the homeowner will no longer be able to fill it in.'}
+            </p>
+          </div>
+          {canConduct && (
+            <div className="shrink-0">
+              {isLead ? (
+                <Button size="lg" className="h-11" render={<Link href={`/projects/${project.id}/walkthroughs/${walkthroughId}/conduct`} />} nativeButton={false}>
+                  Continue walkthrough
+                </Button>
+              ) : staffLed ? (
+                canManage(session.role) && (
+                  <StartWalkthroughButton projectId={project.id} walkthroughId={walkthroughId} label="Take over as lead" takeOver variant="outline" />
+                )
+              ) : (
+                !homeownerStarted && <StartWalkthroughButton projectId={project.id} walkthroughId={walkthroughId} label="Conduct walkthrough" />
+              )}
+            </div>
+          )}
+        </section>
       )}
 
       {punchRows.length > 0 && (
