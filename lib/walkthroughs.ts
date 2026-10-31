@@ -51,6 +51,7 @@ export type IssueEventType =
   | 'homeowner_accepted'
   | 'homeowner_rejected'
   | 'repair_photo_added'
+  | 'evidence_photo_added'
   | 'builder_reply'
   | 'homeowner_comment'
 

@@ -8,7 +8,7 @@ import { signMediaPaths } from '@/lib/media'
 import { PageHeader, DetailList } from '@/components/shared/page-header'
 import { MediaGrid } from '@/components/walkthroughs/media-uploader'
 import { IssueStatusBadge, PriorityBadge, ValidationBadge } from '@/components/walkthroughs/badges'
-import { ApproveRepairButton, IssueNoteForm, IssueUpdateForm, MissingRepairPhotosReminder, RepairPhotoUploader } from '@/components/walkthroughs/issue-management'
+import { ApproveRepairButton, IssueNoteForm, IssueUpdateForm, MissingRepairPhotosReminder, RepairPhotoUploader, SupplementalEvidenceUploader } from '@/components/walkthroughs/issue-management'
 import { IssueTimeline } from '@/components/walkthroughs/issue-timeline'
 import { IssueConversation, type ConversationMessage } from '@/components/walkthroughs/issue-conversation'
 import { fullName, formatDate, formatDateTime } from '@/lib/format'
@@ -106,6 +106,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
     attachments
       .filter((a) => a.attachment_kind === kind)
       .map((a) => ({ id: a.id, storage_path: a.storage_path, file_name: a.file_name, media_kind: a.media_kind as MediaKind, url: urls.get(a.storage_path) ?? null }))
+  const supplemental = attachments.filter((a) => a.attachment_kind === 'supplemental')
   const allNotes = notesRes.data ?? []
   const notes = allNotes.filter((n) => n.visibility !== 'shared')
   const sharedNotes = allNotes.filter((n) => n.visibility === 'shared').reverse()
@@ -113,6 +114,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
   const names = await getProfileNames([
     ...notes.map((n) => n.created_by),
     ...events.map((e) => e.actor_id),
+    ...supplemental.map((a) => a.uploaded_by),
     issue.builder_approved_by,
     issue.homeowner_validated_by,
     issue.reported_by,
@@ -217,6 +219,28 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
             <div className="flex flex-col gap-2">
               <Label>Original photos &amp; video</Label>
               <MediaGrid evidence="original" items={toMedia('original')} emptyLabel="The homeowner did not attach any files." />
+            </div>
+            <div className="flex flex-col gap-3 border-t pt-5">
+              <div className="flex flex-col gap-1">
+                <Label>Supplemental issue evidence · staff</Label>
+                <p className="text-sm text-muted-foreground">
+                  Extra photos of the original issue. Added alongside the homeowner&apos;s evidence, never replacing it.
+                </p>
+              </div>
+              <MediaGrid evidence="supplemental" items={toMedia('supplemental')} emptyLabel="No supplemental photos yet." />
+              {supplemental.length > 0 && (
+                <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+                  {supplemental.map((a) => (
+                    <li key={a.id}>
+                      <span className="font-medium text-foreground">{a.file_name}</span> · Added by {nameFor(a.uploaded_by) ?? 'Team member'} on{' '}
+                      {formatDateTime(a.created_at)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!closed && (
+                <SupplementalEvidenceUploader issueId={issue.id} organizationId={session.organizationId} userId={session.userId} />
+              )}
             </div>
           </Section>
 
