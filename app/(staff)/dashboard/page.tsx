@@ -30,6 +30,8 @@ import { getOrgFeatures } from '@/lib/features'
 import { getDashboardCardDetails } from '@/lib/dashboard-cards'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { getActionItems } from '@/lib/attention-data'
+import { getFinancialMetrics } from '@/lib/financial-metrics-data'
+import { FinancialKpis } from '@/components/dashboard/financial-kpis'
 import type { DashboardSectionId } from '@/lib/dashboard-sections'
 
 export const metadata: Metadata = { title: 'Dashboard' }
@@ -112,6 +114,15 @@ export default async function DashboardPage({
     getActionItems(orgId, session.userId, { manager, features }),
     loadProjectHealth(orgId, session.userId, active.map((r) => r.id), features),
   ])
+  const financials = manager
+    ? await getFinancialMetrics(orgId, {
+        features,
+        today: agendaData.today,
+        signedAwaitingEstimateIds: new Set(
+          attention.items.filter((i) => i.category === 'approvals' && i.entityType === 'estimate').map((i) => i.entityId),
+        ),
+      })
+    : null
   const weekActivityCount = new Set(agendaData.agenda.week.map((e) => e.id)).size
 
   return (
@@ -177,6 +188,10 @@ export default async function DashboardPage({
         className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
         data-dashboard-section={'kpis' satisfies DashboardSectionId}
       >
+        {financials ? (
+          <FinancialKpis metrics={financials} scheduleRisk={health.scheduleRisk} />
+        ) : (
+          <>
         <StatCard label="Active projects" value={active.length} href="/projects" icon={FolderKanban} hint="Planning through punch list" />
         <StatCard
           label="Action items"
@@ -200,6 +215,8 @@ export default async function DashboardPage({
           icon={UserPlus}
           hint="Prospective homeowners"
         />
+          </>
+        )}
       </section>
 
       <div className="grid items-start gap-6 xl:grid-cols-2">

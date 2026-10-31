@@ -9,6 +9,8 @@ import {
   type ProjectHealth,
   type ProjectHealthSignals,
 } from '@/lib/project-health'
+import { evaluateScheduleRisk, isEvaluated, isScheduleRisk, type ScheduleRisk } from '@/lib/schedule-risk'
+import { available, disabled, unavailable, type Metric } from '@/lib/financial-metrics'
 
 type ProjectRef = { name: string } | { name: string }[] | null
 const projectName = (p: ProjectRef) => (Array.isArray(p) ? p[0]?.name : p?.name) ?? null
@@ -70,8 +72,17 @@ export async function loadProjectHealth(
   userId: string,
   projectIds: string[],
   features: Features,
-): Promise<{ projects: HealthProject[]; total: number; flagged: number }> {
-  if (projectIds.length === 0) return { projects: [], total: 0, flagged: 0 }
+): Promise<{ projects: HealthProject[]; total: number; flagged: number; scheduleRisk: ScheduleRiskSummary }> {
+  if (projectIds.length === 0) {
+    return {
+      projects: [],
+      total: 0,
+      flagged: 0,
+      scheduleRisk: features.schedule
+        ? available({ atRisk: 0, critical: 0, evaluated: 0, headline: null, projectId: null })
+        : disabled('Schedule module is off'),
+    }
+  }
   const supabase = await createClient()
   const today = await getOrgToday(orgId)
   const empty = Promise.resolve({ data: [] as never[] })
@@ -79,7 +90,7 @@ export async function loadProjectHealth(
   const [projectsRes, activitiesRes, issuesRes, notificationsRes, logsRes] = await Promise.all([
     supabase
       .from('projects')
-      .select('id, name, project_number, status')
+      .select('id, name, project_number, status, proposed_start_date')
       .eq('organization_id', orgId)
       .in('id', projectIds),
     features.schedule
@@ -155,10 +166,64 @@ export async function loadProjectHealth(
   }
   for (const r of (logsRes.data ?? []) as { project_id: string }[]) get(r.project_id).reportedDelayCount++
 
-  const projects: HealthProject[] = ((projectsRes.data ?? []) as Omit<HealthProject, 'health'>[])
-    .map((p) => ({ ...p, health: computeProjectHealth(get(p.id)) }))
+  const rows = (projectsRes.data ?? []) as (Omit<HealthProject, 'health'> & { proposed_start_date: string | null })[]
+  const scheduleReadable = features.schedule && !('error' in activitiesRes && activitiesRes.error) && !projectsRes.error
+  const risks = new Map<string, ScheduleRisk>()
+  if (scheduleReadable) {
+    for (const p of rows) {
+      const s = get(p.id)
+      const risk = evaluateScheduleRisk({ ...s, status: p.status, proposedStartDate: p.proposed_start_date }, today)
+      risks.set(p.id, risk)
+      if (risk.level === 'warning' && s.delayedCount === 0 && s.overdueCount === 0) s.startRiskReason = risk.reason
+    }
+  }
+
+  const projects: HealthProject[] = rows
+    .map(({ proposed_start_date: _proposedStart, ...p }) => ({ ...p, health: computeProjectHealth(get(p.id)) }))
     .sort((a, b) => compareHealth(a.health.level, b.health.level) || a.name.localeCompare(b.name))
 
   const flagged = projects.filter((p) => p.health.level === 'at_risk' || p.health.level === 'needs_attention').length
-  return { projects: projects.slice(0, HEALTH_VISIBLE), total: projects.length, flagged }
+  return {
+    projects: projects.slice(0, HEALTH_VISIBLE),
+    total: projects.length,
+    flagged,
+    scheduleRisk: summarizeScheduleRisk(features.schedule, scheduleReadable, rows, risks),
+  }
+}
+
+export type ScheduleRiskSummary = Metric<{
+  atRisk: number
+  critical: number
+  evaluated: number
+  headline: string | null
+  /** The single at-risk project, when exactly one, so the card can deep-link to its schedule. */
+  projectId: string | null
+}>
+
+function summarizeScheduleRisk(
+  enabled: boolean,
+  readable: boolean,
+  rows: { id: string; name: string }[],
+  risks: Map<string, ScheduleRisk>,
+): ScheduleRiskSummary {
+  if (!enabled) return disabled('Schedule module is off')
+  if (!readable) return unavailable('Schedule records could not be loaded')
+  const flagged = rows
+    .flatMap((p) => {
+      const risk = risks.get(p.id)
+      return risk && isScheduleRisk(risk.level) ? [{ p, risk }] : []
+    })
+    .sort((a, b) => (a.risk.level === b.risk.level ? 0 : a.risk.level === 'critical' ? -1 : 1))
+  const evaluated = rows.filter((p) => {
+    const risk = risks.get(p.id)
+    return !!risk && isEvaluated(risk.level)
+  }).length
+  const top = flagged[0]
+  return available({
+    atRisk: flagged.length,
+    critical: flagged.filter((f) => f.risk.level === 'critical').length,
+    evaluated,
+    headline: top ? `${top.p.name}: ${top.risk.reason.charAt(0).toLowerCase()}${top.risk.reason.slice(1)}` : null,
+    projectId: flagged.length === 1 ? top.p.id : null,
+  })
 }

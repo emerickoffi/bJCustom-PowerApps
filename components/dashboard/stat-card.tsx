@@ -21,7 +21,7 @@ export function StatCard({
   accent = 'primary',
 }: {
   label: string
-  value: number
+  value: number | string
   href: string
   icon?: React.ComponentType<{ className?: string }>
   hint?: string

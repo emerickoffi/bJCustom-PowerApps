@@ -22,6 +22,8 @@ export type ProjectHealthSignals = {
   openIssueCount: number
   pendingActionCount: number
   reportedDelayCount: number
+  /** Verified start-readiness warning from the stage-aware schedule rules (lib/schedule-risk). */
+  startRiskReason?: string | null
 }
 
 export type ProjectHealth = { level: HealthLevel; reasons: string[] }
@@ -50,6 +52,7 @@ export function computeProjectHealth(s: ProjectHealthSignals): ProjectHealth {
       attention.push(text)
     }
   }
+  if (s.startRiskReason) attention.push(s.startRiskReason)
   if (s.openIssueCount > 0) attention.push(`${plural(s.openIssueCount, 'open punch list issue')}`)
   if (s.pendingActionCount > 0) attention.push(`${plural(s.pendingActionCount, 'pending action')} for you`)
   if (s.reportedDelayCount > 0) attention.push(`${plural(s.reportedDelayCount, 'delay')} reported in Daily Logs this week`)
