@@ -128,6 +128,20 @@ export function isEditableStatus(status: ChangeOrderStatus) {
   return status === 'draft' || status === 'internal_review'
 }
 
+/** The builder's next step for an open change order; closed statuses need nothing. */
+export function nextChangeOrderAction(status: ChangeOrderStatus): string | null {
+  switch (status) {
+    case 'draft':
+      return 'Submit for internal review'
+    case 'internal_review':
+      return 'Send to homeowner'
+    case 'awaiting_homeowner':
+      return 'Record homeowner decision'
+    default:
+      return null
+  }
+}
+
 /** Transitions offered in the UI; mirrors the database guard, which remains authoritative. */
 export function allowedTransitions(status: ChangeOrderStatus): ChangeOrderStatus[] {
   switch (status) {
