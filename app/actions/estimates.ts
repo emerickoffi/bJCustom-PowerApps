@@ -249,6 +249,54 @@ export async function deleteLineItemAction(estimateId: string, itemId: string): 
   return { success: 'Line item removed.' }
 }
 
+const cents = z.number().int().min(0).max(1_000_000_000_000)
+const sheetItemSchema = z.object({
+  id: z.uuid().nullable(),
+  category: z.enum(ESTIMATE_CATEGORIES),
+  description: z.string().trim().min(1, 'Describe the item').max(300),
+  quantity: z.string().trim().regex(/^\d{1,10}(\.\d{1,3})?$/, 'Invalid quantity'),
+  unit: z.string().trim().min(1).max(20),
+  material_unit_cents: cents,
+  labor_unit_cents: cents,
+  other_unit_cents: cents,
+  is_allowance: z.boolean(),
+  notes: z.string().trim().max(1000).nullable(),
+})
+const sheetSchema = z.array(sheetItemSchema).max(1000, 'An estimate can have at most 1,000 line items')
+
+export type SaveSheetResult = { ok: true; updatedAt: string } | { ok: false; error: string; rowIndex?: number }
+
+/** Saves the whole line-item grid in one transaction (see save_estimate_line_items). */
+export async function saveEstimateLineItemsAction(
+  estimateId: string,
+  expectedUpdatedAt: string,
+  items: unknown,
+): Promise<SaveSheetResult> {
+  await requireManager()
+  if (!uuid.safeParse(estimateId).success) return { ok: false, error: 'Invalid estimate.' }
+  const parsed = sheetSchema.safeParse(items)
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]
+    const rowIndex = typeof issue?.path[0] === 'number' ? issue.path[0] : undefined
+    return {
+      ok: false,
+      error: rowIndex === undefined ? (issue?.message ?? 'Invalid line items.') : `Row ${rowIndex + 1}: ${issue.message}`,
+      rowIndex,
+    }
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('save_estimate_line_items', {
+    p_estimate: estimateId,
+    p_items: parsed.data,
+    p_expected_updated_at: expectedUpdatedAt,
+  })
+  if (error) return { ok: false, error: friendlyDbError(error) }
+
+  revalidateEstimate(estimateId)
+  return { ok: true, updatedAt: String(data) }
+}
+
 const simpleTransitions = ['draft', 'internal_review', 'submitted'] as const
 
 export async function changeEstimateStatusAction(

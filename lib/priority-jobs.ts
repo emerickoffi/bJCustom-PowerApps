@@ -1,4 +1,4 @@
-import type { ProjectStatus } from './domain.ts'
+import { isStatusTransitionAllowed, PROJECT_PIPELINE, type ProjectStatus } from './domain.ts'
 import type { HealthLevel, ProjectHealth } from './project-health.ts'
 import { rankPortfolio, type PortfolioRow, type PortfolioSignals } from './portfolio.ts'
 
@@ -20,6 +20,24 @@ export function rankPriorityJobs(
   const position = new Map(ordered.map((id, i) => [id, i]))
   const rank = (id: string) => HEALTH_RANK[health.get(id)?.level ?? 'on_track'] ?? 2
   return [...ordered].sort((a, b) => rank(a) - rank(b) || position.get(a)! - position.get(b)!).slice(0, limit)
+}
+
+export type NextLifecycleStage =
+  | { kind: 'stage'; status: ProjectStatus }
+  | { kind: 'final' }
+  | { kind: 'resume' }
+  | { kind: 'none' }
+
+/**
+ * The next stage in the configured pipeline (PROJECT_PIPELINE), confirmed against the same transition rule the database
+ * enforces. Later stages may also be permitted; this reports the sequence, not a mandatory step.
+ */
+export function nextLifecycleStage(status: ProjectStatus): NextLifecycleStage {
+  if (status === 'completed') return { kind: 'final' }
+  if (status === 'on_hold') return { kind: 'resume' }
+  const index = PROJECT_PIPELINE.indexOf(status)
+  const next = index >= 0 ? PROJECT_PIPELINE[index + 1] : undefined
+  return next && isStatusTransitionAllowed(status, next) ? { kind: 'stage', status: next } : { kind: 'none' }
 }
 
 export type StageGroup = 'pipeline' | 'preconstruction' | 'construction' | 'closeout' | 'completed' | 'on_hold' | 'cancelled'
