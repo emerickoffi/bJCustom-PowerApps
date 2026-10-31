@@ -144,6 +144,7 @@ export default async function SubcontractorDetailPage({
         events={qualification.events}
         isAdmin={session.role === 'org_admin'}
         today={todayIn(APP_TIME_ZONE)}
+        contactCount={businessCompany?.contacts?.length ?? 0}
       />
 
       <CompanyContacts

@@ -179,9 +179,40 @@ export async function reviewItemAction(input: z.input<typeof reviewSchema>): Pro
   return { ok: true, data: { state: String(data) } }
 }
 
+const noteSchema = z.object({ companyId: uuid, notes: shortText(2000) })
+
+export async function requestDocumentsAction(input: z.input<typeof noteSchema>): Promise<Result> {
+  const parsed = noteSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the request details.' }
+  const ctx = await managerContext()
+  if (!ctx.ok) return ctx
+  const { error } = await ctx.supabase.rpc('request_subcontractor_documents', {
+    p_company: parsed.data.companyId,
+    p_notes: parsed.data.notes || null,
+  })
+  if (error) return { ok: false, error: rpcError(error) }
+  refresh(parsed.data.companyId)
+  return { ok: true, data: undefined }
+}
+
+export async function addVettingNoteAction(input: z.input<typeof noteSchema>): Promise<Result> {
+  const parsed = noteSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the note.' }
+  if (!parsed.data.notes) return { ok: false, error: 'Enter a note.' }
+  const ctx = await managerContext()
+  if (!ctx.ok) return ctx
+  const { error } = await ctx.supabase.rpc('add_subcontractor_vetting_note', {
+    p_company: parsed.data.companyId,
+    p_notes: parsed.data.notes,
+  })
+  if (error) return { ok: false, error: rpcError(error) }
+  refresh(parsed.data.companyId)
+  return { ok: true, data: undefined }
+}
+
 const decisionSchema = z.object({
   companyId: uuid,
-  outcome: z.enum(['approved', 'not_cleared']),
+  outcome: z.enum(['approved', 'conditional', 'not_cleared']),
   notes: shortText(2000),
 })
 

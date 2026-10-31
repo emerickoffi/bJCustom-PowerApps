@@ -3,7 +3,10 @@ import assert from 'node:assert/strict'
 import {
   assignmentWarning,
   buildQualificationAttention,
+  compareByQualification,
   daysUntil,
+  parseQualificationSort,
+  vettingStatusOf,
   expiryTier,
   matchesQualificationFilter,
   parseQualificationFilter,
@@ -17,6 +20,13 @@ function summary(overrides: Partial<QualificationSummary> = {}): QualificationSu
   return {
     subcontractor_company_id: 'c1',
     status: 'pending',
+    vetting_status: 'in_review',
+    completion_percent: 60,
+    activated_at: null,
+    requested_at: '2026-10-01T00:00:00Z',
+    progressed_count: 6,
+    optional_open_count: 0,
+    decision_notes: null,
     started_at: '2026-10-01T00:00:00Z',
     mandatory_total: 10,
     mandatory_satisfied: 6,
@@ -39,17 +49,46 @@ function summary(overrides: Partial<QualificationSummary> = {}): QualificationSu
 }
 
 test('badge labels and tones follow the database status', () => {
-  assert.deepEqual(qualificationBadge(null), { label: 'Not Started', tone: 'neutral' })
-  assert.deepEqual(qualificationBadge(summary()), { label: 'Pending 6/10', tone: 'warning' })
-  assert.deepEqual(qualificationBadge(summary({ status: 'qualified' })), { label: 'Qualified', tone: 'success' })
-  assert.deepEqual(qualificationBadge(summary({ status: 'not_cleared' })), { label: 'Not Cleared', tone: 'danger' })
+  assert.deepEqual(qualificationBadge(null), { label: 'New', tone: 'neutral' })
+  assert.deepEqual(qualificationBadge(summary()), { label: 'In Review', tone: 'info' })
+  assert.deepEqual(qualificationBadge(summary({ vetting_status: 'missing_items' })), { label: 'Missing Items', tone: 'warning' })
+  assert.deepEqual(qualificationBadge(summary({ vetting_status: 'conditional' })), { label: 'Conditional', tone: 'warning' })
+  assert.deepEqual(qualificationBadge(summary({ vetting_status: 'qualified', status: 'qualified' })), { label: 'Qualified', tone: 'success' })
+  assert.deepEqual(qualificationBadge(summary({ vetting_status: 'not_qualified', status: 'not_cleared' })), {
+    label: 'Not Qualified',
+    tone: 'danger',
+  })
+})
+
+test('vetting status falls back to the coarse status for older rows', () => {
+  assert.equal(vettingStatusOf({ status: 'qualified' }), 'qualified')
+  assert.equal(vettingStatusOf({ status: 'not_cleared' }), 'not_qualified')
+  assert.equal(vettingStatusOf({ status: 'pending' }), 'in_review')
+  assert.equal(vettingStatusOf(undefined), 'new')
+})
+
+test('legacy filter links still resolve', () => {
+  assert.equal(parseQualificationFilter('pending'), 'in_review')
+  assert.equal(parseQualificationFilter('not_cleared'), 'not_qualified')
+  assert.equal(parseQualificationSort('bogus'), 'name')
+  assert.equal(parseQualificationSort('expiration'), 'expiration')
+})
+
+test('sorting ranks problems first and soonest expirations first', () => {
+  const blocked = summary({ vetting_status: 'not_qualified' })
+  const done = summary({ vetting_status: 'qualified' })
+  assert.ok(compareByQualification('status', blocked, done) < 0)
+  assert.ok(compareByQualification('completion', summary({ completion_percent: 90 }), summary({ completion_percent: 10 })) < 0)
+  assert.ok(compareByQualification('expiration', summary({ next_expiration: '2026-11-01' }), summary()) < 0)
+  assert.equal(compareByQualification('name', blocked, done), 0)
 })
 
 test('filters treat companies without a summary as Not Started', () => {
   assert.equal(parseQualificationFilter('qualified'), 'qualified')
   assert.equal(parseQualificationFilter('bogus'), null)
   assert.equal(matchesQualificationFilter(undefined, 'not_started'), true)
-  assert.equal(matchesQualificationFilter(undefined, 'pending'), false)
+  assert.equal(matchesQualificationFilter(undefined, 'in_review'), false)
+  assert.equal(matchesQualificationFilter(summary({ vetting_status: 'requested' }), 'not_started'), true)
   assert.equal(matchesQualificationFilter(summary({ status: 'qualified', expiring_soon_count: 1 }), 'expiring_soon'), true)
   assert.equal(matchesQualificationFilter(summary({ status: 'qualified' }), 'expiring_soon'), false)
 })

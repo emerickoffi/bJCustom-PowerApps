@@ -9,7 +9,8 @@ import { companyInitials, projectCountLabel } from '@/lib/subcontractor-director
 import { SubcontractorRowActions } from '@/components/subcontractors/subcontractor-row-actions'
 import { SubcontractorStatusBadge } from '@/components/subcontractors/subcontractor-status-badge'
 import { QualificationBadge } from '@/components/subcontractors/qualification-badge'
-import type { QualificationSummary } from '@/lib/subcontractor-qualification'
+import { vettingStatusOf, type QualificationSummary } from '@/lib/subcontractor-qualification'
+import { formatDate } from '@/lib/format'
 
 type Props = {
   rows: SubcontractorCompany[]
@@ -82,6 +83,22 @@ function ContactLines({ row }: { row: SubcontractorCompany }) {
   )
 }
 
+function QualificationCell({ summary }: { summary: QualificationSummary | null }) {
+  const v = vettingStatusOf(summary)
+  const showProgress = summary && summary.mandatory_total > 0 && v !== 'new'
+  return (
+    <div className="flex min-w-0 flex-col items-start gap-1">
+      <QualificationBadge summary={summary} />
+      {showProgress && (
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {summary.mandatory_satisfied}/{summary.mandatory_total} approved
+          {summary.next_expiration ? ` · exp. ${formatDate(summary.next_expiration)}` : ''}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function ProjectsSummary({ projects }: { projects: AssignedProject[] | undefined }) {
   const count = projects?.length ?? 0
   if (!count) return <span className="text-sm text-muted-foreground/80">No projects</span>
@@ -112,11 +129,11 @@ export function SubcontractorTable({ rows, projectsByCompany, qualificationByCom
               <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[30%] pl-5")}>
                 Company / Trade
               </TableHead>
-              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, showQualification ? "w-[22%]" : "w-[26%]")}>
+              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, showQualification ? "w-[20%]" : "w-[26%]")}>
                 Contact
               </TableHead>
               {showQualification && (
-                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[14%]")}>
+                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[16%]")}>
                   Qualification
                 </TableHead>
               )}
@@ -144,7 +161,7 @@ export function SubcontractorTable({ rows, projectsByCompany, qualificationByCom
                 </TableCell>
                 {showQualification && (
                   <TableCell className="py-3.5">
-                    <QualificationBadge summary={qualificationByCompany[row.id] ?? null} />
+                    <QualificationCell summary={qualificationByCompany[row.id] ?? null} />
                   </TableCell>
                 )}
                 {showProjects && (
