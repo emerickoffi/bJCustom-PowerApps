@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { MAX_MEDIA_BYTES, MEDIA_BUCKET, mediaKindFor, safeFileName, type MediaItem, type MediaKind } from '@/lib/walkthroughs'
 
-export type EvidenceKind = 'original' | 'repair'
+export type EvidenceKind = 'original' | 'supplemental' | 'repair'
 
 export type MediaMeta = {
   storage_path: string
@@ -196,6 +196,7 @@ export function MediaUploader({
 
 const EVIDENCE = {
   original: { chip: 'Before', title: 'Original issue photo', className: 'bg-warning text-warning-foreground', frame: 'border-warning/60' },
+  supplemental: { chip: 'Added', title: 'Supplemental issue photo', className: 'bg-accent text-accent-foreground', frame: 'border-accent' },
   repair: { chip: 'After', title: 'Repair photo', className: 'bg-primary text-primary-foreground', frame: 'border-primary/60' },
 } as const
 

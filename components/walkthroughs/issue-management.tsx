@@ -165,6 +165,39 @@ export function IssueNoteForm({
   )
 }
 
+export function SupplementalEvidenceUploader({
+  issueId,
+  organizationId,
+  userId,
+}: {
+  issueId: string
+  organizationId: string
+  userId: string
+}) {
+  const router = useRouter()
+  const [items, setItems] = useState<MediaItem[]>([])
+  return (
+    <MediaUploader
+      label="Add issue photos"
+      evidence="supplemental"
+      items={items}
+      onItemsChange={(next) => {
+        setItems(next)
+        router.refresh()
+      }}
+      pathFor={(name) => `issues/${issueId}/supplemental/${name}`}
+      register={async (meta) => {
+        const { data, error } = await createClient()
+          .from('issue_attachments')
+          .insert({ ...meta, organization_id: organizationId, issue_id: issueId, attachment_kind: 'supplemental', uploaded_by: userId })
+          .select('id')
+          .single()
+        return error ? { error: 'The photo uploaded but could not be linked to the issue.' } : { id: data.id }
+      }}
+    />
+  )
+}
+
 export function RepairPhotoUploader({
   issueId,
   organizationId,

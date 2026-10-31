@@ -15,6 +15,7 @@ const ICONS: Record<IssueEventType, { icon: LucideIcon; tone: string }> = {
   homeowner_accepted: { icon: CheckCircle2, tone: 'bg-primary/15 text-primary' },
   homeowner_rejected: { icon: XCircle, tone: 'bg-destructive/10 text-destructive' },
   repair_photo_added: { icon: Camera, tone: 'bg-secondary text-secondary-foreground' },
+  evidence_photo_added: { icon: Camera, tone: 'bg-accent text-accent-foreground' },
   builder_reply: { icon: MessageSquare, tone: 'bg-primary/15 text-primary' },
   homeowner_comment: { icon: MessageSquare, tone: 'bg-warning/15 text-warning-foreground' },
 }
@@ -44,6 +45,8 @@ function describe(event: IssueEvent, nameFor: (id: string | null) => string | nu
       return 'Homeowner rejected the repair'
     case 'repair_photo_added':
       return 'Repair photo added'
+    case 'evidence_photo_added':
+      return 'Supplemental issue photo added'
     case 'builder_reply':
       return 'Builder replied to the homeowner'
     case 'homeowner_comment':
@@ -60,7 +63,8 @@ export function IssueTimeline({ events, nameFor }: { events: IssueEvent[]; nameF
       {events.map((event, index) => {
         const { icon: Icon, tone } = ICONS[event.event_type]
         const last = index === events.length - 1
-        const showDetails = event.details && event.event_type !== 'repair_photo_added'
+        const photoEvent = event.event_type === 'repair_photo_added' || event.event_type === 'evidence_photo_added'
+        const showDetails = event.details && !photoEvent
         return (
           <li key={event.id} className="flex gap-3">
             <div className="flex flex-col items-center">
@@ -73,7 +77,7 @@ export function IssueTimeline({ events, nameFor }: { events: IssueEvent[]; nameF
               <p className="pt-1 text-sm font-medium text-foreground">{describe(event, nameFor)}</p>
               <p className="text-xs text-muted-foreground">
                 {`${nameFor(event.actor_id) ?? 'System'} · ${formatDateTime(event.created_at)}`}
-                {event.event_type === 'repair_photo_added' && event.details ? ` · ${event.details}` : ''}
+                {photoEvent && event.details ? ` · ${event.details}` : ''}
               </p>
               {showDetails && (
                 <p className="mt-1 whitespace-pre-line rounded-lg bg-muted px-3 py-2 text-sm leading-relaxed text-foreground">{event.details}</p>
