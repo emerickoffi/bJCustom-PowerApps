@@ -22,6 +22,7 @@ import { ArrowUpRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import { FLOATING_CORNER_BOTTOM, FLOATING_CORNER_RIGHT } from '@/lib/floating-actions'
 import {
   ASSISTANT_MODULE_LABELS,
   isSafeAppPath,
@@ -118,7 +119,7 @@ export function AssistantLauncher({ configured }: { configured: boolean }) {
 
   return (
     <>
-      <div data-floating-control className="group fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-40 print:hidden">
+      <div data-floating-control className={cn('group fixed z-40 print:hidden', FLOATING_CORNER_BOTTOM, FLOATING_CORNER_RIGHT)}>
         <span
           role="presentation"
           className="pointer-events-none absolute right-full top-1/2 mr-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-brand-deep px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-has-[:focus-visible]:opacity-100"

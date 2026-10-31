@@ -9,6 +9,7 @@ import { DAILY_LOG_PHOTO_LIMIT, DAILY_LOG_PHOTO_MAX_BYTES, DAILY_LOG_PHOTO_TYPES
 import { registerDailyLogPhotoAction, removeDailyLogPhotoAction, updateDailyLogPhotoCaptionAction } from '@/app/actions/daily-logs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useFloatingCameraTarget } from '@/components/camera/floating-camera'
 import type { DailyLogPhoto } from '@/lib/daily-logs-data'
 
 const ALLOWED = new Set<string>(DAILY_LOG_PHOTO_TYPES)
@@ -21,6 +22,15 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
   const cameraRef = useRef<HTMLInputElement>(null)
   const remaining = DAILY_LOG_PHOTO_LIMIT - photos.length
   const busy = uploading || remaining <= 0
+  const inlineRef = useRef<HTMLDivElement>(null)
+  useFloatingCameraTarget({
+    label: 'Daily log photos',
+    enabled: editable && remaining > 0,
+    disabled: uploading,
+    camera: cameraRef,
+    gallery: inputRef,
+    inline: inlineRef,
+  })
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return
@@ -67,7 +77,7 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
     <div className="flex flex-col gap-4">
       {editable && (
         <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div ref={inlineRef} className="flex flex-col gap-2 sm:flex-row">
             <Button type="button" onClick={() => cameraRef.current?.click()} disabled={busy} className="h-12 w-full sm:h-11 sm:w-auto">
               {uploading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Camera aria-hidden="true" />}
               Take Photo

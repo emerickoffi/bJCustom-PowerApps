@@ -5,6 +5,7 @@ import { Camera, ChevronLeft, ChevronRight, ImagePlus, Loader2, Video, X } from 
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useFloatingCameraTarget } from '@/components/camera/floating-camera'
 import { createClient } from '@/lib/supabase/client'
 import { MAX_MEDIA_BYTES, MEDIA_BUCKET, mediaKindFor, safeFileName, type MediaItem, type MediaKind } from '@/lib/walkthroughs'
 
@@ -28,6 +29,8 @@ type MediaUploaderProps = {
   label?: string
   evidence?: EvidenceKind
   bucket?: string
+  /** Opt-in destination name for the floating camera shortcut, e.g. "Repair photos". */
+  floatingCameraLabel?: string
 }
 
 export function MediaUploader({
@@ -40,11 +43,21 @@ export function MediaUploader({
   label = 'Photos & video (optional)',
   evidence,
   bucket = MEDIA_BUCKET,
+  floatingCameraLabel,
 }: MediaUploaderProps) {
   const preview = usePhotoIndex(items)
   const cameraRef = useRef<HTMLInputElement>(null)
   const libraryRef = useRef<HTMLInputElement>(null)
+  const inlineRef = useRef<HTMLDivElement>(null)
   const [progress, setProgress] = useState<string | null>(null)
+  useFloatingCameraTarget({
+    label: floatingCameraLabel,
+    enabled: !disabled,
+    disabled: Boolean(progress),
+    camera: cameraRef,
+    gallery: libraryRef,
+    inline: inlineRef,
+  })
   const [error, setError] = useState<string | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
 
@@ -116,7 +129,7 @@ export function MediaUploader({
   return (
     <div className="flex flex-col gap-3">
       <span className="text-sm font-medium text-foreground">{label}</span>
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div ref={inlineRef} className="flex flex-col gap-2 sm:flex-row">
         <Button
           type="button"
           variant="outline"

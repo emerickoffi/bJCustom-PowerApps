@@ -17,6 +17,7 @@ import { Sidebar, SIDEBAR_COOKIE } from '@/components/app/sidebar'
 import { MobileNav } from '@/components/app/mobile-nav'
 import { AssistantProvider } from '@/components/assistant/assistant-context'
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher'
+import { FloatingCameraProvider } from '@/components/camera/floating-camera'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import {
   Breadcrumbs,
@@ -120,6 +121,7 @@ export default async function StaffLayout({ children, modal }: { children: React
     <BrandStyle brand={session.brand}>
       <AssistantProvider>
       <QuickActionsProvider>
+      <FloatingCameraProvider placement={showAssistant ? 'above-assistant' : 'corner'}>
       <div className="flex min-h-svh bg-background">
         <Sidebar
           items={items}
@@ -165,6 +167,7 @@ export default async function StaffLayout({ children, modal }: { children: React
       </div>
       {modal}
       {showAssistant && <AssistantLauncher configured={getAssistantProviderConfig().configured} />}
+      </FloatingCameraProvider>
       </QuickActionsProvider>
       </AssistantProvider>
     </BrandStyle>

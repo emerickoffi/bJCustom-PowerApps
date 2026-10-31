@@ -115,6 +115,7 @@ function DraftForm({
         bucket={SUB_WORK_BUCKET}
         evidence="repair"
         label={kind === 'work' ? 'Completion photos (required)' : 'After-repair photos (required)'}
+        floatingCameraLabel={kind === 'work' ? 'Completion photos' : 'After-repair photos'}
         pathFor={(fileName) => subEvidencePath(draft.organizationId, draft.id, fileName)}
         register={(meta) => registerSubEvidenceAction(draft.id, 'completion', meta)}
         unregister={(item) => removeSubEvidenceAction(item.id)}

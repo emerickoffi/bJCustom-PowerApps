@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { HardHat, LogOut } from 'lucide-react'
 import { getSubcontractorSession } from '@/lib/subcontractor-session'
+import { FloatingCameraProvider } from '@/components/camera/floating-camera'
 
 export const metadata: Metadata = {
   title: 'Subcontractor workspace',
@@ -37,7 +38,9 @@ export default async function SubLayout({ children }: { children: React.ReactNod
           </form>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-6">{children}</main>
+      <FloatingCameraProvider placement="corner">
+        <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-6">{children}</main>
+      </FloatingCameraProvider>
     </div>
   )
 }

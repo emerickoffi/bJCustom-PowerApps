@@ -102,6 +102,7 @@ export function ReviewForm({
         bucket={SUB_WORK_BUCKET}
         evidence="original"
         label="Inspection photos (optional)"
+        floatingCameraLabel="Inspection photos"
         pathFor={(fileName) => subEvidencePath(organizationId, submissionId, fileName)}
         register={(meta) => registerSubEvidenceAction(submissionId, 'inspection', meta)}
       />
