@@ -25,6 +25,8 @@ import { createClient } from '@/lib/supabase/server'
 type ProjectRow = PortfolioRow & { name: string; progress_percent: number | null; proposed_start_date: string | null }
 
 /** Owner / administrator Command Center. Every figure comes from the Phase 1 and Phase 2 services. */
+const PRIORITY_JOBS_ANCHOR = 'priority-jobs-anchor'
+
 export async function OwnerDashboard({
   session,
   features,
@@ -46,7 +48,7 @@ export async function OwnerDashboard({
       .is('archived_at', null),
     supabase
       .from('client_activity')
-      .select('id, activity_type, summary, created_at, client_id, clients(first_name, last_name)')
+      .select('id, activity_type, summary, created_at, client_id, clients(first_name, last_name)', { count: 'exact' })
       .eq('organization_id', orgId)
       .order('created_at', { ascending: false })
       .limit(8),
@@ -115,6 +117,8 @@ export async function OwnerDashboard({
     }
   })
 
+  const activityTotal = activityRes.error ? null : (activityRes.count ?? null)
+
   const comingUp = buildComingUp({
     today: agendaData.today,
     agenda: agendaData.agenda.week,
@@ -157,7 +161,11 @@ export async function OwnerDashboard({
               }}
             />
           </div>
-          <div className="hidden lg:block" data-dashboard-section={'priority_jobs' satisfies DashboardSectionId}>
+          <div
+            id={PRIORITY_JOBS_ANCHOR}
+            className="hidden lg:block"
+            data-dashboard-section={'priority_jobs' satisfies DashboardSectionId}
+          >
             <PriorityJobs jobs={jobs} showBudget={budgets !== null} />
           </div>
         </div>
@@ -178,6 +186,9 @@ export async function OwnerDashboard({
               updates={attention.updates}
               defaultOpen
               visibleLimit={5}
+              total={activityTotal === null ? undefined : activityTotal + attention.updatesTotal}
+              totalIsLowerBound={activityTotal === null || attention.updatesTotalIsLowerBound}
+              matchHeightTo={PRIORITY_JOBS_ANCHOR}
             />
           </div>
         </aside>
