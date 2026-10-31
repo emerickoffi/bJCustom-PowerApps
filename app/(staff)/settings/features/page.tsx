@@ -26,14 +26,18 @@ const RECORD_TABLES: [FeatureKey, string, string][] = [
 export default async function FeaturesPage() {
   const session = await requireAdmin()
   const supabase = await createClient()
-  const [features, subcontractorProbe, clientUpdatesProbe, ...counts] = await Promise.all([
+  const [features, subcontractorProbe, clientUpdatesProbe, changeOrderTableProbe, registryProbe, ...counts] = await Promise.all([
     getOrgFeatures(session.organizationId),
     supabase.from('subcontractor_companies').select('id').eq('organization_id', session.organizationId).limit(1),
     supabase.from('client_updates').select('id').eq('organization_id', session.organizationId).limit(1),
+    supabase.from('change_orders').select('id').eq('organization_id', session.organizationId).limit(1),
+    supabase.rpc('feature_registry'),
     ...RECORD_TABLES.map(([, table]) =>
       supabase.from(table).select('id', { count: 'exact', head: true }).eq('organization_id', session.organizationId),
     ),
   ])
+  const registeredKeys = (registryProbe.data ?? []) as { feature_key: string }[]
+  const changeOrdersRegistered = registeredKeys.some((r) => r.feature_key === 'change_orders')
   const records: Partial<Record<FeatureKey, string>> = {}
   RECORD_TABLES.forEach(([key, , noun], i) => {
     const n = counts[i].count ?? 0
@@ -53,6 +57,7 @@ export default async function FeaturesPage() {
           ai_assistant: !getAssistantProviderConfig().configured,
           subcontractors: isMissingTableError(subcontractorProbe.error),
           client_updates: isMissingTableError(clientUpdatesProbe.error),
+          change_orders: isMissingTableError(changeOrderTableProbe.error) || !changeOrdersRegistered,
         }}
       />
     </div>
