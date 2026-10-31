@@ -13,6 +13,7 @@ export type ProjectNavKey =
   | 'contacts'
   | 'walkthroughs'
   | 'warranty'
+  | 'subcontractor_work'
 
 export type ProjectNavItem = {
   key: ProjectNavKey
@@ -24,7 +25,7 @@ export type ProjectNavItem = {
 
 export type ProjectNavAccess = {
   features: Pick<FeatureMap, 'schedule' | 'estimates' | 'documents' | 'walkthroughs' | 'warranty'> &
-    Partial<Pick<FeatureMap, 'change_orders' | 'daily_logs' | 'client_updates'>>
+    Partial<Pick<FeatureMap, 'change_orders' | 'daily_logs' | 'client_updates' | 'subcontractors'>>
   projectStatus: string
   canViewInternal: boolean
   // Administrators and project managers only; change orders carry internal costs.
@@ -99,6 +100,13 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
         href: `${base}/documents`,
         activePrefix: `${base}/documents`,
       },
+    // Verification queue mirrors can_review_sub_project: managers with internal project access.
+    Boolean(features.subcontractors && access.canViewFinancials && access.canViewInternal) && {
+      key: 'subcontractor_work',
+      label: 'Sub work',
+      href: `${base}/subcontractor-work`,
+      activePrefix: `${base}/subcontractor-work`,
+    },
     { key: 'team', label: 'Team', href: `${base}#${PROJECT_SECTION_ANCHORS.team}`, activePrefix: null },
     { key: 'contacts', label: 'Contacts', href: `${base}/contacts`, activePrefix: `${base}/contacts` },
     features.walkthroughs && {

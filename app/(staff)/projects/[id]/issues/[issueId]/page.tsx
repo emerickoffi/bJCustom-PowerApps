@@ -10,6 +10,11 @@ import { MediaGrid } from '@/components/walkthroughs/media-uploader'
 import { IssueStatusBadge, PriorityBadge, ValidationBadge } from '@/components/walkthroughs/badges'
 import { ApproveRepairButton, IssueNoteForm, IssueUpdateForm, MissingRepairPhotosReminder, RepairPhotoUploader, SupplementalEvidenceUploader } from '@/components/walkthroughs/issue-management'
 import { IssueTimeline } from '@/components/walkthroughs/issue-timeline'
+import Link from 'next/link'
+import { getOrgFeatures } from '@/lib/features'
+import { workStateFor, type SubmissionStatus } from '@/lib/subcontractor-work'
+import { WorkStateBadge } from '@/components/subcontractor-work/work-state-badge'
+import { IssueSubcontractorAssign } from '@/components/subcontractor-work/issue-subcontractor-assign'
 import { IssueConversation, type ConversationMessage } from '@/components/walkthroughs/issue-conversation'
 import { fullName, formatDate, formatDateTime } from '@/lib/format'
 import {
@@ -156,6 +161,33 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
   const closed = status === 'closed'
   const overdue = isOverdue(issue.due_date, status)
   const rejections = events.filter((e) => e.event_type === 'homeowner_rejected')
+
+  type LatestSub = { id: string; cycle: number; status: SubmissionStatus }
+  let subCompanies: { value: string; label: string }[] | null = null
+  let latestSubSubmission = null as LatestSub | null
+  if (manager && (await getOrgFeatures(session.organizationId)).subcontractors) {
+    const [companiesRes, latestRes] = await Promise.all([
+      supabase
+        .from('subcontractor_companies')
+        .select('id, company_name, status')
+        .eq('organization_id', session.organizationId)
+        .order('company_name'),
+      supabase
+        .from('subcontractor_work_submissions')
+        .select('id, cycle, status')
+        .eq('issue_id', issue.id)
+        .neq('status', 'draft')
+        .order('cycle', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
+    if (!companiesRes.error && !latestRes.error) {
+      subCompanies = (companiesRes.data ?? [])
+        .filter((c) => c.status === 'active' || c.id === issue.responsible_subcontractor_company_id)
+        .map((c) => ({ value: c.id as string, label: c.company_name as string }))
+      latestSubSubmission = (latestRes.data as LatestSub | null) ?? null
+    }
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -374,6 +406,42 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
                 builderApproved={!!issue.builder_approved_at}
                 repairPhotoCount={toMedia('repair').length}
               />
+            </section>
+          )}
+
+          {manager && subCompanies && (!closed || issue.responsible_subcontractor_company_id) && (
+            <section aria-labelledby="sub-heading" className="flex flex-col gap-4 rounded-xl border bg-card p-5">
+              <div className="flex flex-col gap-1">
+                <h2 id="sub-heading" className="font-serif text-lg font-semibold text-foreground">
+                  Responsible subcontractor
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  The company sees this item in its portal and submits correction evidence for your verification.
+                </p>
+              </div>
+              {closed ? (
+                <p className="text-sm text-foreground">
+                  {subCompanies.find((c) => c.value === issue.responsible_subcontractor_company_id)?.label ?? 'Subcontractor'}
+                </p>
+              ) : (
+                <IssueSubcontractorAssign
+                  issueId={issue.id}
+                  projectId={project.id}
+                  currentCompanyId={issue.responsible_subcontractor_company_id ?? null}
+                  companies={subCompanies}
+                />
+              )}
+              {latestSubSubmission && (
+                <Link
+                  href={`/projects/${project.id}/subcontractor-work/${latestSubSubmission.id}`}
+                  className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm hover:bg-muted/50"
+                >
+                  <span className="font-medium text-foreground">
+                    Latest submission{latestSubSubmission.cycle > 1 ? ` · Resubmission ${latestSubSubmission.cycle}` : ''}
+                  </span>
+                  <WorkStateBadge state={workStateFor(latestSubSubmission.status)} audience="builder" />
+                </Link>
+              )}
             </section>
           )}
 

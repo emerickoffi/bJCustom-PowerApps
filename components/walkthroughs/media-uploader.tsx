@@ -27,6 +27,7 @@ type MediaUploaderProps = {
   disabled?: boolean
   label?: string
   evidence?: EvidenceKind
+  bucket?: string
 }
 
 export function MediaUploader({
@@ -38,6 +39,7 @@ export function MediaUploader({
   disabled,
   label = 'Photos & video (optional)',
   evidence,
+  bucket = MEDIA_BUCKET,
 }: MediaUploaderProps) {
   const preview = usePhotoIndex(items)
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -68,7 +70,7 @@ export function MediaUploader({
       const fileName = safeFileName(file.name)
       const path = pathFor(`${crypto.randomUUID()}-${fileName}`)
       const { error: uploadError } = await supabase.storage
-        .from(MEDIA_BUCKET)
+        .from(bucket)
         .upload(path, file, { contentType: file.type, upsert: false })
       if (uploadError) {
         failures.push(`${file.name} could not be uploaded.`)
@@ -82,11 +84,11 @@ export function MediaUploader({
         media_kind: kind,
       })
       if (!result.id) {
-        await supabase.storage.from(MEDIA_BUCKET).remove([path])
+        await supabase.storage.from(bucket).remove([path])
         failures.push(result.error ?? `${file.name} could not be saved.`)
         continue
       }
-      const { data: signed } = await supabase.storage.from(MEDIA_BUCKET).createSignedUrl(path, 60 * 60)
+      const { data: signed } = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60)
       current = [
         ...current,
         { id: result.id, storage_path: path, file_name: file.name, media_kind: kind, url: signed?.signedUrl ?? null },
