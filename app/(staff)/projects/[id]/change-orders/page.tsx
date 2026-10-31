@@ -5,25 +5,15 @@ import { FileDiff, Plus } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
-import { formatDate } from '@/lib/format'
 import { formatMoney } from '@/lib/financials'
-import { changeOrderPath, changeOrdersPath, isChangeOrderStatus, type ChangeOrderStatus } from '@/lib/change-orders'
+import { changeOrdersPath, isChangeOrderStatus, summarizeChangeOrders, type DirectoryRow } from '@/lib/change-orders'
 import { EmptyState, PageHeader, Surface } from '@/components/shared/page-header'
-import { ChangeOrderStatusBadge } from '@/components/change-orders/change-order-status-badge'
+import { ChangeOrderDirectory } from '@/components/change-orders/change-order-directory'
 import { buttonVariants } from '@/components/ui/button'
 
 export const metadata: Metadata = { title: 'Change orders' }
 
-type Row = {
-  id: string
-  co_number: string
-  title: string
-  status: string
-  cost_adjustment_cents: number
-  price_adjustment_cents: number
-  schedule_impact_days: number | null
-  updated_at: string
-}
+type RawRow = Omit<DirectoryRow, 'status'> & { status: string }
 
 export default async function ChangeOrdersPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireManager()
@@ -35,16 +25,21 @@ export default async function ChangeOrdersPage({ params }: { params: Promise<{ i
     supabase.from('projects').select('id, name').eq('id', id).maybeSingle(),
     supabase
       .from('change_orders')
-      .select('id, co_number, title, status, cost_adjustment_cents, price_adjustment_cents, schedule_impact_days, updated_at')
+      .select('id, number, co_number, title, status, cost_adjustment_cents, price_adjustment_cents, schedule_impact_days, updated_at')
       .eq('project_id', id)
       .order('number', { ascending: false }),
   ])
   if (!project) notFound()
 
-  const list = ((rows ?? []) as Row[]).filter((r) => isChangeOrderStatus(r.status))
-  const approved = list.filter((r) => r.status === 'approved')
-  const pending = list.filter((r) => r.status === 'internal_review' || r.status === 'awaiting_homeowner')
-  const sum = (rs: Row[], k: 'cost_adjustment_cents' | 'price_adjustment_cents') => rs.reduce((t, r) => t + Number(r[k]), 0)
+  const list: DirectoryRow[] = ((rows ?? []) as RawRow[])
+    .filter((r): r is DirectoryRow => isChangeOrderStatus(r.status))
+    .map((r) => ({
+      ...r,
+      number: Number(r.number),
+      price_adjustment_cents: Number(r.price_adjustment_cents),
+      cost_adjustment_cents: Number(r.cost_adjustment_cents),
+    }))
+  const summary = summarizeChangeOrders(list)
   const newHref = `${changeOrdersPath(id)}/new`
 
   return (
@@ -69,7 +64,7 @@ export default async function ChangeOrdersPage({ params }: { params: Promise<{ i
         <EmptyState
           icon={FileDiff}
           title="No change orders yet"
-          description="Create a draft when scope changes. Builder cost and homeowner price are tracked separately."
+          description="Create a draft when scope changes. Builder cost stays internal; the homeowner only sees the price change and schedule impact."
           action={
             <Link href={newHref} className={buttonVariants()}>
               New change order
@@ -78,62 +73,42 @@ export default async function ChangeOrdersPage({ params }: { params: Promise<{ i
         />
       ) : (
         <>
-          <dl className="grid gap-3 sm:grid-cols-3">
-            <Stat label="Approved price changes" value={formatMoney(sum(approved, 'price_adjustment_cents'), { signed: true })} detail={`${approved.length} approved`} />
-            <Stat label="Approved cost changes" value={formatMoney(sum(approved, 'cost_adjustment_cents'), { signed: true })} detail="Internal only" />
-            <Stat label="Pending price changes" value={formatMoney(sum(pending, 'price_adjustment_cents'), { signed: true })} detail={`${pending.length} in review or with homeowner`} />
+          <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Stat
+              label="Approved price changes"
+              value={formatMoney(summary.approvedPriceCents, { signed: true })}
+              detail={`${summary.approvedCount} approved`}
+              emphasis
+            />
+            <Stat label="Approved builder cost" value={formatMoney(summary.approvedCostCents, { signed: true })} detail="Internal only" />
+            <Stat
+              label="Pending price changes"
+              value={formatMoney(summary.pendingPriceCents, { signed: true })}
+              detail={`${summary.pendingCount} in review or with homeowner`}
+            />
+            <Stat
+              label="Approved schedule impact"
+              value={summary.approvedWithScheduleCount === 0 ? '—' : `${summary.approvedScheduleDays > 0 ? '+' : ''}${summary.approvedScheduleDays} days`}
+              detail={
+                summary.approvedWithScheduleCount === 0
+                  ? 'No approved schedule changes'
+                  : `From ${summary.approvedWithScheduleCount} approved change order${summary.approvedWithScheduleCount === 1 ? '' : 's'}`
+              }
+            />
           </dl>
 
-          <Surface className="p-0 md:p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[44rem] text-sm">
-                <caption className="sr-only">Change orders for {project.name}</caption>
-                <thead className="border-b border-border/70 text-left text-xs font-medium text-muted-foreground">
-                  <tr>
-                    <th scope="col" className="px-5 py-3">Number</th>
-                    <th scope="col" className="px-3 py-3">Title</th>
-                    <th scope="col" className="px-3 py-3">Status</th>
-                    <th scope="col" className="px-3 py-3 text-right">Price change</th>
-                    <th scope="col" className="px-3 py-3 text-right">Cost change</th>
-                    <th scope="col" className="px-3 py-3 text-right">Schedule</th>
-                    <th scope="col" className="px-5 py-3 text-right">Updated</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {list.map((r) => (
-                    <tr key={r.id} className="hover:bg-muted/40">
-                      <td className="px-5 py-3 font-medium tabular-nums">
-                        <Link href={changeOrderPath(id, r.id)} className="text-primary underline-offset-4 hover:underline">
-                          {r.co_number}
-                        </Link>
-                      </td>
-                      <td className="max-w-xs truncate px-3 py-3">{r.title}</td>
-                      <td className="px-3 py-3">
-                        <ChangeOrderStatusBadge status={r.status as ChangeOrderStatus} />
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums">{formatMoney(Number(r.price_adjustment_cents), { signed: true })}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{formatMoney(Number(r.cost_adjustment_cents), { signed: true })}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">
-                        {r.schedule_impact_days === null ? '—' : `${r.schedule_impact_days > 0 ? '+' : ''}${r.schedule_impact_days}d`}
-                      </td>
-                      <td className="px-5 py-3 text-right text-muted-foreground">{formatDate(r.updated_at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Surface>
+          <ChangeOrderDirectory projectId={id} projectName={project.name} rows={list} />
         </>
       )}
     </div>
   )
 }
 
-function Stat({ label, value, detail }: { label: string; value: string; detail: string }) {
+function Stat({ label, value, detail, emphasis }: { label: string; value: string; detail: string; emphasis?: boolean }) {
   return (
-    <div className="surface flex flex-col gap-1 p-4">
+    <div className="surface flex min-w-0 flex-col gap-1 p-4">
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="text-xl font-semibold tabular-nums text-foreground">{value}</dd>
+      <dd className={emphasis ? 'text-xl font-semibold tabular-nums text-primary' : 'text-xl font-semibold tabular-nums text-foreground'}>{value}</dd>
       <dd className="text-xs text-muted-foreground">{detail}</dd>
     </div>
   )
