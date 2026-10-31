@@ -67,7 +67,8 @@ export async function saveDailyLogAction(_prev: ActionState, formData: FormData)
   }
 
   revalidatePath(dailyLogsPath(project.id))
-  redirect(`${dailyLogPath(project.id, logId as string)}?saved=1`)
+  const photoAnchor = formData.get('intent') === 'photos' ? '#daily-log-photos' : ''
+  redirect(`${dailyLogPath(project.id, logId as string)}?saved=1${photoAnchor}`)
 }
 
 export async function finalizeDailyLogAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

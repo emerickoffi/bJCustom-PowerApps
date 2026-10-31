@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Loader2, Trash2 } from 'lucide-react'
+import { Camera, ImagePlus, Loader2, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { MEDIA_BUCKET, safeFileName } from '@/lib/walkthroughs'
 import { DAILY_LOG_PHOTO_LIMIT, DAILY_LOG_PHOTO_MAX_BYTES, DAILY_LOG_PHOTO_TYPES, dailyLogPhotoPath } from '@/lib/daily-logs'
@@ -18,7 +18,9 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState<{ tone: 'error' | 'status'; text: string } | null>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
   const remaining = DAILY_LOG_PHOTO_LIMIT - photos.length
+  const busy = uploading || remaining <= 0
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return
@@ -56,6 +58,7 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
     if (Array.from(files).length > list.length) failures.push(`Only ${DAILY_LOG_PHOTO_LIMIT} photos can be attached to one log.`)
     setUploading(false)
     if (inputRef.current) inputRef.current.value = ''
+    if (cameraRef.current) cameraRef.current.value = ''
     setMessage(failures.length ? { tone: 'error', text: failures.join(' ') } : { tone: 'status', text: 'Photos added.' })
     router.refresh()
   }
@@ -63,23 +66,44 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
   return (
     <div className="flex flex-col gap-4">
       {editable && (
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            ref={inputRef}
-            type="file"
-            accept={DAILY_LOG_PHOTO_TYPES.join(',')}
-            multiple
-            className="sr-only"
-            id="daily-log-photo-input"
-            onChange={(e) => handleFiles(e.target.files)}
-            disabled={uploading || remaining <= 0}
-          />
-          <Button type="button" variant="outline" onClick={() => inputRef.current?.click()} disabled={uploading || remaining <= 0} className="h-11">
-            {uploading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Camera aria-hidden="true" />}
-            Add photos
-          </Button>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button type="button" onClick={() => cameraRef.current?.click()} disabled={busy} className="h-12 w-full sm:h-11 sm:w-auto">
+              {uploading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Camera aria-hidden="true" />}
+              Take Photo
+            </Button>
+            <Button type="button" variant="outline" onClick={() => inputRef.current?.click()} disabled={busy} className="h-12 w-full sm:h-11 sm:w-auto">
+              <ImagePlus aria-hidden="true" />
+              Upload Photos
+            </Button>
+            <input
+              ref={cameraRef}
+              type="file"
+              accept={DAILY_LOG_PHOTO_TYPES.join(',')}
+              capture="environment"
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden="true"
+              onChange={(e) => handleFiles(e.target.files)}
+              disabled={busy}
+            />
+            <input
+              ref={inputRef}
+              type="file"
+              accept={DAILY_LOG_PHOTO_TYPES.join(',')}
+              multiple
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden="true"
+              id="daily-log-photo-input"
+              onChange={(e) => handleFiles(e.target.files)}
+              disabled={busy}
+            />
+          </div>
           <p className="text-xs text-muted-foreground">
-            Up to {DAILY_LOG_PHOTO_LIMIT} photos, 15 MB each. Stored privately with this project.
+            {remaining > 0
+              ? `${photos.length} of ${DAILY_LOG_PHOTO_LIMIT} photos attached, 15 MB each. Stored privately with this project.`
+              : `This log has reached the ${DAILY_LOG_PHOTO_LIMIT}-photo limit. Remove a photo to add another.`}
           </p>
         </div>
       )}
