@@ -140,9 +140,14 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 export function RecentActivity({
   items,
   updates = [],
+  defaultOpen = false,
+  visibleLimit = VISIBLE_LIMIT,
 }: {
   items: ActivityItem[];
   updates?: ProjectUpdate[];
+  /** Render expanded on first paint (the Command Center right rail). */
+  defaultOpen?: boolean;
+  visibleLimit?: number;
 }) {
   const entries = [
     ...items.map((item) => ({
@@ -156,8 +161,8 @@ export function RecentActivity({
       update,
     })),
   ].sort((a, b) => b.at.localeCompare(a.at));
-  const visible = entries.slice(0, VISIBLE_LIMIT);
-  const earlier = entries.slice(VISIBLE_LIMIT);
+  const visible = entries.slice(0, visibleLimit);
+  const earlier = entries.slice(visibleLimit);
 
   const renderEntry = (entry: (typeof entries)[number]) => {
     if (entry.type === "update")
@@ -167,7 +172,7 @@ export function RecentActivity({
 
   return (
     <section aria-labelledby="activity-heading" className="surface">
-      <details className="group/activity">
+      <details className="group/activity" open={defaultOpen}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[inherit] p-5 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:px-6 [&::-webkit-details-marker]:hidden">
           <DashboardSectionHeader
             id="activity-heading"

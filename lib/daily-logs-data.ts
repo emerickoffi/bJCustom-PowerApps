@@ -122,11 +122,13 @@ export const getDailyLogProjectOptions = cache(async (organizationId: string): P
   return (data ?? []) as DailyLogProject[]
 })
 
-export const getOrgToday = cache(async (organizationId: string) => {
+export const getOrgTimeZone = cache(async (organizationId: string): Promise<string> => {
   const supabase = await createClient()
   const { data } = await supabase.from('organization_settings').select('timezone').eq('organization_id', organizationId).maybeSingle()
-  return todayInTimeZone(data?.timezone ?? 'America/Chicago')
+  return data?.timezone ?? 'America/Chicago'
 })
+
+export const getOrgToday = cache(async (organizationId: string) => todayInTimeZone(await getOrgTimeZone(organizationId)))
 
 const LOG_COLUMNS =
   'id, project_id, log_date, status, version, author_id, weather_conditions, temperature_f, weather_source, weather_impact, site_conditions, work_performed, progress_notes, work_planned_next, materials_delivered, equipment_used, delivery_notes, delay_description, delay_reason, delay_impact, corrective_actions, safety_observations, has_delays, finalized_at, finalized_by, created_at, updated_at'
