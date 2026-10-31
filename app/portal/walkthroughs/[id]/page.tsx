@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { CheckCircle2, ClipboardCheck } from 'lucide-react'
+import { CheckCircle2, ClipboardCheck, HardHat } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { getSession } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -26,12 +26,13 @@ export default async function PortalWalkthroughPage({ params }: { params: Promis
 
   const { data: walkthrough } = await supabase
     .from('walkthroughs')
-    .select('id, organization_id, title, instructions, status, scheduled_date, submitted_at')
+    .select('id, organization_id, title, instructions, status, scheduled_date, submitted_at, conducted_by')
     .eq('id', id)
     .maybeSingle()
   if (!walkthrough) notFound()
 
   const submitted = walkthrough.status === 'submitted'
+  const builderLed = walkthrough.conducted_by === 'staff'
 
   return (
     <div className="flex flex-col gap-8">
@@ -58,8 +59,19 @@ export default async function PortalWalkthroughPage({ params }: { params: Promis
             submittedAt={walkthrough.submitted_at}
             organizationId={walkthrough.organization_id}
             userId={session.userId}
+            builderLed={builderLed}
           />
         </>
+      ) : builderLed ? (
+        <div className="flex items-start gap-3 rounded-xl border bg-muted p-5">
+          <HardHat className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <div className="flex flex-col gap-1">
+            <p className="font-medium text-foreground">Your builder is conducting this walkthrough</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Their findings will appear here as builder observations once they submit. You can follow and confirm each repair from this page.
+            </p>
+          </div>
+        </div>
       ) : (
         <ChecklistEditor walkthroughId={walkthrough.id} organizationId={walkthrough.organization_id} userId={session.userId} />
       )}
@@ -113,16 +125,18 @@ async function SubmittedView({
   submittedAt,
   organizationId,
   userId,
+  builderLed,
 }: {
   walkthroughId: string
   submittedAt: string | null
   organizationId: string
   userId: string
+  builderLed: boolean
 }) {
   const supabase = await createClient()
   const { data } = await supabase
     .from('project_issues')
-    .select('id, project_id, category, item_label, homeowner_description, status, corrective_action, builder_approved_at, homeowner_validation, homeowner_validation_note, homeowner_validated_at')
+    .select('id, project_id, category, item_label, homeowner_description, reported_source, status, corrective_action, builder_approved_at, homeowner_validation, homeowner_validation_note, homeowner_validated_at')
     .eq('walkthrough_id', walkthroughId)
     .order('reported_at')
   const issues = data ?? []
@@ -177,9 +191,13 @@ async function SubmittedView({
         <div className="flex flex-col gap-1">
           <p className="font-medium text-foreground">{`Submitted ${formatDateTime(submittedAt)}`}</p>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            {issues.length
-              ? 'Your builder has your notes. You can follow each repair below and confirm it once complete.'
-              : 'Everything looked good. Thank you for completing your walkthrough.'}
+            {builderLed
+              ? issues.length
+                ? 'Your builder recorded the items below during their walkthrough. You can follow each repair and confirm it once complete.'
+                : 'Your builder completed this walkthrough and found nothing that needs attention.'
+              : issues.length
+                ? 'Your builder has your notes. You can follow each repair below and confirm it once complete.'
+                : 'Everything looked good. Thank you for completing your walkthrough.'}
           </p>
         </div>
       </div>
@@ -207,7 +225,9 @@ async function SubmittedView({
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Your description</h3>
+                  <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {issue.reported_source === 'staff' ? 'Builder observation' : 'Your description'}
+                  </h3>
                   <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{issue.homeowner_description}</p>
                   <MediaGrid evidence="original" items={mediaFor(issue.id, 'original')} emptyLabel="" />
                 </div>

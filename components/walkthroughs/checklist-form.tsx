@@ -7,7 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { saveWalkthroughResponse, submitWalkthroughAction } from '@/app/actions/walkthroughs'
+import {
+  saveStaffWalkthroughResponse,
+  saveWalkthroughResponse,
+  submitStaffWalkthroughAction,
+  submitWalkthroughAction,
+} from '@/app/actions/walkthroughs'
 import { MediaUploader, type MediaMeta } from '@/components/walkthroughs/media-uploader'
 import {
   ISSUE_DESCRIPTION_MAX,
@@ -31,12 +36,26 @@ type ChecklistFormProps = {
   items: ChecklistItem[]
   responses: Record<string, SavedResponse>
   attachments: Record<string, MediaItem[]>
+  /** `staff` saves through the builder-lead RPCs and returns to `doneHref` after submitting. */
+  mode?: 'homeowner' | 'staff'
+  doneHref?: string
 }
 
 const RESPONSE_ICON = { satisfactory: Check, needs_attention: AlertTriangle, not_applicable: CircleSlash }
 
-export function ChecklistForm({ walkthroughId, organizationId, userId, items, responses, attachments }: ChecklistFormProps) {
+export function ChecklistForm({
+  walkthroughId,
+  organizationId,
+  userId,
+  items,
+  responses,
+  attachments,
+  mode = 'homeowner',
+  doneHref,
+}: ChecklistFormProps) {
   const router = useRouter()
+  const saveResponse = mode === 'staff' ? saveStaffWalkthroughResponse : saveWalkthroughResponse
+  const submitChecklist = mode === 'staff' ? submitStaffWalkthroughAction : submitWalkthroughAction
   const categories = useMemo(() => {
     const order: string[] = []
     const map = new Map<string, ChecklistItem[]>()
@@ -81,7 +100,7 @@ export function ChecklistForm({ walkthroughId, organizationId, userId, items, re
     const task = previous.then(async () => {
       const current = stateRef.current[itemId]
       patch(itemId, { saveState: 'saving' })
-      const result = await saveWalkthroughResponse({
+      const result = await saveResponse({
         itemId,
         response: current.response,
         description: current.description.trim() ? current.description : null,
@@ -165,8 +184,9 @@ export function ChecklistForm({ walkthroughId, organizationId, userId, items, re
         setSubmitError('Some answers could not be saved. Check your connection and try again.')
         return
       }
-      const result = await submitWalkthroughAction(walkthroughId)
+      const result = await submitChecklist(walkthroughId)
       if (result.error) setSubmitError(result.error)
+      else if (doneHref) router.push(doneHref)
       else router.refresh()
     })
   }

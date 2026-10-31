@@ -129,6 +129,60 @@ export async function submitWalkthroughAction(walkthroughId: string): Promise<Ac
   }
 }
 
+export async function startStaffWalkthroughAction(
+  projectId: string,
+  walkthroughId: string,
+  takeOver: boolean,
+): Promise<ActionState> {
+  await requireStaff()
+  if (!uuid.safeParse(projectId).success || !uuid.safeParse(walkthroughId).success) return { error: 'Invalid walkthrough.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('start_staff_walkthrough', { p_walkthrough: walkthroughId, p_take_over: takeOver })
+  if (error) return { error: friendlyDbError(error) }
+  revalidatePath(`/projects/${projectId}/walkthroughs/${walkthroughId}`)
+  redirect(`/projects/${projectId}/walkthroughs/${walkthroughId}/conduct`)
+}
+
+export async function saveStaffWalkthroughResponse(input: z.input<typeof responseSchema>): Promise<SaveResponseResult> {
+  await requireStaff()
+  const parsed = responseSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid response.' }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('save_staff_walkthrough_response', {
+    p_item: parsed.data.itemId,
+    p_response: parsed.data.response,
+    p_description: parsed.data.description,
+  })
+  if (error) return { error: friendlyDbError(error) }
+  return { savedAt: data as string }
+}
+
+export async function submitStaffWalkthroughAction(walkthroughId: string): Promise<ActionState> {
+  await requireStaff()
+  if (!uuid.safeParse(walkthroughId).success) return { error: 'Invalid walkthrough.' }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('submit_staff_walkthrough', { p_walkthrough: walkthroughId })
+  if (error) return { error: friendlyDbError(error) }
+
+  const result = data as { already_submitted: boolean; issues_created: number }
+  const { data: walkthrough } = await supabase.from('walkthroughs').select('project_id').eq('id', walkthroughId).maybeSingle()
+  if (walkthrough) {
+    revalidatePath(`/projects/${walkthrough.project_id}`)
+    revalidatePath(`/projects/${walkthrough.project_id}/walkthroughs/${walkthroughId}`)
+  }
+  revalidatePath(`/portal/walkthroughs/${walkthroughId}`)
+  if (result.already_submitted) return { success: 'This walkthrough was already submitted.' }
+  const count = result.issues_created
+  return {
+    success: count
+      ? `Walkthrough submitted. ${count} punch list item${count === 1 ? '' : 's'} created.`
+      : 'Walkthrough submitted with no issues.',
+  }
+}
+
 export async function validateRepairAction(
   issueId: string,
   accepted: boolean,

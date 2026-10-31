@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useState, useTransition } from 'react'
+import { useEffect, useId, useRef, useState, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { Check, ChevronsUpDown, Layers, Loader2, Search } from 'lucide-react'
@@ -36,6 +36,7 @@ export function JobSwitcher({ currentJob }: { currentJob: CurrentJob | null }) {
   const [pending, startTransition] = useTransition()
   const debounced = useDebounced(query.trim(), 200)
   const listId = useId()
+  const nameRef = useRef<HTMLSpanElement>(null)
 
   const { data, isLoading } = useSWR(open ? ['jobs', debounced] : null, ([, q]) => searchJobsAction(q), {
     keepPreviousData: true,
@@ -76,14 +77,27 @@ export function JobSwitcher({ currentJob }: { currentJob: CurrentJob | null }) {
 
   const optionId = (i: number) => `${listId}-opt-${i}`
 
+  // Title only when the name is actually clipped, so the tooltip never just repeats visible text.
+  const syncTruncationTitle = (e: React.SyntheticEvent<HTMLButtonElement>) => {
+    const el = nameRef.current
+    if (!el || !currentJob) return
+    const clipped = el.scrollWidth > el.clientWidth
+    if (clipped) e.currentTarget.title = currentJob.name
+    else e.currentTarget.removeAttribute('title')
+  }
+
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
+        onPointerEnter={syncTruncationTitle}
+        onFocus={syncTruncationTitle}
         className={cn(
-          'inline-flex h-9 max-w-[11rem] items-center gap-2 rounded-md border bg-card px-2.5 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 sm:max-w-[15rem]',
-          currentJob ? 'min-w-0 shrink sm:min-w-[7.5rem]' : 'shrink-0',
+          'inline-flex h-9 items-center gap-2 rounded-md border bg-card px-2.5 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30',
+          currentJob
+            ? 'min-w-0 max-w-[11rem] shrink sm:min-w-[7.5rem] sm:max-w-[13rem] md:max-w-[15rem] lg:w-[16.25rem] lg:max-w-[16.25rem]'
+            : 'shrink-0',
         )}
         aria-label={currentJob ? `Current job: ${currentJob.name}. Switch job` : 'All jobs. Choose a job'}
       >
@@ -96,7 +110,9 @@ export function JobSwitcher({ currentJob }: { currentJob: CurrentJob | null }) {
           <Layers className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         )}
         <span className={cn('min-w-0 flex-1 flex-col leading-tight', currentJob ? 'flex' : 'hidden sm:flex')}>
-          <span className="truncate font-medium">{currentJob ? currentJob.name : 'All Jobs'}</span>
+          <span ref={nameRef} className="truncate font-medium">
+            {currentJob ? currentJob.name : 'All Jobs'}
+          </span>
           {currentJob?.projectNumber && (
             <span className="hidden truncate font-mono text-[11px] text-muted-foreground md:block">{currentJob.projectNumber}</span>
           )}
@@ -166,7 +182,7 @@ export function JobSwitcher({ currentJob }: { currentJob: CurrentJob | null }) {
                   className={cn('flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-2.5 py-2', active === row && 'bg-muted')}
                 >
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate font-medium text-foreground">{job.name}</span>
+                    <span className="break-words font-medium text-foreground">{job.name}</span>
                     <span className="truncate text-xs text-muted-foreground">
                       {[job.projectNumber, job.city].filter(Boolean).join(' · ') || 'No job number'}
                     </span>
