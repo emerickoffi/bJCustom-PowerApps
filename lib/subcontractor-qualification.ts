@@ -18,15 +18,56 @@ export const QUALIFICATION_STATUS_LABELS: Record<QualificationStatus, string> = 
   not_cleared: 'Not Cleared',
 }
 
-export const QUALIFICATION_FILTERS = ['qualified', 'pending', 'not_cleared', 'not_started', 'expiring_soon'] as const
+/** Workflow stage shown to people (`vetting_status` on the summary view). `status` above drives assignment rules. */
+export const VETTING_STATUSES = ['new', 'requested', 'in_review', 'missing_items', 'conditional', 'qualified', 'not_qualified'] as const
+export type VettingStatus = (typeof VETTING_STATUSES)[number]
+
+export const VETTING_STATUS_LABELS: Record<VettingStatus, string> = {
+  new: 'New',
+  requested: 'Requested',
+  in_review: 'In Review',
+  missing_items: 'Missing Items',
+  conditional: 'Conditional',
+  qualified: 'Qualified',
+  not_qualified: 'Not Qualified',
+}
+
+export const QUALIFICATION_FILTERS = [
+  'qualified',
+  'conditional',
+  'missing_items',
+  'in_review',
+  'not_qualified',
+  'not_started',
+  'expiring_soon',
+] as const
 export type QualificationFilter = (typeof QUALIFICATION_FILTERS)[number]
 
 export const QUALIFICATION_FILTER_LABELS: Record<QualificationFilter, string> = {
   qualified: 'Qualified',
-  pending: 'Pending',
-  not_cleared: 'Not Cleared',
+  conditional: 'Conditional',
+  missing_items: 'Missing Items',
+  in_review: 'In Review',
+  not_qualified: 'Not Qualified',
   not_started: 'Not Started',
   expiring_soon: 'Expiring Soon',
+}
+
+/** Older links used the coarse statuses; keep them working. */
+const LEGACY_FILTERS: Record<string, QualificationFilter> = {
+  pending: 'in_review',
+  not_cleared: 'not_qualified',
+  new: 'not_started',
+  requested: 'not_started',
+}
+
+export const QUALIFICATION_SORTS = ['name', 'status', 'completion', 'expiration'] as const
+export type QualificationSort = (typeof QUALIFICATION_SORTS)[number]
+export const QUALIFICATION_SORT_LABELS: Record<QualificationSort, string> = {
+  name: 'Company name',
+  status: 'Qualification status',
+  completion: 'Completion',
+  expiration: 'Soonest expiration',
 }
 
 export type AssignmentMode = 'advisory' | 'enforcement'
@@ -34,6 +75,13 @@ export type AssignmentMode = 'advisory' | 'enforcement'
 export type QualificationSummary = {
   subcontractor_company_id: string
   status: QualificationStatus
+  vetting_status: VettingStatus
+  completion_percent: number
+  activated_at: string | null
+  requested_at: string | null
+  progressed_count: number
+  optional_open_count: number
+  decision_notes: string | null
   started_at: string | null
   mandatory_total: number
   mandatory_satisfied: number
@@ -44,7 +92,7 @@ export type QualificationSummary = {
   expiring_soon_count: number
   next_expiration: string | null
   last_reviewed_at: string | null
-  decision_outcome: 'approved' | 'not_cleared' | null
+  decision_outcome: 'approved' | 'conditional' | 'not_cleared' | null
   decision_at: string | null
   decision_by: string | null
   decision_template_version: number | null
@@ -54,7 +102,7 @@ export type QualificationSummary = {
 }
 
 export const QUALIFICATION_SUMMARY_COLUMNS =
-  'subcontractor_company_id, status, started_at, mandatory_total, mandatory_satisfied, rejected_count, expired_count, awaiting_review_count, missing_count, expiring_soon_count, next_expiration, last_reviewed_at, decision_outcome, decision_at, decision_by, decision_template_version, template_version, assignment_mode, criteria_met'
+  'subcontractor_company_id, status, vetting_status, completion_percent, activated_at, requested_at, progressed_count, optional_open_count, decision_notes, started_at, mandatory_total, mandatory_satisfied, rejected_count, expired_count, awaiting_review_count, missing_count, expiring_soon_count, next_expiration, last_reviewed_at, decision_outcome, decision_at, decision_by, decision_template_version, template_version, assignment_mode, criteria_met'
 
 export const ITEM_STATES = ['not_started', 'submitted', 'verified', 'rejected', 'not_applicable'] as const
 export type ItemState = (typeof ITEM_STATES)[number]
@@ -89,36 +137,172 @@ export const APPLICABILITY_LABELS: Record<Applicability, string> = {
   optional: 'Optional',
 }
 
-export type BadgeTone = 'neutral' | 'warning' | 'success' | 'danger'
+export type BadgeTone = 'neutral' | 'info' | 'warning' | 'success' | 'danger'
 
-export function qualificationBadge(summary: Pick<QualificationSummary, 'status' | 'mandatory_satisfied' | 'mandatory_total'> | null): {
-  label: string
-  tone: BadgeTone
-} {
-  const status = summary?.status ?? 'not_started'
-  switch (status) {
+export const VETTING_TONES: Record<VettingStatus, BadgeTone> = {
+  new: 'neutral',
+  requested: 'info',
+  in_review: 'info',
+  missing_items: 'warning',
+  conditional: 'warning',
+  qualified: 'success',
+  not_qualified: 'danger',
+}
+
+type BadgeInput = Partial<Pick<QualificationSummary, 'vetting_status' | 'status'>> | null
+
+/** Falls back to the coarse status for rows read before the vetting columns existed. */
+export function vettingStatusOf(summary: BadgeInput | undefined): VettingStatus {
+  if (summary?.vetting_status) return summary.vetting_status
+  switch (summary?.status) {
     case 'qualified':
-      return { label: 'Qualified', tone: 'success' }
+      return 'qualified'
     case 'not_cleared':
-      return { label: 'Not Cleared', tone: 'danger' }
+      return 'not_qualified'
     case 'pending':
-      return {
-        label: summary && summary.mandatory_total > 0 ? `Pending ${summary.mandatory_satisfied}/${summary.mandatory_total}` : 'Pending',
-        tone: 'warning',
-      }
+      return 'in_review'
     default:
-      return { label: 'Not Started', tone: 'neutral' }
+      return 'new'
   }
 }
 
-export function parseQualificationFilter(value: string | undefined | null): QualificationFilter | null {
-  return QUALIFICATION_FILTERS.includes(value as QualificationFilter) ? (value as QualificationFilter) : null
+export function qualificationBadge(summary: BadgeInput): { label: string; tone: BadgeTone } {
+  const v = vettingStatusOf(summary)
+  return { label: VETTING_STATUS_LABELS[v], tone: VETTING_TONES[v] }
 }
 
-/** Missing summaries count as Not Started, so companies without any vetting still match that filter. */
+export function readinessLabel(summary: BadgeInput): { label: string; tone: BadgeTone } {
+  const v = vettingStatusOf(summary)
+  if (v === 'qualified') return { label: 'Ready for work', tone: 'success' }
+  if (v === 'conditional') return { label: 'Usable with warnings', tone: 'warning' }
+  if (v === 'not_qualified') return { label: 'Not approved', tone: 'danger' }
+  return { label: 'Not ready', tone: 'neutral' }
+}
+
+export function blockerCount(s: Pick<QualificationSummary, 'missing_count' | 'rejected_count' | 'expired_count'>): number {
+  return s.missing_count + s.rejected_count + s.expired_count
+}
+
+export function progressSummary(s: QualificationSummary): string {
+  if (!s.mandatory_total) return 'No required items yet'
+  return `${s.mandatory_satisfied} of ${s.mandatory_total} required items approved`
+}
+
+export function parseQualificationFilter(value: string | undefined | null): QualificationFilter | null {
+  if (!value) return null
+  if (QUALIFICATION_FILTERS.includes(value as QualificationFilter)) return value as QualificationFilter
+  return LEGACY_FILTERS[value] ?? null
+}
+
+export function parseQualificationSort(value: string | undefined | null): QualificationSort {
+  return QUALIFICATION_SORTS.includes(value as QualificationSort) ? (value as QualificationSort) : 'name'
+}
+
+/** Missing summaries count as New (Not Started), so companies without any vetting still match that filter. */
 export function matchesQualificationFilter(summary: QualificationSummary | undefined, filter: QualificationFilter): boolean {
   if (filter === 'expiring_soon') return (summary?.expiring_soon_count ?? 0) > 0
-  return (summary?.status ?? 'not_started') === filter
+  const v = vettingStatusOf(summary)
+  if (filter === 'not_started') return v === 'new' || v === 'requested'
+  return v === filter
+}
+
+/** Problems first, then work in progress, then finished. */
+const STATUS_SORT_RANK: Record<VettingStatus, number> = {
+  not_qualified: 0,
+  missing_items: 1,
+  in_review: 2,
+  requested: 3,
+  new: 4,
+  conditional: 5,
+  qualified: 6,
+}
+
+export function compareByQualification(
+  sort: QualificationSort,
+  a: QualificationSummary | undefined,
+  b: QualificationSummary | undefined,
+): number {
+  if (sort === 'status') return STATUS_SORT_RANK[vettingStatusOf(a)] - STATUS_SORT_RANK[vettingStatusOf(b)]
+  if (sort === 'completion') return (b?.completion_percent ?? 0) - (a?.completion_percent ?? 0)
+  if (sort === 'expiration') {
+    const x = a?.next_expiration ?? '9999-12-31'
+    const y = b?.next_expiration ?? '9999-12-31'
+    return x < y ? -1 : x > y ? 1 : 0
+  }
+  return 0
+}
+
+export type StageState = 'complete' | 'current' | 'warning' | 'failed' | 'upcoming'
+export type VettingStage = { key: string; label: string; state: StageState; detail: string | null }
+
+/**
+ * Four-step diagram: New → Requested → In Review → Outcome. Missing Items is shown on the review step (amber) because
+ * work continues there; the final step takes the label of the decision once there is one.
+ */
+export function buildVettingStages(summary: QualificationSummary | null): VettingStage[] {
+  const v = vettingStatusOf(summary)
+  const order: VettingStatus[] = ['new', 'requested', 'in_review']
+  const reached = v === 'new' ? 0 : v === 'requested' ? 1 : v === 'in_review' || v === 'missing_items' ? 2 : 3
+  const stages: VettingStage[] = order.map((key, i) => ({
+    key,
+    label: VETTING_STATUS_LABELS[key],
+    state: i < reached ? 'complete' : i === reached ? 'current' : 'upcoming',
+    detail: null,
+  }))
+  if (v === 'missing_items') {
+    stages[2] = {
+      key: 'missing_items',
+      label: 'Missing Items',
+      state: 'warning',
+      detail: summary ? plural(blockerCount(summary), 'blocker') : null,
+    }
+  }
+  const outcome: VettingStage =
+    v === 'qualified'
+      ? { key: 'qualified', label: 'Qualified', state: 'complete', detail: 'Ready for work' }
+      : v === 'conditional'
+        ? { key: 'conditional', label: 'Conditional', state: 'warning', detail: 'Usable with warnings' }
+        : v === 'not_qualified'
+          ? { key: 'not_qualified', label: 'Not Qualified', state: 'failed', detail: 'Not approved' }
+          : { key: 'decision', label: 'Decision', state: 'upcoming', detail: 'Qualified, Conditional, or Not Qualified' }
+  return [...stages, outcome]
+}
+
+/** One sentence telling the reviewer what to do next; null when nothing is needed. */
+export function nextRequiredAction(summary: QualificationSummary | null, today: string): string | null {
+  const v = vettingStatusOf(summary)
+  const s = summary
+  switch (v) {
+    case 'new':
+      return 'Start vetting or request documents from this subcontractor.'
+    case 'requested':
+      return 'Waiting on documents. Upload them here as they arrive.'
+    case 'missing_items': {
+      if (!s) return 'Resolve the missing items.'
+      const parts = [
+        s.expired_count ? `${plural(s.expired_count, 'expired document')}` : null,
+        s.rejected_count ? `${s.rejected_count} needing correction` : null,
+        s.missing_count ? `${s.missing_count} not received` : null,
+      ].filter(Boolean)
+      return `Resolve ${plural(blockerCount(s), 'blocker')}: ${parts.join(', ')}.`
+    }
+    case 'in_review':
+      if (s?.awaiting_review_count) return `Review ${plural(s.awaiting_review_count, 'submitted item')}.`
+      if (s?.criteria_met) return 'All required items are approved. Record the final decision.'
+      return 'Continue reviewing the checklist.'
+    case 'conditional':
+      if (s?.next_expiration && expiryTier(s.next_expiration, today)) {
+        return `Renew the document that ${expiryLabel(s.next_expiration, today).toLowerCase()}.`
+      }
+      return 'Resolve the noted conditions, then approve fully.'
+    case 'qualified':
+      if (s?.next_expiration && expiryTier(s.next_expiration, today)) {
+        return `Renew the document that ${expiryLabel(s.next_expiration, today).toLowerCase()}.`
+      }
+      return null
+    case 'not_qualified':
+      return 'Reopen review if circumstances change.'
+  }
 }
 
 export function primaryActionLabel(status: QualificationStatus): string {
@@ -232,7 +416,7 @@ export function buildQualificationAttention(
   return items.sort((a, b) => a.rank - b.rank || a.companyName.localeCompare(b.companyName))
 }
 
-function plural(n: number, word: string) {
+export function plural(n: number, word: string) {
   return `${n} ${n === 1 ? word : `${word}s`}`
 }
 

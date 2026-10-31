@@ -25,8 +25,10 @@ import { DirectorySummary } from '@/components/subcontractors/directory-summary'
 import { loadQualificationSummaries } from '@/lib/subcontractor-qualification-data'
 import {
   QUALIFICATION_FILTERS,
+  compareByQualification,
   matchesQualificationFilter,
   parseQualificationFilter,
+  parseQualificationSort,
   type QualificationFilter,
 } from '@/lib/subcontractor-qualification'
 import { QualificationFilterChips } from '@/components/subcontractors/qualification-filter'
@@ -38,7 +40,7 @@ const LIMIT = 500
 export default async function SubcontractorsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; added?: string; projects?: string; qualification?: string }>
+  searchParams: Promise<{ q?: string; status?: string; added?: string; projects?: string; qualification?: string; sort?: string }>
 }) {
   const session = await requireManager()
   const features = await requireFeature(session.organizationId, 'subcontractors')
@@ -49,6 +51,7 @@ export default async function SubcontractorsPage({
     : null
   const added = params.added?.slice(0, 160)
   const qualificationFilter = parseQualificationFilter(params.qualification)
+  const sort = parseQualificationSort(params.sort)
   const filtered = Boolean(q || status || qualificationFilter)
 
   const supabase = await createClient()
@@ -73,10 +76,18 @@ export default async function SubcontractorsPage({
   ])
   const qualificationReady = qualification.availability === 'ready'
   const loadedRows = (data ?? []) as SubcontractorCompany[]
-  const rows =
+  const filteredRows =
     qualificationFilter && qualificationReady
       ? loadedRows.filter((r) => matchesQualificationFilter(qualification.byCompany[r.id], qualificationFilter))
       : loadedRows
+  const rows =
+    sort !== 'name' && qualificationReady
+      ? [...filteredRows].sort(
+          (a, b) =>
+            compareByQualification(sort, qualification.byCompany[a.id], qualification.byCompany[b.id]) ||
+            a.company_name.localeCompare(b.company_name),
+        )
+      : filteredRows
   const projectsByCompany = assignmentsRes.error
     ? null
     : groupAssignedProjects((assignmentsRes.data ?? []) as unknown as Parameters<typeof groupAssignedProjects>[0])
@@ -150,6 +161,7 @@ export default async function SubcontractorsPage({
           {qualificationReady && summary.total > 0 && (
             <QualificationFilterChips
               active={qualificationFilter}
+              sort={sort}
               baseParams={{ q: q || undefined, status: status ?? undefined }}
               counts={qualificationCounts}
             />
