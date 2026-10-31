@@ -41,7 +41,9 @@ language sql immutable set search_path = '' as $$
     ('ai_assistant',   false, array[]::text[]),
     ('daily_logs',     false, array[]::text[]),
     ('subcontractors', false, array[]::text[]),
-    ('client_updates', false, array['portal'])
+    ('client_updates', false, array['portal']),
+    -- Kept in sync with 20261123000010_activate_change_orders.sql so applying this file later never unregisters it.
+    ('change_orders',  false, array[]::text[])
 $$;
 
 -- Working drafts ------------------------------------------------------------------------------------------
