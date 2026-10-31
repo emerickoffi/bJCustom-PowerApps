@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Pencil, Plus } from 'lucide-react'
+import { House, Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -265,11 +265,12 @@ export default async function ClientDetailPage({
           />
 
           <section aria-labelledby="client-projects" className="flex flex-col gap-3">
-            <h2 id="client-projects" className="font-serif text-lg font-semibold text-foreground">
+            <h2 id="client-projects" className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
+              <House className="size-5 text-primary" aria-hidden="true" />
               Projects
             </h2>
             {projects?.length ? (
-              <ProjectList projects={projects as unknown as ProjectListItem[]} warrantyByProject={warrantyByProject} />
+              <ProjectList projects={projects as unknown as ProjectListItem[]} warrantyByProject={warrantyByProject} showType />
             ) : (
               <p className="rounded-xl border border-dashed bg-card p-6 text-sm text-muted-foreground">
                 No projects for this client yet.
@@ -296,6 +297,15 @@ export default async function ClientDetailPage({
           <ContactsPanel clientId={client.id} contacts={(contactsRes.data ?? []) as ContactRow[]}
             canEdit={manager}
             accountStatusByContact={accountStatusByContact}
+            clientRecord={{
+              first_name: client.first_name,
+              middle_name: client.middle_name,
+              last_name: client.last_name,
+              email: client.email,
+              phone: client.phone,
+              alternate_phone: client.alternate_phone,
+              preferred_communication: client.preferred_communication,
+            }}
           />
         </aside>
       </div>

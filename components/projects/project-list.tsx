@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ChevronRight, MapPin } from 'lucide-react'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
+import { PROJECT_TYPE_LABELS } from '@/lib/domain'
 import { formatDate } from '@/lib/format'
 import type { ProjectSummary } from '@/lib/queries'
 
@@ -41,9 +42,11 @@ function Progress({ value }: { value: number | null }) {
 export function ProjectList({
   projects,
   warrantyByProject,
+  showType = false,
 }: {
   projects: ProjectListItem[]
   warrantyByProject?: Record<string, WarrantyMilestone | null>
+  showType?: boolean
 }) {
   return (
     <ul className="surface flex flex-col divide-y divide-border/70 overflow-hidden p-0">
@@ -63,6 +66,14 @@ export function ProjectList({
                   <ProjectStatusBadge status={project.status} />
                 </div>
                 <span className="truncate font-medium text-foreground">{project.name}</span>
+                {showType && (
+                  <span className="truncate text-sm text-muted-foreground">
+                    <span className="sr-only">Project type: </span>
+                    {project.project_type
+                      ? (PROJECT_TYPE_LABELS[project.project_type] ?? project.project_type)
+                      : 'Type not specified'}
+                  </span>
+                )}
                 {location && (
                   <span className="flex items-center gap-1 truncate text-sm text-muted-foreground">
                     <MapPin className="size-3.5 shrink-0" aria-hidden="true" />

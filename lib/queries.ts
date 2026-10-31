@@ -22,6 +22,7 @@ export type ProjectSummary = {
   project_number: string
   name: string
   status: ProjectStatus
+  project_type: string | null
   address_line1: string
   city: string
   state: string
@@ -42,7 +43,7 @@ export type StaffMember = {
 }
 
 export const PROJECT_SUMMARY_COLUMNS =
-  'id, project_number, name, status, address_line1, city, state, postal_code, progress_percent, target_completion_date, estimated_budget_cents, project_manager_id, updated_at, primary_client:clients!projects_primary_client_id_fkey(id, first_name, last_name)'
+  'id, project_number, name, status, project_type, address_line1, city, state, postal_code, progress_percent, target_completion_date, estimated_budget_cents, project_manager_id, updated_at, primary_client:clients!projects_primary_client_id_fkey(id, first_name, last_name)'
 
 /** Active staff members of an organization, with profile names, for assignment pickers. */
 export async function getStaffMembers(organizationId: string, roles?: OrgRole[]): Promise<StaffMember[]> {
