@@ -42,6 +42,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: '/daily-logs', label: 'Daily Logs', icon: 'daily-logs', roles: ['org_admin', 'project_manager', 'builder_staff'], feature: 'daily_logs', group: 'workspace' },
   { href: '/estimates', label: 'Estimates', icon: 'estimates', feature: 'estimates', group: 'financials' },
   { href: '/invoices', label: 'Invoices', icon: 'invoices', feature: 'invoices', group: 'financials' },
+  { href: '/change-orders', label: 'Change Orders', icon: 'change-orders', roles: ['org_admin', 'project_manager'], feature: 'change_orders', group: 'financials' },
   { href: '/documents', label: 'Documents', icon: 'documents', feature: 'documents', group: 'services' },
   { href: '/warranty', label: 'Warranty', icon: 'warranty', feature: 'warranty', group: 'services' },
   { href: '/team', label: 'Users & Access', icon: 'team', roles: ['org_admin'], group: 'people' },
@@ -64,13 +65,6 @@ export const PLANNED_MODULES: PlannedModule[] = [
     stage: 3,
     summary: 'Finish and fixture selections with deadlines, allowances, and homeowner approvals.',
   },
-  {
-    slug: 'change-orders',
-    label: 'Change Orders',
-    icon: 'change-orders',
-    stage: 3,
-    summary: 'Scope and price changes with electronic homeowner approval and budget impact.',
-  },
 ]
 
 /** Former placeholder slugs that now have a real module; old bookmarks redirect there. */
@@ -78,6 +72,7 @@ export const GRADUATED_MODULE_ROUTES: Record<string, string> = {
   schedule: '/schedule',
   invoices: '/invoices',
   'daily-logs': '/daily-logs',
+  'change-orders': '/change-orders',
 }
 
 export const MY_WORK_NAV: NavItem = { href: '/my-work', label: 'My Work', icon: 'my-work', roles: ['project_manager'], group: 'workspace' }
