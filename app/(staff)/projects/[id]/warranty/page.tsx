@@ -11,26 +11,24 @@ import { formatDate } from '@/lib/format'
 import { PageHeader } from '@/components/shared/page-header'
 import { ArchiveWarrantyButton } from '@/components/warranty/run-warranty-button'
 import { CorrectCompletionForm, EnrollWarrantyForm, FollowupForm } from '@/components/warranty/warranty-forms'
-import { WARRANTY_STAGE_LABELS, daysUntil, type WarrantyStage } from '@/components/warranty/stage'
-import { cn } from '@/lib/utils'
+import { WARRANTY_STAGE_LABELS, type WarrantyStage } from '@/components/warranty/stage'
+import { CoverageTimeline, type TimelineMilestone } from '@/components/warranty/coverage-timeline'
 
 export const metadata: Metadata = { title: 'Project warranty' }
 
-type Milestone = {
-  id: string
-  coverage_name: string
-  stage_label: string
-  categories: string[]
-  due_on: string
-  reached_at: string | null
-}
-
 type Coverage = { coverage_key: string; name: string; description: string | null; exclusions: string | null }
 
-export default async function ProjectWarrantyPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectWarrantyPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ claim?: string }>
+}) {
   const session = await requireStaff()
   await requireFeature(session.organizationId, 'warranty')
   const { id } = await params
+  const openClaimForm = (await searchParams).claim === 'new'
   const supabase = await createClient()
   const isAdmin = session.role === 'org_admin'
 
@@ -89,6 +87,12 @@ export default async function ProjectWarrantyPage({ params }: { params: Promise<
             .not('status', 'in', '(resolved,closed)'),
         ])
       : [{ data: null }, { data: null }, { data: null }, { data: null }, { count: 0 }]
+
+  const { data: openClaimRows } = warranty
+    ? await supabase.from('warranty_claims').select('coverage_key').eq('project_id', id).neq('status', 'closed')
+    : { data: [] as { coverage_key: string }[] }
+  const openClaimsByCoverage: Record<string, number> = {}
+  for (const c of openClaimRows ?? []) openClaimsByCoverage[c.coverage_key] = (openClaimsByCoverage[c.coverage_key] ?? 0) + 1
 
   const stage = warranty?.stage as WarrantyStage | undefined
   const snapshot = warranty?.terms_snapshot as { template_name?: string; disclaimer?: string; coverages?: Coverage[] } | undefined
@@ -156,45 +160,12 @@ export default async function ProjectWarrantyPage({ params }: { params: Promise<
             <h2 id="milestones" className="font-serif text-lg font-semibold">
               Coverage periods
             </h2>
-            <ul className="grid gap-4 md:grid-cols-3">
-              {((milestones ?? []) as Milestone[]).map((m) => {
-                const days = daysUntil(m.due_on)
-                const current = m.id === warranty.current_milestone_id
-                return (
-                  <li key={m.id} className={cn('surface flex flex-col gap-3 p-5', current && 'ring-2 ring-primary')}>
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-medium">{m.coverage_name}</h3>
-                      <span
-                        className={cn(
-                          'rounded-full px-2 py-0.5 text-xs',
-                          m.reached_at ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary',
-                        )}
-                      >
-                        {m.reached_at ? 'Ended' : current ? 'Current' : 'Active'}
-                      </span>
-                    </div>
-                    <p className="text-sm">
-                      Ends {formatDate(m.due_on)}
-                      {!m.reached_at && (
-                        <span className="text-muted-foreground">
-                          {' '}
-                          · {days > 0 ? `${days} day${days === 1 ? '' : 's'} left` : 'due today'}
-                        </span>
-                      )}
-                    </p>
-                    {m.categories.length > 0 && (
-                      <ul className="flex flex-wrap gap-1.5">
-                        {m.categories.map((c) => (
-                          <li key={c} className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                            {c}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
+            <CoverageTimeline
+              startDate={warranty.start_date}
+              milestones={(milestones ?? []) as TimelineMilestone[]}
+              todayIso={todayIso}
+              openClaimsByCoverage={openClaimsByCoverage}
+            />
             {snapshot?.disclaimer && <p className="text-xs text-muted-foreground">{snapshot.disclaimer}</p>}
           </section>
 
@@ -230,12 +201,12 @@ export default async function ProjectWarrantyPage({ params }: { params: Promise<
             </section>
           )}
 
-          <section aria-labelledby="claims" className="flex flex-col gap-3">
+          <section id="claims-section" aria-labelledby="claims" className="flex scroll-mt-20 flex-col gap-3">
             <h2 id="claims" className="font-serif text-lg font-semibold">
               Warranty claims
             </h2>
             {warranty.stage !== 'archived' && (
-              <details className="surface p-5">
+              <details className="surface p-5" open={openClaimForm}>
                 <summary className="cursor-pointer text-sm font-medium">Log a claim on the homeowner&apos;s behalf</summary>
                 <div className="mt-4">
                   <SubmitClaimForm
