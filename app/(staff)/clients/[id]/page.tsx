@@ -26,6 +26,7 @@ import {
 } from '@/components/clients/manage-portal-access'
 import { COMMUNICATION_LABELS, type ClientStatus, type CommunicationMethod } from '@/lib/domain'
 import { formatAddress, formatDate } from '@/lib/format'
+import { shouldShowClientAsPrimary } from '@/lib/primary-contact'
 
 export const metadata: Metadata = { title: 'Client' }
 
@@ -79,9 +80,11 @@ async function loadPortalAccess(
 
   const statusByContact: Record<string, PortalAccountStatus | null> = {}
   for (const a of accounts ?? []) {
-    if (!a.contact_id) continue
+    // An unlinked login belongs to the client record; it is shown on the primary slot only when no primary row exists.
+    const key = (a.contact_id as string | null) ?? (primaryContact ? null : 'primary')
+    if (!key) continue
     const member = memberById.get(a.user_id)
-    statusByContact[a.contact_id] = !member
+    statusByContact[key] = !member
       ? null
       : member.status === 'suspended'
         ? 'suspended'
@@ -190,6 +193,19 @@ export default async function ClientDetailPage({
   const portalData = session.role === 'org_admin' ? await loadPortalAccess(client, (contactsRes.data ?? []).filter((c) => !c.archived_at), projects ?? []) : null
   const { statusByContact, ...portal } = portalData ?? { statusByContact: null }
   const portalFeatureOn = portalData ? features.portal : true
+  const clientIdentity = {
+    first_name: client.first_name as string,
+    middle_name: client.middle_name as string | null,
+    last_name: client.last_name as string,
+    email: client.email as string | null,
+    phone: client.phone as string | null,
+    alternate_phone: client.alternate_phone as string | null,
+    preferred_communication: (client.preferred_communication as string | null) ?? 'email',
+  }
+  const showClientAsPrimary = shouldShowClientAsPrimary(
+    clientIdentity,
+    (contactsRes.data ?? []).filter((c) => !c.archived_at),
+  )
   const initials = `${client.first_name?.[0] ?? ''}${client.last_name?.[0] ?? ''}`.toUpperCase()
   const accountStatusByContact =
     statusByContact && !portalFeatureOn
@@ -296,6 +312,7 @@ export default async function ClientDetailPage({
           <ContactsPanel clientId={client.id} contacts={(contactsRes.data ?? []) as ContactRow[]}
             canEdit={manager}
             accountStatusByContact={accountStatusByContact}
+            clientIdentity={showClientAsPrimary ? clientIdentity : null}
           />
         </aside>
       </div>

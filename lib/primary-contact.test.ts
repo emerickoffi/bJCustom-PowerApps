@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildPrimaryContact } from './primary-contact.ts'
+import { buildPrimaryContact, isSamePerson, shouldShowClientAsPrimary } from './primary-contact.ts'
 
 test('copies the client identity into a primary owner contact', () => {
   const c = buildPrimaryContact({
@@ -29,4 +29,21 @@ test('portal flags match existing primary contacts so linking never locks a home
   )
   assert.equal(c.email, null)
   assert.equal(c.preferred_communication, 'email')
+})
+
+const andy = { first_name: 'Andy', last_name: 'Belle', email: 'andy@example.com' }
+
+test('matches the same person by email or by full name, case-insensitively', () => {
+  assert.equal(isSamePerson(andy, { first_name: 'A.', last_name: 'B', email: ' ANDY@example.com ' }), true)
+  assert.equal(isSamePerson(andy, { first_name: ' andy', last_name: 'BELLE', email: null }), true)
+  assert.equal(isSamePerson(andy, { first_name: 'Sarah', last_name: 'Belle', email: 'sarah@example.com' }), false)
+  assert.equal(isSamePerson({ ...andy, email: null }, { first_name: 'Sarah', last_name: 'Belle', email: null }), false)
+})
+
+test('shows the client as primary only when no primary row or duplicate person exists', () => {
+  assert.equal(shouldShowClientAsPrimary(andy, []), true)
+  const spouse = { first_name: 'Sarah', last_name: 'Belle', email: 'sarah@example.com', is_primary: false }
+  assert.equal(shouldShowClientAsPrimary(andy, [spouse]), true)
+  assert.equal(shouldShowClientAsPrimary(andy, [{ ...andy, is_primary: true }]), false)
+  assert.equal(shouldShowClientAsPrimary(andy, [{ ...andy, is_primary: false }]), false)
 })

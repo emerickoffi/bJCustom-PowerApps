@@ -37,3 +37,27 @@ export function buildPrimaryContact(client: ClientIdentity) {
     portal_sign: true,
   }
 }
+
+type PersonIdentity = { first_name: string; last_name: string; email?: string | null }
+
+const norm = (v: string | null | undefined) => v?.trim().toLowerCase() ?? ''
+
+/** Same rule as reconcile_missing_primary_contacts: matching email, or matching first and last name. */
+export function isSamePerson(a: PersonIdentity, b: PersonIdentity): boolean {
+  const email = norm(a.email)
+  if (email && email === norm(b.email)) return true
+  return norm(a.first_name) === norm(b.first_name) && norm(a.last_name) === norm(b.last_name)
+}
+
+/**
+ * The client record is the primary homeowner. When no is_primary contact row
+ * exists yet, the panel shows the client identity in that slot, unless an
+ * active contact is already that person (then staff promote it instead).
+ */
+export function shouldShowClientAsPrimary(
+  client: PersonIdentity,
+  activeContacts: (PersonIdentity & { is_primary: boolean })[],
+): boolean {
+  if (activeContacts.some((c) => c.is_primary)) return false
+  return !activeContacts.some((c) => isSamePerson(client, c))
+}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import {
   Check,
   ChevronDown,
@@ -108,7 +109,9 @@ function ContactFields({ contact }: { contact?: ContactRow }) {
         name="relationship"
         label="Relationship"
         defaultValue={contact?.relationship ?? 'spouse'}
-        options={contactRelationshipOptions(contact?.relationship)}
+        options={contactRelationshipOptions(contact?.relationship, {
+          includePrimaryOwner: contact?.relationship === 'primary_owner',
+        })}
       />
       <TextField name="email" label="Email" type="email" defaultValue={contact?.email ?? ''} />
       <SelectField
@@ -368,17 +371,103 @@ function ContactCard({
   )
 }
 
+export type ClientIdentity = {
+  first_name: string
+  middle_name: string | null
+  last_name: string
+  email: string | null
+  phone: string | null
+  alternate_phone: string | null
+  preferred_communication: string
+}
+
+/** The client record itself, shown in the primary slot until a primary contact row exists. Read-only by design. */
+function ClientIdentityCard({
+  clientId,
+  client,
+  canEdit,
+  accountStatus,
+}: {
+  clientId: string
+  client: ClientIdentity
+  canEdit: boolean
+  accountStatus?: PortalAccountStatus
+}) {
+  const name = [client.first_name, client.middle_name, client.last_name].filter(Boolean).join(' ')
+  const preferred =
+    (COMMUNICATION_LABELS as Record<string, string>)[client.preferred_communication] ?? client.preferred_communication
+  const phones = [client.phone, client.alternate_phone].filter(Boolean) as string[]
+  return (
+    <li className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-sage/30 p-4">
+      <div className="flex flex-wrap items-start gap-3">
+        <span
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
+          aria-hidden="true"
+        >
+          {`${client.first_name.charAt(0)}${client.last_name.charAt(0)}`.toUpperCase()}
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-foreground">{name}</span>
+            <span className="rounded-full bg-primary px-2 py-0.5 text-[0.7rem] font-medium text-primary-foreground">
+              Primary
+            </span>
+          </div>
+          <span className="text-xs text-muted-foreground">{`Primary owner · Prefers ${preferred.toLowerCase()}`}</span>
+        </div>
+        {canEdit && (
+          <Button variant="outline" size="sm" render={<Link href={`/clients/${clientId}/edit`} />} nativeButton={false}>
+            <Pencil aria-hidden="true" />
+            Edit client
+          </Button>
+        )}
+      </div>
+      <div className="flex flex-col gap-1.5 text-sm sm:pl-[3.25rem]">
+        {client.email && (
+          <a
+            href={`mailto:${client.email}`}
+            className="inline-flex min-w-0 items-center gap-2 text-foreground underline-offset-4 hover:underline"
+          >
+            <Mail className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="truncate">{client.email}</span>
+          </a>
+        )}
+        {phones.map((phone) => (
+          <a
+            key={phone}
+            href={`tel:${phone}`}
+            className="inline-flex items-center gap-2 text-foreground underline-offset-4 hover:underline"
+          >
+            <Phone className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="tabular">{formatPhone(phone)}</span>
+          </a>
+        ))}
+        {!client.email && phones.length === 0 && <span className="text-muted-foreground">No contact details</span>}
+        {accountStatus && (
+          <div className="pt-1">
+            <PortalAccountLine status={accountStatus} />
+          </div>
+        )}
+        <p className="pt-1 text-xs text-muted-foreground">From the client record. Edit these details on the client.</p>
+      </div>
+    </li>
+  )
+}
+
 export function ContactsPanel({
   clientId,
   contacts,
   canEdit,
   accountStatusByContact = null,
+  clientIdentity = null,
 }: {
   clientId: string
   contacts: ContactRow[]
   canEdit: boolean
   /** Null when the viewer cannot see portal accounts. A missing key means no account; a null value means unknown. */
   accountStatusByContact?: Record<string, PortalAccountStatus | null> | null
+  /** Set when the client record should stand in as the primary contact (no primary row, no duplicate person). */
+  clientIdentity?: ClientIdentity | null
 }) {
   const statusFor = (id: string): PortalAccountStatus | undefined => {
     if (!accountStatusByContact) return undefined
@@ -389,6 +478,9 @@ export function ContactsPanel({
   const primary = active.find((c) => c.is_primary)
   const secondary = active.filter((c) => c !== primary)
   const archived = contacts.filter((c) => c.archived_at)
+  const fallbackPrimary = primary ? null : clientIdentity
+  const hasPrimary = Boolean(primary || fallbackPrimary)
+  const addLabel = hasPrimary ? 'Add Secondary Contact' : 'Add contact'
   return (
     <div id="contacts" className="scroll-mt-24">
     <Panel
@@ -404,18 +496,25 @@ export function ContactsPanel({
             onClick={() => setAdding((v) => !v)}
           >
             {adding ? <X aria-hidden="true" /> : <Plus aria-hidden="true" />}
-            {adding ? 'Cancel' : 'Add contact'}
+            {adding ? 'Cancel' : addLabel}
           </Button>
         )
       }
     >
       {canEdit && adding && (
         <div id="contact-add-form" className="rounded-lg border bg-sage/30 p-4">
-          <h3 className="mb-3 text-sm font-semibold text-foreground">New contact</h3>
-          <InlineActionForm action={addContactAction.bind(null, clientId)} className="grid gap-3 sm:grid-cols-2">
+          <h3 className="text-sm font-semibold text-foreground">{hasPrimary ? 'New secondary contact' : 'New contact'}</h3>
+          <p className="mb-3 mt-1 text-xs text-muted-foreground">
+            Adding a contact does not create a portal login. Create one from Manage portal access when needed.
+          </p>
+          <InlineActionForm
+            action={addContactAction.bind(null, clientId)}
+            className="grid gap-3 sm:grid-cols-2"
+            onSuccess={() => setAdding(false)}
+          >
             <ContactFields />
             <div className="sm:col-span-2">
-              <SubmitButton pendingLabel="Adding...">Add contact</SubmitButton>
+              <SubmitButton pendingLabel="Adding...">{addLabel}</SubmitButton>
             </div>
           </InlineActionForm>
         </div>
@@ -425,6 +524,15 @@ export function ContactsPanel({
         {primary ? (
           <ul className="flex flex-col gap-3">
             <ContactCard clientId={clientId} contact={primary} canEdit={canEdit} accountStatus={statusFor(primary.id)} />
+          </ul>
+        ) : fallbackPrimary ? (
+          <ul className="flex flex-col gap-3">
+            <ClientIdentityCard
+              clientId={clientId}
+              client={fallbackPrimary}
+              canEdit={canEdit}
+              accountStatus={statusFor('primary')}
+            />
           </ul>
         ) : (
           <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
