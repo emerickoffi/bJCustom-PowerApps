@@ -181,6 +181,7 @@ export function RepairPhotoUploader({
   return (
     <MediaUploader
       label="Add repair photos"
+      evidence="repair"
       items={items}
       onItemsChange={(next) => {
         setItems(next)

@@ -209,7 +209,7 @@ async function SubmittedView({
                 <div className="flex flex-col gap-2">
                   <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Your description</h3>
                   <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{issue.homeowner_description}</p>
-                  <MediaGrid items={mediaFor(issue.id, 'original')} emptyLabel="" />
+                  <MediaGrid evidence="original" items={mediaFor(issue.id, 'original')} emptyLabel="" />
                 </div>
                 {(issue.corrective_action || repairPhotos.length > 0) && (
                   <div className="flex flex-col gap-2 border-t pt-4">
@@ -217,7 +217,7 @@ async function SubmittedView({
                     {issue.corrective_action && (
                       <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{issue.corrective_action}</p>
                     )}
-                    <MediaGrid items={repairPhotos} emptyLabel="" />
+                    <MediaGrid evidence="repair" items={repairPhotos} emptyLabel="" />
                   </div>
                 )}
                 {issue.homeowner_validation_note && (

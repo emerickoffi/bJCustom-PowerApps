@@ -216,7 +216,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
             </blockquote>
             <div className="flex flex-col gap-2">
               <Label>Original photos &amp; video</Label>
-              <MediaGrid items={toMedia('original')} emptyLabel="The homeowner did not attach any files." />
+              <MediaGrid evidence="original" items={toMedia('original')} emptyLabel="The homeowner did not attach any files." />
             </div>
           </Section>
 
@@ -231,7 +231,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
             <div className="flex flex-col gap-3">
               <Label>After photos</Label>
               {closed ? (
-                <MediaGrid items={toMedia('repair')} emptyLabel="No repair photos were added." />
+                <MediaGrid evidence="repair" items={toMedia('repair')} emptyLabel="No repair photos were added." />
               ) : (
                 <RepairPhotoUploader issueId={issue.id} organizationId={session.organizationId} userId={session.userId} initial={toMedia('repair')} />
               )}
