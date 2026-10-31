@@ -13,6 +13,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getStaffMembers } from '@/lib/queries'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { ProjectFilter } from '@/components/schedule/project-filter'
+import { ScheduleSelectionState } from '@/components/schedule/schedule-selection-state'
+import { ALL_PROJECTS, resolveScheduleSelection, scheduleHref } from '@/lib/schedule-selection'
 import { ScheduleBoard, type BoardGroup } from '@/components/schedule/schedule-board'
 import { InitializeScheduleButton } from '@/components/schedule/schedule-controls'
 import {
@@ -39,15 +41,6 @@ type ProjectRow = {
   completion_date: string | null
 }
 
-/** Order used to pick a sensible default project: actively building first. */
-const DEFAULT_PRIORITY: ProjectStatus[] = [
-  'under_construction',
-  'final_inspection',
-  'punch_list',
-  'substantially_complete',
-  'preconstruction',
-]
-
 const UPCOMING_DAYS = 14
 
 function addDays(iso: string, days: number) {
@@ -58,12 +51,17 @@ function addDays(iso: string, days: number) {
 
 const isOpen = (a: Pick<ScheduleActivity, 'status'>) => a.status !== 'completed' && a.status !== 'skipped'
 
-export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ project?: string }> }) {
+export default async function SchedulePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ projectId?: string | string[]; project?: string | string[] }>
+}) {
   const session = await requireStaff()
-  const { project: projectParam } = await searchParams
+  const params = await searchParams
   const supabase = await createClient()
 
-  const [{ data: projectData }, { data: activityData }, staff] = await Promise.all([
+  // Only projects this staff member can access (org-scoped, enforced again by RLS) are selectable.
+  const [{ data: projectData }, { data: countData }] = await Promise.all([
     supabase
       .from('projects')
       .select('id, name, project_number, status, progress_percent, completion_date')
@@ -72,38 +70,68 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
       .order('name'),
     supabase
       .from('schedule_activities')
-      .select(`${ACTIVITY_COLUMNS}, project_id`)
+      .select('project_id')
       .eq('organization_id', session.organizationId)
-      .order('sort_order')
-      .order('created_at')
       .limit(5000),
-    getStaffMembers(session.organizationId, ['org_admin', 'project_manager', 'builder_staff']),
   ])
   const projects = (projectData ?? []) as ProjectRow[]
-  const allActivities = (activityData ?? []) as unknown as Activity[]
 
   const activityCount = new Map<string, number>()
-  for (const a of allActivities) activityCount.set(a.project_id, (activityCount.get(a.project_id) ?? 0) + 1)
+  for (const a of (countData ?? []) as { project_id: string }[]) {
+    activityCount.set(a.project_id, (activityCount.get(a.project_id) ?? 0) + 1)
+  }
 
-  const defaultProject =
-    DEFAULT_PRIORITY.flatMap((s) => projects.filter((p) => p.status === s && activityCount.has(p.id)))[0] ??
-    projects.find((p) => activityCount.has(p.id)) ??
-    projects[0] ??
-    null
+  const selection = resolveScheduleSelection(params, projects.map((p) => p.id))
+  const projectOptions = projects.map((p) => ({
+    id: p.id,
+    name: p.name,
+    meta: activityCount.has(p.id) ? PROJECT_STATUS_LABELS[p.status] : 'No schedule',
+  }))
 
-  const showAll = projectParam === 'all' || !defaultProject
-  const selected = showAll ? null : (projects.find((p) => p.id === projectParam) ?? defaultProject)
+  if (selection.kind === 'none' || selection.kind === 'unavailable') {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          icon={CalendarDaysIcon}
+          eyebrow="Workspace"
+          title="Schedule"
+          description="Choose a project to view and update its construction schedule."
+          actions={<ProjectFilter value="" projects={projectOptions} emphasize />}
+        />
+        <ScheduleSelectionState unavailable={selection.kind === 'unavailable'} hasProjects={projects.length > 0} />
+      </div>
+    )
+  }
+
+  const selected = selection.kind === 'project' ? (projects.find((p) => p.id === selection.projectId) ?? null) : null
   const visibleProjects = selected ? [selected] : projects
-  const visibleIds = new Set(visibleProjects.map((p) => p.id))
-  const activities = allActivities.filter((a) => visibleIds.has(a.project_id))
+  const visibleIds = [...new Set(visibleProjects.map((p) => p.id))]
 
-  const { data: depData } = visibleIds.size
-    ? await supabase
-        .from('schedule_dependencies')
-        .select('id, predecessor_id, successor_id, project_id')
-        .in('project_id', [...visibleIds])
-    : { data: [] }
-  const dependencies = (depData ?? []) as (ScheduleDependency & { project_id: string })[]
+  const [{ data: activityData }, { data: depData }, staff] = await Promise.all([
+    visibleIds.length
+      ? supabase
+          .from('schedule_activities')
+          .select(`${ACTIVITY_COLUMNS}, project_id`)
+          .eq('organization_id', session.organizationId)
+          .in('project_id', visibleIds)
+          .order('sort_order')
+          .order('created_at')
+          .limit(5000)
+      : Promise.resolve({ data: [] }),
+    visibleIds.length
+      ? supabase
+          .from('schedule_dependencies')
+          .select('id, predecessor_id, successor_id, project_id')
+          .in('project_id', visibleIds)
+      : Promise.resolve({ data: [] }),
+    getStaffMembers(session.organizationId, ['org_admin', 'project_manager', 'builder_staff']),
+  ])
+  const visibleIdSet = new Set(visibleIds)
+  // Defense in depth: drop anything outside the selected scope before it reaches the UI.
+  const activities = ((activityData ?? []) as unknown as Activity[]).filter((a) => visibleIdSet.has(a.project_id))
+  const dependencies = ((depData ?? []) as (ScheduleDependency & { project_id: string })[]).filter((d) =>
+    visibleIdSet.has(d.project_id),
+  )
 
   const groups: BoardGroup[] = visibleProjects
     .map((p) => ({
@@ -136,7 +164,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   const inconsistencies = visibleProjects
     .filter((p) => p.status === 'completed')
     .map((p) => {
-      const list = allActivities.filter((a) => a.project_id === p.id)
+      const list = activities.filter((a) => a.project_id === p.id)
       return { project: p, total: list.length, open: list.filter(isOpen).length, dated: list.filter((a) => a.planned_start || a.planned_end).length }
     })
     .filter((x) => x.total > 0 && x.open > 0)
@@ -160,14 +188,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
             : 'All projects, grouped by project. Changes here update the same records as each project tracker.'
         }
         actions={
-          <ProjectFilter
-            value={selected ? selected.id : 'all'}
-            projects={projects.map((p) => ({
-              id: p.id,
-              name: p.name,
-              meta: activityCount.has(p.id) ? PROJECT_STATUS_LABELS[p.status] : 'No schedule',
-            }))}
-          />
+          <ProjectFilter value={selected ? selected.id : ALL_PROJECTS} projects={projectOptions} />
         }
       />
 
@@ -269,7 +290,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
           <ul className="flex flex-col divide-y divide-border">
             {unscheduled.map((p) => (
               <li key={p.id} className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-                <Link href={`/schedule?project=${p.id}`} className="text-sm font-medium text-foreground hover:text-primary">
+                <Link href={scheduleHref(p.id)} className="text-sm font-medium text-foreground hover:text-primary">
                   {p.name}
                 </Link>
                 {manager && <InitializeScheduleButton projectId={p.id} label="Initialize Construction Schedule" />}
