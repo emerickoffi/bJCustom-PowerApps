@@ -129,7 +129,7 @@ export default async function StaffLayout({ children, modal }: { children: React
           defaultCollapsed={collapsed}
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header data-app-header className="sticky top-0 z-30 border-b bg-background pt-[env(safe-area-inset-top)]">
+          <header data-app-header className="sticky top-0 z-30 border-b border-[#E4E8E1] bg-white pt-[env(safe-area-inset-top)] shadow-[0_1px_2px_rgba(23,77,50,0.04)]">
             <div className="flex h-14 items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:gap-3 sm:px-6 lg:px-10">
               <MobileNav items={items} logo={logo} />
               <Link href={homeHref} className="flex min-h-11 w-24 shrink-0 items-center sm:w-28 lg:hidden" aria-label={homeLabel}>
