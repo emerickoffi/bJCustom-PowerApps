@@ -11,12 +11,16 @@ import { SubcontractorStatusBadge } from '@/components/subcontractors/subcontrac
 import { QualificationBadge } from '@/components/subcontractors/qualification-badge'
 import { vettingStatusOf, type QualificationSummary } from '@/lib/subcontractor-qualification'
 import { formatDate } from '@/lib/format'
+import type { PerformanceSummary } from '@/lib/subcontractor-performance'
+import { PerformanceCell } from '@/components/subcontractors/performance-stars'
 
 type Props = {
   rows: SubcontractorCompany[]
   projectsByCompany: Record<string, AssignedProject[]> | null
   /** Null when vetting is unavailable; the column is hidden rather than showing guesses. */
   qualificationByCompany?: Record<string, QualificationSummary> | null
+  /** Null when ratings are unavailable; the column is hidden. */
+  performanceByCompany?: Record<string, PerformanceSummary> | null
 }
 
 const inlineActionClass =
@@ -136,24 +140,35 @@ function ProjectsSummary({ projects }: { projects: AssignedProject[] | undefined
   )
 }
 
-export function SubcontractorTable({ rows, projectsByCompany, qualificationByCompany = null }: Props) {
+export function SubcontractorTable({
+  rows,
+  projectsByCompany,
+  qualificationByCompany = null,
+  performanceByCompany = null,
+}: Props) {
   const showProjects = projectsByCompany !== null
   const showQualification = qualificationByCompany !== null
+  const showPerformance = performanceByCompany !== null
   return (
     <>
       <div className="hidden overflow-hidden rounded-xl border border-border/70 bg-card shadow-xs md:block">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow className={DIRECTORY_THEAD_ROW}>
-              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[27%] pl-5")}>
+              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, showPerformance ? "w-[24%] pl-5" : "w-[27%] pl-5")}>
                 Company / Trade
               </TableHead>
               <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, showQualification ? "w-[20%]" : "w-[26%]")}>
                 Primary Contact
               </TableHead>
               {showQualification && (
-                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[20%]")}>
+                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, showPerformance ? "w-[17%]" : "w-[20%]")}>
                   Qualification
+                </TableHead>
+              )}
+              {showPerformance && (
+                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[13%]")}>
+                  Performance
                 </TableHead>
               )}
               {showProjects && (
@@ -181,6 +196,11 @@ export function SubcontractorTable({ rows, projectsByCompany, qualificationByCom
                 {showQualification && (
                   <TableCell className="py-3.5">
                     <QualificationCell summary={qualificationByCompany[row.id] ?? null} />
+                  </TableCell>
+                )}
+                {showPerformance && (
+                  <TableCell className="py-3.5">
+                    <PerformanceCell summary={performanceByCompany[row.id]} />
                   </TableCell>
                 )}
                 {showProjects && (
@@ -224,6 +244,7 @@ export function SubcontractorTable({ rows, projectsByCompany, qualificationByCom
               </div>
             </div>
             <ContactLines row={row} />
+            {showPerformance && <PerformanceCell summary={performanceByCompany[row.id]} />}
             <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-3">
               {showProjects ? <ProjectsSummary projects={projectsByCompany[row.id]} /> : <span />}
               <span className="flex flex-wrap items-center justify-end gap-1.5">

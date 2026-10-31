@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ClipboardCheck } from 'lucide-react'
+import { ClipboardCheck, Star } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
@@ -122,6 +122,26 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
             inspection={current.inspection}
             issues={linkable}
           />
+        </Surface>
+      )}
+
+      {current.status === 'accepted' && current.kind === 'work' && current.assignmentId && (
+        <Surface aria-labelledby="rate-heading" className="gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-0.5">
+            <h2 id="rate-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+              Rate this work
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Optional. Ratings are internal and never shown to the subcontractor or homeowner.
+            </p>
+          </div>
+          <Link
+            href={`/subcontractors/${current.companyId}?rate=${current.assignmentId}&work=${current.id}#performance`}
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md bg-primary px-3.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            <Star className="size-4" aria-hidden="true" />
+            Rate Subcontractor
+          </Link>
         </Surface>
       )}
 

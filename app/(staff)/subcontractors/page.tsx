@@ -31,6 +31,8 @@ import {
   type QualificationFilter,
 } from '@/lib/subcontractor-qualification'
 import { DirectoryToolbar } from '@/components/subcontractors/directory-toolbar'
+import { loadPerformanceSummaries } from '@/lib/subcontractor-performance-data'
+import { comparePerformance } from '@/lib/subcontractor-performance'
 
 export const metadata: Metadata = { title: 'Subcontractors' }
 
@@ -62,7 +64,7 @@ export default async function SubcontractorsPage({
     .limit(LIMIT)
   if (status) query = query.eq('status', status)
   if (q) query = query.or(`company_name.ilike.*${q}*,trade.ilike.*${q}*,email.ilike.*${q}*,phone.ilike.*${q}*`)
-  const [{ data, error }, work, assignmentsRes, qualification] = await Promise.all([
+  const [{ data, error }, work, assignmentsRes, qualification, performance] = await Promise.all([
     query,
     loadDirectoryWork(supabase, session.organizationId, features),
     supabase
@@ -72,15 +74,25 @@ export default async function SubcontractorsPage({
       .is('ended_at', null)
       .limit(5000),
     loadQualificationSummaries(supabase, session.organizationId),
+    loadPerformanceSummaries(supabase, session.organizationId),
   ])
   const qualificationReady = qualification.availability === 'ready'
+  const performanceReady = performance.availability === 'ready'
   const loadedRows = (data ?? []) as SubcontractorCompany[]
   const filteredRows =
     qualificationFilter && qualificationReady
       ? loadedRows.filter((r) => matchesQualificationFilter(qualification.byCompany[r.id], qualificationFilter))
       : loadedRows
   const rows =
-    sort !== 'name' && qualificationReady
+    sort === 'rating'
+      ? performanceReady
+        ? [...filteredRows].sort(
+            (a, b) =>
+              comparePerformance(performance.byCompany[a.id], performance.byCompany[b.id]) ||
+              a.company_name.localeCompare(b.company_name),
+          )
+        : filteredRows
+      : sort !== 'name' && qualificationReady
       ? [...filteredRows].sort(
           (a, b) =>
             compareByQualification(sort, qualification.byCompany[a.id], qualification.byCompany[b.id]) ||
@@ -187,6 +199,7 @@ export default async function SubcontractorsPage({
                 rows={rows}
                 projectsByCompany={projectsByCompany}
                 qualificationByCompany={qualificationReady ? qualification.byCompany : null}
+                performanceByCompany={performanceReady ? performance.byCompany : null}
               />
             </div>
           ) : null}

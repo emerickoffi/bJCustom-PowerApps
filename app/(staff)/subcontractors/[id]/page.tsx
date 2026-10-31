@@ -23,6 +23,9 @@ import { APP_TIME_ZONE } from '@/lib/format'
 import { QualificationBadge } from '@/components/subcontractors/qualification-badge'
 import { QualificationSection } from '@/components/subcontractors/qualification-section'
 import { SubcontractorPortalAccess, type SubPortalAccountRow } from '@/components/subcontractor-work/portal-access'
+import { loadPerformanceDetail } from '@/lib/subcontractor-performance-data'
+import { getPeopleNames } from '@/lib/people'
+import { PerformanceSection } from '@/components/subcontractors/performance-section'
 
 export const metadata: Metadata = { title: 'Subcontractor' }
 
@@ -31,7 +34,7 @@ export default async function SubcontractorDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ saved?: string; projects?: string }>
+  searchParams: Promise<{ saved?: string; projects?: string; rate?: string; work?: string }>
 }) {
   const session = await requireManager()
   await requireFeature(session.organizationId, 'subcontractors')
@@ -42,7 +45,7 @@ export default async function SubcontractorDetailPage({
   const supabase = await createClient()
   const company = await loadSubcontractor(supabase, session.organizationId, id)
   if (!company) notFound()
-  const [{ availability, records }, businessCompany, people, qualification, portalRes] = await Promise.all([
+  const [{ availability, records }, businessCompany, people, qualification, portalRes, performance] = await Promise.all([
     loadProjectAssignments(supabase, session.organizationId, id),
     loadCompanyProfile(supabase, session.organizationId, { subcontractorId: id }),
     loadPersonOptions(supabase, session.organizationId),
@@ -54,7 +57,19 @@ export default async function SubcontractorDetailPage({
       .eq('subcontractor_company_id', id)
       .order('status')
       .order('full_name'),
+    loadPerformanceDetail(supabase, session.organizationId, id),
   ])
+  const reviewerNames = await getPeopleNames(performance.reviews.map((r) => r.reviewed_by))
+  const rateableAssignments = records.map((r) => ({
+    assignmentId: r.assignment_id,
+    projectId: r.project.id,
+    projectName: r.project.name,
+    projectNumber: r.project.project_number,
+    associatedAt: r.associated_at,
+    endedAt: r.ended_at,
+  }))
+  const initialRate =
+    sp.rate && isUuid(sp.rate) ? { assignmentId: sp.rate, submissionId: sp.work && isUuid(sp.work) ? sp.work : null } : null
   const portalAccounts: SubPortalAccountRow[] | null = portalRes.error
     ? null
     : (portalRes.data ?? []).map((a) => ({
@@ -161,6 +176,18 @@ export default async function SubcontractorDetailPage({
         isAdmin={session.role === 'org_admin'}
         today={todayIn(APP_TIME_ZONE)}
         contactCount={businessCompany?.contacts?.length ?? 0}
+      />
+
+      <PerformanceSection
+        companyId={company.id}
+        companyName={company.company_name}
+        availability={availability === 'ready' ? performance.availability : availability}
+        summary={performance.summary}
+        reviews={performance.reviews}
+        assignments={rateableAssignments}
+        verifiedWork={performance.verifiedWork}
+        reviewerNames={reviewerNames}
+        initialRate={initialRate}
       />
 
       <CompanyContacts
