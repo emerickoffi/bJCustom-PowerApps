@@ -80,12 +80,13 @@ function NavLink({
       aria-current={active ? 'page' : undefined}
       title={collapsed ? label : undefined}
       className={cn(
-        'group relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-all duration-150',
+        'group relative flex h-10 items-center gap-3 rounded-[0.625rem] px-3.5 text-sm font-medium transition-colors duration-150',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/45 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
         collapsed && 'justify-center px-0',
         active
-          ? 'bg-primary text-primary-foreground shadow-[0_6px_16px_-8px_rgb(23_77_50/0.7)]'
-          : 'text-sidebar-foreground/80 hover:bg-sage/70 hover:text-primary',
-        muted && !active && 'text-muted-foreground',
+          ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_1px_2px_rgb(23_77_50/0.18),0_4px_12px_-6px_rgb(23_77_50/0.45)]'
+          : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+        muted && !active && 'text-sidebar-muted',
       )}
     >
       <Icon
@@ -146,7 +147,7 @@ export function AppNav({
         if (collapsed) {
           return (
             <div key={section.key} role="group" aria-label={section.label} className="flex flex-col gap-1">
-              {index > 0 && <span className="mx-auto mb-1 h-px w-6 bg-border" aria-hidden="true" />}
+              {index > 0 && <span className="mx-auto mb-1 h-px w-6 bg-sidebar-border" aria-hidden="true" />}
               {links}
             </div>
           )
@@ -167,9 +168,9 @@ export function AppNav({
               aria-controls={panelId}
               disabled={containsActive}
               className={cn(
-                'flex h-8 items-center justify-between rounded-lg px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors',
-                'hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-                'disabled:cursor-default disabled:hover:text-muted-foreground',
+                'flex h-7 items-center justify-between rounded-md px-3.5 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-sidebar-muted transition-colors',
+                'hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/45',
+                'disabled:cursor-default disabled:hover:text-sidebar-muted',
               )}
             >
               {section.label}
@@ -197,7 +198,7 @@ export function AppNav({
       })}
       {!collapsed && UPCOMING.length > 0 && (
         <details open={upcomingActive} className="group/soon">
-          <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-3.5 py-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-sidebar-muted transition-colors hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/45 [&::-webkit-details-marker]:hidden">
             Coming soon
             <ChevronDown className="size-3.5 transition-transform group-open/soon:rotate-180" aria-hidden="true" />
           </summary>

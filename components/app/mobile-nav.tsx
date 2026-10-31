@@ -24,8 +24,8 @@ export function MobileNav({
       >
         <Menu className="size-5" aria-hidden="true" />
       </SheetTrigger>
-      <SheetContent side="left" className="flex w-[18rem] flex-col gap-0 bg-sidebar p-0">
-        <SheetHeader className="border-b px-6 py-6">
+      <SheetContent side="left" className="flex w-[18rem] flex-col gap-0 border-sidebar-border bg-sidebar p-0">
+        <SheetHeader className="border-b border-sidebar-border px-7 py-6">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <div className="w-44">{logo}</div>
         </SheetHeader>
