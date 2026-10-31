@@ -6,7 +6,7 @@ import { JobSwitcher } from '@/components/app/job-switcher'
 import { getRememberedJob, type JobSummary } from '@/lib/job-context'
 import { buildGlobalQuickActions, buildProjectQuickActions } from '@/lib/quick-actions'
 import type { FeatureMap } from '@/lib/feature-registry'
-import { landingPathForRole, navForRole } from '@/lib/navigation'
+import { landingPathForRole, NAV_GROUPS_COOKIE, navForRole, parseClosedNavGroups } from '@/lib/navigation'
 import { WorkspaceSwitcher } from '@/components/app/workspace-switcher'
 import { getOrgFeatures } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
@@ -102,6 +102,7 @@ export default async function StaffLayout({ children, modal }: { children: React
   ])
   const jobScope = currentJob ? await loadJobScope(currentJob, session.role, features) : null
   const collapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === '1'
+  const closedGroups = parseClosedNavGroups(cookieStore.get(NAV_GROUPS_COOKIE)?.value)
   const items = navForRole(session.role, features)
   const logo = <CompanyLogo brand={session.brand} priority />
   const homeHref = landingPathForRole(session.role)
@@ -127,11 +128,12 @@ export default async function StaffLayout({ children, modal }: { children: React
           homeLabel={homeLabel}
           homeHref={homeHref}
           defaultCollapsed={collapsed}
+          closedGroups={closedGroups}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <header data-app-header className="sticky top-0 z-30 border-b border-[#E4E8E1] bg-white pt-[env(safe-area-inset-top)] shadow-[0_1px_2px_rgba(23,77,50,0.04)]">
             <div className="flex h-14 items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:gap-3 sm:px-6 lg:px-10">
-              <MobileNav items={items} logo={logo} />
+              <MobileNav items={items} logo={logo} closedGroups={closedGroups} />
               <Link href={homeHref} className="flex min-h-11 w-24 shrink-0 items-center sm:w-28 lg:hidden" aria-label={homeLabel}>
                 {logo}
               </Link>

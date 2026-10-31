@@ -81,7 +81,10 @@ export function JobSwitcher({ currentJob }: { currentJob: CurrentJob | null }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-9 min-w-0 max-w-[11rem] items-center gap-2 rounded-md border bg-card px-2.5 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 sm:max-w-[15rem]"
+        className={cn(
+          'inline-flex h-9 max-w-[11rem] items-center gap-2 rounded-md border bg-card px-2.5 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 sm:max-w-[15rem]',
+          currentJob ? 'min-w-0 shrink sm:min-w-[7.5rem]' : 'shrink-0',
+        )}
         aria-label={currentJob ? `Current job: ${currentJob.name}. Switch job` : 'All jobs. Choose a job'}
       >
         {currentJob ? (
@@ -92,7 +95,12 @@ export function JobSwitcher({ currentJob }: { currentJob: CurrentJob | null }) {
         ) : (
           <Layers className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         )}
-        <span className="min-w-0 flex-1 truncate font-medium">{currentJob ? currentJob.name : 'All jobs'}</span>
+        <span className={cn('min-w-0 flex-1 flex-col leading-tight', currentJob ? 'flex' : 'hidden sm:flex')}>
+          <span className="truncate font-medium">{currentJob ? currentJob.name : 'All Jobs'}</span>
+          {currentJob?.projectNumber && (
+            <span className="hidden truncate font-mono text-[11px] text-muted-foreground md:block">{currentJob.projectNumber}</span>
+          )}
+        </span>
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
       </button>
 

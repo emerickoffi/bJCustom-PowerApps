@@ -1,5 +1,6 @@
 'use client'
 
+import { useId, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -23,7 +24,14 @@ import {
   UsersRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { NAV_GROUPS, PLANNED_MODULES, type NavItem } from '@/lib/navigation'
+import {
+  NAV_GROUPS,
+  NAV_GROUPS_COOKIE,
+  PERSISTENT_NAV_GROUP,
+  PLANNED_MODULES,
+  type NavGroup,
+  type NavItem,
+} from '@/lib/navigation'
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
@@ -98,13 +106,18 @@ export function AppNav({
   items,
   onNavigate,
   collapsed,
+  closedGroups = [],
 }: {
   items: NavItem[]
   onNavigate?: () => void
   collapsed?: boolean
+  /** Groups the user collapsed, read from the cookie on the server so the first paint matches. */
+  closedGroups?: NavGroup[]
 }) {
   const pathname = usePathname()
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+  const [closed, setClosed] = useState<NavGroup[]>(closedGroups)
+  const idPrefix = useId()
 
   const sections = NAV_GROUPS.map((group) => ({
     ...group,
@@ -112,20 +125,76 @@ export function AppNav({
   })).filter((section) => section.items.length > 0)
   const upcomingActive = UPCOMING.some((module) => isActive(`/modules/${module.slug}`))
 
+  function toggleGroup(key: NavGroup) {
+    const next = closed.includes(key) ? closed.filter((k) => k !== key) : [...closed, key]
+    setClosed(next)
+    document.cookie = `${NAV_GROUPS_COOKIE}=${next.join(',')}; path=/; max-age=31536000; samesite=lax`
+  }
+
   return (
-    <nav aria-label="Main" className="flex flex-col gap-5">
-      {sections.map((section, index) => (
-        <div key={section.key} role="group" aria-label={section.label} className="flex flex-col gap-1">
-          {!collapsed ? (
-            <p className="px-3 pb-1 text-xs font-medium text-muted-foreground">{section.label}</p>
-          ) : (
-            index > 0 && <span className="mx-auto mb-1 h-px w-6 bg-border" aria-hidden="true" />
-          )}
-          {section.items.map((item) => (
-            <NavLink key={item.href} {...item} active={isActive(item.href)} collapsed={collapsed} onNavigate={onNavigate} />
-          ))}
-        </div>
-      ))}
+    <nav aria-label="Main" className="flex flex-col gap-4">
+      {sections.map((section, index) => {
+        const persistent = section.key === PERSISTENT_NAV_GROUP
+        const containsActive = section.items.some((item) => isActive(item.href))
+        // The group holding the current page always stays open, so navigating never hides the active link.
+        const open = collapsed || persistent || containsActive || !closed.includes(section.key)
+        const panelId = `${idPrefix}-${section.key}`
+        const links = section.items.map((item) => (
+          <NavLink key={item.href} {...item} active={isActive(item.href)} collapsed={collapsed} onNavigate={onNavigate} />
+        ))
+
+        if (collapsed) {
+          return (
+            <div key={section.key} role="group" aria-label={section.label} className="flex flex-col gap-1">
+              {index > 0 && <span className="mx-auto mb-1 h-px w-6 bg-border" aria-hidden="true" />}
+              {links}
+            </div>
+          )
+        }
+        if (persistent) {
+          return (
+            <div key={section.key} role="group" aria-label={section.label} className="flex flex-col gap-1">
+              {links}
+            </div>
+          )
+        }
+        return (
+          <div key={section.key} className="flex flex-col">
+            <button
+              type="button"
+              onClick={() => toggleGroup(section.key)}
+              aria-expanded={open}
+              aria-controls={panelId}
+              disabled={containsActive}
+              className={cn(
+                'flex h-8 items-center justify-between rounded-lg px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors',
+                'hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                'disabled:cursor-default disabled:hover:text-muted-foreground',
+              )}
+            >
+              {section.label}
+              {!containsActive && (
+                <ChevronDown
+                  className={cn('size-3.5 transition-transform duration-200', !open && '-rotate-90')}
+                  aria-hidden="true"
+                />
+              )}
+            </button>
+            <div
+              id={panelId}
+              role="group"
+              aria-label={section.label}
+              inert={!open || undefined}
+              className={cn(
+                'grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none',
+                open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+              )}
+            >
+              <div className="flex min-h-0 flex-col gap-1 overflow-hidden pt-1">{links}</div>
+            </div>
+          </div>
+        )
+      })}
       {!collapsed && UPCOMING.length > 0 && (
         <details open={upcomingActive} className="group/soon">
           <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
