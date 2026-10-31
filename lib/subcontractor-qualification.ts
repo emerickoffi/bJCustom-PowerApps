@@ -61,13 +61,15 @@ const LEGACY_FILTERS: Record<string, QualificationFilter> = {
   requested: 'not_started',
 }
 
-export const QUALIFICATION_SORTS = ['name', 'status', 'completion', 'expiration'] as const
+export const QUALIFICATION_SORTS = ['name', 'status', 'completion', 'expiration', 'rating'] as const
 export type QualificationSort = (typeof QUALIFICATION_SORTS)[number]
 export const QUALIFICATION_SORT_LABELS: Record<QualificationSort, string> = {
   name: 'Company name',
   status: 'Qualification status',
   completion: 'Completion',
   expiration: 'Soonest expiration',
+  /** Sorted by performance ratings in the directory page, not by qualification. */
+  rating: 'Top rated',
 }
 
 export type AssignmentMode = 'advisory' | 'enforcement'
