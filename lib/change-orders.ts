@@ -15,7 +15,7 @@ export const CHANGE_ORDER_STATUS_LABELS: Record<ChangeOrderStatus, string> = {
 
 export const CHANGE_ORDER_STATUS_TONES: Record<ChangeOrderStatus, 'neutral' | 'sage' | 'info' | 'warning' | 'danger'> = {
   draft: 'neutral',
-  internal_review: 'info',
+  internal_review: 'warning',
   awaiting_homeowner: 'warning',
   approved: 'sage',
   rejected: 'danger',

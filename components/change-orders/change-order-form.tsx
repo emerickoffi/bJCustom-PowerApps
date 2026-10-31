@@ -8,11 +8,14 @@ import { initialActionState } from '@/lib/action-state'
 import { ESTIMATE_CATEGORIES } from '@/lib/estimates'
 import { parseLines, sumLineCosts, type LineInput } from '@/lib/change-orders'
 import { formatMoney, parseSignedDollarsToCents } from '@/lib/financials'
-import { FormActions, FormSection, NativeSelect, TextAreaField, TextField } from '@/components/shared/form-field'
+import { FormActions, NativeSelect, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import type { ChangeOrderStatus } from '@/lib/change-orders'
+import { ChangeOrderSection } from '@/components/change-orders/change-order-section'
+import { ChangeOrderStatusBadge } from '@/components/change-orders/change-order-status-badge'
 
 export type ChangeOrderFormDefaults = {
   id?: string
@@ -37,7 +40,17 @@ function rowCost(row: LineInput): number | null {
   return Object.keys(errors).length || !lines[0] ? null : lines[0].cost_cents
 }
 
-export function ChangeOrderForm({ projectId, defaults, cancelHref }: { projectId: string; defaults: ChangeOrderFormDefaults; cancelHref: string }) {
+export function ChangeOrderForm({
+  projectId,
+  defaults,
+  cancelHref,
+  status,
+}: {
+  projectId: string
+  defaults: ChangeOrderFormDefaults
+  cancelHref: string
+  status?: ChangeOrderStatus
+}) {
   const [state, action] = useActionState(saveChangeOrderAction, initialActionState)
   const [rows, setRows] = useState<Row[]>(() => (defaults.lines.length ? defaults.lines : [blankLine()]).map((l, i) => ({ ...l, key: i })))
   const [nextKey, setNextKey] = useState(rows.length)
@@ -79,7 +92,9 @@ export function ChangeOrderForm({ projectId, defaults, cancelHref }: { projectId
   const onLastFieldKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, row: Row, isLast: boolean) => {
     if (e.key !== 'Enter' || e.nativeEvent.isComposing || e.keyCode === 229) return
     e.preventDefault()
-    if (isLast) insertAfter(row.key, blankLine())
+    if (isLast) return insertAfter(row.key, blankLine())
+    const idx = rows.findIndex((r) => r.key === row.key)
+    document.getElementById(`co-line-${rows[idx + 1]?.key}-description`)?.focus()
   }
 
   const summary = (
@@ -87,18 +102,31 @@ export function ChangeOrderForm({ projectId, defaults, cancelHref }: { projectId
   )
 
   return (
-    <form action={action} className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+    <form action={action} className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <input type="hidden" name="project_id" value={projectId} />
       {defaults.id && <input type="hidden" name="id" value={defaults.id} />}
       <input type="hidden" name="lines_json" value={JSON.stringify(rows.map(({ key: _key, ...l }) => l))} />
 
       <div className="flex min-w-0 flex-col gap-6">
-        <FormSection title="Change details" description="The homeowner sees the title, description, price change and schedule impact.">
-          <TextField name="title" label="Title" required defaultValue={v?.title ?? defaults.title} error={fe.title} className="sm:col-span-2" maxLength={160} />
-          <TextAreaField name="description" label="Description" defaultValue={v?.description ?? defaults.description} error={fe.description} className="sm:col-span-2" maxLength={4000} />
-          <TextAreaField name="reason" label="Reason for change" defaultValue={v?.reason ?? defaults.reason} error={fe.reason} maxLength={2000} hint="Internal context for the team." />
-          <div className="flex flex-col gap-5">
-            <TextField name="requested_by" label="Requested by" defaultValue={v?.requested_by ?? defaults.requested_by} error={fe.requested_by} hint="Homeowner, architect, field condition, etc." maxLength={160} />
+        <ChangeOrderSection
+          id="co-homeowner-heading"
+          audience="homeowner"
+          title="Homeowner summary"
+          description="These four fields are what the homeowner reviews and approves."
+        >
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TextField name="title" label="Title" required defaultValue={v?.title ?? defaults.title} error={fe.title} className="sm:col-span-2" maxLength={160} />
+            <TextAreaField name="description" label="Description" defaultValue={v?.description ?? defaults.description} error={fe.description} className="sm:col-span-2" maxLength={4000} />
+            <TextField
+              name="price_adjustment"
+              label="Homeowner price change ($)"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              error={fe.price_adjustment}
+              hint={priceCents === null ? 'Enter a dollar amount like 2500 or -750' : 'Set separately from builder cost. Use a minus sign for credits.'}
+            />
             <TextField
               name="schedule_impact_days"
               label="Schedule impact (days)"
@@ -106,32 +134,47 @@ export function ChangeOrderForm({ projectId, defaults, cancelHref }: { projectId
               value={schedule}
               onChange={(e) => setSchedule(e.target.value)}
               error={fe.schedule_impact_days}
-              hint="Leave blank if unknown. Use a minus sign if the change saves time."
+              hint="Leave blank if unknown. Negative if it saves time."
             />
           </div>
-        </FormSection>
+        </ChangeOrderSection>
 
-        <section className="rounded-xl border border-border/80 bg-card p-5 shadow-xs sm:p-6" aria-labelledby="co-cost-heading">
-          <header className="mb-4 flex flex-col gap-1 border-b border-border/60 pb-4">
-            <h2 id="co-cost-heading" className="text-sm font-semibold text-foreground">
-              Builder cost lines
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Internal only, never shown to the homeowner. Use a negative unit cost for credits. Press Enter in the last unit cost to add a line.
-            </p>
-          </header>
-          <div className="flex flex-col gap-3">
+        <ChangeOrderSection
+          id="co-cost-heading"
+          audience="internal"
+          title="Builder cost and context"
+          description="Never shown to the homeowner. Negative unit cost for credits. Enter in a unit cost moves to the next line, or adds one."
+          flush
+        >
+          <div className="grid gap-5 border-b border-border/70 px-5 py-5 sm:grid-cols-2 md:px-6">
+            <TextAreaField name="reason" label="Reason for change" defaultValue={v?.reason ?? defaults.reason} error={fe.reason} maxLength={2000} rows={2} />
+            <TextField name="requested_by" label="Requested by" defaultValue={v?.requested_by ?? defaults.requested_by} error={fe.requested_by} hint="Homeowner, architect, field condition, etc." maxLength={160} />
+          </div>
+
+          <div
+            aria-hidden="true"
+            className="hidden border-b border-border/70 bg-muted/40 px-6 py-2 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-[9rem_minmax(0,1fr)_4.5rem_4rem_7rem_7rem_4.5rem] md:gap-2"
+          >
+            <span>Category</span>
+            <span>Description</span>
+            <span className="text-right">Qty</span>
+            <span>Unit</span>
+            <span className="text-right">Unit cost</span>
+            <span className="text-right">Line total</span>
+            <span className="sr-only">Actions</span>
+          </div>
+          <div className="flex flex-col gap-3 p-4 md:gap-0 md:divide-y md:divide-border/50 md:p-0">
             {rows.map((row, i) => {
               const cost = rowCost(row)
               const isLast = i === rows.length - 1
               return (
                 <fieldset
                   key={row.key}
-                  className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 p-3 md:grid-cols-[9rem_minmax(0,1fr)_5rem_4.5rem_7rem_6.5rem_auto] md:items-start"
+                  className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 p-3 md:grid-cols-[9rem_minmax(0,1fr)_4.5rem_4rem_7rem_7rem_4.5rem] md:items-start md:rounded-none md:border-0 md:px-6 md:py-2 md:hover:bg-muted/20"
                 >
                   <legend className="sr-only">Line {i + 1}</legend>
                   <LineCell label="Category" error={fe[`lines.${i}.category`]} className="col-span-2 md:col-span-1">
-                    <NativeSelect aria-label={`Line ${i + 1} category`} value={row.category} onChange={(e) => update(row.key, 'category', e.target.value)}>
+                    <NativeSelect aria-label={`Line ${i + 1} category`} className="h-9" value={row.category} onChange={(e) => update(row.key, 'category', e.target.value)}>
                       {ESTIMATE_CATEGORIES.map((c) => (
                         <option key={c} value={c}>
                           {c}
@@ -141,8 +184,9 @@ export function ChangeOrderForm({ projectId, defaults, cancelHref }: { projectId
                   </LineCell>
                   <LineCell label="Description" error={fe[`lines.${i}.description`]} className="col-span-2 md:col-span-1">
                     <Input
+                      id={`co-line-${row.key}-description`}
                       aria-label={`Line ${i + 1} description`}
-                      className="h-10"
+                      className="h-9"
                       maxLength={300}
                       value={row.description}
                       autoFocus={focusKey === row.key}
@@ -150,15 +194,15 @@ export function ChangeOrderForm({ projectId, defaults, cancelHref }: { projectId
                     />
                   </LineCell>
                   <LineCell label="Qty" error={fe[`lines.${i}.quantity`]}>
-                    <Input aria-label={`Line ${i + 1} quantity`} className="h-10 text-right tabular-nums" inputMode="decimal" value={row.quantity} onChange={(e) => update(row.key, 'quantity', e.target.value)} />
+                    <Input aria-label={`Line ${i + 1} quantity`} className="h-9 text-right tabular-nums" inputMode="decimal" value={row.quantity} onChange={(e) => update(row.key, 'quantity', e.target.value)} />
                   </LineCell>
                   <LineCell label="Unit" error={fe[`lines.${i}.unit`]}>
-                    <Input aria-label={`Line ${i + 1} unit`} className="h-10" maxLength={20} value={row.unit} onChange={(e) => update(row.key, 'unit', e.target.value)} />
+                    <Input aria-label={`Line ${i + 1} unit`} className="h-9" maxLength={20} value={row.unit} onChange={(e) => update(row.key, 'unit', e.target.value)} />
                   </LineCell>
                   <LineCell label="Unit cost ($)" error={fe[`lines.${i}.unit_cost`]}>
                     <Input
                       aria-label={`Line ${i + 1} unit cost`}
-                      className="h-10 text-right tabular-nums"
+                      className="h-9 text-right tabular-nums"
                       inputMode="decimal"
                       placeholder="0.00"
                       value={row.unit_cost}
@@ -166,27 +210,27 @@ export function ChangeOrderForm({ projectId, defaults, cancelHref }: { projectId
                       onKeyDown={(e) => onLastFieldKeyDown(e, row, isLast)}
                     />
                   </LineCell>
-                  <LineCell label="Line cost">
-                    <output aria-label={`Line ${i + 1} cost`} className="flex h-10 items-center justify-end text-sm font-medium tabular-nums text-foreground">
+                  <LineCell label="Line total">
+                    <output aria-label={`Line ${i + 1} cost`} className="flex h-9 items-center justify-end text-sm font-medium tabular-nums text-foreground">
                       {cost === null ? '—' : formatMoney(cost, { signed: true })}
                     </output>
                   </LineCell>
-                  <div className="col-span-2 flex items-end justify-end gap-1 md:col-span-1 md:pt-5">
+                  <div className="col-span-2 flex items-center justify-end gap-0.5 md:col-span-1">
                     {confirmRemove === row.key ? (
                       <div className="flex items-center gap-1" role="group" aria-label={`Confirm removing line ${i + 1}`}>
-                        <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => removeRow(row.key)}>
+                        <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-destructive" onClick={() => removeRow(row.key)}>
                           Remove
                         </Button>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmRemove(null)}>
+                        <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={() => setConfirmRemove(null)}>
                           Keep
                         </Button>
                       </div>
                     ) : (
                       <>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => insertAfter(row.key, { ...row })} aria-label={`Duplicate line ${i + 1}`} title="Duplicate line">
+                        <Button type="button" variant="ghost" size="icon" className="size-8" onClick={() => insertAfter(row.key, { ...row })} aria-label={`Duplicate line ${i + 1}`} title="Duplicate line">
                           <Copy className="size-4" aria-hidden="true" />
                         </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => requestRemove(row)} aria-label={`Remove line ${i + 1}`} title="Remove line">
+                        <Button type="button" variant="ghost" size="icon" className="size-8" onClick={() => requestRemove(row)} aria-label={`Remove line ${i + 1}`} title="Remove line">
                           <Trash2 className="size-4" aria-hidden="true" />
                         </Button>
                       </>
@@ -195,30 +239,18 @@ export function ChangeOrderForm({ projectId, defaults, cancelHref }: { projectId
                 </fieldset>
               )
             })}
-            {fe.lines && <p className="text-xs text-destructive">{fe.lines}</p>}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button type="button" variant="outline" onClick={() => insertAfter(null, blankLine())}>
-                <Plus className="size-4" aria-hidden="true" />
-                Add line
-              </Button>
-              <p className="text-sm text-muted-foreground" aria-live="polite">
-                Builder cost change: <span className="font-semibold tabular-nums text-foreground">{formatMoney(costTotal, { signed: true })}</span>
-              </p>
-            </div>
           </div>
-        </section>
-
-        <FormSection title="Homeowner price change" description="Added to (or credited from) the homeowner contract price. Set separately from builder cost.">
-          <TextField
-            name="price_adjustment"
-            label="Price change ($)"
-            inputMode="decimal"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            error={fe.price_adjustment}
-            hint={priceCents === null ? 'Enter a dollar amount like 2500 or -750' : `Homeowner sees ${formatMoney(priceCents, { signed: true })}`}
-          />
-        </FormSection>
+          {fe.lines && <p className="px-5 pt-3 text-xs text-destructive md:px-6">{fe.lines}</p>}
+          <div className="flex flex-col gap-3 border-t border-border/70 bg-muted/30 px-5 py-3 sm:flex-row sm:items-center sm:justify-between md:px-6">
+            <Button type="button" variant="outline" size="sm" onClick={() => insertAfter(null, blankLine())}>
+              <Plus className="size-4" aria-hidden="true" />
+              Add line
+            </Button>
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              Builder cost subtotal: <span className="font-semibold tabular-nums text-foreground">{formatMoney(costTotal, { signed: true })}</span>
+            </p>
+          </div>
+        </ChangeOrderSection>
 
         <details className="rounded-xl border border-border/80 bg-card p-4 shadow-xs lg:hidden">
           <summary className="flex cursor-pointer items-center justify-between gap-3 text-sm font-medium text-foreground">
@@ -236,8 +268,11 @@ export function ChangeOrderForm({ projectId, defaults, cancelHref }: { projectId
         </FormActions>
       </div>
 
-      <aside className="hidden rounded-xl border border-border/80 bg-card p-5 shadow-xs lg:sticky lg:top-6 lg:block" aria-label="Change order summary">
-        <h2 className="mb-3 text-sm font-semibold text-foreground">Summary</h2>
+      <aside className="hidden rounded-xl border border-border/80 bg-card p-5 shadow-xs lg:sticky lg:top-20 lg:block" aria-label="Change order summary">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-foreground">Summary</h2>
+          {status && <ChangeOrderStatusBadge status={status} />}
+        </div>
         {summary}
       </aside>
     </form>
@@ -271,7 +306,7 @@ function SummaryRow({ label, value, strong, tone }: { label: string; value: stri
 function LineCell({ label, error, className, children }: { label: string; error?: string; className?: string; children: React.ReactNode }) {
   return (
     <div className={cn('flex min-w-0 flex-col gap-1', className)}>
-      <span className="text-xs font-medium text-muted-foreground" aria-hidden="true">
+      <span className="text-xs font-medium text-muted-foreground md:sr-only" aria-hidden="true">
         {label}
       </span>
       {children}

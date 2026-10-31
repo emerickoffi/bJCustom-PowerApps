@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { FileDiff, FileText, Pencil } from 'lucide-react'
+import { FileDiff, FileText, Pencil, Plus } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { getOrgFeatures, requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
@@ -20,10 +20,12 @@ import {
 } from '@/lib/change-orders'
 import { PageHeader, SectionHeading, Surface } from '@/components/shared/page-header'
 import { ChangeOrderStatusBadge } from '@/components/change-orders/change-order-status-badge'
-import { ChangeOrderProgress } from '@/components/change-orders/change-order-progress'
+import { ChangeOrderStepper } from '@/components/change-orders/change-order-stepper'
+import { ChangeOrderSection } from '@/components/change-orders/change-order-section'
 import { ChangeOrderWorkflow } from '@/components/change-orders/change-order-workflow'
 import { deleteDraftChangeOrderAction } from '@/app/actions/change-orders'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Change order' }
 
@@ -39,7 +41,8 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
 
   const supabase = await createClient()
   const features = await getOrgFeatures(session.organizationId)
-  const [{ data: rawEvents }, { data: signatures }, { data: today }, { count: documentCount }] = await Promise.all([
+  const [{ data: project }, { data: rawEvents }, { data: signatures }, { data: today }, { count: documentCount }] = await Promise.all([
+    supabase.from('projects').select('name').eq('id', id).maybeSingle(),
     supabase
       .from('change_order_events')
       .select('id, version, from_status, to_status, note, actor, created_at')
@@ -61,7 +64,7 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
       : Promise.resolve({ count: null }),
   ])
   const events = (rawEvents ?? []) as Event[]
-  const people = await getPeopleNames(events.map((e) => e.actor))
+  const people = await getPeopleNames([...events.map((e) => e.actor), co.created_by])
   const todayIso = (today as string | null) ?? new Date().toISOString().slice(0, 10)
   const signatureOptions = (signatures ?? []) as { id: string; title: string }[]
   const linkedSignature = signatureOptions.find((s) => s.id === co.signature_request_id)
@@ -71,53 +74,58 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
   const decisionEvent = events.find((e) => e.to_status === 'approved' || e.to_status === 'rejected')
   const actorName = (e: Event | undefined) => (e?.actor ? people[e.actor] : undefined)
   const documentsHref = `/projects/${encodeURIComponent(id)}/documents?category=change_orders`
+  const editable = isEditableStatus(co.status)
+  const editHref = `${changeOrderPath(id, co.id)}/edit`
+  const margin = co.price_adjustment_cents - co.cost_adjustment_cents
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title={`${co.co_number} · ${co.title}`}
-        description={`Version ${co.version} · Created ${formatDate(co.created_at)} · Updated ${formatDate(co.updated_at)}`}
+        tone="plain"
+        title={co.title}
+        eyebrow={
+          <span className="tabular-nums">
+            {co.co_number}
+            {project?.name ? ` · ${project.name}` : ''}
+          </span>
+        }
+        titleAddon={<ChangeOrderStatusBadge status={co.status} />}
         icon={FileDiff}
         backHref={changeOrdersPath(id)}
         backLabel="Change orders"
         actions={
-          <div className="flex items-center gap-2">
-            <ChangeOrderStatusBadge status={co.status} />
-            {isEditableStatus(co.status) && (
-              <Link href={`${changeOrderPath(id, co.id)}/edit`} className={buttonVariants({ variant: 'outline' })}>
-                <Pencil className="size-4" aria-hidden="true" />
-                Edit
-              </Link>
-            )}
-          </div>
+          editable && (
+            <Link href={editHref} className={buttonVariants({ variant: 'outline' })}>
+              <Pencil className="size-4" aria-hidden="true" />
+              Edit change order
+            </Link>
+          )
         }
       />
 
-      <Surface aria-label="Approval progress">
-        <ChangeOrderProgress status={co.status} />
+      <Surface aria-label="Workflow progress" className="py-5 md:py-5">
+        <ChangeOrderStepper status={co.status} />
       </Surface>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]">
         <div className="flex min-w-0 flex-col gap-6">
-          <dl className="grid gap-3 sm:grid-cols-3">
-            <Stat label="Homeowner price change" value={formatMoney(co.price_adjustment_cents, { signed: true })} detail="Shown to homeowner" emphasis />
-            <Stat label="Builder cost change" value={formatMoney(co.cost_adjustment_cents, { signed: true })} detail="Internal only" />
-            <Stat label="Schedule impact" value={formatScheduleDays(co.schedule_impact_days, 'long')} detail="Shown to homeowner" />
-          </dl>
-
           <ChangeOrderWorkflow projectId={id} id={co.id} status={co.status} version={co.version} today={todayIso} signatureOptions={signatureOptions} />
 
           {(co.status === 'approved' || co.status === 'rejected') && (
-            <Surface aria-labelledby="co-decision">
-              <SectionHeading id="co-decision" title={co.status === 'approved' ? 'Approval' : 'Rejection'} />
-              <dl className="grid gap-4 text-sm sm:grid-cols-2">
+            <Surface aria-labelledby="co-decision" className={co.status === 'approved' ? 'border-primary/20' : 'border-destructive/20'}>
+              <SectionHeading
+                id="co-decision"
+                title={co.status === 'approved' ? 'Approval' : 'Rejection'}
+                description={co.status === 'approved' ? 'Applied to the project budget.' : 'Not applied to the project budget.'}
+              />
+              <dl className="grid gap-4 text-sm sm:grid-cols-3">
                 <Detail label="Homeowner decision by" value={co.decision_by_name} />
                 <Detail label="Method" value={methodLabel} />
                 <Detail label="Decision date" value={co.decision_at ? formatDate(co.decision_at) : null} />
                 <Detail label="Recorded by" value={actorName(decisionEvent)} />
                 <Detail label="Signed document" value={linkedSignature?.title ?? (co.signature_request_id ? 'Linked signature request' : 'None')} />
                 <Detail label="Version decided" value={decisionEvent ? `v${decisionEvent.version}` : null} />
-                {co.decision_note && <Detail label="Note" value={co.decision_note} className="sm:col-span-2" />}
+                {co.decision_note && <Detail label="Note" value={co.decision_note} className="sm:col-span-3" />}
               </dl>
             </Surface>
           )}
@@ -128,77 +136,55 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
             </Surface>
           )}
 
-          <Surface aria-labelledby="co-scope">
-            <SectionHeading id="co-scope" title="Scope" />
-            <dl className="grid gap-4 text-sm sm:grid-cols-2">
+          <ChangeOrderSection id="co-homeowner" audience="homeowner" title="Homeowner summary" description="Exactly what the homeowner is asked to approve. Builder cost is never included.">
+            <dl className="grid gap-5 text-sm sm:grid-cols-2">
+              <Detail label="Title" value={co.title} className="sm:col-span-2" />
               <Detail label="Description" value={co.description} className="sm:col-span-2" />
-              <Detail label="Reason" value={co.reason} />
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">Price change</dt>
+                <dd className="mt-1 text-2xl font-semibold tabular-nums text-primary">{formatMoney(co.price_adjustment_cents, { signed: true })}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">Schedule impact</dt>
+                <dd className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{formatScheduleDays(co.schedule_impact_days, 'long')}</dd>
+              </div>
+            </dl>
+          </ChangeOrderSection>
+
+          <ChangeOrderSection
+            id="co-internal"
+            audience="internal"
+            title="Builder cost and context"
+            description="Never shown to the homeowner. Negative amounts are credits."
+            flush
+            actions={
+              editable &&
+              lines.length > 0 && (
+                <Link href={`${editHref}#co-cost-heading`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+                  <Pencil className="size-3.5" aria-hidden="true" />
+                  Edit lines
+                </Link>
+              )
+            }
+          >
+            <dl className="grid gap-5 border-b border-border/70 px-5 py-5 text-sm sm:grid-cols-2 md:px-6">
+              <Detail label="Reason for change" value={co.reason} />
               <Detail label="Requested by" value={co.requested_by} />
             </dl>
-          </Surface>
-
-          <Surface aria-labelledby="co-lines" className="p-0 md:p-0">
-            <div className="px-5 pt-5 md:px-6 md:pt-6">
-              <SectionHeading id="co-lines" title="Builder cost lines" description="Internal only. Negative amounts are credits." />
-            </div>
             {lines.length === 0 ? (
-              <p className="px-5 pb-5 text-sm text-muted-foreground md:px-6">No cost lines.</p>
+              <div className="flex flex-col items-start gap-3 px-5 py-6 md:px-6">
+                <p className="text-sm text-muted-foreground">No builder cost lines yet.</p>
+                {editable && (
+                  <Link href={`${editHref}#co-cost-heading`} className={buttonVariants({ size: 'sm' })}>
+                    <Plus className="size-4" aria-hidden="true" />
+                    Add builder cost lines
+                  </Link>
+                )}
+              </div>
             ) : (
-              <>
-                <ul className="flex flex-col divide-y divide-border/60 border-t border-border/70 md:hidden">
-                  {lines.map((l) => (
-                    <li key={l.id} className="flex items-start justify-between gap-3 px-5 py-3 text-sm">
-                      <div className="flex min-w-0 flex-col gap-0.5">
-                        <span className="text-foreground">{l.description}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {l.category} · {l.quantity} {l.unit} × {formatMoney(l.unit_cost_cents)}
-                        </span>
-                      </div>
-                      <span className="shrink-0 font-medium tabular-nums">{formatMoney(l.cost_cents, { signed: true })}</span>
-                    </li>
-                  ))}
-                  <li className="flex justify-between px-5 py-3 text-sm font-semibold">
-                    <span>Total cost change</span>
-                    <span className="tabular-nums">{formatMoney(co.cost_adjustment_cents, { signed: true })}</span>
-                  </li>
-                </ul>
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full text-sm">
-                    <thead className="border-y border-border/70 text-left text-xs font-medium text-muted-foreground">
-                      <tr>
-                        <th scope="col" className="px-6 py-3">Category</th>
-                        <th scope="col" className="px-3 py-3">Description</th>
-                        <th scope="col" className="px-3 py-3 text-right">Qty</th>
-                        <th scope="col" className="px-3 py-3 text-right">Unit cost</th>
-                        <th scope="col" className="px-6 py-3 text-right">Cost</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/60">
-                      {lines.map((l) => (
-                        <tr key={l.id}>
-                          <td className="px-6 py-3 text-muted-foreground">{l.category}</td>
-                          <td className="px-3 py-3">{l.description}</td>
-                          <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">
-                            {l.quantity} {l.unit}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">{formatMoney(l.unit_cost_cents)}</td>
-                          <td className="whitespace-nowrap px-6 py-3 text-right font-medium tabular-nums">{formatMoney(l.cost_cents, { signed: true })}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="border-t border-border/70">
-                      <tr>
-                        <th scope="row" colSpan={4} className="px-6 py-3 text-right font-medium">
-                          Total cost change
-                        </th>
-                        <td className="px-6 py-3 text-right font-semibold tabular-nums">{formatMoney(co.cost_adjustment_cents, { signed: true })}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </>
+              <CostLinesTable lines={lines} totalCents={co.cost_adjustment_cents} marginCents={margin} />
             )}
-          </Surface>
+          </ChangeOrderSection>
 
           <Surface aria-labelledby="co-history">
             <SectionHeading id="co-history" title="Activity" description="Every status change is recorded with the version it applied to." />
@@ -226,31 +212,39 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
           </Surface>
         </div>
 
-        <aside className="flex flex-col gap-6 lg:sticky lg:top-6" aria-label="Change order summary">
-          <Surface aria-labelledby="co-homeowner">
-            <SectionHeading id="co-homeowner" title="Homeowner summary" description="What the homeowner is asked to approve. Builder cost is never included." />
-            <dl className="flex flex-col gap-3 text-sm">
-              <Detail label="Change" value={co.title} />
-              <Detail label="Price change" value={formatMoney(co.price_adjustment_cents, { signed: true })} />
-              <Detail label="Schedule impact" value={formatScheduleDays(co.schedule_impact_days, 'long')} />
-              {co.description && <Detail label="Details" value={co.description} />}
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-20" aria-label="Change order summary">
+          <section aria-labelledby="co-summary" className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
+            <div className="flex items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
+              <h2 id="co-summary" className="text-sm font-semibold text-foreground">
+                Summary
+              </h2>
+              <ChangeOrderStatusBadge status={co.status} />
+            </div>
+            <div className="flex flex-col gap-1 bg-sage/40 px-5 py-4">
+              <span className="text-xs font-medium text-muted-foreground">Homeowner price change</span>
+              <span className="text-2xl font-semibold tabular-nums text-primary">{formatMoney(co.price_adjustment_cents, { signed: true })}</span>
+            </div>
+            <dl className="flex flex-col gap-3 px-5 py-4 text-sm">
+              <SummaryRow label="Schedule impact" value={formatScheduleDays(co.schedule_impact_days, 'long')} />
+              <div className="flex items-center gap-2 border-t border-border/60 pt-3 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">Internal only</div>
+              <SummaryRow label={`Builder cost (${lines.length} line${lines.length === 1 ? '' : 's'})`} value={formatMoney(co.cost_adjustment_cents, { signed: true })} />
+              <SummaryRow label="Margin on change" value={formatMoney(margin, { signed: true })} tone={margin < 0 ? 'danger' : margin > 0 ? 'positive' : undefined} />
+              <div className="flex flex-col gap-3 border-t border-border/60 pt-3">
+                <SummaryRow label="Last updated" value={formatDate(co.updated_at)} />
+                <SummaryRow label="Created by" value={(co.created_by && people[co.created_by]) || '—'} />
+                <SummaryRow label="Created" value={formatDate(co.created_at)} />
+                <SummaryRow label="Submitted for review" value={submittedEvent ? joinParts(formatDate(submittedEvent.created_at), actorName(submittedEvent)) : '—'} />
+                <SummaryRow label="Sent to homeowner" value={co.sent_to_homeowner_at ? joinParts(formatDate(co.sent_to_homeowner_at), actorName(sentEvent)) : '—'} />
+                <SummaryRow label="Version" value={`v${co.version}`} />
+              </div>
             </dl>
-          </Surface>
-
-          <Surface aria-labelledby="co-tracking">
-            <SectionHeading id="co-tracking" title="Tracking" />
-            <dl className="flex flex-col gap-3 text-sm">
-              <Detail label="Submitted for review" value={submittedEvent ? joinParts(formatDate(submittedEvent.created_at), actorName(submittedEvent)) : null} />
-              <Detail
-                label="Sent to homeowner"
-                value={co.sent_to_homeowner_at ? joinParts(formatDate(co.sent_to_homeowner_at), actorName(sentEvent)) : null}
-              />
-              <Detail label="Current version" value={`v${co.version}`} />
-            </dl>
-          </Surface>
+            <p className="border-t border-border/60 bg-muted/30 px-5 py-3 text-xs leading-relaxed text-muted-foreground">
+              Builder cost is recalculated from the cost lines each time the change order is saved. Only approved change orders affect project financials.
+            </p>
+          </section>
 
           {features.documents && (
-            <Surface aria-labelledby="co-docs">
+            <Surface aria-labelledby="co-docs" className="p-5 md:p-5">
               <SectionHeading id="co-docs" title="Documents" />
               <p className="text-sm text-muted-foreground">
                 {documentCount
@@ -279,16 +273,90 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
   )
 }
 
+function CostLinesTable({
+  lines,
+  totalCents,
+  marginCents,
+}: {
+  lines: { id: string; category: string; description: string; quantity: number; unit: string; unit_cost_cents: number; cost_cents: number }[]
+  totalCents: number
+  marginCents: number
+}) {
+  return (
+    <>
+      <ul className="flex flex-col divide-y divide-border/60 md:hidden">
+        {lines.map((l) => (
+          <li key={l.id} className="flex items-start justify-between gap-3 px-5 py-3 text-sm">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-foreground">{l.description}</span>
+              <span className="text-xs text-muted-foreground">
+                {l.category} · {l.quantity} {l.unit} × {formatMoney(l.unit_cost_cents)}
+              </span>
+            </div>
+            <span className="shrink-0 font-medium tabular-nums">{formatMoney(l.cost_cents, { signed: true })}</span>
+          </li>
+        ))}
+        <li className="flex justify-between bg-muted/40 px-5 py-3 text-sm font-semibold">
+          <span>Subtotal</span>
+          <span className="tabular-nums">{formatMoney(totalCents, { signed: true })}</span>
+        </li>
+      </ul>
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full text-sm">
+          <caption className="sr-only">Builder cost lines</caption>
+          <thead className="bg-muted/40 text-left text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+            <tr className="border-b border-border/70">
+              <th scope="col" className="px-6 py-2.5 font-semibold">Category</th>
+              <th scope="col" className="px-3 py-2.5 font-semibold">Description</th>
+              <th scope="col" className="px-3 py-2.5 text-right font-semibold">Qty</th>
+              <th scope="col" className="px-3 py-2.5 font-semibold">Unit</th>
+              <th scope="col" className="px-3 py-2.5 text-right font-semibold">Unit cost</th>
+              <th scope="col" className="px-6 py-2.5 text-right font-semibold">Line total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/50">
+            {lines.map((l) => (
+              <tr key={l.id} className="hover:bg-muted/30">
+                <td className="whitespace-nowrap px-6 py-2.5 text-muted-foreground">{l.category}</td>
+                <td className="px-3 py-2.5 text-foreground">{l.description}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">{l.quantity}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{l.unit}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">{formatMoney(l.unit_cost_cents)}</td>
+                <td className="whitespace-nowrap px-6 py-2.5 text-right font-medium tabular-nums">{formatMoney(l.cost_cents, { signed: true })}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="border-t border-border/70 bg-muted/30">
+            <tr>
+              <th scope="row" colSpan={5} className="px-6 py-3 text-right text-sm font-medium text-foreground">
+                Subtotal
+              </th>
+              <td className="px-6 py-3 text-right font-semibold tabular-nums">{formatMoney(totalCents, { signed: true })}</td>
+            </tr>
+            <tr>
+              <th scope="row" colSpan={5} className="px-6 pb-3 text-right text-xs font-medium text-muted-foreground">
+                Margin on change
+              </th>
+              <td className={cn('px-6 pb-3 text-right text-xs font-medium tabular-nums', marginCents < 0 ? 'text-destructive' : 'text-muted-foreground')}>
+                {formatMoney(marginCents, { signed: true })}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </>
+  )
+}
+
 function joinParts(...parts: (string | undefined)[]) {
   return parts.filter(Boolean).join(' · ')
 }
 
-function Stat({ label, value, detail, emphasis }: { label: string; value: string; detail?: string; emphasis?: boolean }) {
+function SummaryRow({ label, value, tone }: { label: string; value: string; tone?: 'danger' | 'positive' }) {
   return (
-    <div className="surface flex flex-col gap-1 p-4">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className={emphasis ? 'text-xl font-semibold tabular-nums text-primary' : 'text-xl font-semibold tabular-nums text-foreground'}>{value}</dd>
-      {detail && <dd className="text-xs text-muted-foreground">{detail}</dd>}
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={cn('text-right font-medium tabular-nums text-foreground', tone === 'danger' && 'text-destructive', tone === 'positive' && 'text-primary')}>{value}</dd>
     </div>
   )
 }
