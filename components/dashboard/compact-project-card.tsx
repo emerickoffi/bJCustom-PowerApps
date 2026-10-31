@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowRight, CalendarPlus, CircleArrowRight, CircleCheck, PauseCircle, ShieldCheck } from 'lucide-react'
 import { ArchitecturalPlaceholder } from '@/components/projects/project-card'
 import { CoverImage } from '@/components/projects/cover-image'
+import { ProjectTypeLabel } from '@/components/projects/project-type-label'
 import { PROJECT_STATUS_STYLES } from '@/components/shared/project-status-banner'
 import { ProgressBar } from '@/components/shared/progress'
 import { WARRANTY_STAGE_LABELS, type WarrantyStage } from '@/components/warranty/stage'
@@ -16,6 +17,7 @@ export type CompactProjectCardData = {
   project_number: string
   name: string
   status: ProjectStatus
+  project_type?: string | null
   city: string
   state: string
   progress_percent: number | null
@@ -106,9 +108,11 @@ const ICON_TONES: Record<Panel['tone'], string> = {
 export function CompactProjectCard({
   project,
   footer,
+  showType = false,
 }: {
   project: CompactProjectCardData
   footer?: React.ReactNode
+  showType?: boolean
 }) {
   const status = PROJECT_STATUS_STYLES[project.status]
   const StatusIcon = status.icon
@@ -150,6 +154,7 @@ export function CompactProjectCard({
             </Link>
           </h3>
           <span className="truncate text-xs text-muted-foreground">{`${project.city}, ${project.state}`}</span>
+          {showType && <ProjectTypeLabel type={project.project_type} className="mt-0.5" />}
         </div>
         <div className="relative aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-xl bg-muted sm:w-28">
           {project.photoUrl ? (

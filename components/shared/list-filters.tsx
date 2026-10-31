@@ -9,6 +9,7 @@ export function ListFilters({
   defaultQuery,
   defaultStatus,
   statusOptions,
+  selects,
   location,
   clearHref,
   preserve,
@@ -17,6 +18,14 @@ export function ListFilters({
   defaultQuery: string
   defaultStatus: string
   statusOptions: { value: string; label: string }[]
+  /** Additional single-value dropdown filters rendered after Status. */
+  selects?: {
+    name: string
+    label: string
+    allLabel: string
+    defaultValue: string
+    options: { value: string; label: string }[]
+  }[]
   location?: { options: LocationOption[]; defaultState: string; defaultCity: string }
   clearHref?: string
   /** Non-filter URL state (e.g. sort, view) carried through Apply; page is intentionally dropped. */
@@ -46,6 +55,21 @@ export function ListFilters({
           </option>
         ))}
       </NativeSelect>
+      {selects?.map((select) => (
+        <div key={select.name} className="contents">
+          <label htmlFor={select.name} className="sr-only">
+            {select.label}
+          </label>
+          <NativeSelect id={select.name} name={select.name} defaultValue={select.defaultValue} className="bg-card sm:w-48">
+            <option value="">{select.allLabel}</option>
+            {select.options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
+      ))}
       {location && (
         <LocationFilters
           key={`${location.defaultState}|${location.defaultCity}`}
