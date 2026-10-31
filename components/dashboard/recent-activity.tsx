@@ -14,6 +14,7 @@ import { markNotificationReadAction } from "@/app/actions/walkthroughs";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/domain";
 import { formatDateTime } from "@/lib/format";
 import { DashboardSectionHeader } from "@/components/dashboard/dashboard-section-header";
+import { ActivityFitList } from "@/components/dashboard/activity-fit-list";
 
 type ActivityItem = {
   id: string;
@@ -46,7 +47,7 @@ export type ProjectUpdate = {
 
 function UpdateRow({ update }: { update: ProjectUpdate }) {
   return (
-    <li className="relative flex gap-3">
+    <>
       <span
         className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-champagne-soft text-champagne-foreground ring-4 ring-card"
         aria-hidden="true"
@@ -94,18 +95,16 @@ function UpdateRow({ update }: { update: ProjectUpdate }) {
           </button>
         </form>
       </div>
-    </li>
+    </>
   );
 }
 
 const VISIBLE_LIMIT = 5;
-const TIMELINE =
-  "relative flex flex-col gap-5 before:absolute before:bottom-3 before:left-3.5 before:top-3 before:w-px before:bg-border";
 
 function ActivityRow({ item }: { item: ActivityItem }) {
   const Icon = ACTIVITY_ICONS[item.activity_type] ?? Activity;
   return (
-    <li className="relative flex gap-3">
+    <>
       <span
         className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-sage text-primary ring-4 ring-card"
         aria-hidden="true"
@@ -133,7 +132,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
           </Link>
         )}
       </div>
-    </li>
+    </>
   );
 }
 
@@ -142,12 +141,20 @@ export function RecentActivity({
   updates = [],
   defaultOpen = false,
   visibleLimit = VISIBLE_LIMIT,
+  total,
+  totalIsLowerBound = false,
+  matchHeightTo,
 }: {
   items: ActivityItem[];
   updates?: ProjectUpdate[];
   /** Render expanded on first paint (the Command Center right rail). */
   defaultOpen?: boolean;
   visibleLimit?: number;
+  /** Exact number of accessible entries; defaults to the loaded count. */
+  total?: number;
+  totalIsLowerBound?: boolean;
+  /** Element id whose bottom edge the list fits to when shown side by side. */
+  matchHeightTo?: string;
 }) {
   const entries = [
     ...items.map((item) => ({
@@ -161,14 +168,11 @@ export function RecentActivity({
       update,
     })),
   ].sort((a, b) => b.at.localeCompare(a.at));
-  const visible = entries.slice(0, visibleLimit);
-  const earlier = entries.slice(visibleLimit);
-
-  const renderEntry = (entry: (typeof entries)[number]) => {
-    if (entry.type === "update")
-      return <UpdateRow key={`u-${entry.update.id}`} update={entry.update} />;
-    return <ActivityRow key={entry.item.id} item={entry.item} />;
-  };
+  const fitEntries = entries.map((entry) =>
+    entry.type === "update"
+      ? { key: `u-${entry.update.id}`, node: <UpdateRow update={entry.update} /> }
+      : { key: entry.item.id, node: <ActivityRow item={entry.item} /> },
+  );
 
   return (
     <section aria-labelledby="activity-heading" className="surface">
@@ -199,24 +203,13 @@ export function RecentActivity({
               Client notes, calls, and project events will show here.
             </p>
           ) : (
-            <div className="flex flex-col gap-4">
-              <ol className={TIMELINE}>{visible.map(renderEntry)}</ol>
-              {earlier.length > 0 && (
-                <details className="group flex flex-col gap-4 border-t pt-3">
-                  <summary className="flex min-h-10 cursor-pointer list-none items-center justify-center gap-1.5 rounded-md text-sm font-medium text-primary hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
-                    <span className="group-open:hidden">{`View all (${entries.length})`}</span>
-                    <span className="hidden group-open:inline">Show less</span>
-                    <ChevronDown
-                      className="size-4 transition-transform group-open:rotate-180"
-                      aria-hidden="true"
-                    />
-                  </summary>
-                  <ol className={`${TIMELINE} mt-4`}>
-                    {earlier.map(renderEntry)}
-                  </ol>
-                </details>
-              )}
-            </div>
+            <ActivityFitList
+              entries={fitEntries}
+              total={Math.max(total ?? entries.length, entries.length)}
+              totalIsLowerBound={totalIsLowerBound}
+              visibleLimit={visibleLimit}
+              anchorId={matchHeightTo}
+            />
           )}
         </div>
       </details>

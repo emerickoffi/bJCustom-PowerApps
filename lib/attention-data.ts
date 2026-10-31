@@ -48,6 +48,9 @@ export type ActionCenterData = {
   unavailable: ActionModuleIssue[]
   /** Unread informational notifications: shown in Recent Activity, never counted as actions. */
   updates: AttentionNotification[]
+  /** Informational notifications loaded before the 5-item slice; a lower bound when the query hit its limit. */
+  updatesTotal: number
+  updatesTotalIsLowerBound: boolean
 }
 
 function shiftDays(isoDate: string, days: number): string {
@@ -403,12 +406,15 @@ export async function getActionItems(
     { today, userId, manager, features },
   )
 
+  const informational = informationalNotifications(notifications, features)
   return {
     items,
     total: items.length,
     totalIsLowerBound: truncated,
     unavailable,
-    updates: informationalNotifications(notifications, features).slice(0, 5),
+    updates: informational.slice(0, 5),
+    updatesTotal: informational.length,
+    updatesTotalIsLowerBound: notificationRows.length >= NOTIFICATION_LIMIT,
   }
 }
 
