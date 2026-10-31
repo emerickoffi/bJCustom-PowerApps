@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ArchitecturalPlaceholder } from '@/components/projects/project-card'
 import { CoverImage } from '@/components/projects/cover-image'
+import { ProjectTypeLabel } from '@/components/projects/project-type-label'
 import { ProgressBar } from '@/components/shared/progress'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { buildPanel, type CompactProjectCardData } from '@/components/dashboard/compact-project-card'
@@ -79,6 +80,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                           {p.name}
                         </Link>
                         <span className="font-mono text-xs text-muted-foreground">{p.project_number}</span>
+                        <ProjectTypeLabel type={p.project_type} />
                       </div>
                     </div>
                   </td>

@@ -29,7 +29,7 @@ import { getOrgFeatures } from '@/lib/features'
 import { getDashboardCardDetails } from '@/lib/dashboard-cards'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { ListFilters } from '@/components/shared/list-filters'
-import { ALL_PROJECT_STATUSES, PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
+import { ALL_PROJECT_STATUSES, PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, type ProjectStatus } from '@/lib/domain'
 import { sanitizeSearch } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { PROJECT_SUMMARY_COLUMNS, getProfileNames, type ProjectSummary } from '@/lib/queries'
@@ -42,6 +42,7 @@ export default async function ProjectsPage({
   searchParams: Promise<{
     q?: string
     status?: string
+    type?: string
     state?: string
     city?: string
     sort?: string
@@ -55,6 +56,7 @@ export default async function ProjectsPage({
   const status = ALL_PROJECT_STATUSES.includes(params.status as ProjectStatus)
     ? (params.status as ProjectStatus)
     : null
+  const projectType = params.type && Object.hasOwn(PROJECT_TYPE_LABELS, params.type) ? params.type : null
   const sort = parseSort(params.sort, PROJECT_SORTS, 'updated')
   const page = parsePage(params.page)
   const urlView = parseView(params.view)
@@ -89,6 +91,7 @@ export default async function ProjectsPage({
   const stateParams = {
     q,
     status,
+    type: projectType,
     state: stateFilter || null,
     city: cityFilter || null,
     sort: sort === 'updated' ? null : sort,
@@ -103,6 +106,7 @@ export default async function ProjectsPage({
     .eq('organization_id', session.organizationId)
     .is('archived_at', null)
   if (status) query = query.eq('status', status)
+  if (projectType) query = query.eq('project_type', projectType)
   if (stateFilter) query = query.ilike('state', escapeLike(stateFilter))
   if (cityFilter) query = query.ilike('city', escapeLike(cityFilter))
   if (q)
@@ -127,7 +131,7 @@ export default async function ProjectsPage({
     getDashboardCardDetails(session.organizationId, projects, features),
   ])
   const manager = canManage(session.role)
-  const filtered = Boolean(q || status || stateFilter || cityFilter)
+  const filtered = Boolean(q || status || projectType || stateFilter || cityFilter)
   const range = resultRange(page, projects.length, total)
   const rows = projects.map((p) => ({
     ...p,
@@ -159,6 +163,15 @@ export default async function ProjectsPage({
         defaultQuery={q}
         defaultStatus={status ?? ''}
         statusOptions={ALL_PROJECT_STATUSES.map((s) => ({ value: s, label: PROJECT_STATUS_LABELS[s] }))}
+        selects={[
+          {
+            name: 'type',
+            label: 'Project type',
+            allLabel: 'All project types',
+            defaultValue: projectType ?? '',
+            options: Object.entries(PROJECT_TYPE_LABELS).map(([value, label]) => ({ value, label })),
+          },
+        ]}
         location={{ options: locations, defaultState: stateFilter, defaultCity: cityFilter }}
         clearHref={filtered ? directoryHref('/projects', { sort: stateParams.sort, view: urlView }) : undefined}
         preserve={{ sort: stateParams.sort, view: urlView }}
@@ -184,6 +197,7 @@ export default async function ProjectsPage({
               <CompactProjectCard
                 key={p.id}
                 project={row}
+                showType
                 footer={
                   <dl className="grid grid-cols-2 gap-4 border-t pt-3">
                     <div className="flex min-w-0 flex-col gap-0.5">
@@ -226,7 +240,7 @@ export default async function ProjectsPage({
           title={filtered ? 'No matching projects' : 'No projects yet'}
           description={
             filtered
-              ? 'Try a different search, or clear the status and location filters.'
+              ? 'Try a different search, or clear the status, type, and location filters.'
               : manager
                 ? 'Start a project for an existing client to begin tracking it.'
                 : 'Projects you are assigned to will appear here.'
