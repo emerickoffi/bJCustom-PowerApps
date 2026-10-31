@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { computeProjectHealth, daysBetween, type ProjectHealthSignals } from './project-health.ts'
+import { computeProjectHealth, daysBetween, needsScheduleSetup, type ProjectHealthSignals } from './project-health.ts'
 import { buildAgenda, type AgendaActivity } from './agenda.ts'
 
 const base: ProjectHealthSignals = {
@@ -79,4 +79,12 @@ test('agenda groups today and the coming week, skipping done, undated, and out-o
   )
   assert.deepEqual(agenda.today.map((e) => [e.id, e.kind]), [['dueToday', 'due'], ['ongoing', 'ongoing']])
   assert.deepEqual(agenda.week.map((e) => e.id), ['dueToday', 'ongoing', 'ongoing', 'startsLater'])
+})
+
+test('needsScheduleSetup only for missing or undated schedules', () => {
+  assert.equal(needsScheduleSetup(computeProjectHealth({ ...base, activityCount: 0, datedActivityCount: 0 })), true)
+  assert.equal(needsScheduleSetup(computeProjectHealth({ ...base, datedActivityCount: 0 })), true)
+  assert.equal(needsScheduleSetup(computeProjectHealth({ ...base, scheduleEnabled: false })), false)
+  assert.equal(needsScheduleSetup(computeProjectHealth(base)), false)
+  assert.equal(needsScheduleSetup(computeProjectHealth({ ...base, delayedCount: 1, datedActivityCount: 0 })), false)
 })

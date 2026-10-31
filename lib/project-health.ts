@@ -57,11 +57,19 @@ export function computeProjectHealth(s: ProjectHealthSignals): ProjectHealth {
   if (risk.length) return { level: 'at_risk', reasons: [...risk, ...attention] }
   if (attention.length) return { level: 'needs_attention', reasons: attention }
   if (!s.scheduleEnabled) return { level: 'insufficient_data', reasons: ['Schedule module is off, so progress cannot be measured'] }
-  if (s.activityCount === 0) return { level: 'insufficient_data', reasons: ['Schedule not configured: no activities yet'] }
+  if (s.activityCount === 0) return { level: 'insufficient_data', reasons: [SCHEDULE_NO_ACTIVITIES] }
   if (s.datedActivityCount === 0) {
-    return { level: 'insufficient_data', reasons: ['Schedule not configured: no planned dates yet'] }
+    return { level: 'insufficient_data', reasons: [SCHEDULE_NO_DATES] }
   }
   return { level: 'on_track', reasons: ['Schedule current with no open issues'] }
+}
+
+const SCHEDULE_NO_ACTIVITIES = 'Schedule not configured: no activities yet'
+const SCHEDULE_NO_DATES = 'Schedule not configured: no planned dates yet'
+
+/** True when the only reason a project lacks a health reading is a missing or undated schedule. */
+export function needsScheduleSetup(h: ProjectHealth): boolean {
+  return h.level === 'insufficient_data' && (h.reasons[0] === SCHEDULE_NO_ACTIVITIES || h.reasons[0] === SCHEDULE_NO_DATES)
 }
 
 const LEVEL_ORDER: Record<HealthLevel, number> = { at_risk: 0, needs_attention: 1, insufficient_data: 2, on_track: 3 }
