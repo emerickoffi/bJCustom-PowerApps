@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: 'Project financials' }
 
 export default async function ProjectFinancialsPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireManager()
-  await requireFeature(session.organizationId, 'estimates')
+  const features = await requireFeature(session.organizationId, 'estimates')
   const { id } = await params
   const supabase = await createClient()
 
@@ -41,6 +41,14 @@ export default async function ProjectFinancialsPage({ params }: { params: Promis
           <p className="text-sm text-muted-foreground">
             Baseline: estimate <span className="font-medium text-foreground">{baseline.estimate.estimate_number || 'untitled'}</span> revision {baseline.estimate.revision}.{' '}
             {budget.approvedCount} approved change order{budget.approvedCount === 1 ? '' : 's'} applied.
+            {features.change_orders && (
+              <>
+                {' '}
+                <Link href={`/projects/${encodeURIComponent(project.id)}/change-orders`} className="font-medium text-primary underline-offset-4 hover:underline">
+                  View change orders
+                </Link>
+              </>
+            )}
             {budget.pendingCount > 0 && (
               <>
                 {' '}

@@ -13,13 +13,102 @@ export const CHANGE_ORDER_STATUS_LABELS: Record<ChangeOrderStatus, string> = {
   void: 'Void',
 }
 
-export const CHANGE_ORDER_STATUS_TONES: Record<ChangeOrderStatus, 'neutral' | 'sage' | 'primary' | 'warning' | 'danger' | 'champagne'> = {
+export const CHANGE_ORDER_STATUS_TONES: Record<ChangeOrderStatus, 'neutral' | 'sage' | 'info' | 'warning' | 'danger'> = {
   draft: 'neutral',
-  internal_review: 'sage',
+  internal_review: 'info',
   awaiting_homeowner: 'warning',
-  approved: 'primary',
+  approved: 'sage',
   rejected: 'danger',
   void: 'neutral',
+}
+
+/** Display-only progression; each step maps onto a canonical status and never introduces a new one. */
+export const CHANGE_ORDER_PROGRESS = [
+  { key: 'draft', label: 'Draft' },
+  { key: 'internal_review', label: 'Internal review' },
+  { key: 'awaiting_homeowner', label: 'Awaiting homeowner' },
+  { key: 'decision', label: 'Decision' },
+] as const
+
+export type ProgressStepState = 'complete' | 'current' | 'upcoming'
+
+export function progressStates(status: ChangeOrderStatus): ProgressStepState[] {
+  const index = status === 'approved' || status === 'rejected' ? 3 : status === 'void' ? -1 : CHANGE_ORDER_PROGRESS.findIndex((s) => s.key === status)
+  return CHANGE_ORDER_PROGRESS.map((_, i) => {
+    if (index === -1) return 'upcoming'
+    if (i < index || (i === 3 && index === 3)) return 'complete'
+    return i === index ? 'current' : 'upcoming'
+  })
+}
+
+export type ChangeOrderSummaryRow = {
+  status: ChangeOrderStatus
+  price_adjustment_cents: number
+  cost_adjustment_cents: number
+  schedule_impact_days: number | null
+}
+
+export function isPendingStatus(status: ChangeOrderStatus) {
+  return status === 'internal_review' || status === 'awaiting_homeowner'
+}
+
+/**
+ * Totals for the overview. Approved and pending are disjoint by status, so a row is counted at most once.
+ * Drafts, rejected and void rows contribute nothing.
+ */
+export function summarizeChangeOrders(rows: ChangeOrderSummaryRow[]) {
+  const summary = {
+    approvedCount: 0,
+    pendingCount: 0,
+    approvedPriceCents: 0,
+    approvedCostCents: 0,
+    pendingPriceCents: 0,
+    approvedScheduleDays: 0,
+    approvedWithScheduleCount: 0,
+  }
+  for (const r of rows) {
+    if (r.status === 'approved') {
+      summary.approvedCount++
+      summary.approvedPriceCents += r.price_adjustment_cents
+      summary.approvedCostCents += r.cost_adjustment_cents
+      if (r.schedule_impact_days !== null) {
+        summary.approvedScheduleDays += r.schedule_impact_days
+        summary.approvedWithScheduleCount++
+      }
+    } else if (isPendingStatus(r.status)) {
+      summary.pendingCount++
+      summary.pendingPriceCents += r.price_adjustment_cents
+    }
+  }
+  return summary
+}
+
+export function formatScheduleDays(days: number | null, style: 'short' | 'long' = 'short') {
+  if (days === null) return style === 'short' ? '—' : 'Not set'
+  const sign = days > 0 ? '+' : ''
+  if (style === 'short') return `${sign}${days}d`
+  return `${sign}${days} ${Math.abs(days) === 1 ? 'day' : 'days'}`
+}
+
+export type DirectoryRow = ChangeOrderSummaryRow & { id: string; co_number: string; number: number; title: string; updated_at: string }
+export type DirectorySort = 'number_desc' | 'number_asc' | 'updated_desc' | 'price_desc' | 'price_asc'
+export type DirectoryStatusFilter = 'all' | 'open' | ChangeOrderStatus
+
+export function filterAndSortChangeOrders<T extends DirectoryRow>(rows: T[], q: string, status: DirectoryStatusFilter, sort: DirectorySort): T[] {
+  const needle = q.trim().toLowerCase()
+  const filtered = rows.filter((r) => {
+    if (status === 'open' && !(r.status === 'draft' || isPendingStatus(r.status))) return false
+    if (status !== 'all' && status !== 'open' && r.status !== status) return false
+    return !needle || r.title.toLowerCase().includes(needle) || r.co_number.toLowerCase().includes(needle)
+  })
+  const compare: Record<DirectorySort, (a: T, b: T) => number> = {
+    number_desc: (a, b) => b.number - a.number,
+    number_asc: (a, b) => a.number - b.number,
+    updated_desc: (a, b) => b.updated_at.localeCompare(a.updated_at),
+    price_desc: (a, b) => b.price_adjustment_cents - a.price_adjustment_cents,
+    price_asc: (a, b) => a.price_adjustment_cents - b.price_adjustment_cents,
+  }
+  return [...filtered].sort(compare[sort])
 }
 
 export const CHANGE_ORDER_DECISION_METHODS = [

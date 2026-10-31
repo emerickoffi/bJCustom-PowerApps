@@ -2,10 +2,11 @@ import { cn } from '@/lib/utils'
 import { CLIENT_STATUS_LABELS, type ClientStatus, type ProjectStatus } from '@/lib/domain'
 import { ProjectStatusBanner } from '@/components/shared/project-status-banner'
 
-type Tone = 'neutral' | 'sage' | 'primary' | 'solid' | 'warning' | 'danger' | 'champagne'
+type Tone = 'neutral' | 'sage' | 'primary' | 'solid' | 'warning' | 'danger' | 'champagne' | 'info'
 
 const TONE: Record<Tone, { pill: string; dot: string }> = {
   neutral: { pill: 'bg-muted text-muted-foreground ring-border', dot: 'bg-muted-foreground/60' },
+  info: { pill: 'bg-info/8 text-info ring-info/15', dot: 'bg-info' },
   sage: { pill: 'bg-sage text-primary ring-primary/10', dot: 'bg-primary/60' },
   primary: { pill: 'bg-primary/10 text-primary ring-primary/15', dot: 'bg-primary' },
   solid: { pill: 'bg-primary text-primary-foreground ring-primary', dot: 'bg-champagne' },
