@@ -12,6 +12,32 @@ const ACCENT: Record<Accent, string> = {
   neutral: 'bg-muted text-muted-foreground',
 }
 
+export type StatTone = 'approval' | 'contract' | 'schedule' | 'receivables'
+
+const TONE: Record<StatTone, { card: string; icon: string }> = {
+  approval: {
+    card: 'bg-[#F8F0E2] border-[#EADDC7] hover:border-[#DCC9A8]',
+    icon: 'bg-[#916D35]/12 text-[#916D35]',
+  },
+  contract: {
+    card: 'bg-[#EAF3EC] border-[#D4E5D8] hover:border-[#B9D3C0]',
+    icon: 'bg-[#3B7050]/12 text-[#3B7050]',
+  },
+  schedule: {
+    card: 'bg-[#EEF1F7] border-[#DCE3EF] hover:border-[#C3CFE2]',
+    icon: 'bg-[#60789A]/12 text-[#60789A]',
+  },
+  receivables: {
+    card: 'bg-[#F2EEEA] border-[#E4DDD5] hover:border-[#D2C7BA]',
+    icon: 'bg-[#846E5B]/12 text-[#846E5B]',
+  },
+}
+
+const STATUS_DOT: Partial<Record<Accent, string>> = {
+  warning: 'bg-warning',
+  danger: 'bg-destructive',
+}
+
 export function StatCard({
   label,
   value,
@@ -19,6 +45,7 @@ export function StatCard({
   icon: Icon,
   hint,
   accent = 'primary',
+  tone,
 }: {
   label: string
   value: number | string
@@ -26,32 +53,52 @@ export function StatCard({
   icon?: React.ComponentType<{ className?: string }>
   hint?: string
   accent?: Accent
+  tone?: StatTone
 }) {
+  const toned = tone ? TONE[tone] : undefined
+  const statusDot = toned ? STATUS_DOT[accent] : undefined
+
   return (
     <Link
       href={href}
       aria-label={`${label}: ${value}${hint ? `. ${hint}` : ''}. View details.`}
-      className="group surface flex flex-col gap-4 p-5 transition-[border-color,box-shadow] duration-200 hover:border-primary/25 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className={cn(
+        'group surface flex h-full flex-col gap-3.5 p-5 transition-[border-color,box-shadow] duration-200 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 xl:p-6',
+        toned ? toned.card : 'hover:border-primary/25',
+      )}
     >
       <div className="flex items-start justify-between gap-3">
         {Icon ? (
-          <span className={cn('flex size-9 items-center justify-center rounded-lg', ACCENT[accent])} aria-hidden="true">
-            <Icon className="size-[1.125rem]" />
+          <span
+            className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', toned ? toned.icon : ACCENT[accent])}
+            aria-hidden="true"
+          >
+            <Icon className="size-5" />
           </span>
         ) : (
           <span />
         )}
-        <ArrowUpRight
-          className="size-4 text-muted-foreground/50 transition-[color,transform] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
-          aria-hidden="true"
-        />
+        <span className="flex items-center gap-2">
+          {statusDot && <span className={cn('size-2 rounded-full ring-2 ring-white/70', statusDot)} aria-hidden="true" />}
+          <ArrowUpRight
+            className="size-4 text-muted-foreground/50 transition-[color,transform] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
+            aria-hidden="true"
+          />
+        </span>
       </div>
-      <div className="flex flex-col gap-1">
-        <span className="tabular font-serif text-[2rem] font-semibold leading-none tracking-tight text-brand-deep">
+      <div className="flex min-w-0 flex-col gap-1">
+        <span className="tabular break-words font-serif text-[2rem] font-semibold leading-none tracking-tight text-brand-deep">
           {value}
         </span>
-        <span className="pt-1 text-sm font-medium text-foreground">{label}</span>
-        {hint && <span className="text-xs leading-relaxed text-muted-foreground">{hint}</span>}
+        <span className="pt-1.5 text-sm font-medium leading-snug text-foreground">{label}</span>
+        {hint && (
+          <span
+            title={hint}
+            className={cn('line-clamp-2 text-xs leading-normal', toned ? 'text-[#56655E]' : 'text-muted-foreground')}
+          >
+            {hint}
+          </span>
+        )}
       </div>
     </Link>
   )
