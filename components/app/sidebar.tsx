@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AppNav } from '@/components/app/app-nav'
-import type { NavItem } from '@/lib/navigation'
+import type { NavGroup, NavItem } from '@/lib/navigation'
 
 export const SIDEBAR_COOKIE = 'sidebar_collapsed'
 
@@ -16,6 +16,7 @@ export function Sidebar({
   homeLabel,
   homeHref = '/dashboard',
   defaultCollapsed,
+  closedGroups,
 }: {
   items: NavItem[]
   logo: React.ReactNode
@@ -23,6 +24,7 @@ export function Sidebar({
   homeLabel: string
   homeHref?: string
   defaultCollapsed: boolean
+  closedGroups?: NavGroup[]
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
 
@@ -51,7 +53,7 @@ export function Sidebar({
         </Link>
       </div>
       <div className={cn('flex-1 overflow-y-auto py-6', collapsed ? 'px-3' : 'px-4')}>
-        <AppNav items={items} collapsed={collapsed} />
+        <AppNav items={items} collapsed={collapsed} closedGroups={closedGroups} />
       </div>
       <div className={cn('border-t border-sidebar-border/70 p-3', collapsed && 'flex justify-center')}>
         <button

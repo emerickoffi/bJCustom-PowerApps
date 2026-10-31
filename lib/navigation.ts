@@ -12,6 +12,18 @@ export type NavItem = {
 
 export type NavGroup = 'workspace' | 'financials' | 'people' | 'services' | 'admin'
 
+/** Comma-separated groups the user collapsed. Read on the server so the first paint matches. */
+export const NAV_GROUPS_COOKIE = 'sidebar_groups_closed'
+
+/** Always-visible primary tools; every other group can be collapsed. */
+export const PERSISTENT_NAV_GROUP: NavGroup = 'workspace'
+
+export function parseClosedNavGroups(value: string | undefined): NavGroup[] {
+  if (!value) return []
+  const known = new Set<string>(['financials', 'people', 'services', 'admin'])
+  return value.split(',').filter((key): key is NavGroup => known.has(key))
+}
+
 export const NAV_GROUPS: { key: NavGroup; label: string }[] = [
   { key: 'workspace', label: 'Workspace' },
   { key: 'financials', label: 'Financials' },
@@ -32,7 +44,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: '/invoices', label: 'Invoices', icon: 'invoices', feature: 'invoices', group: 'financials' },
   { href: '/documents', label: 'Documents', icon: 'documents', feature: 'documents', group: 'services' },
   { href: '/warranty', label: 'Warranty', icon: 'warranty', feature: 'warranty', group: 'services' },
-  { href: '/team', label: 'Users & Access', icon: 'team', roles: ['org_admin'], group: 'admin' },
+  { href: '/team', label: 'Users & Access', icon: 'team', roles: ['org_admin'], group: 'people' },
   { href: '/settings', label: 'Settings', icon: 'settings', roles: ['org_admin'], group: 'admin' },
 ]
 

@@ -1,6 +1,3 @@
-import Link from 'next/link'
-import { Plus, UserPlus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { formatLongDate, greeting } from '@/lib/greeting'
 
 export function CommandHeader({
@@ -40,16 +37,6 @@ export function CommandHeader({
             </>
           )}
         </h1>
-      </div>
-      <div className="flex shrink-0 flex-wrap gap-2">
-        <Button variant="outline" render={<Link href="/clients/new" />} nativeButton={false}>
-          <UserPlus data-icon="inline-start" />
-          New client
-        </Button>
-        <Button render={<Link href="/projects/new" />} nativeButton={false}>
-          <Plus data-icon="inline-start" />
-          New project
-        </Button>
       </div>
     </header>
   )

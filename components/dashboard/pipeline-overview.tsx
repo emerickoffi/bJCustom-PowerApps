@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { ChevronDown, ChevronRight } from 'lucide-react'
 import { ALL_PROJECT_STATUSES, PROJECT_PIPELINE, PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { PROJECT_STATUS_STYLES } from '@/components/shared/project-status-banner'
 import { cn } from '@/lib/utils'
@@ -8,47 +7,38 @@ function percent(count: number, total: number) {
   return total ? Math.round((count / total) * 100) : 0
 }
 
-function StageIcon({ status }: { status: ProjectStatus }) {
-  const style = PROJECT_STATUS_STYLES[status]
-  const Icon = style.icon
+function Metric({ label, value, emphasis }: { label: string; value: number; emphasis?: boolean }) {
   return (
-    <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-md', style.className)} aria-hidden="true">
-      <Icon className="size-3.5" />
-    </span>
+    <div className="flex items-baseline gap-1.5">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className={cn('tabular font-serif text-lg font-semibold leading-none', emphasis ? 'text-primary' : 'text-foreground')}>
+        {value}
+      </dd>
+    </div>
   )
 }
 
-function StageRow({ status, count, total }: { status: ProjectStatus; count: number; total: number }) {
+function StageChip({ status, count, total }: { status: ProjectStatus; count: number; total: number }) {
   const label = PROJECT_STATUS_LABELS[status]
-  const share = percent(count, total)
   return (
     <li>
       <Link
         href={`/projects?status=${status}`}
-        aria-label={`${label}: ${count} ${count === 1 ? 'project' : 'projects'}, ${share}% of portfolio. View projects.`}
-        className="group flex min-h-11 items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-sage/60 focus-visible:bg-sage/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={`${label}: ${count} ${count === 1 ? 'project' : 'projects'}, ${percent(count, total)}% of portfolio. View projects.`}
+        className={cn(
+          'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors',
+          'hover:border-primary/30 hover:bg-sage/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          count === 0 ? 'border-dashed text-muted-foreground' : 'bg-card text-foreground',
+        )}
       >
-        <StageIcon status={status} />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{label}</span>
-        <span className="tabular text-xs text-muted-foreground">{`${share}%`}</span>
-        <span className="tabular w-6 text-right text-sm font-semibold text-foreground">{count}</span>
-        <ChevronRight
-          className="size-4 shrink-0 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5"
+        <span
+          className={cn('size-2 shrink-0 rounded-full', PROJECT_STATUS_STYLES[status].className, count === 0 && 'opacity-40')}
           aria-hidden="true"
         />
+        <span>{label}</span>
+        <span className="tabular font-semibold">{count}</span>
       </Link>
     </li>
-  )
-}
-
-function Metric({ label, value, emphasis }: { label: string; value: number; emphasis?: boolean }) {
-  return (
-    <div className={cn('flex flex-col gap-1 rounded-lg border px-4 py-3', emphasis ? 'border-primary/15 bg-sage/60' : 'bg-card')}>
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className={cn('tabular font-serif text-2xl font-semibold leading-tight', emphasis ? 'text-primary' : 'text-foreground')}>
-        {value}
-      </dd>
-    </div>
   )
 }
 
@@ -59,43 +49,20 @@ export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectSta
   const inPipeline = PROJECT_PIPELINE.filter((s) => s !== 'completed').reduce((sum, s) => sum + countOf(s), 0)
   const onHold = countOf('on_hold')
   const cancelled = countOf('cancelled')
-
   const segments = ALL_PROJECT_STATUSES.filter((s) => countOf(s) > 0)
-  const populated = PROJECT_PIPELINE.filter((s) => countOf(s) > 0)
-  const empty = PROJECT_PIPELINE.filter((s) => countOf(s) === 0)
 
   return (
-    <section aria-labelledby="pipeline-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-4">
-        <div className="flex flex-col gap-1">
-          <h2 id="pipeline-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
-            Project Pipeline
-          </h2>
-          <p className="text-sm text-muted-foreground">Portfolio distribution from first call to handover</p>
-        </div>
-        <div className="flex gap-2 text-xs">
-          <Link
-            href="/projects?status=on_hold"
-            className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 font-medium text-red-700 ring-1 ring-inset ring-red-600/15 transition-colors hover:bg-red-100"
-          >
-            <span className="size-1.5 rounded-full bg-red-600" aria-hidden="true" />
-            {`${onHold} on hold`}
-          </Link>
-          <Link
-            href="/projects?status=cancelled"
-            className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground ring-1 ring-inset ring-border transition-colors hover:bg-muted/70"
-          >
-            <span className="size-1.5 rounded-full bg-slate-500" aria-hidden="true" />
-            {`${cancelled} cancelled`}
-          </Link>
-        </div>
+    <section aria-labelledby="pipeline-heading" className="surface flex flex-col gap-4 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <h2 id="pipeline-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+          Project Pipeline
+        </h2>
+        <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
+          <Metric label="Total" value={total} />
+          <Metric label="In pipeline" value={inPipeline} emphasis />
+          <Metric label="Completed" value={completed} />
+        </dl>
       </div>
-
-      <dl className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-3">
-        <Metric label="Total projects" value={total} />
-        <Metric label="In pipeline" value={inPipeline} emphasis />
-        <Metric label="Completed" value={completed} />
-      </dl>
 
       {total > 0 ? (
         <div
@@ -103,7 +70,7 @@ export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectSta
           aria-label={`Portfolio distribution: ${segments
             .map((s) => `${PROJECT_STATUS_LABELS[s]} ${countOf(s)} (${percent(countOf(s), total)}%)`)
             .join(', ')}`}
-          className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-sage/70"
+          className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-sage/70"
         >
           {segments.map((s) => (
             <span
@@ -118,27 +85,14 @@ export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectSta
         <p className="text-sm text-muted-foreground">No projects yet.</p>
       )}
 
-      {populated.length > 0 && (
-        <ol className="-mx-2 flex flex-col divide-y divide-border/60" aria-label="Stages with projects">
-          {populated.map((s) => (
-            <StageRow key={s} status={s} count={countOf(s)} total={total} />
-          ))}
-        </ol>
-      )}
-
-      {empty.length > 0 && (
-        <details className="group border-t pt-3">
-          <summary className="-mx-2 flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2 text-sm text-muted-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-            <span>{`Other stages (${empty.length})`}</span>
-            <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
-          </summary>
-          <ol className="-mx-2 mt-1 flex flex-col" aria-label="Stages without projects">
-            {empty.map((s) => (
-              <StageRow key={s} status={s} count={0} total={total} />
-            ))}
-          </ol>
-        </details>
-      )}
+      <ol className="flex flex-wrap gap-1.5" aria-label="Projects by stage">
+        {PROJECT_PIPELINE.map((s) => (
+          <StageChip key={s} status={s} count={countOf(s)} total={total} />
+        ))}
+        {(['on_hold', 'cancelled'] as const).map((s) => (
+          <StageChip key={s} status={s} count={s === 'on_hold' ? onHold : cancelled} total={total} />
+        ))}
+      </ol>
     </section>
   )
 }

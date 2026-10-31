@@ -4,9 +4,17 @@ import { useState } from 'react'
 import { Menu } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { AppNav } from '@/components/app/app-nav'
-import type { NavItem } from '@/lib/navigation'
+import type { NavGroup, NavItem } from '@/lib/navigation'
 
-export function MobileNav({ items, logo }: { items: NavItem[]; logo: React.ReactNode }) {
+export function MobileNav({
+  items,
+  logo,
+  closedGroups,
+}: {
+  items: NavItem[]
+  logo: React.ReactNode
+  closedGroups?: NavGroup[]
+}) {
   const [open, setOpen] = useState(false)
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -22,7 +30,7 @@ export function MobileNav({ items, logo }: { items: NavItem[]; logo: React.React
           <div className="w-44">{logo}</div>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto px-4 py-6">
-          <AppNav items={items} onNavigate={() => setOpen(false)} />
+          <AppNav items={items} onNavigate={() => setOpen(false)} closedGroups={closedGroups} />
         </div>
       </SheetContent>
     </Sheet>

@@ -52,6 +52,7 @@ export function ProjectNav({
   }, [])
 
   const overviewHref = items[0]?.href ?? `/projects/${projectId}`
+  const activeTab = items.find((item) => item.key === activeKey)
 
   // On the overview itself, scroll directly: a repeated hash click is otherwise a no-op in the router.
   // From other tabs the Link navigates and ProjectSectionScroll handles the hash after mount.
@@ -91,6 +92,18 @@ export function ProjectNav({
               </Link>
             )}
           </li>
+          {activeTab && activeKey !== 'overview' && (
+            <>
+              <li aria-hidden="true">
+                <ChevronRight className="size-3.5" />
+              </li>
+              <li>
+                <span aria-current="page" className="font-medium text-foreground">
+                  {activeTab.label}
+                </span>
+              </li>
+            </>
+          )}
         </ol>
       </nav>
 
