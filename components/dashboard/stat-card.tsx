@@ -63,8 +63,8 @@ export function StatCard({
       href={href}
       aria-label={`${label}: ${value}${hint ? `. ${hint}` : ''}. View details.`}
       className={cn(
-        'group surface flex h-full flex-col gap-3.5 p-5 transition-[border-color,box-shadow] duration-200 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 xl:p-6',
-        toned ? toned.card : 'hover:border-primary/25',
+        'group surface flex h-full flex-col transition-[border-color,box-shadow] duration-200 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        toned ? cn('gap-2 p-[18px] xl:p-5', toned.card) : 'gap-3.5 p-5 hover:border-primary/25 xl:p-6',
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -90,7 +90,7 @@ export function StatCard({
         <span className="tabular break-words font-serif text-[2rem] font-semibold leading-none tracking-tight text-brand-deep">
           {value}
         </span>
-        <span className="pt-1.5 text-sm font-medium leading-snug text-foreground">{label}</span>
+        <span className={cn('text-sm font-medium leading-snug text-foreground', toned ? 'pt-1' : 'pt-1.5')}>{label}</span>
         {hint && (
           <span
             title={hint}
