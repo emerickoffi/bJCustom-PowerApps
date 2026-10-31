@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AnimatedNumber, type AnimatedNumberFormat } from '@/components/dashboard/animated-number'
 
 type Accent = 'primary' | 'champagne' | 'warning' | 'danger' | 'neutral'
 
@@ -46,9 +47,12 @@ export function StatCard({
   hint,
   accent = 'primary',
   tone,
+  countTo,
 }: {
   label: string
   value: number | string
+  /** Numeric source for an animated count-up; `value` stays the formatted final text. */
+  countTo?: { value: number; format: AnimatedNumberFormat }
   href: string
   icon?: React.ComponentType<{ className?: string }>
   hint?: string
@@ -88,7 +92,7 @@ export function StatCard({
       </div>
       <div className="flex min-w-0 flex-col gap-1">
         <span className="tabular break-words font-serif text-[2rem] font-semibold leading-none tracking-tight text-brand-deep">
-          {value}
+          {countTo ? <AnimatedNumber value={countTo.value} format={countTo.format} /> : value}
         </span>
         <span className={cn('text-sm font-medium leading-snug text-foreground', toned ? 'pt-1' : 'pt-1.5')}>{label}</span>
         {hint && (

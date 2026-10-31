@@ -153,6 +153,13 @@
 @utility tabular {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum', 'cv11';
+  }
+
+/* Hide KPI digits that are about to count up so the server-rendered final value doesn't flash first. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  [data-count-pending] {
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
