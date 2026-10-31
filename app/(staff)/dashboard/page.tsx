@@ -11,7 +11,8 @@ import { createClient } from '@/lib/supabase/server'
 import { EmptyState } from '@/components/shared/page-header'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { RecentActivity } from '@/components/dashboard/recent-activity'
-import { NotificationsCard } from '@/components/walkthroughs/notifications-card'
+import { ActionCenter } from '@/components/dashboard/action-center'
+import { isActionCategory } from '@/lib/action-items'
 import { CompactProjectCard } from '@/components/dashboard/compact-project-card'
 import { ProgressRing } from '@/components/shared/progress'
 import { ACTIVE_PROJECT_STATUSES, PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
@@ -28,7 +29,7 @@ import { PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
 import { getOrgFeatures } from '@/lib/features'
 import { getDashboardCardDetails } from '@/lib/dashboard-cards'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
-import { loadDashboardAttention } from '@/lib/attention-data'
+import { getActionItems } from '@/lib/attention-data'
 import type { DashboardSectionId } from '@/lib/dashboard-sections'
 
 export const metadata: Metadata = { title: 'Dashboard' }
@@ -45,12 +46,14 @@ function greeting() {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ portfolio?: string }>
+  searchParams: Promise<{ portfolio?: string; actions?: string }>
 }) {
   const session = await requireStaff()
   const supabase = await createClient()
   const orgId = session.organizationId
-  const selectedStatus = parsePortfolioStatus((await searchParams).portfolio)
+  const query = await searchParams
+  const selectedStatus = parsePortfolioStatus(query.portfolio)
+  const selectedAction = isActionCategory(query.actions) ? query.actions : null
   const features = await getOrgFeatures(orgId)
 
   const [projectsRes, leadCountRes, activityRes, signals, agendaData] = await Promise.all([
@@ -106,7 +109,7 @@ export default async function DashboardPage({
   const [photos, cardDetails, attention, health] = await Promise.all([
     getProjectCoverPhotos(recent.map((p) => p.id)),
     getDashboardCardDetails(orgId, recent, features),
-    loadDashboardAttention(orgId, session.userId, features),
+    getActionItems(orgId, session.userId, { manager, features }),
     loadProjectHealth(orgId, session.userId, active.map((r) => r.id), features),
   ])
   const weekActivityCount = new Set(agendaData.agenda.week.map((e) => e.id)).size
@@ -176,12 +179,12 @@ export default async function DashboardPage({
       >
         <StatCard label="Active projects" value={active.length} href="/projects" icon={FolderKanban} hint="Planning through punch list" />
         <StatCard
-          label="Needs attention"
+          label="Action items"
           value={attention.total}
-          href="#attention-heading"
+          href="/actions"
           icon={BellRing}
           accent={attention.total > 0 ? 'champagne' : undefined}
-          hint={attention.totalIsLowerBound ? 'Verified items (at least)' : 'Verified items across projects'}
+          hint={attention.totalIsLowerBound ? 'Open in the Action Center (at least)' : 'Open in the Action Center'}
         />
         <StatCard
           label="Scheduled this week"
@@ -201,10 +204,22 @@ export default async function DashboardPage({
 
       <div className="grid items-start gap-6 xl:grid-cols-2">
         <div className="min-w-0" data-dashboard-section={'attention' satisfies DashboardSectionId}>
-          <NotificationsCard
+          <ActionCenter
             items={attention.items}
-            total={attention.total}
             totalIsLowerBound={attention.totalIsLowerBound}
+            unavailable={attention.unavailable}
+            selected={selectedAction}
+            limit={5}
+            links={{
+              href: (category) => {
+                const params = new URLSearchParams()
+                if (selectedStatus) params.set('portfolio', selectedStatus)
+                if (category) params.set('actions', category)
+                const qs = params.toString()
+                return qs ? `/dashboard?${qs}` : '/dashboard'
+              },
+              viewAll: selectedAction ? `/actions?category=${selectedAction}` : '/actions',
+            }}
           />
         </div>
         <div className="min-w-0" data-dashboard-section={'agenda' satisfies DashboardSectionId}>
