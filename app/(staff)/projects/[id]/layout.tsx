@@ -1,6 +1,10 @@
 import { notFound } from 'next/navigation'
 import { canManage, requireStaff } from '@/lib/session'
-import { ProjectQuickActionsScope, type QuickAction } from '@/components/app/quick-actions'
+import { cookies } from 'next/headers'
+import { ProjectQuickActionsScope } from '@/components/app/quick-actions'
+import { RememberJob } from '@/components/app/job-switcher'
+import { buildProjectQuickActions } from '@/lib/quick-actions'
+import { CURRENT_JOB_COOKIE, decodeJobCookie } from '@/lib/job-context'
 import { createClient } from '@/lib/supabase/server'
 import { getOrgFeatures } from '@/lib/features'
 import { getProjectNavItems } from '@/lib/project-nav'
@@ -39,23 +43,20 @@ export default async function ProjectLayout({
   })
 
   // Each action mirrors the guard on its destination page, so only workflows the user can complete are offered.
-  const manager = canManage(session.role)
-  const editable = !project.archived_at
-  const base = `/projects/${encodeURIComponent(project.id)}`
-  const quickActions: QuickAction[] = []
-  if (editable && manager && features.schedule) {
-    quickActions.push({ key: 'schedule', label: 'Add schedule activity', href: `${base}/schedule?new=activity`, icon: 'schedule' })
-  }
-  if (editable && manager && features.estimates && project.status !== 'cancelled') {
-    quickActions.push({ key: 'estimate', label: 'Create estimate', href: `/estimates/new?project=${encodeURIComponent(project.id)}`, icon: 'estimate' })
-  }
-  if (editable && features.documents && canViewInternal) {
-    quickActions.push({ key: 'document', label: 'Upload document', href: `${base}/documents?upload=1`, icon: 'document' })
-  }
+  const quickActions = buildProjectQuickActions({
+    projectId: project.id,
+    status: project.status,
+    archived: Boolean(project.archived_at),
+    role: session.role,
+    features,
+    canViewInternal: Boolean(canViewInternal),
+  })
+  const rememberedId = decodeJobCookie((await cookies()).get(CURRENT_JOB_COOKIE)?.value, session.organizationId)
 
   return (
     <div className="flex flex-col gap-6">
       <ProjectQuickActionsScope projectName={project.name} actions={quickActions} />
+      {!project.archived_at && rememberedId !== project.id && <RememberJob projectId={project.id} />}
       <AssistantProjectScope
         project={{
           id: project.id,

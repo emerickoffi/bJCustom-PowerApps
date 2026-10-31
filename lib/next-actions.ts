@@ -1,3 +1,5 @@
+import { lifecycleGroup } from './project-lifecycle.ts'
+
 export type NextActionTone = 'critical' | 'review' | 'setup'
 
 export type NextAction = {
@@ -14,7 +16,16 @@ export type SignatureRequestRef = { document_id: string; status: string; created
 export type ProjectActionState = {
   projectId: string
   canManage: boolean
-  features: { schedule: boolean; estimates: boolean; documents: boolean; e_signatures: boolean; walkthroughs: boolean }
+  features: {
+    schedule: boolean
+    estimates: boolean
+    documents: boolean
+    e_signatures: boolean
+    walkthroughs: boolean
+    warranty?: boolean
+  }
+  /** Project status; gates stage-specific steps. Omitted = treated as an active build. */
+  status?: string
   hasProjectManager: boolean
   activityCount: number
   /** Open activities marked delayed or still open after their planned finish. */
@@ -46,6 +57,7 @@ export function latestSignatureRequests(requests: SignatureRequestRef[]): Signat
 export function buildProjectNextActions(state: ProjectActionState): { items: NextAction[]; hiddenCount: number } {
   const base = `/projects/${encodeURIComponent(state.projectId)}`
   const { features, canManage } = state
+  const stage = state.status ? lifecycleGroup(state.status) : 'active'
   const actions: NextAction[] = []
   const signing = features.documents && features.e_signatures
   const signatures = signing ? latestSignatureRequests(state.signatureRequests) : []
@@ -122,7 +134,8 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
     })
   }
 
-  if (features.schedule && canManage && state.activityCount === 0) {
+  // A build schedule is a readiness task once a job is approved; pipeline and closed jobs don't need one yet.
+  if (stage === 'active' && features.schedule && canManage && state.activityCount === 0) {
     actions.push({
       key: 'schedule-setup',
       tone: 'setup',
@@ -130,6 +143,17 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
       description: 'Progress tracking starts once the schedule is initialized.',
       href: `${base}/schedule`,
       actionLabel: 'Set up schedule',
+    })
+  }
+
+  if (state.status === 'completed' && features.warranty) {
+    actions.push({
+      key: 'warranty',
+      tone: 'review',
+      title: 'Job is in its warranty period',
+      description: 'Review homeowner warranty requests and service history for this home.',
+      href: `${base}/warranty`,
+      actionLabel: 'Open warranty',
     })
   }
 

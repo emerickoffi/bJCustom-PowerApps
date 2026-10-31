@@ -46,7 +46,7 @@ const SEGMENT_LABELS: Record<string, string> = {
 
 const ID_LIKE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i
 
-function useCrumbs(rootHref: string, rootLabel: string) {
+function useCrumbs(rootHref: string, rootLabel: string, labels?: Record<string, string>) {
   const pathname = usePathname()
   const parts = pathname.split('/').filter(Boolean)
   const crumbs: { href: string; label: string }[] = []
@@ -54,14 +54,24 @@ function useCrumbs(rootHref: string, rootLabel: string) {
   for (const part of parts) {
     href += `/${part}`
     if (href === rootHref) continue
-    const label = ID_LIKE.test(part) ? 'Details' : (SEGMENT_LABELS[part] ?? part.replace(/-/g, ' '))
+    const label =
+      labels?.[part] ?? (ID_LIKE.test(part) ? 'Details' : (SEGMENT_LABELS[part] ?? part.replace(/-/g, ' ')))
     crumbs.push({ href, label })
   }
   return [{ href: rootHref, label: rootLabel }, ...crumbs]
 }
 
-export function Breadcrumbs({ rootHref, rootLabel }: { rootHref: string; rootLabel: string }) {
-  const crumbs = useCrumbs(rootHref, rootLabel)
+/** `labels` maps known ids (e.g. the current job) to names; other ids fall back to "Details". */
+export function Breadcrumbs({
+  rootHref,
+  rootLabel,
+  labels,
+}: {
+  rootHref: string
+  rootLabel: string
+  labels?: Record<string, string>
+}) {
+  const crumbs = useCrumbs(rootHref, rootLabel, labels)
   return (
     <nav aria-label="Breadcrumb" className="min-w-0">
       <ol className="flex min-w-0 items-center gap-1.5 text-sm">
