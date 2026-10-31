@@ -28,6 +28,7 @@ import { getOrgFeatures } from '@/lib/features'
 import { getDashboardCardDetails } from '@/lib/dashboard-cards'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { loadDashboardAttention } from '@/lib/attention-data'
+import type { DashboardSectionId } from '@/lib/dashboard-sections'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
@@ -114,6 +115,7 @@ export default async function DashboardPage({
       <section
         aria-labelledby="welcome-heading"
         className="relative overflow-hidden rounded-3xl bg-brand-deep text-white shadow-lift"
+        data-dashboard-section={'welcome' satisfies DashboardSectionId}
       >
         <div className="blueprint absolute inset-0 opacity-60" aria-hidden="true" />
         <div className="relative flex flex-col gap-8 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between lg:p-10">
@@ -166,7 +168,11 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      <section aria-label="Key figures" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section
+        aria-label="Key figures"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        data-dashboard-section={'kpis' satisfies DashboardSectionId}
+      >
         <StatCard label="Active projects" value={active.length} href="/projects" icon={FolderKanban} hint="Planning through punch list" />
         <StatCard
           label="Needs attention"
@@ -192,22 +198,28 @@ export default async function DashboardPage({
         />
       </section>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
-        <div className="min-w-0">
+      <div className="grid items-start gap-6 xl:grid-cols-2">
+        <div className="min-w-0" data-dashboard-section={'attention' satisfies DashboardSectionId}>
           <NotificationsCard
             items={attention.items}
             total={attention.total}
             totalIsLowerBound={attention.totalIsLowerBound}
           />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0" data-dashboard-section={'agenda' satisfies DashboardSectionId}>
           <MyAgenda agenda={agendaData.agenda} today={agendaData.today} scheduleEnabled={features.schedule} />
         </div>
       </div>
 
-      <ProjectHealthList projects={health.projects} total={health.total} flagged={health.flagged} />
+      <div data-dashboard-section={'project_health' satisfies DashboardSectionId}>
+        <ProjectHealthList projects={health.projects} total={health.total} flagged={health.flagged} />
+      </div>
 
-      <section aria-labelledby="homes-heading" className="flex flex-col gap-5">
+      <section
+        aria-labelledby="homes-heading"
+        className="flex flex-col gap-5"
+        data-dashboard-section={'project_portfolio' satisfies DashboardSectionId}
+      >
         <SectionHeading
           id="homes-heading"
           title="Project Portfolio"
@@ -272,10 +284,12 @@ export default async function DashboardPage({
         )}
       </section>
 
-      <RecentActivity
-        items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
-        updates={attention.updates}
-      />
+      <div data-dashboard-section={'recent_activity' satisfies DashboardSectionId}>
+        <RecentActivity
+          items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
+          updates={attention.updates}
+        />
+      </div>
     </div>
   )
 }
