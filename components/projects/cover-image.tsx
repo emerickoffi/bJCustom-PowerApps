@@ -36,10 +36,7 @@ export function CoverImage({
         fetchPriority={priority ? 'high' : undefined}
         decoding="async"
         className={className}
-        onError={() => {
-          console.error('Project cover image failed to load', { alt })
-          setFailedSrc(src)
-        }}
+        onError={() => setFailedSrc(src)}
       />
       {overlay}
     </>
