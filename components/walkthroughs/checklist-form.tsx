@@ -480,7 +480,7 @@ function ChecklistItemCard({ item, state, showErrors, media, onResponse, onDescr
               </span>
             </div>
           </div>
-          <MediaUploader evidence="original" items={media} onItemsChange={onMediaChange} pathFor={pathFor} register={register} unregister={unregister} />
+          <MediaUploader evidence="original" floatingCameraLabel={`${item.label} photos`} items={media} onItemsChange={onMediaChange} pathFor={pathFor} register={register} unregister={unregister} />
         </div>
       )}
 

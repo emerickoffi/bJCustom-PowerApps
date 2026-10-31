@@ -180,6 +180,7 @@ export function SupplementalEvidenceUploader({
     <MediaUploader
       label="Add issue photos"
       evidence="supplemental"
+      floatingCameraLabel="Issue photos"
       items={items}
       onItemsChange={(next) => {
         setItems(next)
@@ -215,6 +216,7 @@ export function RepairPhotoUploader({
     <MediaUploader
       label="Add repair photos"
       evidence="repair"
+      floatingCameraLabel="Repair photos (after)"
       items={items}
       onItemsChange={(next) => {
         setItems(next)
