@@ -72,10 +72,10 @@ export function FinancialKpis({ metrics, scheduleRisk }: { metrics: FinancialMet
 
   return (
     <>
-      <StatCard label="Awaiting Your Approval" icon={FileSignature} {...approval} />
-      <StatCard label="Contract Value" icon={Landmark} href="/estimates?status=approved" {...contract} />
-      <StatCard label="Schedule Risk" icon={CalendarClock} {...schedule} />
-      <StatCard label="Receivables" icon={Receipt} {...ar} />
+      <StatCard label="Awaiting Your Approval" icon={FileSignature} tone="approval" {...approval} />
+      <StatCard label="Contract Value" icon={Landmark} href="/estimates?status=approved" tone="contract" {...contract} />
+      <StatCard label="Schedule Risk" icon={CalendarClock} tone="schedule" {...schedule} />
+      <StatCard label="Receivables" icon={Receipt} tone="receivables" {...ar} />
     </>
   )
 }
