@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { HomeownerClaimControls, StaffClaimControls, type StaffOption } from '@/components/warranty/claim-forms'
+import { ClaimProgress } from '@/components/warranty/claim-progress'
 
 export const CLAIM_STATUS_LABELS: Record<string, string> = {
   submitted: 'Submitted',
@@ -50,6 +51,7 @@ type Claim = {
   corrective_action: string | null
   homeowner_validation: string
   homeowner_validation_note: string | null
+  coverage_decision: string | null
 }
 
 type ClaimEvent = {
@@ -92,7 +94,7 @@ export async function ClaimList({
   const { data: claimRows } = await supabase
     .from('warranty_claims')
     .select(
-      'id, coverage_key, category, location, title, original_description, submitted_after_coverage, reported_by_role, reported_at, status, coverage_decision_note, assigned_to, corrective_action, homeowner_validation, homeowner_validation_note',
+      'id, coverage_key, category, location, title, original_description, submitted_after_coverage, reported_by_role, reported_at, status, coverage_decision, coverage_decision_note, assigned_to, corrective_action, homeowner_validation, homeowner_validation_note',
     )
     .eq('project_id', projectId)
     .order('reported_at', { ascending: false })
@@ -147,6 +149,14 @@ export async function ClaimList({
               </div>
               <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', STATUS_TONE[c.status])}>{statusLabel}</span>
             </div>
+
+            <ClaimProgress
+              audience={audience}
+              status={c.status}
+              coverage_decision={c.coverage_decision}
+              homeowner_validation={c.homeowner_validation}
+              eventTypes={claimEvents.map((e) => e.event_type)}
+            />
 
             {c.submitted_after_coverage && (
               <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900">

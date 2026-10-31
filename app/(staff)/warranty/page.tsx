@@ -11,6 +11,16 @@ import { WARRANTY_STAGE_LABELS, type WarrantyStage } from '@/components/warranty
 import { NextMilestone } from '@/components/warranty/next-milestone'
 import { cn } from '@/lib/utils'
 import { SemanticBadge, type SemanticTone } from '@/components/shared/semantic-badge'
+import { WarrantyKpis, type WarrantyKpi } from '@/components/warranty/warranty-kpis'
+import { WarrantyExportMenu } from '@/components/warranty/export-menu'
+import { NewClaimMenu } from '@/components/warranty/new-claim-menu'
+import {
+  BUILDER_OWNED_STATUSES,
+  EXPIRING_WINDOW_DAYS,
+  SERVICE_RESPONSE_DAYS,
+  addDaysIso,
+  type ClaimStatus,
+} from '@/lib/warranty-coverage'
 
 export const metadata: Metadata = { title: 'Warranty' }
 
@@ -53,7 +63,12 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
     .order('start_date', { ascending: false })
     .limit(200)
   query = filter === 'all' ? query.neq('stage', 'archived') : query.eq('stage', filter)
-  const [{ data }, { data: tasks }, { data: claimRows }] = await Promise.all([
+  const { data: today } = await supabase.rpc('org_today', { p_org: session.organizationId })
+  const todayIso = (today as string | null) ?? new Date().toISOString().slice(0, 10)
+  const expiringCutoff = addDaysIso(todayIso, EXPIRING_WINDOW_DAYS)
+  const overdueCutoff = addDaysIso(todayIso, -SERVICE_RESPONSE_DAYS)
+
+  const [{ data }, { data: tasks }, claimResult, { data: activeWarranties }, expiringResult] = await Promise.all([
     query,
     supabase
       .from('warranty_followup_tasks')
@@ -61,13 +76,69 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
       .neq('status', 'sent')
       .order('created_at')
       .limit(20),
-    supabase.from('warranty_claims').select('project_id').neq('status', 'closed').limit(1000),
+    supabase.from('warranty_claims').select('project_id, status, updated_at').neq('status', 'closed').limit(1000),
+    supabase
+      .from('project_warranties')
+      .select('project_id, projects(name, project_number)')
+      .neq('stage', 'archived')
+      .limit(500),
+    supabase
+      .from('warranty_milestones')
+      .select('id', { count: 'exact', head: true })
+      .is('reached_at', null)
+      .gte('due_on', todayIso)
+      .lte('due_on', expiringCutoff),
   ])
   const rows = (data ?? []) as unknown as Row[]
+  const claimRows = (claimResult.data ?? []) as { project_id: string; status: ClaimStatus; updated_at: string }[]
   const openClaims = new Map<string, number>()
-  for (const c of (claimRows ?? []) as { project_id: string }[]) {
+  for (const c of claimRows) {
     openClaims.set(c.project_id, (openClaims.get(c.project_id) ?? 0) + 1)
   }
+  const overdueCount = claimRows.filter(
+    (c) => BUILDER_OWNED_STATUSES.includes(c.status) && c.updated_at.slice(0, 10) < overdueCutoff,
+  ).length
+  const activeProjects = ((activeWarranties ?? []) as unknown as {
+    project_id: string
+    projects: { name: string; project_number: string | null } | null
+  }[])
+    .map((w) => ({ id: w.project_id, name: w.projects?.name ?? 'Project', number: w.projects?.project_number ?? null }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  const kpis: WarrantyKpi[] = [
+    {
+      key: 'homes',
+      label: 'Homes under warranty',
+      value: activeProjects.length,
+      hint: 'Active coverage, not archived',
+      href: '/warranty',
+      tone: 'neutral',
+    },
+    {
+      key: 'claims',
+      label: 'Open claims',
+      value: claimResult.error ? null : claimRows.length,
+      hint: 'Submitted and not yet closed',
+      href: '/warranty?stage=completed',
+      tone: 'pending',
+    },
+    {
+      key: 'expiring',
+      label: 'Coverage expiring soon',
+      value: expiringResult.error ? null : expiringResult.count ?? 0,
+      hint: `Periods ending in the next ${EXPIRING_WINDOW_DAYS} days`,
+      href: '/warranty?stage=monitoring',
+      tone: 'pending',
+    },
+    {
+      key: 'overdue',
+      label: 'Overdue responses',
+      value: claimResult.error ? null : overdueCount,
+      hint: `Builder action pending over ${SERVICE_RESPONSE_DAYS} days`,
+      href: '/warranty?stage=completed',
+      tone: 'danger',
+    },
+  ]
   const openTasks = (tasks ?? []) as unknown as { id: string; project_id: string; status: string; projects: { name: string } | null }[]
 
   return (
@@ -75,8 +146,16 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
       <PageHeader icon={ShieldCheckIcon}
         title="Warranty"
         description="Warranties start automatically on the official completion date. Coverage periods run concurrently: Year 1 workmanship, Year 2 systems, Year 10 structural."
-        actions={session.role === 'org_admin' ? <RunWarrantyButton /> : null}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <WarrantyExportMenu />
+            {session.role === 'org_admin' && <RunWarrantyButton />}
+            <NewClaimMenu projects={activeProjects} />
+          </div>
+        }
       />
+
+      <WarrantyKpis items={kpis} />
 
       {openTasks.length > 0 && (
         <section aria-labelledby="followups" className="surface flex flex-col gap-3 p-5">
@@ -189,12 +268,14 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
                 <th scope="col" className="px-5 py-3 font-medium">Project</th>
                 <th scope="col" className="px-5 py-3 font-medium">Stage</th>
                 <th scope="col" className="px-5 py-3 font-medium">Started</th>
+                <th scope="col" className="px-5 py-3 font-medium">Open claims</th>
                 <th scope="col" className="px-5 py-3 font-medium">Next milestone</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2E8E2]/80">
               {rows.map((r) => {
-                    return (
+                const claims = openClaims.get(r.project_id) ?? 0
+                return (
                   <tr key={r.id} className="transition-colors hover:bg-[#F8F7F3]">
                     <td className="max-w-xs px-5 py-3.5">
                       <div className="flex min-w-0 items-baseline gap-2 whitespace-nowrap">
@@ -220,6 +301,9 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
                       </SemanticBadge>
                     </td>
                     <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-muted-foreground">{formatDate(r.start_date)}</td>
+                    <td className={cn('px-5 py-3.5 tabular-nums', claims > 0 ? 'font-medium text-[#96570E]' : 'text-muted-foreground')}>
+                      {claims}
+                    </td>
                     <td className="px-5 py-3.5">
                       <NextMilestone milestone={r.current} />
                     </td>
