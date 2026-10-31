@@ -33,12 +33,16 @@ type Features = {
   daily_logs?: boolean
 }
 
-/** Today and this week from open, dated schedule activities on projects the user can see (RLS). */
-export async function loadAgenda(orgId: string, scheduleEnabled: boolean): Promise<{ agenda: Agenda; today: string }> {
+/** Today and the next `days` days from open, dated schedule activities on projects the user can see (RLS). */
+export async function loadAgenda(
+  orgId: string,
+  scheduleEnabled: boolean,
+  days: number = AGENDA_WEEK_DAYS,
+): Promise<{ agenda: Agenda; today: string }> {
   const today = await getOrgToday(orgId)
   if (!scheduleEnabled) return { agenda: { today: [], week: [] }, today }
   const supabase = await createClient()
-  const weekEnd = addIsoDays(today, AGENDA_WEEK_DAYS - 1)
+  const weekEnd = addIsoDays(today, days - 1)
   const { data } = await supabase
     .from('schedule_activities')
     .select('id, project_id, name, activity_type, status, planned_start, planned_end, projects!inner(name, archived_at)')
@@ -60,7 +64,7 @@ export async function loadAgenda(orgId: string, scheduleEnabled: boolean): Promi
     planned_start: a.planned_start,
     planned_end: a.planned_end,
   }))
-  return { agenda: buildAgenda(rows, today), today }
+  return { agenda: buildAgenda(rows, today, days), today }
 }
 
 /**
@@ -72,10 +76,17 @@ export async function loadProjectHealth(
   userId: string,
   projectIds: string[],
   features: Features,
-): Promise<{ projects: HealthProject[]; total: number; flagged: number; scheduleRisk: ScheduleRiskSummary }> {
+): Promise<{
+  projects: HealthProject[]
+  byId: Map<string, ProjectHealth>
+  total: number
+  flagged: number
+  scheduleRisk: ScheduleRiskSummary
+}> {
   if (projectIds.length === 0) {
     return {
       projects: [],
+      byId: new Map(),
       total: 0,
       flagged: 0,
       scheduleRisk: features.schedule
@@ -185,6 +196,7 @@ export async function loadProjectHealth(
   const flagged = projects.filter((p) => p.health.level === 'at_risk' || p.health.level === 'needs_attention').length
   return {
     projects: projects.slice(0, HEALTH_VISIBLE),
+    byId: new Map(projects.map((p) => [p.id, p.health])),
     total: projects.length,
     flagged,
     scheduleRisk: summarizeScheduleRisk(features.schedule, scheduleReadable, rows, risks),
@@ -226,4 +238,84 @@ function summarizeScheduleRisk(
     headline: top ? `${top.p.name}: ${top.risk.reason.charAt(0).toLowerCase()}${top.risk.reason.slice(1)}` : null,
     projectId: flagged.length === 1 ? top.p.id : null,
   })
+}
+
+const WARRANTY_ROW_LIMIT = 200
+const WARRANTY_CLAIM_LIMIT = 1000
+
+export type WarrantyOverviewRow = {
+  projectId: string
+  projectName: string
+  projectNumber: string | null
+  stage: string
+  coverageName: string | null
+  milestoneLabel: string | null
+  milestoneDueOn: string | null
+  openClaims: number
+}
+
+export type WarrantyOverview = Metric<{ rows: WarrantyOverviewRow[]; total: number; openClaims: number }>
+
+type RefRow<T> = T | T[] | null
+const one = <T,>(v: RefRow<T>) => (Array.isArray(v) ? (v[0] ?? null) : v)
+
+/**
+ * Non-archived warranties with their current (next unreached) milestone and open claim counts, read through RLS.
+ * Rows are sorted by the soonest verified milestone; warranties without one sort last.
+ */
+export async function loadWarrantyOverview(orgId: string, enabled: boolean): Promise<WarrantyOverview> {
+  if (!enabled) return disabled('Warranty module is off')
+  const supabase = await createClient()
+  const [warrantiesRes, claimsRes] = await Promise.all([
+    supabase
+      .from('project_warranties')
+      .select(
+        'project_id, stage, projects(name, project_number), current:warranty_milestones!project_warranties_current_milestone_fk(coverage_name, stage_label, due_on, reached_at)',
+      )
+      .eq('organization_id', orgId)
+      .neq('stage', 'archived')
+      .limit(WARRANTY_ROW_LIMIT),
+    supabase
+      .from('warranty_claims')
+      .select('project_id')
+      .eq('organization_id', orgId)
+      .neq('status', 'closed')
+      .limit(WARRANTY_CLAIM_LIMIT),
+  ])
+  if (warrantiesRes.error) return unavailable('Warranty records could not be loaded')
+
+  const claims = new Map<string, number>()
+  const claimsReadable = !claimsRes.error
+  for (const c of (claimsRes.data ?? []) as { project_id: string }[]) claims.set(c.project_id, (claims.get(c.project_id) ?? 0) + 1)
+
+  type Row = {
+    project_id: string
+    stage: string
+    projects: RefRow<{ name: string; project_number: string | null }>
+    current: RefRow<{ coverage_name: string; stage_label: string; due_on: string; reached_at: string | null }>
+  }
+  const rows = ((warrantiesRes.data ?? []) as unknown as Row[]).map((w): WarrantyOverviewRow => {
+    const project = one(w.projects)
+    const current = one(w.current)
+    const pending = current && !current.reached_at ? current : null
+    return {
+      projectId: w.project_id,
+      projectName: project?.name ?? 'Project',
+      projectNumber: project?.project_number ?? null,
+      stage: w.stage,
+      coverageName: pending?.coverage_name ?? null,
+      milestoneLabel: pending?.stage_label ?? null,
+      milestoneDueOn: pending?.due_on ?? null,
+      openClaims: claimsReadable ? (claims.get(w.project_id) ?? 0) : 0,
+    }
+  })
+  rows.sort((a, b) => {
+    if (a.openClaims !== b.openClaims) return b.openClaims - a.openClaims
+    if (a.milestoneDueOn && b.milestoneDueOn) return a.milestoneDueOn.localeCompare(b.milestoneDueOn)
+    if (a.milestoneDueOn) return -1
+    if (b.milestoneDueOn) return 1
+    return a.projectName.localeCompare(b.projectName)
+  })
+  const openClaims = rows.reduce((sum, r) => sum + r.openClaims, 0)
+  return available({ rows, total: rows.length, openClaims })
 }

@@ -32,8 +32,8 @@ const KIND_ORDER = { due: 0, starts: 1, ongoing: 2 } as const
  * Groups open, dated schedule activities into Today and the next seven days.
  * Undated activities are excluded rather than guessed; dates are calendar dates in the org's zone.
  */
-export function buildAgenda(activities: AgendaActivity[], today: string): Agenda {
-  const weekEnd = addIsoDays(today, AGENDA_WEEK_DAYS - 1)
+export function buildAgenda(activities: AgendaActivity[], today: string, days: number = AGENDA_WEEK_DAYS): Agenda {
+  const weekEnd = addIsoDays(today, days - 1)
   const todayEntries: AgendaEntry[] = []
   const week: AgendaEntry[] = []
 
