@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ACTIVITY_TYPE_LABELS, type ActivityType } from '@/lib/schedule'
 import type { Agenda, AgendaEntry } from '@/lib/agenda'
 import { cn } from '@/lib/utils'
+import { DashboardSectionHeader } from '@/components/dashboard/dashboard-section-header'
 
 const DAY_FORMAT = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
 const VISIBLE = 6
@@ -88,17 +89,13 @@ export function MyAgenda({
 }) {
   return (
     <section aria-labelledby="agenda-heading" className="surface flex flex-col gap-4 p-5 md:p-6">
-      <div className="flex items-start gap-3 border-b pb-4">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sage text-primary" aria-hidden="true">
-          <CalendarDays className="size-5" />
-        </span>
-        <div className="flex flex-col gap-1">
-          <h2 id="agenda-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
-            My Agenda
-          </h2>
-          <p className="text-sm text-muted-foreground">Scheduled work on your projects</p>
-        </div>
-      </div>
+      <DashboardSectionHeader
+        id="agenda-heading"
+        title="My Agenda"
+        description="Scheduled work on your projects"
+        icon={CalendarDays}
+        className="border-b pb-4"
+      />
       {!scheduleEnabled ? (
         <p className="rounded-xl bg-muted/50 p-4 text-sm text-muted-foreground">
           The Schedule module is turned off for your organization, so there is no agenda to show.

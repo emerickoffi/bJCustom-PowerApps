@@ -4,6 +4,7 @@ import {
   Bell,
   Calendar,
   ChevronDown,
+  History,
   Mail,
   MapPin,
   Phone,
@@ -12,6 +13,7 @@ import {
 import { markNotificationReadAction } from "@/app/actions/walkthroughs";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/domain";
 import { formatDateTime } from "@/lib/format";
+import { DashboardSectionHeader } from "@/components/dashboard/dashboard-section-header";
 
 type ActivityItem = {
   id: string;
@@ -167,19 +169,16 @@ export function RecentActivity({
     <section aria-labelledby="activity-heading" className="surface">
       <details className="group/activity">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[inherit] p-5 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:px-6 [&::-webkit-details-marker]:hidden">
-          <div className="flex flex-col gap-1">
-            <h2
-              id="activity-heading"
-              className="font-serif text-xl font-semibold tracking-tight text-foreground"
-            >
-              Recent Activity
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {entries.length === 0
+          <DashboardSectionHeader
+            id="activity-heading"
+            title="Recent Activity"
+            icon={History}
+            description={
+              entries.length === 0
                 ? "No recent client activity or project updates"
-                : `${entries.length} recent ${entries.length === 1 ? "entry" : "entries"} · latest ${formatDateTime(entries[0].at)}`}
-            </p>
-          </div>
+                : `${entries.length} recent ${entries.length === 1 ? "entry" : "entries"} · latest ${formatDateTime(entries[0].at)}`
+            }
+          />
           <span className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-primary">
             <span className="group-open/activity:hidden">Show</span>
             <span className="hidden group-open/activity:inline">Hide</span>

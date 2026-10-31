@@ -1,13 +1,14 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowRight, BellRing, CalendarDays, FolderKanban, Plus, UserPlus } from 'lucide-react'
+import { ArrowRight, BellRing, CalendarDays, FolderKanban, House, Plus, UserPlus } from 'lucide-react'
+import { DashboardSectionHeader } from '@/components/dashboard/dashboard-section-header'
 import { MyAgenda } from '@/components/dashboard/my-agenda'
 import { ProjectHealthList } from '@/components/dashboard/project-health'
 import { loadAgenda, loadProjectHealth } from '@/lib/dashboard-workspace-data'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
-import { EmptyState, SectionHeading } from '@/components/shared/page-header'
+import { EmptyState } from '@/components/shared/page-header'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { RecentActivity } from '@/components/dashboard/recent-activity'
 import { NotificationsCard } from '@/components/walkthroughs/notifications-card'
@@ -212,33 +213,41 @@ export default async function DashboardPage({
       </div>
 
       <div data-dashboard-section={'project_health' satisfies DashboardSectionId}>
-        <ProjectHealthList projects={health.projects} total={health.total} flagged={health.flagged} />
+        <ProjectHealthList
+          projects={health.projects}
+          total={health.total}
+          flagged={health.flagged}
+          canSetUpSchedule={manager && features.schedule}
+        />
       </div>
 
       <section
         aria-labelledby="homes-heading"
-        className="flex flex-col gap-5"
+        className="flex flex-col gap-4"
         data-dashboard-section={'project_portfolio' satisfies DashboardSectionId}
       >
-        <SectionHeading
-          id="homes-heading"
-          title="Project Portfolio"
-          description="Your construction projects at every stage."
-          action={
-            <Link
-              href={viewAllHref}
-              className="group flex shrink-0 items-center gap-1.5 text-sm font-medium text-primary"
-            >
-              View All Projects
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-            </Link>
-          }
-        />
-        {rows.length > 0 && (
-          <PortfolioStatusFilter counts={statusCounts} total={rows.length} selected={selectedStatus} />
-        )}
+        <div className="flex flex-col gap-4 border-b pb-4">
+          <DashboardSectionHeader
+            id="homes-heading"
+            title="Project Portfolio"
+            description="Your construction projects at every stage"
+            icon={House}
+            action={
+              <Link
+                href={viewAllHref}
+                className="group flex min-h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-primary hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                View All Projects
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              </Link>
+            }
+          />
+          {rows.length > 0 && (
+            <PortfolioStatusFilter counts={statusCounts} total={rows.length} selected={selectedStatus} />
+          )}
+        </div>
         {recent.length ? (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {recent.map((p) => (
               <CompactProjectCard
                 key={p.id}
