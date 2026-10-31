@@ -63,17 +63,17 @@ export function StatCard({
       href={href}
       aria-label={`${label}: ${value}${hint ? `. ${hint}` : ''}. View details.`}
       className={cn(
-        'group surface flex flex-col gap-4 p-5 transition-[border-color,box-shadow] duration-200 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'group surface flex h-full flex-col gap-3.5 p-5 transition-[border-color,box-shadow] duration-200 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 xl:p-6',
         toned ? toned.card : 'hover:border-primary/25',
       )}
     >
       <div className="flex items-start justify-between gap-3">
         {Icon ? (
           <span
-            className={cn('flex size-9 items-center justify-center rounded-lg', toned ? toned.icon : ACCENT[accent])}
+            className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', toned ? toned.icon : ACCENT[accent])}
             aria-hidden="true"
           >
-            <Icon className="size-[1.125rem]" />
+            <Icon className="size-5" />
           </span>
         ) : (
           <span />
@@ -86,13 +86,18 @@ export function StatCard({
           />
         </span>
       </div>
-      <div className="flex flex-col gap-1">
-        <span className="tabular font-serif text-[2rem] font-semibold leading-none tracking-tight text-brand-deep">
+      <div className="flex min-w-0 flex-col gap-1">
+        <span className="tabular break-words font-serif text-[2rem] font-semibold leading-none tracking-tight text-brand-deep">
           {value}
         </span>
-        <span className="pt-1 text-sm font-medium text-foreground">{label}</span>
+        <span className="pt-1.5 text-sm font-medium leading-snug text-foreground">{label}</span>
         {hint && (
-          <span className={cn('text-xs leading-relaxed', toned ? 'text-[#56655E]' : 'text-muted-foreground')}>{hint}</span>
+          <span
+            title={hint}
+            className={cn('line-clamp-2 text-xs leading-normal', toned ? 'text-[#56655E]' : 'text-muted-foreground')}
+          >
+            {hint}
+          </span>
         )}
       </div>
     </Link>
