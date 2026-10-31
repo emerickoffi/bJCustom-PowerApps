@@ -68,13 +68,30 @@ export function StatCard({
       aria-label={`${label}: ${value}${hint ? `. ${hint}` : ''}. View details.`}
       className={cn(
         'group surface flex h-full flex-col transition-[border-color,box-shadow] duration-200 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-        toned ? cn('gap-2 p-[18px] xl:p-5', toned.card) : 'gap-3.5 p-5 hover:border-primary/25 xl:p-6',
+        toned ? cn('gap-3 p-[18px] xl:min-h-44 xl:p-5', toned.card) : 'gap-3.5 p-5 hover:border-primary/25 xl:p-6',
       )}
     >
+      {toned ? (
+        <div className="flex items-center gap-3">
+          {Icon && (
+            <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', toned.icon)} aria-hidden="true">
+              <Icon className="size-5" />
+            </span>
+          )}
+          <span className="min-w-0 flex-1 text-sm font-medium leading-snug text-foreground">{label}</span>
+          <span className="flex shrink-0 items-center gap-2 self-start">
+            {statusDot && <span className={cn('size-2 rounded-full ring-2 ring-white/70', statusDot)} aria-hidden="true" />}
+            <ArrowUpRight
+              className="size-4 text-muted-foreground/50 transition-[color,transform] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
+              aria-hidden="true"
+            />
+          </span>
+        </div>
+      ) : (
       <div className="flex items-start justify-between gap-3">
         {Icon ? (
           <span
-            className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', toned ? toned.icon : ACCENT[accent])}
+            className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', ACCENT[accent])}
             aria-hidden="true"
           >
             <Icon className="size-5" />
@@ -90,11 +107,12 @@ export function StatCard({
           />
         </span>
       </div>
+      )}
       <div className="flex min-w-0 flex-col gap-1">
         <span className="tabular break-words font-serif text-[2rem] font-semibold leading-none tracking-tight text-brand-deep">
           {countTo ? <AnimatedNumber value={countTo.value} format={countTo.format} /> : value}
         </span>
-        <span className={cn('text-sm font-medium leading-snug text-foreground', toned ? 'pt-1' : 'pt-1.5')}>{label}</span>
+        {!toned && <span className="pt-1.5 text-sm font-medium leading-snug text-foreground">{label}</span>}
         {hint && (
           <span
             title={hint}

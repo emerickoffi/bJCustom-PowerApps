@@ -3,9 +3,9 @@ import { ArrowRight, House } from 'lucide-react'
 import { DashboardSectionHeader } from '@/components/dashboard/dashboard-section-header'
 import { HealthBadge } from '@/components/dashboard/project-health'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
-import { formatCents, formatDate } from '@/lib/format'
+import { formatCents } from '@/lib/format'
 import type { HealthLevel } from '@/lib/project-health'
-import type { JobSummary } from '@/lib/priority-jobs'
+import { nextLifecycleStage, type JobSummary } from '@/lib/priority-jobs'
 import { cn } from '@/lib/utils'
 
 export type PriorityJob = {
@@ -29,18 +29,20 @@ function StatusCell({ job }: { job: PriorityJob }) {
   )
 }
 
-function NextStep({ summary }: { summary: JobSummary }) {
+function NextStage({ status, progress }: { status: ProjectStatus; progress: number | null }) {
+  const next = nextLifecycleStage(status)
+  const text =
+    next.kind === 'stage'
+      ? PROJECT_STATUS_LABELS[next.status]
+      : next.kind === 'final'
+        ? 'Final Stage'
+        : next.kind === 'resume'
+          ? 'Resumes at any stage'
+          : '—'
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="truncate text-sm text-foreground">{summary.text}</span>
-      <span className="flex items-center gap-2 text-xs text-muted-foreground">
-        {summary.dueOn && (
-          <span className={cn(summary.overdue && 'font-medium text-destructive')}>
-            {`${summary.overdue ? 'Overdue · ' : ''}${formatDate(summary.dueOn)}`}
-          </span>
-        )}
-        {summary.progress !== null && <span className="tabular">{`${summary.progress}% complete`}</span>}
-      </span>
+      <span className={cn('truncate text-sm', next.kind === 'stage' ? 'text-foreground' : 'text-muted-foreground')}>{text}</span>
+      {progress !== null && <span className="tabular text-xs text-muted-foreground">{`${progress}% complete`}</span>}
     </div>
   )
 }
@@ -72,7 +74,9 @@ export function PriorityJobs({ jobs, showBudget }: { jobs: PriorityJob[]; showBu
               <tr className="border-b text-xs font-medium text-muted-foreground">
                 <th scope="col" className="w-[30%] pb-2 font-medium">Job</th>
                 <th scope="col" className="w-[14%] pb-2 font-medium">Stage</th>
-                <th scope="col" className="pb-2 font-medium">Next step</th>
+                <th scope="col" className="pb-2 font-medium" title="Next stage in the configured project lifecycle">
+                  Next Stage
+                </th>
                 {showBudget && <th scope="col" className="w-[13%] pb-2 text-right font-medium">Contract</th>}
                 <th scope="col" className="w-[17%] pb-2 pl-4 font-medium">Health</th>
               </tr>
@@ -95,7 +99,7 @@ export function PriorityJobs({ jobs, showBudget }: { jobs: PriorityJob[]; showBu
                     {PROJECT_STATUS_LABELS[job.status] ?? job.status}
                   </td>
                   <td className="py-3 pr-3">
-                    <NextStep summary={job.summary} />
+                    <NextStage status={job.status} progress={job.summary.progress} />
                   </td>
                   {showBudget && (
                     <td className="tabular py-3 text-right text-sm text-foreground">
@@ -128,7 +132,10 @@ export function PriorityJobs({ jobs, showBudget }: { jobs: PriorityJob[]; showBu
                     </div>
                     <StatusCell job={job} />
                   </div>
-                  <NextStep summary={job.summary} />
+                  <div className="flex items-baseline gap-1.5 text-xs text-muted-foreground">
+                    <span className="shrink-0">Next Stage:</span>
+                    <NextStage status={job.status} progress={job.summary.progress} />
+                  </div>
                   {showBudget && job.contractCents !== null && (
                     <span className="tabular text-xs text-muted-foreground">{`Contract ${formatCents(job.contractCents)}`}</span>
                   )}
