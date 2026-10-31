@@ -23,6 +23,7 @@ export type ChangeOrderDetail = {
   signature_request_id: string | null
   voided_at: string | null
   void_reason: string | null
+  created_by: string | null
   created_at: string
   updated_at: string
 }
