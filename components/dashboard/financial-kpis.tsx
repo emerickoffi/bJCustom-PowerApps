@@ -17,6 +17,7 @@ export function FinancialKpis({ metrics, scheduleRisk }: { metrics: FinancialMet
           const { amountCents, count, items } = estimates.value.awaitingApproval
           return {
             value: count ? formatCents(amountCents) : '0',
+            countTo: count ? { value: amountCents, format: 'cents' as const } : { value: 0, format: 'count' as const },
             hint: count
               ? count === 1
                 ? `${items[0].estimateNumber} signed and awaiting your decision`
@@ -32,6 +33,7 @@ export function FinancialKpis({ metrics, scheduleRisk }: { metrics: FinancialMet
     contracts.state === 'available'
       ? {
           value: formatCents(contracts.value.contractCents),
+          countTo: { value: contracts.value.contractCents, format: 'cents' as const },
           hint: [
             `Approved estimates plus approved change orders on ${plural(contracts.value.establishedCount, 'active project')}`,
             contracts.value.needsReviewCount ? `${contracts.value.needsReviewCount} need review` : null,
@@ -46,6 +48,7 @@ export function FinancialKpis({ metrics, scheduleRisk }: { metrics: FinancialMet
     scheduleRisk.state === 'available'
       ? {
           value: scheduleRisk.value.atRisk,
+          countTo: { value: scheduleRisk.value.atRisk, format: 'count' as const },
           hint: scheduleRisk.value.headline
             ? scheduleRisk.value.atRisk > 1
               ? `${scheduleRisk.value.headline} (+${scheduleRisk.value.atRisk - 1} more)`
@@ -60,6 +63,7 @@ export function FinancialKpis({ metrics, scheduleRisk }: { metrics: FinancialMet
     receivables.state === 'available'
       ? {
           value: formatCents(receivables.value.outstandingCents),
+          countTo: { value: receivables.value.outstandingCents, format: 'cents' as const },
           hint: receivables.value.outstandingCount
             ? `${plural(receivables.value.outstandingCount, 'open invoice')}${
                 receivables.value.overdueCount ? ` · ${formatCents(receivables.value.overdueCents)} overdue` : ' · none overdue'
