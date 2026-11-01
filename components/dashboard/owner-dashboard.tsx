@@ -167,7 +167,7 @@ export async function OwnerDashboard({
             className="hidden lg:block"
             data-dashboard-section={'priority_jobs' satisfies DashboardSectionId}
           >
-            <PriorityJobs jobs={jobs} showBudget={budgets !== null} />
+            <PriorityJobs jobs={jobs} />
           </div>
         </div>
 
@@ -176,7 +176,7 @@ export async function OwnerDashboard({
             <ComingUp events={comingUp} days={COMING_UP_DAYS} scheduleEnabled={features.schedule} />
           </div>
           <div className="lg:hidden" data-dashboard-section={'priority_jobs' satisfies DashboardSectionId}>
-            <PriorityJobs jobs={jobs} showBudget={budgets !== null} />
+            <PriorityJobs jobs={jobs} />
           </div>
           <div data-dashboard-section={'warranty' satisfies DashboardSectionId}>
             <WarrantyRail overview={warranty} />
