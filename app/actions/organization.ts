@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSession, requireAdmin } from '@/lib/session'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
-import { isDefaultVisibility, parseVisibility } from '@/lib/dashboard-visibility'
+import { parseVisibility, serializeDashboardSettings, validateLayout } from '@/lib/dashboard-visibility'
 import { organizationOnboardingSchema, organizationSettingsSchema, profileSchema } from '@/lib/validation'
 
 export async function createOrganizationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -53,13 +53,20 @@ export async function updateOrganizationAction(_prev: ActionState, formData: For
 }
 
 /**
- * Saves Command Center visibility for the admin's organization. `null` restores the built-in defaults.
- * Admin-only here and in the organization_settings update RLS policy; visibility never changes module access.
+ * Saves Command Center visibility and card placement together for the admin's organization, in one column update.
+ * `null` restores the built-in defaults. Admin-only here and in the organization_settings update RLS policy;
+ * neither visibility nor placement changes module access, records, or permissions.
  */
 export async function updateDashboardVisibilityAction(input: unknown): Promise<ActionState> {
   const session = await requireAdmin()
-  const value = input === null ? null : parseVisibility(input)
-  const stored = value && isDefaultVisibility(value) ? null : value
+  let stored: Record<string, unknown> | null = null
+  if (input !== null) {
+    if (!input || typeof input !== 'object') return { error: 'Dashboard settings are invalid.' }
+    const { visibility, layout } = input as { visibility?: unknown; layout?: unknown }
+    const checked = validateLayout(layout)
+    if ('error' in checked) return { error: checked.error }
+    stored = serializeDashboardSettings({ visibility: parseVisibility(visibility), layout: checked.layout })
+  }
 
   const supabase = await createClient()
   const { data, error } = await supabase

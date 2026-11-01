@@ -16,7 +16,7 @@ export default async function DashboardSettingsPage() {
       <PageHeader
         icon={LayoutDashboard}
         title="Dashboard"
-        description="Choose which summary cards and sections appear on the Command Center for your company. Hiding something here only changes the dashboard. The module, its records, and everyone's permissions stay exactly as they are."
+        description="Choose which summary cards and sections appear on the Command Center for your company, and where they sit. Hiding or moving something here only changes the dashboard. The module, its records, and everyone's permissions stay exactly as they are."
         backHref="/settings"
         backLabel="Company settings"
       />
