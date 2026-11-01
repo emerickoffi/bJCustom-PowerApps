@@ -19,11 +19,16 @@ const entry = (over: Partial<AgendaEntry>): AgendaEntry => ({
   ...over,
 })
 
-test('coming up skips ongoing work, out-of-window dates, and proposed starts on active projects', () => {
+test('coming up keeps in-window and overlapping work, skips done, undated, and out-of-window items', () => {
   const events = buildComingUp({
     today,
     days: 14,
-    agenda: [entry({}), entry({ id: 'a2', kind: 'ongoing', date: today }), entry({ id: 'a3', date: '2026-12-30' })],
+    activities: [
+      entry({}),
+      entry({ id: 'a3', planned_start: '2026-12-30', planned_end: '2026-12-31' }),
+      entry({ id: 'a4', status: 'completed' }),
+      entry({ id: 'a5', planned_start: null, planned_end: null }),
+    ],
     proposedStarts: [
       { id: 'p2', name: 'Elm', status: 'preconstruction', proposed_start_date: '2026-11-03' },
       { id: 'p3', name: 'Pine', status: 'under_construction', proposed_start_date: '2026-11-03' },

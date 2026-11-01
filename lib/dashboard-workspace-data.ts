@@ -38,14 +38,16 @@ export async function loadAgenda(
   orgId: string,
   scheduleEnabled: boolean,
   days: number = AGENDA_WEEK_DAYS,
-): Promise<{ agenda: Agenda; today: string }> {
+): Promise<{ agenda: Agenda; today: string; activities: AgendaActivity[] }> {
   const today = await getOrgToday(orgId)
-  if (!scheduleEnabled) return { agenda: { today: [], week: [] }, today }
+  if (!scheduleEnabled) return { agenda: { today: [], week: [] }, today, activities: [] }
   const supabase = await createClient()
   const weekEnd = addIsoDays(today, days - 1)
   const { data } = await supabase
     .from('schedule_activities')
-    .select('id, project_id, name, activity_type, status, planned_start, planned_end, projects!inner(name, archived_at)')
+    .select(
+      'id, project_id, name, activity_type, status, planned_start, planned_end, assigned_to, projects!inner(name, archived_at)',
+    )
     .eq('organization_id', orgId)
     .is('projects.archived_at', null)
     .not('status', 'in', '(completed,skipped)')
@@ -63,8 +65,9 @@ export async function loadAgenda(
     status: a.status,
     planned_start: a.planned_start,
     planned_end: a.planned_end,
+    assigned_to: a.assigned_to,
   }))
-  return { agenda: buildAgenda(rows, today, days), today }
+  return { agenda: buildAgenda(rows, today, days), today, activities: rows }
 }
 
 /**
@@ -90,7 +93,7 @@ export async function loadProjectHealth(
       total: 0,
       flagged: 0,
       scheduleRisk: features.schedule
-        ? available({ atRisk: 0, critical: 0, evaluated: 0, headline: null, projectId: null })
+        ? available({ atRisk: 0, critical: 0, evaluated: 0, total: 0, headline: null, projectId: null })
         : disabled('Schedule module is off'),
     }
   }
@@ -207,6 +210,8 @@ export type ScheduleRiskSummary = Metric<{
   atRisk: number
   critical: number
   evaluated: number
+  /** Active jobs in scope; `evaluated` of them had enough dated schedule data to assess. */
+  total: number
   headline: string | null
   /** The single at-risk project, when exactly one, so the card can deep-link to its schedule. */
   projectId: string | null
@@ -235,6 +240,7 @@ function summarizeScheduleRisk(
     atRisk: flagged.length,
     critical: flagged.filter((f) => f.risk.level === 'critical').length,
     evaluated,
+    total: rows.length,
     headline: top ? `${top.p.name}: ${top.risk.reason.charAt(0).toLowerCase()}${top.risk.reason.slice(1)}` : null,
     projectId: flagged.length === 1 ? top.p.id : null,
   })

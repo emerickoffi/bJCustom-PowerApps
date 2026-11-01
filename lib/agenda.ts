@@ -9,6 +9,7 @@ export type AgendaActivity = {
   status: string
   planned_start: string | null
   planned_end: string | null
+  assigned_to?: string | null
 }
 
 export type AgendaEntry = AgendaActivity & {
