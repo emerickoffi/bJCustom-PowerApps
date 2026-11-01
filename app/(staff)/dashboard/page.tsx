@@ -16,8 +16,13 @@ export default async function DashboardPage({
   const [query, features] = await Promise.all([searchParams, getOrgFeatures(session.organizationId)])
   const key = dashboardKeyForRole(session.role)
 
-  if (key === 'project_manager' || key === 'builder_staff') {
-    return <FieldDashboard session={session} features={features} dashboardKey={key} />
-  }
-  return <OwnerDashboard session={session} features={features} query={query} />
+  return (
+    <div data-dashboard-theme className="contents">
+      {key === 'project_manager' || key === 'builder_staff' ? (
+        <FieldDashboard session={session} features={features} dashboardKey={key} />
+      ) : (
+        <OwnerDashboard session={session} features={features} query={query} />
+      )}
+    </div>
+  )
 }

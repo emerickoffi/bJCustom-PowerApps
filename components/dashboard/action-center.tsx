@@ -150,8 +150,8 @@ function CategoryFilters({
     cn(
       '-mb-px inline-flex min-h-10 items-center gap-1.5 border-b-2 px-1 text-sm transition-colors focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       active
-        ? 'border-primary font-semibold text-foreground'
-        : 'border-transparent font-medium text-muted-foreground hover:border-border hover:text-foreground',
+        ? 'border-primary font-semibold text-primary'
+        : 'border-transparent font-medium text-muted-foreground hover:border-[#9FB3A7] hover:text-foreground',
     )
   const count = (active: boolean, n: number) => (
     <span
@@ -229,7 +229,7 @@ export function ActionCenter({
 
   return (
     <section aria-labelledby="action-center-heading" className="surface flex flex-col">
-      <div className="flex items-center gap-3 rounded-t-[inherit] border-b border-[#E1E7E2] bg-[#F7F9F7] px-4 py-3 md:px-6">
+      <div className="flex items-center gap-3 rounded-t-[inherit] border-b border-[#D6DFD9] bg-[#EAF0EC] px-4 py-3 md:px-6">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sage text-primary" aria-hidden="true">
           <ListChecks className="size-[18px]" />
         </span>

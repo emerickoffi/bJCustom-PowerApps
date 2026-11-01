@@ -47,7 +47,7 @@ export function WarrantyRail({ overview }: { overview: WarrantyOverview }) {
                     {WARRANTY_STAGE_LABELS[w.stage as WarrantyStage] ?? w.stage}
                   </span>
                   {w.milestoneLabel && (
-                    <span className="truncate text-xs text-muted-foreground/80">
+                    <span className="truncate text-xs text-muted-foreground">
                       {`Next: ${w.milestoneLabel}${w.milestoneDueOn ? ` · ${formatDate(w.milestoneDueOn)}` : ''}`}
                     </span>
                   )}

@@ -17,7 +17,7 @@ function Chip({ href, label, count, active }: { href: string; label: string; cou
       )}
     >
       {label}
-      <span className={cn('tabular text-xs', active ? 'text-primary-foreground/75' : 'text-muted-foreground/80')}>
+      <span className={cn('tabular text-xs', active ? 'text-primary-foreground/85' : 'text-muted-foreground')}>
         {count}
       </span>
     </Link>
