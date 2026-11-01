@@ -17,20 +17,20 @@ export type StatTone = 'approval' | 'contract' | 'schedule' | 'receivables'
 
 const TONE: Record<StatTone, { card: string; icon: string }> = {
   approval: {
-    card: 'bg-[#F8F0E2] border-[#EADDC7] hover:border-[#DCC9A8]',
-    icon: 'bg-[#916D35]/12 text-[#916D35]',
+    card: 'bg-[#F7EEDC] border-[#E6D6B8] hover:border-[#CDB68C]',
+    icon: 'bg-[#805B20]/12 text-[#805B20]',
   },
   contract: {
-    card: 'bg-[#EAF3EC] border-[#D4E5D8] hover:border-[#B9D3C0]',
-    icon: 'bg-[#3B7050]/12 text-[#3B7050]',
+    card: 'bg-[#E5F0E8] border-[#CADDCF] hover:border-[#A6C4AE]',
+    icon: 'bg-[#256345]/12 text-[#256345]',
   },
   schedule: {
-    card: 'bg-[#EEF1F7] border-[#DCE3EF] hover:border-[#C3CFE2]',
-    icon: 'bg-[#60789A]/12 text-[#60789A]',
+    card: 'bg-[#E7EDF6] border-[#CDD8E8] hover:border-[#A9BBD6]',
+    icon: 'bg-[#41618D]/12 text-[#41618D]',
   },
   receivables: {
-    card: 'bg-[#F2EEEA] border-[#E4DDD5] hover:border-[#D2C7BA]',
-    icon: 'bg-[#846E5B]/12 text-[#846E5B]',
+    card: 'bg-[#EEEAE5] border-[#DBD3CA] hover:border-[#BFB2A4]',
+    icon: 'bg-[#6B5848]/12 text-[#6B5848]',
   },
 }
 
@@ -85,7 +85,7 @@ export function StatCard({
           <span className="flex shrink-0 items-center gap-2 self-start">
             {statusDot && <span className={cn('size-2 rounded-full ring-2 ring-white/70', statusDot)} aria-hidden="true" />}
             <ArrowUpRight
-              className="size-4 text-muted-foreground/50 transition-[color,transform] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
+              className="size-4 text-muted-foreground transition-[color,transform] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
               aria-hidden="true"
             />
           </span>
@@ -105,22 +105,22 @@ export function StatCard({
         <span className="flex items-center gap-2">
           {statusDot && <span className={cn('size-2 rounded-full ring-2 ring-white/70', statusDot)} aria-hidden="true" />}
           <ArrowUpRight
-            className="size-4 text-muted-foreground/50 transition-[color,transform] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
+            className="size-4 text-muted-foreground transition-[color,transform] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
             aria-hidden="true"
           />
         </span>
       </div>
       )}
       <div className="flex min-w-0 flex-col gap-1">
-        <span className="tabular break-words font-serif text-[2rem] font-semibold leading-none tracking-tight text-brand-deep">
+        <span className="tabular break-words font-serif text-[2rem] font-semibold leading-none tracking-tight text-foreground">
           {countTo ? <AnimatedNumber value={countTo.value} format={countTo.format} /> : value}
         </span>
-        {subValue && <span className="tabular pt-1 text-sm font-medium text-foreground/80">{subValue}</span>}
+        {subValue && <span className="tabular pt-1 text-sm font-medium text-muted-foreground">{subValue}</span>}
         {!toned && <span className="pt-1.5 text-sm font-medium leading-snug text-foreground">{label}</span>}
         {hint && (
           <span
             title={hint}
-            className={cn('line-clamp-2 text-xs leading-normal', toned ? 'text-[#56655E]' : 'text-muted-foreground')}
+            className={cn('line-clamp-2 text-xs leading-normal', 'text-muted-foreground')}
           >
             {hint}
           </span>

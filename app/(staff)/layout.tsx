@@ -123,7 +123,7 @@ export default async function StaffLayout({ children, modal }: { children: React
       <AssistantProvider>
       <QuickActionsProvider>
       <FloatingCameraProvider placement={showAssistant ? 'above-assistant' : 'corner'}>
-      <div className="flex min-h-svh bg-background">
+      <div data-staff-shell className="flex min-h-svh bg-background">
         <Sidebar
           items={items}
           logo={logo}
@@ -134,7 +134,7 @@ export default async function StaffLayout({ children, modal }: { children: React
           closedGroups={closedGroups}
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header data-app-header className="sticky top-0 z-30 border-b border-[#E4E8E1] bg-white pt-[env(safe-area-inset-top)] shadow-[0_1px_2px_rgba(23,77,50,0.04)]">
+          <header data-app-header className="sticky top-0 z-30 border-b border-[#D6DFD9] bg-white pt-[env(safe-area-inset-top)] shadow-[0_1px_2px_rgba(23,77,50,0.04)]">
             <div className="flex h-14 items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:gap-3 sm:px-6 xl:px-10">
               <MobileNav items={items} logo={logo} closedGroups={closedGroups} />
               <Link href={homeHref} className="flex min-h-11 w-24 shrink-0 items-center sm:w-28 lg:hidden" aria-label={homeLabel}>

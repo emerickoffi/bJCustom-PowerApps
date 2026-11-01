@@ -93,7 +93,7 @@ export function ComingUp({
                     {e.assigneeName ? `${e.projectName} · ${e.assigneeName}` : e.projectName}
                   </span>
                   <span
-                    className={cn('truncate text-xs', e.tentative ? 'italic text-muted-foreground' : 'text-muted-foreground/80')}
+                    className={cn('truncate text-xs', e.tentative ? 'italic text-muted-foreground' : 'text-muted-foreground')}
                   >
                     {e.description}
                   </span>

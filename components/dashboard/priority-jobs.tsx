@@ -174,7 +174,7 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
     <section aria-labelledby="priority-jobs-heading" className="surface flex flex-col">
       <DashboardSectionHeader
         compact
-        className="rounded-t-[inherit] border-b border-[#E1E7E2] bg-[#F7F9F7] px-4 py-3 md:px-6"
+        className="rounded-t-[inherit] border-b border-[#D6DFD9] bg-[#EAF0EC] px-4 py-3 md:px-6"
         id="priority-jobs-heading"
         title="Priority Jobs"
         description="Ordered by verified risk, then by what is due next"

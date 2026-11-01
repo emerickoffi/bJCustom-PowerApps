@@ -85,7 +85,7 @@ function NavLink({
         collapsed && 'justify-center px-0',
         active
           ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_1px_2px_rgb(23_77_50/0.18),0_4px_12px_-6px_rgb(23_77_50/0.45)]'
-          : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
         muted && !active && 'text-sidebar-muted',
       )}
     >
