@@ -6,6 +6,7 @@ import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { formatCents } from '@/lib/format'
 import type { HealthLevel } from '@/lib/project-health'
 import { nextLifecycleStage, type JobSummary } from '@/lib/priority-jobs'
+import { stageIndicatorColor } from '@/lib/stage-colors'
 import { cn } from '@/lib/utils'
 
 export type PriorityJob = {
@@ -18,6 +19,17 @@ export type PriorityJob = {
   contractCents: number | null
   health: HealthLevel | null
   summary: JobSummary
+}
+
+function StageIndicator({ status }: { status: ProjectStatus }) {
+  return (
+    <span
+      aria-hidden="true"
+      data-stage={status}
+      className="h-12 w-1 shrink-0 self-center rounded-full"
+      style={{ backgroundColor: stageIndicatorColor(status) }}
+    />
+  )
 }
 
 function StatusCell({ job }: { job: PriorityJob }) {
@@ -85,15 +97,20 @@ export function PriorityJobs({ jobs, showBudget }: { jobs: PriorityJob[]; showBu
               {jobs.map((job) => (
                 <tr key={job.id} className="group relative align-middle hover:bg-sage/40">
                   <td className="py-3 pr-3">
-                    <Link
-                      href={`/projects/${job.id}`}
-                      className="block truncate font-semibold text-foreground outline-none after:absolute after:inset-0 after:content-[''] group-hover:text-primary focus-visible:underline"
-                    >
-                      {job.name}
-                    </Link>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {[job.projectNumber, job.managerName && `PM ${job.managerName}`].filter(Boolean).join(' · ') || '—'}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <StageIndicator status={job.status} />
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          href={`/projects/${job.id}`}
+                          className="block truncate font-semibold text-foreground outline-none after:absolute after:inset-0 after:content-[''] group-hover:text-primary focus-visible:underline"
+                        >
+                          {job.name}
+                        </Link>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {[job.projectNumber, job.managerName && `PM ${job.managerName}`].filter(Boolean).join(' · ') || '—'}
+                        </span>
+                      </div>
+                    </div>
                   </td>
                   <td className="truncate py-3 pr-3 text-xs text-muted-foreground">
                     {PROJECT_STATUS_LABELS[job.status] ?? job.status}
@@ -119,8 +136,10 @@ export function PriorityJobs({ jobs, showBudget }: { jobs: PriorityJob[]; showBu
               <li key={job.id}>
                 <Link
                   href={`/projects/${job.id}`}
-                  className="flex flex-col gap-2 rounded-xl border bg-card p-3 transition-colors hover:border-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex items-center gap-3 rounded-xl border bg-card p-3 transition-colors hover:border-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
+                  <StageIndicator status={job.status} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 flex-col gap-0.5">
                       <span className="truncate text-sm font-semibold text-foreground">{job.name}</span>
@@ -139,6 +158,7 @@ export function PriorityJobs({ jobs, showBudget }: { jobs: PriorityJob[]; showBu
                   {showBudget && job.contractCents !== null && (
                     <span className="tabular text-xs text-muted-foreground">{`Contract ${formatCents(job.contractCents)}`}</span>
                   )}
+                  </div>
                 </Link>
               </li>
             ))}
