@@ -219,26 +219,28 @@ export function ActionCenter({
 
   return (
     <section aria-labelledby="action-center-heading" className="surface flex flex-col">
-      <div className="flex items-start gap-3 rounded-t-[inherit] border-b border-[#D8E3DA] bg-[#EDF3EE] p-4 md:p-6">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary" aria-hidden="true">
-          <ListChecks className="size-[1.125rem]" />
+      <div className="flex items-center gap-3 rounded-t-[inherit] border-b border-[#E1E7E2] bg-[#F7F9F7] px-4 py-3 md:px-6">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sage text-primary" aria-hidden="true">
+          <ListChecks className="size-[18px]" />
         </span>
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <Heading id="action-center-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Heading id="action-center-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-foreground">
               Action Center
             </Heading>
             {items.length > 0 && (
-              <span className="rounded-full border border-primary/15 bg-sage px-2 py-0.5 text-xs font-medium tabular-nums text-primary">
+              <span className="rounded-full border border-primary/15 bg-sage px-2 py-px text-xs font-medium leading-4 tabular-nums text-primary">
                 {`${countLabel} pending`}
               </span>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">Everything waiting on you, across your projects.</p>
+          <p className="text-pretty text-[13px] leading-[18px] text-muted-foreground">
+            Everything waiting on you, across your projects.
+          </p>
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 bg-card p-4 md:p-6 rounded-b-[inherit]">
+      <div className="flex flex-col gap-4 rounded-b-[inherit] bg-card px-4 pb-4 pt-3 md:px-6 md:pb-6 md:pt-4">
       <CategoryFilters items={items} selected={selected} links={links} />
 
       {visible.length === 0 ? (
