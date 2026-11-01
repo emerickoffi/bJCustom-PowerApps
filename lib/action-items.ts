@@ -64,7 +64,12 @@ export type ActionItem = {
   severity: ActionSeverity
   tier: ActionTier
   title: string
+  /** One concise sentence shown under the title. */
   description: string
+  /** Fuller explanation kept behind an expandable control. */
+  detail?: string
+  /** Vendor shown as secondary metadata for items not tied to a project. */
+  vendorName?: string | null
   /** YYYY-MM-DD, only when the source record carries a real deadline. */
   dueDate: string | null
   /** YYYY-MM-DD the source record was created or reported. */
@@ -386,8 +391,11 @@ function estimateItems(rows: ActionEstimateApproval[], ctx: ActionContext): Acti
       category: 'approvals',
       severity: 'warning',
       tier: 3,
-      title: `Review signed estimate ${r.estimateNumber}`,
+      title: `Review estimate ${r.estimateNumber}`,
       description: r.testMode
+        ? 'Test signature received; approval still required.'
+        : 'Fully signed; record the approval decision.',
+      detail: r.testMode
         ? `${r.estimateName} was signed in test mode, which never records approval. Record the decision on the estimate.`
         : `${r.estimateName} is fully signed but still Submitted. Confirm the signed version and record the decision.`,
       dueDate: null,
@@ -570,6 +578,14 @@ const QUALIFICATION_TIERS: Record<QualificationAttention['kind'], { severity: Ac
   missing: { severity: 'warning', tier: 4 },
 }
 
+const QUALIFICATION_TITLES: Record<QualificationAttention['kind'], string> = {
+  not_cleared_on_project: 'Resolve subcontractor clearance',
+  expired: 'Replace expired subcontractor document',
+  awaiting_review: 'Review subcontractor evidence',
+  expiring: 'Renew expiring subcontractor document',
+  missing: 'Complete subcontractor requirements',
+}
+
 function qualificationItems(rows: QualificationAttention[], ctx: ActionContext): ActionItem[] {
   if (!ctx.manager || !ctx.features.subcontractors) return []
   return rows.map((q) => ({
@@ -580,8 +596,9 @@ function qualificationItems(rows: QualificationAttention[], ctx: ActionContext):
     entityId: q.companyId,
     category: 'compliance',
     ...QUALIFICATION_TIERS[q.kind],
-    title: `${q.companyName}: ${q.label}`,
-    description: q.detail,
+    title: QUALIFICATION_TITLES[q.kind],
+    description: `${q.label}: ${q.detail}.`,
+    vendorName: q.companyName,
     dueDate: null,
     createdAt: null,
     responsibleUserId: null,

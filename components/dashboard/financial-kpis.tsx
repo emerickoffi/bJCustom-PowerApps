@@ -27,12 +27,9 @@ export function FinancialKpis({
       ? (() => {
           const { amountCents, count, items } = estimates.value.awaitingApproval
           return {
-            value: count ? formatCents(amountCents) : '0',
-            countTo: count ? { value: amountCents, format: 'cents' as const } : { value: 0, format: 'count' as const },
+            value: `${count} pending`,
             hint: count
-              ? count === 1
-                ? `${items[0].estimateNumber} signed and awaiting your decision`
-                : `${plural(count, 'signed estimate')} awaiting your decision`
+              ? `Proposed value: ${formatCents(amountCents)}${count === 1 ? ` · ${items[0].estimateNumber}` : ''}`
               : 'No signed estimates awaiting a decision',
             href: count === 1 ? `/estimates/${items[0].id}` : '/actions?category=approvals',
             accent: count ? ('champagne' as const) : undefined,
@@ -46,7 +43,7 @@ export function FinancialKpis({
           value: formatCents(contracts.value.contractCents),
           countTo: { value: contracts.value.contractCents, format: 'cents' as const },
           hint: [
-            `Approved estimates plus approved change orders on ${plural(contracts.value.establishedCount, 'active project')}`,
+            `Jobs with approved contract value: ${contracts.value.establishedCount}`,
             contracts.value.needsReviewCount ? `${contracts.value.needsReviewCount} need review` : null,
           ]
             .filter(Boolean)
@@ -68,7 +65,11 @@ export function FinancialKpis({
               ? scheduleRisk.value.total
                 ? `Not assessed: ${plural(scheduleRisk.value.total, 'active job')} without dated schedules`
                 : 'No active jobs to assess'
-              : `No verified risks · ${scheduleRisk.value.evaluated} of ${plural(scheduleRisk.value.total, 'active job')} assessed`,
+              : `No verified risks · ${scheduleRisk.value.evaluated} of ${scheduleRisk.value.total} jobs eligible for schedule assessment checked${
+                  scheduleRisk.value.evaluated < scheduleRisk.value.total
+                    ? `; ${scheduleRisk.value.total - scheduleRisk.value.evaluated} not assessed (no dated schedule)`
+                    : ''
+                }`,
           href: scheduleRisk.value.projectId ? `/projects/${scheduleRisk.value.projectId}/schedule` : '/actions?category=schedule',
           accent: scheduleRisk.value.critical ? ('danger' as const) : scheduleRisk.value.atRisk ? ('warning' as const) : undefined,
         }

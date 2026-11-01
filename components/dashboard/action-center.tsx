@@ -62,7 +62,8 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
     : item.createdAt
       ? { label: `Created ${formatDate(item.createdAt)}`, iso: item.createdAt }
       : null
-  const meta = [item.projectName, ACTION_CATEGORY_LABELS[item.category]].filter(Boolean) as string[]
+  const subject = item.projectName ?? item.vendorName ?? null
+  const meta = [subject, ACTION_CATEGORY_LABELS[item.category]].filter(Boolean) as string[]
   return (
     <li className="flex gap-3 py-3.5 first:pt-0 last:pb-0">
       <span
@@ -85,7 +86,7 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
               </span>
             )}
             {meta.map((m, i) => (
-              <span key={m} className={cn(i === 0 && item.projectName && 'font-medium text-foreground/80')}>
+              <span key={m} className={cn(i === 0 && subject && 'font-medium text-foreground/80')}>
                 {i > 0 && (
                   <span aria-hidden="true" className="mr-1.5">
                     ·
@@ -109,6 +110,16 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
             <p className="line-clamp-2 text-pretty text-xs leading-relaxed text-muted-foreground sm:line-clamp-1">
               {item.description}
             </p>
+          )}
+          {item.detail && (
+            <details className="group/detail text-xs text-muted-foreground">
+              <summary className="inline-flex min-h-6 cursor-pointer list-none items-center rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                <span className="group-open/detail:hidden">Details</span>
+                <span className="hidden group-open/detail:inline">Hide details</span>
+                <span className="sr-only">{`: ${item.title}`}</span>
+              </summary>
+              <p className="mt-1 text-pretty leading-relaxed">{item.detail}</p>
+            </details>
           )}
         </div>
         <Link
@@ -218,8 +229,8 @@ export function ActionCenter({
   const today = new Date().toISOString().slice(0, 10)
 
   return (
-    <section aria-labelledby="action-center-heading" className="surface flex flex-col gap-4 p-5 md:p-6">
-      <div className="flex items-start gap-3">
+    <section aria-labelledby="action-center-heading" className="surface flex flex-col gap-4 overflow-hidden p-5 md:p-6">
+      <div className="-mx-5 -mt-5 flex items-start gap-3 border-b bg-[#F6F8F6] px-5 pb-4 pt-5 md:-mx-6 md:-mt-6 md:px-6 md:pt-6">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary" aria-hidden="true">
           <ListChecks className="size-[1.125rem]" />
         </span>

@@ -167,7 +167,8 @@ function NextActivity({ job }: { job: PriorityJob }) {
 
 export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
   return (
-    <section aria-labelledby="priority-jobs-heading" className="surface flex flex-col gap-4 p-4 md:p-5">
+    <section aria-labelledby="priority-jobs-heading" className="surface flex flex-col gap-4 overflow-hidden p-4 md:p-5">
+      <div className="-mx-4 -mt-4 border-b bg-[#F6F8F6] px-4 pb-3 pt-4 md:-mx-5 md:-mt-5 md:px-5 md:pt-5">
       <DashboardSectionHeader
         id="priority-jobs-heading"
         title="Priority Jobs"
@@ -183,6 +184,7 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
           </Link>
         }
       />
+      </div>
       {jobs.length === 0 ? (
         <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">No projects yet.</p>
       ) : (

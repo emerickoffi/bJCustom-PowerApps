@@ -406,13 +406,13 @@ export function buildQualificationAttention(
         rank: 0,
       })
     } else if (s.expired_count > 0) {
-      items.push({ ...base, kind: 'expired', label: 'Required document expired', detail: plural(s.expired_count, 'item'), rank: 1 })
+      items.push({ ...base, kind: 'expired', label: 'Required document expired', detail: `${plural(s.expired_count, 'document')} expired`, rank: 1 })
     } else if (s.awaiting_review_count > 0) {
-      items.push({ ...base, kind: 'awaiting_review', label: 'Evidence awaiting review', detail: plural(s.awaiting_review_count, 'item'), rank: 2 })
+      items.push({ ...base, kind: 'awaiting_review', label: 'Evidence awaiting review', detail: `${plural(s.awaiting_review_count, 'upload')} to review`, rank: 2 })
     } else if (s.expiring_soon_count > 0 && s.next_expiration) {
       items.push({ ...base, kind: 'expiring', label: 'Document expiring soon', detail: expiryLabel(s.next_expiration, today), rank: 3 })
     } else if (s.started_at && s.missing_count > 0) {
-      items.push({ ...base, kind: 'missing', label: 'Missing mandatory evidence', detail: plural(s.missing_count, 'item'), rank: 4 })
+      items.push({ ...base, kind: 'missing', label: 'Missing mandatory evidence', detail: `${plural(s.missing_count, 'mandatory requirement')} without evidence`, rank: 4 })
     }
   }
   return items.sort((a, b) => a.rank - b.rank || a.companyName.localeCompare(b.companyName))
