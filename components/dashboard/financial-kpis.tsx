@@ -8,7 +8,18 @@ const UNAVAILABLE = '—'
 const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`
 
 /** Manager-only KPI row. Values come from verified server summaries; unknown data renders a dash, never a fabricated $0. */
-export function FinancialKpis({ metrics, scheduleRisk }: { metrics: FinancialMetrics; scheduleRisk: ScheduleRiskSummary }) {
+export type KpiCardId = 'card_approval' | 'card_contract' | 'card_schedule' | 'card_receivables'
+
+export function FinancialKpis({
+  metrics,
+  scheduleRisk,
+  visible,
+}: {
+  metrics: FinancialMetrics
+  scheduleRisk: ScheduleRiskSummary
+  /** Cards allowed by the organization's dashboard settings. Omitted means all cards. */
+  visible?: ReadonlySet<KpiCardId>
+}) {
   const { estimates, contracts, receivables } = metrics
 
   const approval =
@@ -78,12 +89,15 @@ export function FinancialKpis({ metrics, scheduleRisk }: { metrics: FinancialMet
         }
       : { value: UNAVAILABLE, hint: receivables.reason, href: '/invoices', accent: 'neutral' as const }
 
+  const show = (id: KpiCardId) => !visible || visible.has(id)
   return (
     <>
-      <StatCard label="Awaiting Your Approval" icon={FileSignature} tone="approval" {...approval} />
-      <StatCard label="Contract Value" icon={Landmark} href="/estimates?status=approved" tone="contract" {...contract} />
-      <StatCard label="Schedule Risk" icon={CalendarClock} tone="schedule" {...schedule} />
-      <StatCard label="Receivables" icon={Receipt} tone="receivables" {...ar} />
+      {show('card_approval') && <StatCard label="Awaiting Your Approval" icon={FileSignature} tone="approval" {...approval} />}
+      {show('card_contract') && (
+        <StatCard label="Contract Value" icon={Landmark} href="/estimates?status=approved" tone="contract" {...contract} />
+      )}
+      {show('card_schedule') && <StatCard label="Schedule Risk" icon={CalendarClock} tone="schedule" {...schedule} />}
+      {show('card_receivables') && <StatCard label="Receivables" icon={Receipt} tone="receivables" {...ar} />}
     </>
   )
 }

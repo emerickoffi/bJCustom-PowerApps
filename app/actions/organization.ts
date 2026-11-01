@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSession, requireAdmin } from '@/lib/session'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
+import { isDefaultVisibility, parseVisibility } from '@/lib/dashboard-visibility'
 import { organizationOnboardingSchema, organizationSettingsSchema, profileSchema } from '@/lib/validation'
 
 export async function createOrganizationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -49,6 +50,29 @@ export async function updateOrganizationAction(_prev: ActionState, formData: For
 
   revalidatePath('/', 'layout')
   return { success: 'Organization settings saved.' }
+}
+
+/**
+ * Saves Command Center visibility for the admin's organization. `null` restores the built-in defaults.
+ * Admin-only here and in the organization_settings update RLS policy; visibility never changes module access.
+ */
+export async function updateDashboardVisibilityAction(input: unknown): Promise<ActionState> {
+  const session = await requireAdmin()
+  const value = input === null ? null : parseVisibility(input)
+  const stored = value && isDefaultVisibility(value) ? null : value
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('organization_settings')
+    .update({ dashboard_visibility: stored })
+    .eq('organization_id', session.organizationId)
+    .select('organization_id')
+  if (error) return { error: friendlyDbError(error) }
+  if (!data?.length) return { error: 'You do not have permission to change dashboard settings.' }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/settings/dashboard')
+  return { success: input === null ? 'Dashboard defaults restored.' : 'Dashboard settings saved.' }
 }
 
 export async function updateProfileAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
