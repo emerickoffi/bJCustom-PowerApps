@@ -6,17 +6,7 @@ import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AppNav } from '@/components/app/app-nav'
 import type { NavGroup, NavItem } from '@/lib/navigation'
-
-export const SIDEBAR_COOKIE = 'sidebar_collapsed'
-
-/** `auto` = no saved choice: compact on tablet-width screens (below xl), expanded on desktop. */
-export type SidebarMode = 'auto' | 'collapsed' | 'expanded'
-
-export function parseSidebarMode(value: string | undefined): SidebarMode {
-  if (value === '1') return 'collapsed'
-  if (value === '0') return 'expanded'
-  return 'auto'
-}
+import { SIDEBAR_COOKIE, type SidebarMode } from '@/lib/sidebar'
 
 const DESKTOP_QUERY = '(min-width: 80rem)'
 
