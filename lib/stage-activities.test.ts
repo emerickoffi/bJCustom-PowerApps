@@ -66,6 +66,22 @@ test('a real activity whose title matches the stage name is kept, not replaced o
   assert.equal(r.completed, 0)
 })
 
+test('every open activity waiting on an incomplete predecessor is reported as blocked, not empty', () => {
+  const outside = row({ phase: 'Site work', name: 'Site Preparation' })
+  const waiting = row({ name: 'Permit approval', activity_type: 'milestone' })
+  const r = summarizeStageActivities(
+    'preconstruction',
+    [outside, waiting],
+    [{ predecessor_id: outside.id, successor_id: waiting.id }],
+    TODAY,
+  )
+  assert.equal(r?.state, 'blocked')
+  if (r?.state !== 'blocked') return
+  assert.equal(r.activity.id, waiting.id)
+  assert.equal(r.activity.type, 'milestone')
+  assert.equal(r.total, 1)
+})
+
 test('empty, complete, and stages without a working schedule', () => {
   assert.deepEqual(summarizeStageActivities('preconstruction', [row({ phase: 'Closeout' })], [], TODAY), { state: 'empty' })
   assert.deepEqual(summarizeStageActivities('punch_list', [row({ phase: 'Closeout', status: 'completed' })], [], TODAY), {

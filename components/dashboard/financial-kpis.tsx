@@ -50,7 +50,9 @@ export function FinancialKpis({
           value: formatCents(contracts.value.contractCents),
           countTo: { value: contracts.value.contractCents, format: 'cents' as const },
           hint: [
-            `Approved estimates plus approved change orders on ${plural(contracts.value.establishedCount, 'active project')}`,
+            contracts.value.establishedCount
+              ? `From ${plural(contracts.value.establishedCount, 'active job')} with an approved estimate (incl. approved change orders)`
+              : 'No active jobs with an approved estimate yet',
             contracts.value.needsReviewCount ? `${contracts.value.needsReviewCount} need review` : null,
           ]
             .filter(Boolean)
@@ -72,7 +74,7 @@ export function FinancialKpis({
               ? scheduleRisk.value.total
                 ? `Not assessed: ${plural(scheduleRisk.value.total, 'active job')} without dated schedules`
                 : 'No active jobs to assess'
-              : `No verified risks · ${scheduleRisk.value.evaluated} of ${plural(scheduleRisk.value.total, 'active job')} assessed`,
+              : `No verified risks · ${scheduleRisk.value.evaluated} of ${plural(scheduleRisk.value.total, 'active job')} assessed (dated schedules only)`,
           href: scheduleRisk.value.projectId ? `/projects/${scheduleRisk.value.projectId}/schedule` : '/actions?category=schedule',
           accent: scheduleRisk.value.critical ? ('danger' as const) : scheduleRisk.value.atRisk ? ('warning' as const) : undefined,
         }

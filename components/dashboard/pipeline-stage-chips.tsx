@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
-import { PROJECT_STATUS_STYLES } from '@/components/shared/project-status-banner'
+import { stageIndicatorColor } from '@/lib/stage-colors'
 import { cn } from '@/lib/utils'
 
 export type StageCount = { status: ProjectStatus; count: number }
@@ -27,7 +27,8 @@ function StageChip({ status, count, total }: StageCount & { total: number }) {
         )}
       >
         <span
-          className={cn('size-2 shrink-0 rounded-full', PROJECT_STATUS_STYLES[status].className, count === 0 && 'opacity-40')}
+          className={cn('size-2 shrink-0 rounded-full', count === 0 && 'opacity-40')}
+          style={{ backgroundColor: stageIndicatorColor(status) }}
           aria-hidden="true"
         />
         <span>{label}</span>
@@ -81,7 +82,7 @@ export function PipelineStageChips({
           aria-expanded={showAll}
           className="inline-flex min-h-9 w-fit items-center gap-1.5 rounded-md px-2 -mx-2 text-sm font-medium text-primary hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {showAll ? 'Show fewer' : `Show all stages (${hiddenCount} empty)`}
+          {showAll ? 'Show fewer' : 'Show all stages'}
           <ChevronDown className={cn('size-4 transition-transform', showAll && 'rotate-180')} aria-hidden="true" />
         </button>
       )}

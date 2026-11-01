@@ -67,7 +67,7 @@ export function ComingUp({
       <DashboardSectionHeader
         id="coming-up-heading"
         title="Coming Up"
-        description="Open scheduled work and dated milestones"
+        description="Your upcoming schedule"
         icon={CalendarClock}
       />
       <RangeControls range={range} hrefFor={hrefFor} />

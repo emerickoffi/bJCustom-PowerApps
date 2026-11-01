@@ -59,7 +59,7 @@ export async function getDashboardCardDetails(
     features.schedule
       ? supabase
           .from('schedule_activities')
-          .select('id, project_id, name, phase, status, planned_end, sort_order')
+          .select('id, project_id, name, phase, activity_type, status, planned_end, sort_order')
           .eq('organization_id', organizationId)
           .in('project_id', ids)
           .limit(ids.length * 120)
