@@ -3,6 +3,12 @@ import { createClient } from '@/lib/supabase/server'
 import { isOverdue, todayIso, type ActivityStatus } from '@/lib/schedule'
 import type { FeatureMap } from '@/lib/feature-registry'
 import type { ProjectStatus } from '@/lib/domain'
+import {
+  stagePhaseMatcher,
+  summarizeStageActivities,
+  type StageActivities,
+  type StageActivityRow,
+} from '@/lib/stage-activities'
 
 export type NextActivity = { name: string; dueOn: string | null; overdue: boolean }
 export type WarrantySummary = { stage: string; milestoneLabel: string | null; milestoneDueOn: string | null }
@@ -17,15 +23,12 @@ export type DashboardCardDetails = {
   behindSchedule: boolean
   holdReason: string | null
   warranty: WarrantySummary | null
+  /** Activities in the job's current stage; null when scheduling is off or the stage has no working schedule. */
+  stageActivities: StageActivities | null
 }
 
-type ActivityRow = {
-  project_id: string
-  name: string
-  status: ActivityStatus
-  planned_end: string | null
-  sort_order: number
-}
+type ActivityRow = StageActivityRow & { status: ActivityStatus }
+type DependencyRow = { project_id: string; predecessor_id: string; successor_id: string }
 
 const EMPTY: DashboardCardDetails = {
   hasSchedule: false,
@@ -35,6 +38,7 @@ const EMPTY: DashboardCardDetails = {
   behindSchedule: false,
   holdReason: null,
   warranty: null,
+  stageActivities: null,
 }
 
 /** Real per-project details for the dashboard cards, limited to the projects being shown. */
@@ -51,15 +55,22 @@ export async function getDashboardCardDetails(
   const completedIds = projects.filter((p) => p.status === 'completed').map((p) => p.id)
   const supabase = await createClient()
 
-  const [activitiesRes, holdRes, warrantyRes] = await Promise.all([
+  const [activitiesRes, depsRes, holdRes, warrantyRes] = await Promise.all([
     features.schedule
       ? supabase
           .from('schedule_activities')
-          .select('project_id, name, status, planned_end, sort_order')
+          .select('id, project_id, name, phase, status, planned_end, sort_order')
           .eq('organization_id', organizationId)
           .in('project_id', ids)
           .limit(ids.length * 120)
-      : Promise.resolve({ data: [] as ActivityRow[] }),
+      : Promise.resolve({ data: [] as ActivityRow[], error: null }),
+    features.schedule
+      ? supabase
+          .from('schedule_dependencies')
+          .select('project_id, predecessor_id, successor_id')
+          .eq('organization_id', organizationId)
+          .in('project_id', ids)
+      : Promise.resolve({ data: [] as DependencyRow[], error: null }),
     onHoldIds.length
       ? supabase
           .from('project_status_history')
@@ -85,6 +96,24 @@ export async function getDashboardCardDetails(
     const list = byProject.get(a.project_id) ?? []
     list.push(a)
     byProject.set(a.project_id, list)
+  }
+  const depsByProject = new Map<string, DependencyRow[]>()
+  for (const d of (depsRes.data ?? []) as DependencyRow[]) {
+    const list = depsByProject.get(d.project_id) ?? []
+    list.push(d)
+    depsByProject.set(d.project_id, list)
+  }
+  if (features.schedule) {
+    const failed = !!activitiesRes.error || !!depsRes.error
+    for (const p of projects) {
+      const details = result.get(p.id)
+      if (!details) continue
+      details.stageActivities = failed
+        ? stagePhaseMatcher(p.status)
+          ? { state: 'unavailable' }
+          : null
+        : summarizeStageActivities(p.status, byProject.get(p.id) ?? [], depsByProject.get(p.id) ?? [], today)
+    }
   }
   for (const [projectId, list] of byProject) {
     const details = result.get(projectId)
