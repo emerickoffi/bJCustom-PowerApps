@@ -218,8 +218,9 @@ export function ActionCenter({
   const today = new Date().toISOString().slice(0, 10)
 
   return (
-    <section aria-labelledby="action-center-heading" className="surface flex flex-col gap-4 p-5 md:p-6">
-      <div className="flex items-start gap-3">
+    <section aria-labelledby="action-center-heading" className="surface flex flex-col">
+      <div className="flex items-start gap-3 rounded-t-[inherit] border-b bg-[#F6F8F6] px-5 py-4 md:px-6">
+
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary" aria-hidden="true">
           <ListChecks className="size-[1.125rem]" />
         </span>
@@ -238,6 +239,7 @@ export function ActionCenter({
         </div>
       </div>
 
+      <div className="flex flex-col gap-4 p-5 md:p-6">
       <CategoryFilters items={items} selected={selected} links={links} />
 
       {visible.length === 0 ? (
@@ -290,6 +292,7 @@ export function ActionCenter({
           )}
         </nav>
       )}
+      </div>
     </section>
   )
 }
