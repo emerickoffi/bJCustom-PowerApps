@@ -258,7 +258,7 @@ export async function OwnerDashboard({
           key={id}
           id={id === 'priority_jobs' ? PRIORITY_JOBS_ANCHOR : undefined}
           className="min-w-0"
-          data-dashboard-section={id satisfies DashboardSectionId}
+          data-dashboard-section={id}
         >
           {sections[id]}
         </div>
