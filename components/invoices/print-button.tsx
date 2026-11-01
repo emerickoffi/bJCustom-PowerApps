@@ -1,13 +1,7 @@
 'use client'
 
-import { Printer } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { DeferredPrintButton } from '@/components/print/deferred-print-button'
 
 export function PrintButton() {
-  return (
-    <Button onClick={() => window.print()}>
-      <Printer data-icon="inline-start" />
-      Print or save as PDF
-    </Button>
-  )
+  return <DeferredPrintButton />
 }
