@@ -4,6 +4,7 @@ import { DashboardSectionHeader } from '@/components/dashboard/dashboard-section
 import { HealthBadge } from '@/components/dashboard/project-health'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { formatDate } from '@/lib/format'
+import { ACTIVITY_TYPE_LABELS, type ActivityType } from '@/lib/schedule'
 import type { HealthLevel } from '@/lib/project-health'
 import type { JobSummary } from '@/lib/priority-jobs'
 import type { StageActivities } from '@/lib/stage-activities'
@@ -79,7 +80,7 @@ function JobIdentity({ job, overlayClassName }: { job: PriorityJob; overlayClass
 /** Stage name plus a thin bar of activities complete within the current stage only. */
 function CurrentStage({ job }: { job: PriorityJob }) {
   const data = job.stageActivities
-  const counts = data && (data.state === 'next' || data.state === 'complete') ? data : null
+  const counts = data && (data.state === 'next' || data.state === 'blocked' || data.state === 'complete') ? data : null
   const pct = counts ? Math.round((counts.completed / counts.total) * 100) : 0
   const label = stageLabel(job.status)
   return (
@@ -137,6 +138,7 @@ function NextActivity({ job }: { job: PriorityJob }) {
   if (data.state === 'complete') return <span className="text-xs text-foreground/80">All stage activities complete</span>
 
   const { activity } = data
+  const typeLabel = activity.type && activity.type !== 'task' ? ACTIVITY_TYPE_LABELS[activity.type as ActivityType] : null
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
       <Link
@@ -145,11 +147,13 @@ function NextActivity({ job }: { job: PriorityJob }) {
           'relative z-10 truncate text-sm text-foreground underline-offset-2 hover:text-primary hover:underline',
           focusRing,
         )}
-        title={activity.name}
       >
         {activity.name}
+        {typeLabel && <span className="text-muted-foreground">{` · ${typeLabel}`}</span>}
       </Link>
-      {activity.dueOn ? (
+      {data.state === 'blocked' ? (
+        <span className="text-xs font-medium text-warning">Waiting on a predecessor</span>
+      ) : activity.dueOn ? (
         activity.overdue ? (
           <span className="tabular inline-flex items-center gap-1 text-xs font-medium text-destructive">
             <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />

@@ -1,5 +1,5 @@
 import { ALL_PROJECT_STATUSES, PROJECT_PIPELINE, PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
-import { PROJECT_STATUS_STYLES } from '@/components/shared/project-status-banner'
+import { stageIndicatorColor } from '@/lib/stage-colors'
 import { cn } from '@/lib/utils'
 import { PipelineStageChips } from '@/components/dashboard/pipeline-stage-chips'
 
@@ -52,8 +52,8 @@ export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectSta
             <span
               key={s}
               title={`${PROJECT_STATUS_LABELS[s]}: ${countOf(s)}`}
-              className={cn('h-full first:rounded-l-full last:rounded-r-full', PROJECT_STATUS_STYLES[s].className)}
-              style={{ width: `${(countOf(s) / total) * 100}%` }}
+                className="h-full first:rounded-l-full last:rounded-r-full"
+                style={{ width: `${(countOf(s) / total) * 100}%`, backgroundColor: stageIndicatorColor(s) }}
             />
           ))}
         </div>

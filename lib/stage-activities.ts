@@ -8,17 +8,21 @@ export type StageActivityRow = {
   status: string
   planned_end: string | null
   sort_order: number
+  /** task | milestone | inspection | meeting. Optional so callers that do not select it still work. */
+  activity_type?: string
 }
 
 export type StageDependency = { predecessor_id: string; successor_id: string }
 
-export type StageNextActivity = { id: string; name: string; dueOn: string | null; overdue: boolean }
+export type StageNextActivity = { id: string; name: string; type: string | null; dueOn: string | null; overdue: boolean }
 
 export type StageActivities =
   | { state: 'unavailable' }
   | { state: 'empty' }
   | { state: 'complete'; completed: number; total: number }
   | { state: 'next'; activity: StageNextActivity; completed: number; total: number }
+  /** Open activities remain, but every one waits on an incomplete predecessor; `activity` is the earliest of them. */
+  | { state: 'blocked'; activity: StageNextActivity; completed: number; total: number }
 
 const DONE = new Set(['completed', 'skipped'])
 
@@ -98,12 +102,13 @@ export function summarizeStageActivities(
   const actionable = open.filter((a) => !blocked.has(a.id))
   const next = [...(actionable.length ? actionable : open)].sort(byDueThenOrder)[0]
   return {
-    state: 'next',
+    state: actionable.length ? 'next' : 'blocked',
     completed,
     total,
     activity: {
       id: next.id,
       name: next.name,
+      type: next.activity_type ?? null,
       dueOn: next.planned_end,
       overdue: !!next.planned_end && next.planned_end < today,
     },

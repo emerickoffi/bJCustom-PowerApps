@@ -182,11 +182,7 @@ export function RecentActivity({
             id="activity-heading"
             title="Recent Activity"
             icon={History}
-            description={
-              entries.length === 0
-                ? "No recent client activity or project updates"
-                : `${entries.length} recent ${entries.length === 1 ? "entry" : "entries"} · latest ${formatDateTime(entries[0].at)}`
-            }
+            description={entries.length === 0 ? "No recent project updates" : "Latest project updates"}
           />
           <span className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-primary">
             <span className="group-open/activity:hidden">Show</span>

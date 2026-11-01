@@ -2,6 +2,7 @@ import Link from 'next/link'
 import {
   ArrowRight,
   CalendarClock,
+  ChevronDown,
   CircleAlert,
   CircleCheck,
   ClipboardList,
@@ -109,6 +110,15 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
             <p className="line-clamp-2 text-pretty text-xs leading-relaxed text-muted-foreground sm:line-clamp-1">
               {item.description}
             </p>
+          )}
+          {item.details && (
+            <details className="group/details text-xs text-muted-foreground">
+              <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                <ChevronDown className="size-3.5 transition-transform group-open/details:rotate-180" aria-hidden="true" />
+                Details
+              </summary>
+              <p className="mt-1 text-pretty leading-relaxed">{item.details}</p>
+            </details>
           )}
         </div>
         <Link

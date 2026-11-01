@@ -64,7 +64,10 @@ export type ActionItem = {
   severity: ActionSeverity
   tier: ActionTier
   title: string
+  /** One short sentence shown in the row. */
   description: string
+  /** Full explanation, revealed through an inline disclosure when the short sentence drops context. */
+  details?: string
   /** YYYY-MM-DD, only when the source record carries a real deadline. */
   dueDate: string | null
   /** YYYY-MM-DD the source record was created or reported. */
@@ -386,8 +389,11 @@ function estimateItems(rows: ActionEstimateApproval[], ctx: ActionContext): Acti
       category: 'approvals',
       severity: 'warning',
       tier: 3,
-      title: `Review signed estimate ${r.estimateNumber}`,
+      title: `Review estimate ${r.estimateNumber}`,
       description: r.testMode
+        ? 'Test signature received; approval still required.'
+        : 'Signed by the homeowner; approval still required.',
+      details: r.testMode
         ? `${r.estimateName} was signed in test mode, which never records approval. Record the decision on the estimate.`
         : `${r.estimateName} is fully signed but still Submitted. Confirm the signed version and record the decision.`,
       dueDate: null,
@@ -423,6 +429,12 @@ function changeOrderItems(rows: ActionChangeOrder[], ctx: ActionContext): Action
   }))
 }
 
+/** "Estimate EST-0002 Rev 1 — kitchen" → "estimate EST-0002 Rev 1". Display only; the stored title is untouched. */
+export function shortDocumentRef(title: string): string {
+  const head = title.split(/\s+[—–]\s+/)[0].trim() || title
+  return /^[A-Z][a-z]/.test(head) ? head[0].toLowerCase() + head.slice(1) : head
+}
+
 function signedArtifactItems(rows: ActionSignedArtifact[], ctx: ActionContext): ActionItem[] {
   if (!ctx.manager || !ctx.features.e_signatures || !ctx.features.documents) return []
   const now = ctx.now ?? new Date()
@@ -442,10 +454,13 @@ function signedArtifactItems(rows: ActionSignedArtifact[], ctx: ActionContext): 
       category: 'documents',
       severity: 'warning',
       tier: 3,
-      title: `File signed document: ${r.title}`,
-      description: r.hasSignedPdf
-        ? 'Signing is complete and the signed PDF is stored, but it is not filed in the project documents.'
-        : 'Signing is complete but the signed PDF has not been retrieved from Dropbox Sign yet.',
+      title: `File signed ${shortDocumentRef(r.title)}`,
+      description: r.hasSignedPdf ? 'Signed PDF stored but not yet filed.' : 'Signed PDF not yet retrieved.',
+      details: `${r.title}. ${
+        r.hasSignedPdf
+          ? 'Signing is complete and the signed PDF is stored, but it is not filed in the project documents.'
+          : 'Signing is complete but the signed PDF has not been retrieved from Dropbox Sign yet.'
+      }`,
       dueDate: null,
       createdAt: r.completedAt?.slice(0, 10) ?? null,
       responsibleUserId: null,
