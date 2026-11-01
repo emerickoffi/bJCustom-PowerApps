@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from 'react'
 import { CalendarClock, FileSignature, Landmark, Receipt } from 'lucide-react'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { formatCents } from '@/lib/format'
@@ -14,11 +15,14 @@ export function FinancialKpis({
   metrics,
   scheduleRisk,
   visible,
+  order,
 }: {
   metrics: FinancialMetrics
   scheduleRisk: ScheduleRiskSummary
   /** Cards allowed by the organization's dashboard settings. Omitted means all cards. */
   visible?: ReadonlySet<KpiCardId>
+  /** Left-to-right order from the organization's layout. Omitted means the built-in order. */
+  order?: readonly KpiCardId[]
 }) {
   const { estimates, contracts, receivables } = metrics
 
@@ -89,15 +93,20 @@ export function FinancialKpis({
         }
       : { value: UNAVAILABLE, hint: receivables.reason, href: '/invoices', accent: 'neutral' as const }
 
-  const show = (id: KpiCardId) => !visible || visible.has(id)
+  const cards: Record<KpiCardId, ReactNode> = {
+    card_approval: <StatCard label="Awaiting Your Approval" icon={FileSignature} tone="approval" {...approval} />,
+    card_contract: <StatCard label="Contract Value" icon={Landmark} href="/estimates?status=approved" tone="contract" {...contract} />,
+    card_schedule: <StatCard label="Schedule Risk" icon={CalendarClock} tone="schedule" {...schedule} />,
+    card_receivables: <StatCard label="Receivables" icon={Receipt} tone="receivables" {...ar} />,
+  }
+  const sequence = order ?? (Object.keys(cards) as KpiCardId[])
   return (
     <>
-      {show('card_approval') && <StatCard label="Awaiting Your Approval" icon={FileSignature} tone="approval" {...approval} />}
-      {show('card_contract') && (
-        <StatCard label="Contract Value" icon={Landmark} href="/estimates?status=approved" tone="contract" {...contract} />
-      )}
-      {show('card_schedule') && <StatCard label="Schedule Risk" icon={CalendarClock} tone="schedule" {...schedule} />}
-      {show('card_receivables') && <StatCard label="Receivables" icon={Receipt} tone="receivables" {...ar} />}
+      {sequence
+        .filter((id) => !visible || visible.has(id))
+        .map((id) => (
+          <Fragment key={id}>{cards[id]}</Fragment>
+        ))}
     </>
   )
 }

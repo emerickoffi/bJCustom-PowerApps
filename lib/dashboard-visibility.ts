@@ -157,6 +157,187 @@ export function resolveVisibility(
   ) as Record<VisibilityItemId, boolean>
 }
 
+/**
+ * Card placement. Stored beside the visibility entries under LAYOUT_KEY in the same JSON column, so visibility and
+ * placement are always saved together. Positions are order within an area, never pixel coordinates.
+ */
+export type LayoutArea = 'summary' | 'above' | 'main' | 'side' | 'below'
+export type DashboardLayout = Record<LayoutArea, VisibilityItemId[]>
+export type DashboardSettings = { visibility: DashboardVisibility; layout: DashboardLayout }
+
+export const LAYOUT_KEY = '_layout'
+
+/** Reading order on every screen size: summary, full-width above, main, side, full-width below. */
+export const LAYOUT_AREAS: readonly LayoutArea[] = ['summary', 'above', 'main', 'side', 'below']
+
+export const AREA_LABELS: Record<LayoutArea, string> = {
+  summary: 'Summary row',
+  above: 'Above main content',
+  main: 'Main column',
+  side: 'Side column',
+  below: 'Below main content',
+}
+
+const DEFAULT_LAYOUT: DashboardLayout = {
+  summary: ['card_approval', 'card_contract', 'card_schedule', 'card_receivables'],
+  above: [],
+  main: ['attention', 'priority_jobs'],
+  side: ['coming_up', 'warranty', 'recent_activity'],
+  below: ['pipeline'],
+}
+
+/** Areas each item may occupy. Action Center and Priority Jobs need the main column's width. */
+export const ALLOWED_AREAS: Record<VisibilityItemId, readonly LayoutArea[]> = {
+  card_approval: ['summary'],
+  card_contract: ['summary'],
+  card_schedule: ['summary'],
+  card_receivables: ['summary'],
+  attention: ['main'],
+  priority_jobs: ['main'],
+  coming_up: ['main', 'side'],
+  warranty: ['main', 'side'],
+  recent_activity: ['main', 'side'],
+  pipeline: ['above', 'below'],
+}
+
+const ITEM_IDS = DASHBOARD_VISIBILITY_ITEMS.map((i) => i.id) as VisibilityItemId[]
+
+export function defaultLayout(): DashboardLayout {
+  return {
+    summary: [...DEFAULT_LAYOUT.summary],
+    above: [...DEFAULT_LAYOUT.above],
+    main: [...DEFAULT_LAYOUT.main],
+    side: [...DEFAULT_LAYOUT.side],
+    below: [...DEFAULT_LAYOUT.below],
+  }
+}
+
+function defaultAreaOf(id: VisibilityItemId): LayoutArea {
+  return LAYOUT_AREAS.find((a) => DEFAULT_LAYOUT[a].includes(id)) ?? ALLOWED_AREAS[id][0]
+}
+
+/**
+ * Normalizes stored placement. Unknown ids, duplicates, and incompatible areas are dropped. Items missing from the
+ * stored layout (never saved, or newly introduced) go into their default area right after the nearest default
+ * predecessor that is present, so the result is deterministic and every item appears exactly once.
+ */
+export function parseLayout(raw: unknown): DashboardLayout {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return defaultLayout()
+  const result: DashboardLayout = { summary: [], above: [], main: [], side: [], below: [] }
+  const seen = new Set<VisibilityItemId>()
+  for (const area of LAYOUT_AREAS) {
+    const list = (raw as Record<string, unknown>)[area]
+    if (!Array.isArray(list)) continue
+    for (const id of list) {
+      if (typeof id !== 'string' || !ITEM_IDS.includes(id as VisibilityItemId)) continue
+      const itemId = id as VisibilityItemId
+      if (seen.has(itemId) || !ALLOWED_AREAS[itemId].includes(area)) continue
+      seen.add(itemId)
+      result[area].push(itemId)
+    }
+  }
+  for (const id of ITEM_IDS) {
+    if (seen.has(id)) continue
+    const area = defaultAreaOf(id)
+    const defaults = DEFAULT_LAYOUT[area]
+    const predecessors = defaults.slice(0, defaults.indexOf(id))
+    let insertAt = 0
+    for (let i = result[area].length - 1; i >= 0; i--) {
+      if (predecessors.includes(result[area][i])) {
+        insertAt = i + 1
+        break
+      }
+    }
+    result[area].splice(insertAt, 0, id)
+    seen.add(id)
+  }
+  return result
+}
+
+/**
+ * Strict check for a submitted layout: every known item exactly once, each in an allowed area. Returns an error
+ * message instead of silently repairing, so an incompatible placement is rejected rather than saved differently.
+ */
+export function validateLayout(raw: unknown): { layout: DashboardLayout } | { error: string } {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { error: 'Dashboard layout is missing.' }
+  const result: DashboardLayout = { summary: [], above: [], main: [], side: [], below: [] }
+  const seen = new Set<string>()
+  for (const area of LAYOUT_AREAS) {
+    const list = (raw as Record<string, unknown>)[area] ?? []
+    if (!Array.isArray(list)) return { error: `${AREA_LABELS[area]} is not a valid list.` }
+    for (const id of list) {
+      if (typeof id !== 'string' || !ITEM_IDS.includes(id as VisibilityItemId)) return { error: 'Unknown dashboard card.' }
+      if (seen.has(id)) return { error: 'A dashboard card appears more than once.' }
+      const itemId = id as VisibilityItemId
+      if (!ALLOWED_AREAS[itemId].includes(area)) {
+        return { error: `${labelOf(itemId)} cannot be placed in the ${AREA_LABELS[area].toLowerCase()}.` }
+      }
+      seen.add(id)
+      result[area].push(itemId)
+    }
+  }
+  if (seen.size !== ITEM_IDS.length) return { error: 'Every dashboard card must have a position.' }
+  return { layout: result }
+}
+
+export function labelOf(id: VisibilityItemId): string {
+  return ITEM_BY_ID.get(id)?.label ?? id
+}
+
+export function areaOf(layout: DashboardLayout, id: VisibilityItemId): LayoutArea {
+  return LAYOUT_AREAS.find((a) => layout[a].includes(id)) ?? defaultAreaOf(id)
+}
+
+/**
+ * Places an item at a 1-based position in an area, shifting the others. Out-of-range positions are clamped and an
+ * incompatible area leaves the layout unchanged. The result always holds each item exactly once.
+ */
+export function placeItem(
+  layout: DashboardLayout,
+  id: VisibilityItemId,
+  area: LayoutArea,
+  position: number,
+): DashboardLayout {
+  if (!ALLOWED_AREAS[id].includes(area)) return layout
+  const next = Object.fromEntries(LAYOUT_AREAS.map((a) => [a, layout[a].filter((x) => x !== id)])) as DashboardLayout
+  const index = Math.min(Math.max(Math.trunc(position) - 1, 0), next[area].length)
+  next[area].splice(index, 0, id)
+  return next
+}
+
+/** Moves an item one position within its area. Returns the same layout at either end. */
+export function stepItem(layout: DashboardLayout, id: VisibilityItemId, direction: -1 | 1): DashboardLayout {
+  const area = areaOf(layout, id)
+  const index = layout[area].indexOf(id)
+  const target = index + direction
+  if (index === -1 || target < 0 || target >= layout[area].length) return layout
+  return placeItem(layout, id, area, target + 1)
+}
+
+export function isDefaultLayout(layout: DashboardLayout): boolean {
+  return LAYOUT_AREAS.every((a) => layout[a].join(',') === DEFAULT_LAYOUT[a].join(','))
+}
+
+export function defaultSettings(): DashboardSettings {
+  return { visibility: defaultVisibility(), layout: defaultLayout() }
+}
+
+/** Reads the stored column. Organizations without a saved layout keep the original arrangement. */
+export function parseDashboardSettings(raw: unknown): DashboardSettings {
+  const layoutRaw = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>)[LAYOUT_KEY] : null
+  return { visibility: parseVisibility(raw), layout: parseLayout(layoutRaw) }
+}
+
+export function isDefaultSettings(s: DashboardSettings): boolean {
+  return isDefaultVisibility(s.visibility) && isDefaultLayout(s.layout)
+}
+
+/** Stored form: null when everything matches the defaults, so new defaults keep applying. */
+export function serializeDashboardSettings(s: DashboardSettings): Record<string, unknown> | null {
+  if (isDefaultSettings(s)) return null
+  return { ...s.visibility, [LAYOUT_KEY]: s.layout }
+}
+
 /** Column classes for the key-figure row so hidden cards never leave holes. */
 export function kpiGridClass(count: number): string {
   if (count >= 4) return 'grid gap-4 sm:grid-cols-2 xl:grid-cols-4'
