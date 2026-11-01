@@ -1,5 +1,20 @@
 import Link from 'next/link'
-import { AlertTriangle, ArrowRight, CircleAlert, CircleCheck, Info, ListChecks } from 'lucide-react'
+import {
+  ArrowRight,
+  CalendarClock,
+  CircleAlert,
+  CircleCheck,
+  ClipboardList,
+  FileCheck2,
+  FileText,
+  ListChecks,
+  Receipt,
+  Settings2,
+  ShieldCheck,
+  UserRound,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -8,18 +23,30 @@ import {
   categoryCounts,
   type ActionCategory,
   type ActionItem,
-  type ActionSeverity,
 } from '@/lib/action-items'
 import type { ActionModuleIssue } from '@/lib/attention-data'
 
-const SEVERITY: Record<ActionSeverity, { label: string; icon: typeof Info; tone: string }> = {
-  critical: { label: 'Critical', icon: CircleAlert, tone: 'bg-destructive/8 text-destructive' },
-  warning: { label: 'Needs action', icon: AlertTriangle, tone: 'bg-champagne-soft text-warning' },
-  info: { label: 'Setup', icon: Info, tone: 'bg-muted text-muted-foreground' },
+const CATEGORY_ICONS: Record<ActionCategory, LucideIcon> = {
+  approvals: FileCheck2,
+  schedule: CalendarClock,
+  financial: Receipt,
+  documents: FileText,
+  client_data: UserRound,
+  compliance: ShieldCheck,
+  punch_list: ClipboardList,
+  warranty: Wrench,
+  setup: Settings2,
 }
 
 const DATE_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 const formatDate = (iso: string) => DATE_FORMAT.format(new Date(`${iso.slice(0, 10)}T00:00:00Z`))
+
+/** Urgency shown only where the source record backs it: a past real deadline, or a rule-assigned critical severity. */
+function urgencyOf(item: ActionItem, today: string): string | null {
+  if (item.dueDate && item.dueDate.slice(0, 10) < today) return 'Overdue'
+  if (item.severity === 'critical') return 'Critical'
+  return null
+}
 
 export type ActionCenterLinks = {
   /** Builds the URL for a category filter and page; kept server-side so filtering never relies on the client. */
@@ -27,53 +54,72 @@ export type ActionCenterLinks = {
   viewAll?: string
 }
 
-function ActionRow({ item }: { item: ActionItem }) {
-  const s = SEVERITY[item.severity]
-  const Icon = s.icon
+function ActionRow({ item, today }: { item: ActionItem; today: string }) {
+  const Icon = CATEGORY_ICONS[item.category]
+  const urgency = urgencyOf(item, today)
   const date = item.dueDate
     ? { label: `Due ${formatDate(item.dueDate)}`, iso: item.dueDate }
     : item.createdAt
-      ? { label: formatDate(item.createdAt), iso: item.createdAt }
+      ? { label: `Created ${formatDate(item.createdAt)}`, iso: item.createdAt }
       : null
+  const meta = [item.projectName, ACTION_CATEGORY_LABELS[item.category]].filter(Boolean) as string[]
   return (
-    <li className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between">
-      <div className="flex min-w-0 gap-3">
-        <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg', s.tone)}>
-          <Icon className="size-4" aria-hidden="true" />
-          <span className="sr-only">{s.label}</span>
-        </span>
-        <div className="flex min-w-0 flex-col gap-1">
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-            <span className="rounded-full bg-sage px-2 py-0.5 font-medium text-primary">{ACTION_CATEGORY_LABELS[item.category]}</span>
-            {item.projectName && <span className="font-medium text-primary">{item.projectName}</span>}
-            {date && (
-              <>
-                <span className="text-muted-foreground" aria-hidden="true">
+    <li className="flex gap-3 py-3.5 first:pt-0 last:pb-0">
+      <span
+        className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground"
+        aria-hidden="true"
+      >
+        <Icon className="size-4" />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <p className="text-pretty text-sm font-semibold leading-snug text-foreground">{item.title}</p>
+          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+            {urgency && (
+              <span className="inline-flex items-center gap-1 font-medium text-destructive">
+                <CircleAlert className="size-3.5" aria-hidden="true" />
+                {urgency}
+                <span aria-hidden="true" className="text-muted-foreground">
                   ·
                 </span>
-                <time dateTime={date.iso} className="text-muted-foreground">
+              </span>
+            )}
+            {meta.map((m, i) => (
+              <span key={m} className={cn(i === 0 && item.projectName && 'font-medium text-foreground/80')}>
+                {i > 0 && (
+                  <span aria-hidden="true" className="mr-1.5">
+                    ·
+                  </span>
+                )}
+                {m}
+              </span>
+            ))}
+            {date && (
+              <span>
+                <span aria-hidden="true" className="mr-1.5">
+                  ·
+                </span>
+                <time dateTime={date.iso} className={cn(urgency === 'Overdue' && 'font-medium text-destructive')}>
                   {date.label}
                 </time>
-              </>
+              </span>
             )}
           </p>
-          <p className="text-pretty text-sm font-semibold leading-snug text-foreground">{item.title}</p>
           {item.description && (
-            <p className="line-clamp-2 text-pretty text-xs leading-relaxed text-muted-foreground">{item.description}</p>
+            <p className="line-clamp-2 text-pretty text-xs leading-relaxed text-muted-foreground sm:line-clamp-1">
+              {item.description}
+            </p>
           )}
         </div>
+        <Link
+          href={item.href}
+          className="group -mx-2 inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-md px-2 text-sm font-medium text-primary hover:bg-sage/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mx-0 sm:self-center"
+        >
+          {item.actionLabel}
+          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+          <span className="sr-only">{`: ${item.title}`}</span>
+        </Link>
       </div>
-      <Button
-        size="sm"
-        variant={item.severity === 'info' ? 'outline' : 'default'}
-        render={<Link href={item.href} />}
-        nativeButton={false}
-        className="min-h-11 shrink-0 self-start sm:min-h-9 sm:self-center"
-      >
-        {item.actionLabel}
-        <ArrowRight data-icon="inline-end" aria-hidden="true" />
-        <span className="sr-only">{`: ${item.title}`}</span>
-      </Button>
     </li>
   )
 }
@@ -90,23 +136,35 @@ function CategoryFilters({
   const counts = categoryCounts(items)
   const present = ACTION_CATEGORIES.filter((c) => counts[c])
   if (present.length < 2 && !selected) return null
-  const chip = (active: boolean) =>
+  const tab = (active: boolean) =>
     cn(
-      'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors',
-      active ? 'border-primary bg-primary text-primary-foreground' : 'bg-card text-foreground hover:bg-sage/60',
+      '-mb-px inline-flex min-h-10 items-center gap-1.5 border-b-2 px-1 text-sm transition-colors focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      active
+        ? 'border-primary font-semibold text-foreground'
+        : 'border-transparent font-medium text-muted-foreground hover:border-border hover:text-foreground',
     )
+  const count = (active: boolean, n: number) => (
+    <span
+      className={cn(
+        'rounded-full px-1.5 text-xs tabular-nums',
+        active ? 'bg-sage text-primary' : 'bg-muted text-muted-foreground',
+      )}
+    >
+      {n}
+    </span>
+  )
   return (
     <nav aria-label="Filter actions by category" className="-mx-1 overflow-x-auto px-1">
-      <ul className="flex w-max gap-2">
+      <ul className="flex w-max min-w-full gap-5 border-b">
         <li>
-          <Link href={links.href(null)} scroll={false} className={chip(!selected)} aria-current={!selected ? 'true' : undefined}>
-            All <span className="tabular-nums opacity-75">{items.length}</span>
+          <Link href={links.href(null)} scroll={false} className={tab(!selected)} aria-current={!selected ? 'true' : undefined}>
+            All {count(!selected, items.length)}
           </Link>
         </li>
         {present.map((c) => (
           <li key={c}>
-            <Link href={links.href(c)} scroll={false} className={chip(selected === c)} aria-current={selected === c ? 'true' : undefined}>
-              {ACTION_CATEGORY_LABELS[c]} <span className="tabular-nums opacity-75">{counts[c]}</span>
+            <Link href={links.href(c)} scroll={false} className={tab(selected === c)} aria-current={selected === c ? 'true' : undefined}>
+              {ACTION_CATEGORY_LABELS[c]} {count(selected === c, counts[c] ?? 0)}
             </Link>
           </li>
         ))}
@@ -157,39 +215,27 @@ export function ActionCenter({
   const current = Math.min(Math.max(1, page), pages)
   const visible = filtered.slice((current - 1) * limit, current * limit)
   const countLabel = `${items.length}${totalIsLowerBound ? '+' : ''}`
-  const hasCritical = items.some((i) => i.severity === 'critical')
+  const today = new Date().toISOString().slice(0, 10)
 
   return (
-    <section
-      aria-labelledby="action-center-heading"
-      className={cn('surface relative flex flex-col gap-5 overflow-hidden p-5 md:p-6', items.length > 0 && 'shadow-lift')}
-    >
-      {items.length > 0 && (
-        <span className={cn('absolute inset-x-0 top-0 h-1', hasCritical ? 'bg-destructive/80' : 'bg-champagne')} aria-hidden="true" />
-      )}
-      <div className="flex items-start justify-between gap-4 border-b pb-4">
-        <div className="flex items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sage text-primary" aria-hidden="true">
-            <ListChecks className="size-5" />
-          </span>
-          <div className="flex flex-col gap-1">
+    <section aria-labelledby="action-center-heading" className="surface flex flex-col gap-4 p-5 md:p-6">
+      <div className="flex items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary" aria-hidden="true">
+          <ListChecks className="size-[1.125rem]" />
+        </span>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
             <Heading id="action-center-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
               Action Center
             </Heading>
-            <p className="text-sm text-muted-foreground">Everything waiting on you, across your projects.</p>
+            {items.length > 0 && (
+              <span className="rounded-full border border-primary/15 bg-sage px-2 py-0.5 text-xs font-medium tabular-nums text-primary">
+                {`${countLabel} pending`}
+              </span>
+            )}
           </div>
+          <p className="text-sm text-muted-foreground">Everything waiting on you, across your projects.</p>
         </div>
-        {items.length > 0 && (
-          <span
-            className="flex min-w-11 flex-col items-center rounded-xl bg-brand-deep px-3 py-1.5 text-white"
-            aria-label={`${countLabel} open action ${items.length === 1 ? 'item' : 'items'}`}
-          >
-            <span className="font-serif text-2xl font-semibold leading-none tabular-nums">{countLabel}</span>
-            <span className="text-[0.65rem] font-medium uppercase tracking-wide text-champagne" aria-hidden="true">
-              Open
-            </span>
-          </span>
-        )}
       </div>
 
       <CategoryFilters items={items} selected={selected} links={links} />
@@ -211,7 +257,7 @@ export function ActionCenter({
       ) : (
         <ul className="flex flex-col divide-y">
           {visible.map((item) => (
-            <ActionRow key={item.id} item={item} />
+            <ActionRow key={item.id} item={item} today={today} />
           ))}
         </ul>
       )}
