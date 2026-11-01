@@ -169,7 +169,8 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
   return (
     <section aria-labelledby="priority-jobs-heading" className="surface flex flex-col">
       <DashboardSectionHeader
-        className="rounded-t-[inherit] border-b border-[#D8E3DA] bg-[#EDF3EE] p-4 md:p-6"
+        compact
+        className="rounded-t-[inherit] border-b border-[#E1E7E2] bg-[#F7F9F7] px-4 py-3 md:px-6"
         id="priority-jobs-heading"
         title="Priority Jobs"
         description="Ordered by verified risk, then by what is due next"
@@ -177,14 +178,14 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
         action={
           <Link
             href="/projects"
-            className="group flex min-h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-primary hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="group -mr-2 flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-primary hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             View All Jobs
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </Link>
         }
       />
-      <div className="flex flex-col gap-4 rounded-b-[inherit] bg-card p-4 md:p-6">
+      <div className="flex flex-col gap-4 rounded-b-[inherit] bg-card px-4 pb-4 pt-3 md:px-6 md:pb-6 md:pt-4">
       {jobs.length === 0 ? (
         <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">No projects yet.</p>
       ) : (
