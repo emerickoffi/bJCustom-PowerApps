@@ -17,14 +17,22 @@ type DeferredPrintButtonProps = {
 export function DeferredPrintButton({ size }: DeferredPrintButtonProps) {
   const [pending, setPending] = useState(false)
   const pendingRef = useRef(false)
+  const mountedRef = useRef(false)
+  const scheduledRef = useRef<{ frame: number; timeout: number }>({ frame: 0, timeout: 0 })
 
   useEffect(() => {
+    mountedRef.current = true
     const reset = () => {
       pendingRef.current = false
-      setPending(false)
+      if (mountedRef.current) setPending(false)
     }
     window.addEventListener('afterprint', reset)
-    return () => window.removeEventListener('afterprint', reset)
+    return () => {
+      mountedRef.current = false
+      cancelAnimationFrame(scheduledRef.current.frame)
+      clearTimeout(scheduledRef.current.timeout)
+      window.removeEventListener('afterprint', reset)
+    }
   }, [])
 
   function handleClick() {
@@ -32,14 +40,14 @@ export function DeferredPrintButton({ size }: DeferredPrintButtonProps) {
     pendingRef.current = true
     setPending(true)
 
-    requestAnimationFrame(() => {
-      setTimeout(() => {
+    scheduledRef.current.frame = requestAnimationFrame(() => {
+      scheduledRef.current.timeout = window.setTimeout(() => {
         try {
           window.print()
         } finally {
           // Some browsers never fire afterprint; print() returning means the dialog closed.
           pendingRef.current = false
-          setPending(false)
+          if (mountedRef.current) setPending(false)
         }
       }, 0)
     })
