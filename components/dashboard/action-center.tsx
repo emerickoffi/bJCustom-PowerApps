@@ -219,8 +219,7 @@ export function ActionCenter({
 
   return (
     <section aria-labelledby="action-center-heading" className="surface flex flex-col">
-      <div className="flex items-start gap-3 rounded-t-[inherit] border-b bg-[#F6F8F6] px-5 py-4 md:px-6">
-
+      <div className="flex items-start gap-3 rounded-t-[inherit] border-b border-[#D8E3DA] bg-[#EDF3EE] p-4 md:p-6">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary" aria-hidden="true">
           <ListChecks className="size-[1.125rem]" />
         </span>
@@ -239,7 +238,7 @@ export function ActionCenter({
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 p-5 md:p-6">
+      <div className="flex flex-col gap-4 bg-card p-4 md:p-6 rounded-b-[inherit]">
       <CategoryFilters items={items} selected={selected} links={links} />
 
       {visible.length === 0 ? (

@@ -169,7 +169,7 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
   return (
     <section aria-labelledby="priority-jobs-heading" className="surface flex flex-col">
       <DashboardSectionHeader
-        className="rounded-t-[inherit] border-b bg-[#F6F8F6] px-4 py-4 md:px-5"
+        className="rounded-t-[inherit] border-b border-[#D8E3DA] bg-[#EDF3EE] p-4 md:p-6"
         id="priority-jobs-heading"
         title="Priority Jobs"
         description="Ordered by verified risk, then by what is due next"
@@ -184,7 +184,7 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
           </Link>
         }
       />
-      <div className="flex flex-col gap-4 p-4 md:p-5">
+      <div className="flex flex-col gap-4 rounded-b-[inherit] bg-card p-4 md:p-6">
       {jobs.length === 0 ? (
         <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">No projects yet.</p>
       ) : (
