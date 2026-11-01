@@ -138,7 +138,8 @@ function useInlineControlsInView(targets: CameraTarget[]) {
     const observer = new IntersectionObserver(
       (entries) =>
         setInView((prev) => {
-          const next = new Set(prev)
+          const live = new Set(byElement.values())
+          const next = new Set([...prev].filter((id) => live.has(id)))
           for (const entry of entries) {
             const id = byElement.get(entry.target)
             if (!id) continue
@@ -160,12 +161,22 @@ function FloatingCameraButton({ targets, placement }: { targets: CameraTarget[];
   const inView = useInlineControlsInView(targets)
   const inlineVisible = targets.some((t) => inView.has(t.id))
 
-  if (!targets.length || (inlineVisible && !open)) return null
+  if (!targets.length) return null
+
+  // Stay mounted while the module's inline controls are on screen: unmounting on every
+  // observer flip made the hit target vanish mid-scroll and swallowed taps.
+  const stepAside = inlineVisible && !open
 
   return (
     <div
       data-floating-control
-      className={cn('group fixed z-40 print:hidden', placement === 'above-assistant' ? FLOATING_ABOVE_ASSISTANT : FLOATING_CORNER_SECONDARY)}
+      inert={stepAside}
+      aria-hidden={stepAside || undefined}
+      className={cn(
+        'group fixed z-40 transition-opacity duration-150 print:hidden',
+        placement === 'above-assistant' ? FLOATING_ABOVE_ASSISTANT : FLOATING_CORNER_SECONDARY,
+        stepAside && 'pointer-events-none opacity-0',
+      )}
     >
       <span
         role="presentation"
@@ -180,13 +191,13 @@ function FloatingCameraButton({ targets, placement }: { targets: CameraTarget[];
         <DropdownMenuTrigger
           aria-label="Take or upload photo"
           className={cn(
-            'flex size-11 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition-colors',
+            'flex size-11 cursor-pointer touch-manipulation select-none items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition-colors [-webkit-tap-highlight-color:transparent]',
             'hover:border-primary/40 hover:bg-sage/60',
             'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25',
             open && 'border-primary/40 bg-sage/60',
           )}
         >
-          <Camera className="size-5" aria-hidden="true" />
+          <Camera className="pointer-events-none size-5" aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent side="left" align="end" sideOffset={12} className="w-56">
           {targets.map((target, index) => (
@@ -196,17 +207,17 @@ function FloatingCameraButton({ targets, placement }: { targets: CameraTarget[];
                 {target.label}
               </DropdownMenuLabel>
               {target.kind === 'save-first' ? (
-                <DropdownMenuItem disabled={target.disabled} onSelect={target.onSelect}>
+                <DropdownMenuItem disabled={target.disabled} onClick={target.onSelect}>
                   <Save aria-hidden="true" />
                   {target.actionLabel}
                 </DropdownMenuItem>
               ) : (
                 <>
-                  <DropdownMenuItem disabled={target.disabled} onSelect={() => target.camera.current?.click()}>
+                  <DropdownMenuItem disabled={target.disabled} onClick={() => target.camera.current?.click()}>
                     <Camera aria-hidden="true" />
                     Take Photo
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled={target.disabled} onSelect={() => target.gallery.current?.click()}>
+                  <DropdownMenuItem disabled={target.disabled} onClick={() => target.gallery.current?.click()}>
                     <ImagePlus aria-hidden="true" />
                     Upload from Gallery
                   </DropdownMenuItem>
