@@ -21,6 +21,10 @@ export type PriorityJob = {
   health: HealthLevel | null
   /** Activities in the current stage; null when scheduling is off or the stage has no working schedule. */
   stageActivities: StageActivities | null
+  /** Completed jobs remain listed only with a verified open action item; this is its title. */
+  closeoutReason?: string | null
+  /** Whether the Schedule module is on, so a "Set up schedule" link leads somewhere real. */
+  canSetUpSchedule?: boolean
   summary: JobSummary
 }
 
@@ -105,9 +109,31 @@ function CurrentStage({ job }: { job: PriorityJob }) {
 function NextActivity({ job }: { job: PriorityJob }) {
   const data = job.stageActivities
   const muted = (text: string) => <span className="text-xs text-muted-foreground">{text}</span>
+  if (job.closeoutReason)
+    return (
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate text-sm text-foreground" title={job.closeoutReason}>
+          {job.closeoutReason}
+        </span>
+        {muted('Open closeout action')}
+      </div>
+    )
   if (!data) return muted(job.status === 'on_hold' ? 'Paused while on hold' : 'No active stage schedule')
   if (data.state === 'unavailable') return muted('Activities could not be loaded')
-  if (data.state === 'empty') return muted('No activities scheduled')
+  if (data.state === 'empty')
+    return (
+      <div className="flex min-w-0 flex-col items-start gap-0.5">
+        {muted('No activities scheduled')}
+        {job.canSetUpSchedule && (
+          <Link
+            href={`/projects/${job.id}/schedule`}
+            className={cn('relative z-10 text-xs font-medium text-primary underline-offset-2 hover:underline', focusRing)}
+          >
+            Set up schedule
+          </Link>
+        )}
+      </div>
+    )
   if (data.state === 'complete') return <span className="text-xs text-foreground/80">All stage activities complete</span>
 
   const { activity } = data

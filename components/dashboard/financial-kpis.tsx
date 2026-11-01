@@ -53,7 +53,11 @@ export function FinancialKpis({ metrics, scheduleRisk }: { metrics: FinancialMet
             ? scheduleRisk.value.atRisk > 1
               ? `${scheduleRisk.value.headline} (+${scheduleRisk.value.atRisk - 1} more)`
               : scheduleRisk.value.headline
-            : `No verified risk across ${plural(scheduleRisk.value.evaluated, 'evaluated project')}`,
+            : scheduleRisk.value.evaluated === 0
+              ? scheduleRisk.value.total
+                ? `Not assessed: ${plural(scheduleRisk.value.total, 'active job')} without dated schedules`
+                : 'No active jobs to assess'
+              : `No verified risks · ${scheduleRisk.value.evaluated} of ${plural(scheduleRisk.value.total, 'active job')} assessed`,
           href: scheduleRisk.value.projectId ? `/projects/${scheduleRisk.value.projectId}/schedule` : '/actions?category=schedule',
           accent: scheduleRisk.value.critical ? ('danger' as const) : scheduleRisk.value.atRisk ? ('warning' as const) : undefined,
         }

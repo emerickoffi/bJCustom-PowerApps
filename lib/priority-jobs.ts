@@ -2,7 +2,7 @@ import { isStatusTransitionAllowed, PROJECT_PIPELINE, type ProjectStatus } from 
 import type { HealthLevel, ProjectHealth } from './project-health.ts'
 import { rankPortfolio, type PortfolioRow, type PortfolioSignals } from './portfolio.ts'
 
-export const PRIORITY_JOBS_LIMIT = 6
+export const PRIORITY_JOBS_LIMIT = 5
 
 const HEALTH_RANK: Partial<Record<HealthLevel, number>> = { at_risk: 0, needs_attention: 1 }
 

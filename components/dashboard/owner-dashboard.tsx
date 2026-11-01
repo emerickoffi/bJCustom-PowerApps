@@ -8,7 +8,15 @@ import { RecentActivity } from '@/components/dashboard/recent-activity'
 import { WarrantyRail } from '@/components/dashboard/warranty-rail'
 import { isActionCategory } from '@/lib/action-items'
 import { getActionItems } from '@/lib/attention-data'
-import { buildComingUp, COMING_UP_DAYS, type ProposedStartInput } from '@/lib/coming-up'
+import {
+  buildComingUp,
+  COMING_UP_DAYS,
+  COMING_UP_RANGE_DAYS,
+  DEFAULT_COMING_UP_RANGE,
+  parseComingUpRange,
+  type ComingUpRange,
+  type ProposedStartInput,
+} from '@/lib/coming-up'
 import { getDashboardCardDetails } from '@/lib/dashboard-cards'
 import type { DashboardSectionId } from '@/lib/dashboard-sections'
 import { loadAgenda, loadProjectHealth, loadWarrantyOverview } from '@/lib/dashboard-workspace-data'
@@ -34,11 +42,19 @@ export async function OwnerDashboard({
 }: {
   session: Awaited<ReturnType<typeof requireStaff>>
   features: Awaited<ReturnType<typeof getOrgFeatures>>
-  query: { actions?: string }
+  query: { actions?: string; agenda?: string }
 }) {
   const supabase = await createClient()
   const orgId = session.organizationId
   const selectedAction = isActionCategory(query.actions) ? query.actions : null
+  const agendaRange = parseComingUpRange(query.agenda)
+  const dashboardHref = (params: { actions?: string | null; agenda?: ComingUpRange }) => {
+    const search = new URLSearchParams()
+    if (params.actions) search.set('actions', params.actions)
+    if (params.agenda && params.agenda !== DEFAULT_COMING_UP_RANGE) search.set('agenda', params.agenda)
+    const qs = search.toString()
+    return qs ? `/dashboard?${qs}` : '/dashboard'
+  }
 
   const [projectsRes, activityRes, signals, agendaData, warranty, attention] = await Promise.all([
     supabase
@@ -77,7 +93,15 @@ export async function OwnerDashboard({
     }),
   ])
 
-  const priorityIds = rankPriorityJobs(rows, signals, health.byId)
+  /** Completed jobs stay listed only while a verified open action item is still attached to them. */
+  const closeoutReasons = new Map<string, string>()
+  for (const item of attention.items) {
+    if (item.projectId && !closeoutReasons.has(item.projectId)) closeoutReasons.set(item.projectId, item.title)
+  }
+  const priorityEligible = rows.filter(
+    (r) => r.status !== 'cancelled' && (r.status !== 'completed' || closeoutReasons.has(r.id)),
+  )
+  const priorityIds = rankPriorityJobs(priorityEligible, signals, health.byId)
   const { data: summaryData } = priorityIds.length
     ? await supabase.from('projects').select(PROJECT_SUMMARY_COLUMNS).eq('organization_id', orgId).in('id', priorityIds)
     : { data: [] }
@@ -105,6 +129,8 @@ export async function OwnerDashboard({
       contractCents: budget?.state === 'established' ? budget.contractCents : null,
       health: h?.level ?? null,
       stageActivities: d?.stageActivities ?? null,
+      closeoutReason: p.status === 'completed' ? (closeoutReasons.get(p.id) ?? null) : null,
+      canSetUpSchedule: features.schedule,
       summary: summarizeJob({
         status: p.status as ProjectStatus,
         progressPercent: p.progress_percent,
@@ -120,11 +146,14 @@ export async function OwnerDashboard({
 
   const activityTotal = activityRes.error ? null : (activityRes.count ?? null)
 
+  const assigneeNames = await getProfileNames(agendaData.activities.map((a) => a.assigned_to ?? null))
   const comingUp = buildComingUp({
     today: agendaData.today,
-    agenda: agendaData.agenda.week,
+    days: COMING_UP_RANGE_DAYS[agendaRange],
+    activities: agendaData.activities,
     proposedStarts: rows as ProposedStartInput[],
     warranties: warranty.state === 'available' ? warranty.value.rows : [],
+    assigneeNames,
   })
 
   return (
@@ -157,7 +186,7 @@ export async function OwnerDashboard({
               selected={selectedAction}
               limit={5}
               links={{
-                href: (category) => (category ? `/dashboard?actions=${category}` : '/dashboard'),
+                href: (category) => dashboardHref({ actions: category, agenda: agendaRange }),
                 viewAll: selectedAction ? `/actions?category=${selectedAction}` : '/actions',
               }}
             />
@@ -173,7 +202,12 @@ export async function OwnerDashboard({
 
         <aside aria-label="Upcoming and recent" className="flex min-w-0 flex-col gap-6">
           <div data-dashboard-section={'coming_up' satisfies DashboardSectionId}>
-            <ComingUp events={comingUp} days={COMING_UP_DAYS} scheduleEnabled={features.schedule} />
+            <ComingUp
+              events={comingUp}
+              range={agendaRange}
+              hrefFor={(agenda) => dashboardHref({ actions: selectedAction, agenda })}
+              scheduleEnabled={features.schedule}
+            />
           </div>
           <div className="lg:hidden" data-dashboard-section={'priority_jobs' satisfies DashboardSectionId}>
             <PriorityJobs jobs={jobs} />
@@ -186,10 +220,9 @@ export async function OwnerDashboard({
               items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
               updates={attention.updates}
               defaultOpen
-              visibleLimit={5}
+              visibleLimit={3}
               total={activityTotal === null ? undefined : activityTotal + attention.updatesTotal}
               totalIsLowerBound={activityTotal === null || attention.updatesTotalIsLowerBound}
-              matchHeightTo={PRIORITY_JOBS_ANCHOR}
             />
           </div>
         </aside>
