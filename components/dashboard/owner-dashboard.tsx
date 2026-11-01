@@ -30,7 +30,7 @@ import { loadPortfolioSignals } from '@/lib/portfolio-data'
 import type { PortfolioRow } from '@/lib/portfolio'
 import { rankPriorityJobs, summarizeJob } from '@/lib/priority-jobs'
 import { getProfileNames, PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
-import type { requireStaff } from '@/lib/session'
+import { canManage, type requireStaff } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 
 type ProjectRow = PortfolioRow & { name: string; progress_percent: number | null; proposed_start_date: string | null }
@@ -134,7 +134,7 @@ export async function OwnerDashboard({
       health: h?.level ?? null,
       stageActivities: d?.stageActivities ?? null,
       closeoutReason: p.status === 'completed' ? (closeoutReasons.get(p.id) ?? null) : null,
-      canSetUpSchedule: features.schedule,
+      canSetUpSchedule: features.schedule && canManage(session.role),
       summary: summarizeJob({
         status: p.status as ProjectStatus,
         progressPercent: p.progress_percent,
