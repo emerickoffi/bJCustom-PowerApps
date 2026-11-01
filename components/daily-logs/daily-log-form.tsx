@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { forwardRef, useActionState, useCallback, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { AlertTriangle, CalendarDays, Camera, CloudSun, HardHat, ListChecks, Plus, Trash2, Truck } from 'lucide-react'
@@ -11,6 +11,7 @@ import { FormActions, FormSection, TextAreaField, TextField } from '@/components
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useFloatingCameraSaveFirst } from '@/components/camera/floating-camera'
 
 type CrewRow = {
   key: number
@@ -69,7 +70,24 @@ export function DailyLogForm({
   cancelHref: string
 }) {
   const showCompany = companies.length > 0 || defaults.crews.some((c) => c.subcontractor_company_id)
-  const [state, action] = useActionState(saveDailyLogAction, initialActionState)
+  const [state, action, pending] = useActionState(saveDailyLogAction, initialActionState)
+  const formRef = useRef<HTMLFormElement>(null)
+  const photosSubmitRef = useRef<HTMLButtonElement>(null)
+  const photosInlineRef = useRef<HTMLDivElement>(null)
+  // Submits through the existing "Save and add photos" button so the same validation and
+  // `intent=photos` redirect apply; a failed save stays on this form with values intact.
+  const saveAndAddPhotos = useCallback(() => {
+    const submitter = photosSubmitRef.current
+    if (submitter) formRef.current?.requestSubmit(submitter)
+  }, [])
+  useFloatingCameraSaveFirst({
+    label: defaults.id ? 'Unsaved changes' : 'Unsaved daily log',
+    actionLabel: defaults.id ? 'Save Changes & Take Photo' : 'Save Draft & Take Photo',
+    enabled: true,
+    disabled: pending,
+    onSelect: saveAndAddPhotos,
+    inline: photosInlineRef,
+  })
   const [crews, setCrews] = useState<CrewRow[]>(() => (defaults.crews.length ? defaults.crews : [blankCrew]).map((c, i) => ({ ...c, key: i })))
   const [nextKey, setNextKey] = useState(crews.length)
   const [selected, setSelected] = useState(() => new Set(defaults.activityIds))
@@ -92,7 +110,7 @@ export function DailyLogForm({
     })
 
   return (
-    <form action={action} className="flex flex-col gap-6">
+    <form ref={formRef} action={action} className="flex flex-col gap-6">
       <input type="hidden" name="project_id" value={projectId} />
       {defaults.id && <input type="hidden" name="id" value={defaults.id} />}
       {defaults.version && <input type="hidden" name="version" value={defaults.version} />}
@@ -228,9 +246,9 @@ export function DailyLogForm({
             : 'Photos attach to a saved log. Use Save and add photos to save this draft and go straight to the camera and upload options.'
         }
       >
-        <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border bg-muted/40 p-4 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
+        <div ref={photosInlineRef} className="flex flex-col gap-3 rounded-lg border border-dashed border-border bg-muted/40 p-4 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">Take site photos with your camera or upload them from your device, then add captions.</p>
-          <SaveAndAddPhotosButton />
+          <SaveAndAddPhotosButton ref={photosSubmitRef} />
         </div>
       </FormSection>
 
@@ -247,15 +265,15 @@ export function DailyLogForm({
   )
 }
 
-function SaveAndAddPhotosButton() {
+const SaveAndAddPhotosButton = forwardRef<HTMLButtonElement>(function SaveAndAddPhotosButton(_props, ref) {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" name="intent" value="photos" variant="outline" size="lg" disabled={pending} className="h-12 w-full shrink-0 sm:h-11 sm:w-auto">
+    <Button ref={ref} type="submit" name="intent" value="photos" variant="outline" size="lg" disabled={pending} className="h-12 w-full shrink-0 sm:h-11 sm:w-auto">
       <Camera aria-hidden="true" />
       {pending ? 'Saving...' : 'Save and add photos'}
     </Button>
   )
-}
+})
 
 function CompanySelect({
   value,
