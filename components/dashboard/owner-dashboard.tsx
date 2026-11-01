@@ -242,7 +242,7 @@ export async function OwnerDashboard({
         items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
         updates={attention.updates}
         defaultOpen
-        visibleLimit={3}
+        visibleLimit={2}
         total={activityTotal === null ? undefined : activityTotal + attention.updatesTotal}
         totalIsLowerBound={activityTotal === null || attention.updatesTotalIsLowerBound}
       />

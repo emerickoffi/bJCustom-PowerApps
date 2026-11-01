@@ -31,8 +31,8 @@ export function FinancialKpis({
       ? (() => {
           const { amountCents, count, items } = estimates.value.awaitingApproval
           return {
-            value: count ? formatCents(amountCents) : '0',
-            countTo: count ? { value: amountCents, format: 'cents' as const } : { value: 0, format: 'count' as const },
+            value: `${count} pending`,
+            subValue: `Proposed value: ${formatCents(amountCents)}`,
             hint: count
               ? count === 1
                 ? `${items[0].estimateNumber} signed and awaiting your decision`
