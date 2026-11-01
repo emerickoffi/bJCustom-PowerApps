@@ -15,22 +15,29 @@ const ACCENT: Record<Accent, string> = {
 
 export type StatTone = 'approval' | 'contract' | 'schedule' | 'receivables'
 
-const TONE: Record<StatTone, { card: string; icon: string }> = {
+const WHITE_CARD = 'bg-card hover:border-[#B9C7BE]'
+
+/**
+ * Contract Value is the single brand-emphasis card; it re-points the text tokens to light values so the
+ * shared markup below stays readable on the solid green. `alert` applies only when the card's data warrants it.
+ */
+const TONE: Record<StatTone, { card: string; icon: string; alert?: string }> = {
   approval: {
-    card: 'bg-[#F7EEDC] border-[#E6D6B8] hover:border-[#CDB68C]',
-    icon: 'bg-[#805B20]/12 text-[#805B20]',
+    card: WHITE_CARD,
+    icon: 'bg-[#F7EDD7] text-[#8A5D12]',
+    alert: 'border-[#E3CB98] shadow-[inset_3px_0_0_#B7862F,var(--shadow-soft)] hover:border-[#C9A35E]',
   },
   contract: {
-    card: 'bg-[#E5F0E8] border-[#CADDCF] hover:border-[#A6C4AE]',
-    icon: 'bg-[#256345]/12 text-[#256345]',
+    card: 'border-[#18543D] bg-[#18543D] hover:border-[#123D2E] [--foreground:#FFFFFF] [--muted-foreground:#E0ECE4] [--primary:#FFFFFF]',
+    icon: 'bg-white/12 text-white',
   },
   schedule: {
-    card: 'bg-[#E7EDF6] border-[#CDD8E8] hover:border-[#A9BBD6]',
-    icon: 'bg-[#41618D]/12 text-[#41618D]',
+    card: WHITE_CARD,
+    icon: 'bg-[#E8EFF7] text-[#365F88]',
   },
   receivables: {
-    card: 'bg-[#EEEAE5] border-[#DBD3CA] hover:border-[#BFB2A4]',
-    icon: 'bg-[#6B5848]/12 text-[#6B5848]',
+    card: WHITE_CARD,
+    icon: 'bg-[#E3F1EE] text-[#176B66]',
   },
 }
 
@@ -64,6 +71,8 @@ export function StatCard({
 }) {
   const toned = tone ? TONE[tone] : undefined
   const statusDot = toned ? STATUS_DOT[accent] : undefined
+  const alertCard = toned?.alert && accent === 'champagne' ? toned.alert : undefined
+  const toneIcon = toned && (statusDot ? ACCENT[accent] : toned.icon)
 
   return (
     <Link
@@ -71,13 +80,13 @@ export function StatCard({
       aria-label={`${label}: ${value}${subValue ? `. ${subValue}` : ''}${hint ? `. ${hint}` : ''}. View details.`}
       className={cn(
         'group surface flex h-full flex-col transition-[border-color,box-shadow] duration-200 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-        toned ? cn('gap-3 p-[18px] xl:min-h-44 xl:p-5', toned.card) : 'gap-3.5 p-5 hover:border-primary/25 xl:p-6',
+        toned ? cn('gap-3 p-[18px] xl:min-h-44 xl:p-5', toned.card, alertCard) : 'gap-3.5 p-5 hover:border-primary/25 xl:p-6',
       )}
     >
       {toned ? (
         <div className="flex items-center gap-3">
           {Icon && (
-            <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', toned.icon)} aria-hidden="true">
+            <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', toneIcon)} aria-hidden="true">
               <Icon className="size-5" />
             </span>
           )}

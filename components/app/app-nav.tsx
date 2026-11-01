@@ -81,16 +81,23 @@ function NavLink({
       title={collapsed ? label : undefined}
       className={cn(
         'group relative flex h-10 items-center gap-3 rounded-[0.625rem] px-3.5 text-sm font-medium transition-colors duration-150',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/45 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
         collapsed && 'justify-center px-0',
         active
-          ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_1px_2px_rgb(23_77_50/0.18),0_4px_12px_-6px_rgb(23_77_50/0.45)]'
+          ? 'bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-[inset_0_0_0_1px_var(--sidebar-active-border)]'
           : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
         muted && !active && 'text-sidebar-muted',
       )}
     >
       <Icon
-        className={cn('size-[1.125rem] shrink-0', active ? 'text-champagne' : 'text-current')}
+        className={cn(
+          'size-[1.125rem] shrink-0',
+          active
+            ? 'text-sidebar-primary-foreground'
+            : muted
+              ? 'text-current'
+              : 'text-sidebar-icon group-hover:text-sidebar-accent-foreground',
+        )}
         aria-hidden="true"
       />
       <span className={cn('truncate', collapsed && 'sr-only')}>{label}</span>

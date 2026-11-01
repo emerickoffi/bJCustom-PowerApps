@@ -28,11 +28,6 @@ import {
   type HeaderNotification,
 } from '@/components/app/top-bar'
 
-function monogramFor(name: string) {
-  const letters = name.match(/[A-Z]/g)
-  return letters && letters.length >= 2 ? `${letters[0]}${letters[1]}` : name.slice(0, 2)
-}
-
 type ProjectRef = { name: string } | { name: string }[] | null
 const projectName = (p: ProjectRef) => (Array.isArray(p) ? p[0]?.name : p?.name) ?? 'Project'
 
@@ -127,14 +122,13 @@ export default async function StaffLayout({ children, modal }: { children: React
         <Sidebar
           items={items}
           logo={logo}
-          monogram={monogramFor(session.brand.displayName)}
           homeLabel={homeLabel}
           homeHref={homeHref}
           defaultMode={sidebarMode}
           closedGroups={closedGroups}
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header data-app-header className="sticky top-0 z-30 border-b border-[#D6DFD9] bg-white pt-[env(safe-area-inset-top)] shadow-[0_1px_2px_rgba(23,77,50,0.04)]">
+          <header data-app-header className="sticky top-0 z-30 border-b border-[#D8DED8] bg-white pt-[env(safe-area-inset-top)] shadow-[0_1px_2px_rgba(23,77,50,0.04)]">
             <div className="flex h-14 items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:gap-3 sm:px-6 xl:px-10">
               <MobileNav items={items} logo={logo} closedGroups={closedGroups} />
               <Link href={homeHref} className="flex min-h-11 w-24 shrink-0 items-center sm:w-28 lg:hidden" aria-label={homeLabel}>
