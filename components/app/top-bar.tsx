@@ -78,7 +78,10 @@ export function Breadcrumbs({
         {crumbs.map((c, i) => {
           const last = i === crumbs.length - 1
           return (
-            <li key={c.href} className={cn('flex min-w-0 items-center gap-1.5', !last && 'hidden sm:flex')}>
+            <li
+              key={c.href}
+              className={cn('flex min-w-0 items-center gap-1.5', last ? 'min-w-[5rem]' : 'hidden shrink-[4] sm:flex')}
+            >
               {i > 0 && <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />}
               {last ? (
                 <span aria-current="page" className="truncate font-medium capitalize text-foreground">
@@ -99,7 +102,7 @@ export function Breadcrumbs({
 
 export function HeaderSearch() {
   return (
-    <form action="/projects" role="search" className="hidden w-full max-w-xs md:block">
+    <form action="/projects" role="search" className="hidden w-full max-w-[13rem] md:block xl:max-w-xs">
       <SearchInput
         id="global-search"
         label="Search projects"

@@ -24,6 +24,27 @@ export function ProjectNav({
   const activeTabRef = useRef<HTMLAnchorElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const [stuck, setStuck] = useState(false)
+  const stripRef = useRef<HTMLElement>(null)
+  const [edges, setEdges] = useState({ left: false, right: false })
+
+  function updateEdges() {
+    const strip = stripRef.current
+    if (!strip) return
+    const left = strip.scrollLeft > 2
+    const right = strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 2
+    setEdges((prev) => (prev.left === left && prev.right === right ? prev : { left, right }))
+  }
+
+  // Fades hint at hidden tabs; recompute whenever the strip or its contents resize (rotation, sidebar toggle, sticky title).
+  useEffect(() => {
+    const strip = stripRef.current
+    if (!strip) return
+    updateEdges()
+    const observer = new ResizeObserver(updateEdges)
+    observer.observe(strip)
+    if (strip.firstElementChild) observer.observe(strip.firstElementChild)
+    return () => observer.disconnect()
+  }, [])
 
   // On narrow screens the tab strip scrolls sideways; keep the selected tab visible without moving the page vertically.
   useEffect(() => {
@@ -112,7 +133,7 @@ export function ProjectNav({
       <div
         data-project-tabs
         className={cn(
-          'sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 -mx-4 -mt-3 border-b border-transparent bg-background px-4 py-2 transition-[border-color,box-shadow] sm:top-[calc(4rem+env(safe-area-inset-top))] sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10',
+          'sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 -mx-4 -mt-3 border-b border-transparent bg-background px-4 py-2 transition-[border-color,box-shadow] sm:top-[calc(4rem+env(safe-area-inset-top))] sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10',
           stuck && 'border-border shadow-[0_6px_12px_-10px_rgb(0_0_0/0.25)]',
         )}
       >
@@ -122,7 +143,27 @@ export function ProjectNav({
               {projectName}
             </span>
           )}
-          <nav aria-label="Project sections" className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="relative min-w-0 flex-1">
+          <span
+            aria-hidden="true"
+            className={cn(
+              'pointer-events-none absolute inset-y-0 left-0 z-10 w-8 rounded-l-xl bg-gradient-to-r from-background to-transparent transition-opacity',
+              edges.left ? 'opacity-100' : 'opacity-0',
+            )}
+          />
+          <span
+            aria-hidden="true"
+            className={cn(
+              'pointer-events-none absolute inset-y-0 right-0 z-10 w-8 rounded-r-xl bg-gradient-to-l from-background to-transparent transition-opacity',
+              edges.right ? 'opacity-100' : 'opacity-0',
+            )}
+          />
+          <nav
+            ref={stripRef}
+            onScroll={updateEdges}
+            aria-label="Project sections"
+            className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             <ul className="flex w-max min-w-full gap-1 rounded-xl border bg-card p-1 shadow-xs md:min-w-0">
               {items.map((item) => {
                 const active = item.key === activeKey
@@ -148,6 +189,7 @@ export function ProjectNav({
               })}
             </ul>
           </nav>
+          </div>
         </div>
       </div>
     </>

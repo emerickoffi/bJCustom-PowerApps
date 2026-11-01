@@ -67,7 +67,7 @@ function Fact({ icon: Icon, label, value }: { icon: typeof Wallet; label: string
       </span>
       <div className="flex min-w-0 flex-col">
         <span className="text-xs text-white/60">{label}</span>
-        <span className="truncate text-sm font-medium text-white">{value}</span>
+        <span className="break-words text-sm font-medium text-white">{value}</span>
       </div>
     </div>
   )
@@ -253,8 +253,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     <div className="flex flex-col gap-8">
       <ProjectSectionScroll />
       <section aria-labelledby="project-heading" className="overflow-hidden rounded-3xl bg-brand-deep text-white shadow-lift">
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-          <div className="flex flex-col gap-5 p-5 sm:p-6 lg:px-8 lg:py-7">
+        <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,15rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,19rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+          <div className="flex flex-col gap-5 p-5 sm:p-6 xl:px-8 xl:py-7">
             <div className="flex flex-col gap-2.5">
               <div className="flex flex-wrap items-center gap-2.5">
                 <span className="font-mono text-xs text-white/60">{project.project_number}</span>
@@ -330,7 +330,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </div>
             </div>
             )}
-            <div className="grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-x-4 gap-y-3 border-t border-white/10 pt-4 sm:grid-cols-2 2xl:grid-cols-4">
               <Fact icon={Wallet} label="Estimated budget" value={formatCents(project.estimated_budget_cents)} />
               <Fact icon={CalendarRange} label="Proposed start" value={formatDate(project.proposed_start_date)} />
               {isCompleted ? (
@@ -393,7 +393,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               )}
             </div>
           </div>
-          <div className="relative min-h-48 sm:min-h-56 lg:min-h-full">
+          <div className="relative min-h-48 sm:min-h-56 md:min-h-full">
             {cover ? (
               <CoverImage
                 src={cover.url}

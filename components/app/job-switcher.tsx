@@ -96,7 +96,7 @@ export function JobSwitcher({ currentJob }: { currentJob: CurrentJob | null }) {
         className={cn(
           'inline-flex h-9 items-center gap-2 rounded-md border bg-card px-2.5 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30',
           currentJob
-            ? 'min-w-0 max-w-[11rem] shrink sm:min-w-[7.5rem] sm:max-w-[13rem] md:max-w-[15rem] lg:w-[16.25rem] lg:max-w-[16.25rem]'
+            ? 'min-w-0 max-w-[11rem] shrink sm:min-w-[7.5rem] sm:max-w-[13rem] md:max-w-[15rem] lg:w-[13rem] lg:max-w-[13rem] xl:w-[16.25rem] xl:max-w-[16.25rem]'
             : 'shrink-0',
         )}
         aria-label={currentJob ? `Current job: ${currentJob.name}. Switch job` : 'All jobs. Choose a job'}

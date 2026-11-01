@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ROLE_LABELS } from '@/lib/domain'
 import { CompanyLogo } from '@/components/brand/company-logo'
 import { BrandStyle } from '@/components/brand/brand-style'
-import { Sidebar, SIDEBAR_COOKIE } from '@/components/app/sidebar'
+import { Sidebar, SIDEBAR_COOKIE, parseSidebarMode } from '@/components/app/sidebar'
 import { MobileNav } from '@/components/app/mobile-nav'
 import { AssistantProvider } from '@/components/assistant/assistant-context'
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher'
@@ -102,7 +102,7 @@ export default async function StaffLayout({ children, modal }: { children: React
     getRememberedJob(session.organizationId),
   ])
   const jobScope = currentJob ? await loadJobScope(currentJob, session.role, features) : null
-  const collapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === '1'
+  const sidebarMode = parseSidebarMode(cookieStore.get(SIDEBAR_COOKIE)?.value)
   const closedGroups = parseClosedNavGroups(cookieStore.get(NAV_GROUPS_COOKIE)?.value)
   const items = navForRole(session.role, features)
   const logo = <CompanyLogo brand={session.brand} priority />
@@ -129,12 +129,12 @@ export default async function StaffLayout({ children, modal }: { children: React
           monogram={monogramFor(session.brand.displayName)}
           homeLabel={homeLabel}
           homeHref={homeHref}
-          defaultCollapsed={collapsed}
+          defaultMode={sidebarMode}
           closedGroups={closedGroups}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <header data-app-header className="sticky top-0 z-30 border-b border-[#E4E8E1] bg-white pt-[env(safe-area-inset-top)] shadow-[0_1px_2px_rgba(23,77,50,0.04)]">
-            <div className="flex h-14 items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:gap-3 sm:px-6 lg:px-10">
+            <div className="flex h-14 items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:gap-3 sm:px-6 xl:px-10">
               <MobileNav items={items} logo={logo} closedGroups={closedGroups} />
               <Link href={homeHref} className="flex min-h-11 w-24 shrink-0 items-center sm:w-28 lg:hidden" aria-label={homeLabel}>
                 {logo}
@@ -162,7 +162,7 @@ export default async function StaffLayout({ children, modal }: { children: React
               </div>
             </div>
           </header>
-          <main className="mx-auto w-full max-w-[90rem] flex-1 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8 lg:px-10 lg:pt-10">{children}</main>
+          <main className="mx-auto w-full max-w-[90rem] flex-1 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8 lg:pt-10 xl:px-10">{children}</main>
         </div>
       </div>
       {modal}
