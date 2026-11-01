@@ -88,11 +88,11 @@ export default async function SchedulePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ setup?: string }>
+  searchParams: Promise<{ setup?: string; activity?: string }>
 }) {
   const session = await requireStaff()
   const { id } = await params
-  const { setup } = await searchParams
+  const { setup, activity: focusActivity } = await searchParams
   const supabase = await createClient()
 
   const { data: project } = await supabase
@@ -277,6 +277,7 @@ export default async function SchedulePage({
             assignments={assignmentData.assignments}
             companies={assignmentData.companies}
             acceptsNewAssignments={assignmentData.acceptsNew}
+            initialActivityId={typeof focusActivity === 'string' ? focusActivity : null}
           />
 
           {assignmentData.availability !== 'off' && (

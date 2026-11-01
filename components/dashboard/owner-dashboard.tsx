@@ -104,6 +104,7 @@ export async function OwnerDashboard({
       managerName: p.project_manager_id ? (managers.get(p.project_manager_id) ?? null) : null,
       contractCents: budget?.state === 'established' ? budget.contractCents : null,
       health: h?.level ?? null,
+      stageActivities: d?.stageActivities ?? null,
       summary: summarizeJob({
         status: p.status as ProjectStatus,
         progressPercent: p.progress_percent,

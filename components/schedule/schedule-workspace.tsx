@@ -22,6 +22,7 @@ export function ScheduleWorkspace({
   assignments = [],
   companies = [],
   acceptsNewAssignments = false,
+  initialActivityId = null,
 }: {
   projectId: string
   activities: ScheduleActivity[]
@@ -33,6 +34,8 @@ export function ScheduleWorkspace({
   assignments?: ActivityAssignment[]
   companies?: CompanyOption[]
   acceptsNewAssignments?: boolean
+  /** Opens this activity on load (e.g. linked from the dashboard). Ignored when it isn't in this project. */
+  initialActivityId?: string | null
 }) {
   const assignmentProps = useMemo(
     () => ({
@@ -43,7 +46,9 @@ export function ScheduleWorkspace({
     }),
     [assignmentAvailability, assignments, companies, acceptsNewAssignments],
   )
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(() =>
+    initialActivityId && activities.some((a) => a.id === initialActivityId) ? initialActivityId : null,
+  )
   const [creating, setCreating] = useState(false)
   const conflicts = useMemo(() => new Set(conflictIds), [conflictIds])
   const names = useMemo(() => new Map(staffOptions.map((s) => [s.value, s.label])), [staffOptions])
