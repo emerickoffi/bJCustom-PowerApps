@@ -19,6 +19,9 @@ import {
 } from '@/lib/coming-up'
 import { getDashboardCardDetails } from '@/lib/dashboard-cards'
 import type { DashboardSectionId } from '@/lib/dashboard-sections'
+import { kpiGridClass, resolveVisibility } from '@/lib/dashboard-visibility'
+import { getDashboardVisibility } from '@/lib/dashboard-visibility-data'
+import { cn } from '@/lib/utils'
 import { loadAgenda, loadProjectHealth, loadWarrantyOverview } from '@/lib/dashboard-workspace-data'
 import { ACTIVE_PROJECT_STATUSES, type ProjectStatus } from '@/lib/domain'
 import type { getOrgFeatures } from '@/lib/features'
@@ -27,7 +30,7 @@ import { loadPortfolioSignals } from '@/lib/portfolio-data'
 import type { PortfolioRow } from '@/lib/portfolio'
 import { rankPriorityJobs, summarizeJob } from '@/lib/priority-jobs'
 import { getProfileNames, PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
-import type { requireStaff } from '@/lib/session'
+import { canManage, type requireStaff } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 
 type ProjectRow = PortfolioRow & { name: string; progress_percent: number | null; proposed_start_date: string | null }
@@ -56,7 +59,7 @@ export async function OwnerDashboard({
     return qs ? `/dashboard?${qs}` : '/dashboard'
   }
 
-  const [projectsRes, activityRes, signals, agendaData, warranty, attention] = await Promise.all([
+  const [projectsRes, activityRes, signals, agendaData, warranty, attention, visibilitySettings] = await Promise.all([
     supabase
       .from('projects')
       .select('id, name, status, progress_percent, updated_at, proposed_start_date')
@@ -72,6 +75,7 @@ export async function OwnerDashboard({
     loadAgenda(orgId, features.schedule, COMING_UP_DAYS),
     loadWarrantyOverview(orgId, features.warranty),
     getActionItems(orgId, session.userId, { manager: true, features }),
+    getDashboardVisibility(orgId),
   ])
 
   const rows = (projectsRes.data ?? []) as ProjectRow[]
@@ -130,7 +134,7 @@ export async function OwnerDashboard({
       health: h?.level ?? null,
       stageActivities: d?.stageActivities ?? null,
       closeoutReason: p.status === 'completed' ? (closeoutReasons.get(p.id) ?? null) : null,
-      canSetUpSchedule: features.schedule,
+      canSetUpSchedule: features.schedule && canManage(session.role),
       summary: summarizeJob({
         status: p.status as ProjectStatus,
         progressPercent: p.progress_percent,
@@ -156,6 +160,60 @@ export async function OwnerDashboard({
     assigneeNames,
   })
 
+  const { estimates, contracts, receivables } = financials
+  const scheduleRisk = health.scheduleRisk
+  const attentionKnown = attention.unavailable.length === 0 || attention.items.length > 0
+  const show = resolveVisibility(visibilitySettings.settings, {
+    card_approval: {
+      records: estimates.state === 'available' ? estimates.value.awaitingApproval.count > 0 : null,
+      attention: null,
+    },
+    card_contract: {
+      records: contracts.state === 'available' ? contracts.value.establishedCount > 0 : null,
+      attention: null,
+    },
+    card_schedule: {
+      records: scheduleRisk.state === 'available' ? scheduleRisk.value.total > 0 : null,
+      attention: scheduleRisk.state === 'available' ? scheduleRisk.value.atRisk > 0 : null,
+    },
+    card_receivables: {
+      records: receivables.state === 'available' ? receivables.value.outstandingCount > 0 : null,
+      attention: receivables.state === 'available' ? receivables.value.overdueCount > 0 : null,
+    },
+    attention: {
+      records: attentionKnown ? attention.items.length > 0 : null,
+      attention: attention.items.some((i) => i.severity === 'critical') ? true : attentionKnown ? false : null,
+    },
+    priority_jobs: {
+      records: projectsRes.error ? null : jobs.length > 0,
+      attention: projectsRes.error
+        ? null
+        : jobs.some((j) => j.health === 'at_risk' || j.health === 'needs_attention'),
+    },
+    coming_up: { records: comingUp.length > 0, attention: null },
+    warranty: {
+      records: warranty.state === 'available' ? warranty.value.rows.length > 0 : warranty.state === 'disabled' ? false : null,
+      attention:
+        warranty.state === 'available'
+          ? warranty.value.rows.some((w) => w.openClaims > 0)
+          : warranty.state === 'disabled'
+            ? false
+            : null,
+    },
+    recent_activity: {
+      records: activityRes.error ? null : (activityRes.data?.length ?? 0) + attention.updates.length > 0,
+      attention: null,
+    },
+    pipeline: { records: projectsRes.error ? null : rows.length > 0, attention: null },
+  })
+
+  const kpiCards = new Set(
+    (['card_approval', 'card_contract', 'card_schedule', 'card_receivables'] as const).filter((id) => show[id]),
+  )
+  const hasMainColumn = show.attention || show.priority_jobs
+  const hasRail = show.coming_up || show.warranty || show.recent_activity
+  const splitPriorityJobs = show.priority_jobs && hasRail
+
   return (
     <div className="flex flex-col gap-6">
       <div data-dashboard-section={'welcome' satisfies DashboardSectionId}>
@@ -165,19 +223,30 @@ export async function OwnerDashboard({
           actionTotal={attention.total}
           actionTotalIsLowerBound={attention.totalIsLowerBound}
           actionsAvailable={attention.unavailable.length === 0 || attention.total > 0}
+          actionsHref={show.attention ? '#action-center-heading' : '/actions'}
         />
       </div>
 
-      <section
-        aria-label="Key figures"
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-        data-dashboard-section={'kpis' satisfies DashboardSectionId}
-      >
-        <FinancialKpis metrics={financials} scheduleRisk={health.scheduleRisk} />
-      </section>
+      {kpiCards.size > 0 && (
+        <section
+          aria-label="Key figures"
+          className={kpiGridClass(kpiCards.size)}
+          data-dashboard-section={'kpis' satisfies DashboardSectionId}
+        >
+          <FinancialKpis metrics={financials} scheduleRisk={scheduleRisk} visible={kpiCards} />
+        </section>
+      )}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2.15fr)_minmax(0,1fr)]">
+      {(hasMainColumn || hasRail) && (
+      <div
+        className={cn(
+          'grid items-start gap-6',
+          hasMainColumn && hasRail && 'lg:grid-cols-[minmax(0,2.15fr)_minmax(0,1fr)]',
+        )}
+      >
+        {hasMainColumn && (
         <div className="flex min-w-0 flex-col gap-6">
+          {show.attention && (
           <div data-dashboard-section={'attention' satisfies DashboardSectionId}>
             <ActionCenter
               items={attention.items}
@@ -191,16 +260,22 @@ export async function OwnerDashboard({
               }}
             />
           </div>
+          )}
+          {show.priority_jobs && (
           <div
             id={PRIORITY_JOBS_ANCHOR}
-            className="hidden lg:block"
+            className={cn(splitPriorityJobs && 'hidden lg:block')}
             data-dashboard-section={'priority_jobs' satisfies DashboardSectionId}
           >
             <PriorityJobs jobs={jobs} />
           </div>
+          )}
         </div>
+        )}
 
+        {hasRail && (
         <aside aria-label="Upcoming and recent" className="flex min-w-0 flex-col gap-6">
+          {show.coming_up && (
           <div data-dashboard-section={'coming_up' satisfies DashboardSectionId}>
             <ComingUp
               events={comingUp}
@@ -209,12 +284,18 @@ export async function OwnerDashboard({
               scheduleEnabled={features.schedule}
             />
           </div>
+          )}
+          {splitPriorityJobs && (
           <div className="lg:hidden" data-dashboard-section={'priority_jobs' satisfies DashboardSectionId}>
             <PriorityJobs jobs={jobs} />
           </div>
+          )}
+          {show.warranty && (
           <div data-dashboard-section={'warranty' satisfies DashboardSectionId}>
             <WarrantyRail overview={warranty} />
           </div>
+          )}
+          {show.recent_activity && (
           <div data-dashboard-section={'recent_activity' satisfies DashboardSectionId}>
             <RecentActivity
               items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
@@ -225,12 +306,17 @@ export async function OwnerDashboard({
               totalIsLowerBound={activityTotal === null || attention.updatesTotalIsLowerBound}
             />
           </div>
+          )}
         </aside>
+        )}
       </div>
+      )}
 
-      <div data-dashboard-section={'pipeline' satisfies DashboardSectionId}>
-        <PipelineOverview counts={counts} />
-      </div>
+      {show.pipeline && (
+        <div data-dashboard-section={'pipeline' satisfies DashboardSectionId}>
+          <PipelineOverview counts={counts} />
+        </div>
+      )}
     </div>
   )
 }

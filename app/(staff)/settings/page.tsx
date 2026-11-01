@@ -39,6 +39,9 @@ export default async function SettingsPage() {
             <Button variant="outline" className={navButtonClass} render={<Link href="/settings/integrations" />} nativeButton={false}>
               Integrations
             </Button>
+            <Button variant="outline" className={navButtonClass} render={<Link href="/settings/dashboard" />} nativeButton={false}>
+              Dashboard
+            </Button>
             <Button variant="outline" className={navButtonClass} render={<Link href="/settings/features" />} nativeButton={false}>
               Feature management
             </Button>

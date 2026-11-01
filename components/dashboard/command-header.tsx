@@ -8,12 +8,15 @@ export function CommandHeader({
   actionTotal,
   actionTotalIsLowerBound,
   actionsAvailable,
+  actionsHref = '#action-center-heading',
 }: {
   firstName: string | null
   today: string
   actionTotal: number
   actionTotalIsLowerBound: boolean
   actionsAvailable: boolean
+  /** Where the attention summary links; the full Actions page when the Action Center is hidden. */
+  actionsHref?: string
 }) {
   const hello = firstName ? `${greeting()}, ${firstName}.` : `${greeting()}.`
 
@@ -35,13 +38,13 @@ export function CommandHeader({
       </div>
 
       {actionsAvailable && (
-        <AttentionSummary total={actionTotal} isLowerBound={actionTotalIsLowerBound} />
+        <AttentionSummary total={actionTotal} isLowerBound={actionTotalIsLowerBound} href={actionsHref} />
       )}
     </header>
   )
 }
 
-function AttentionSummary({ total, isLowerBound }: { total: number; isLowerBound: boolean }) {
+function AttentionSummary({ total, isLowerBound, href }: { total: number; isLowerBound: boolean; href: string }) {
   const caughtUp = total === 0
   const count = `${total}${isLowerBound ? '+' : ''}`
   const label = total === 1 && !isLowerBound ? 'Needs your attention' : 'Need your attention'
@@ -49,8 +52,12 @@ function AttentionSummary({ total, isLowerBound }: { total: number; isLowerBound
 
   return (
     <a
-      href="#action-center-heading"
-      aria-label={caughtUp ? 'All caught up. Go to Action Center' : `${count} items need your attention. Go to Action Center`}
+      href={href}
+      aria-label={
+        caughtUp
+          ? 'All caught up. Go to your action items'
+          : `${count} items need your attention. Go to your action items`
+      }
       className="group flex shrink-0 items-center gap-3 self-start rounded-xl border bg-card px-3.5 py-2.5 transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:self-auto"
     >
       <span

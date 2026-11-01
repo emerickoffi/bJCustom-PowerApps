@@ -15,6 +15,7 @@ import {
   type ActionEntityType,
   type ActionEstimateApproval,
   type ActionFeatures,
+  type ActionChangeOrder,
   type ActionInvoice,
   type ActionIssue,
   type ActionItem,
@@ -109,7 +110,7 @@ export async function getActionItems(
     return q.order('reported_at', { ascending: true }).limit(SOURCE_LIMIT)
   }
 
-  const [notificationsRes, activitiesRes, logDelaysRes, signaturesRes, projectsRes, invoicesRes, issuesRes, claimsRes] =
+  const [notificationsRes, activitiesRes, logDelaysRes, signaturesRes, projectsRes, invoicesRes, issuesRes, claimsRes, changeOrdersRes] =
     await Promise.all([
       supabase
         .from('notifications')
@@ -171,6 +172,15 @@ export async function getActionItems(
         : empty,
       features.issues ? issueQuery() : empty,
       features.warranty ? claimQuery() : empty,
+      manager && features.change_orders
+        ? supabase
+            .from('change_orders')
+            .select('id, project_id, co_number, title, review_started_at, projects(name, archived_at)')
+            .eq('organization_id', orgId)
+            .eq('status', 'internal_review')
+            .order('review_started_at', { ascending: true, nullsFirst: false })
+            .limit(SOURCE_LIMIT)
+        : empty,
     ])
 
   const check = <T,>(res: { data: T[] | null; error: unknown }, module: string, limit: number): T[] => {
@@ -191,6 +201,9 @@ export async function getActionItems(
   const invoiceRows = check(invoicesRes, 'Invoices', SOURCE_LIMIT).filter((r) => !isArchived(r.projects as ProjectRef))
   const issueRows = check(issuesRes, 'Punch List', SOURCE_LIMIT).filter((r) => !isArchived(r.projects as ProjectRef))
   const claimRows = check(claimsRes, 'Warranty', SOURCE_LIMIT).filter((r) => !isArchived(r.projects as ProjectRef))
+  const changeOrderRows = check(changeOrdersRes, 'Change Orders', SOURCE_LIMIT).filter(
+    (r) => !isArchived(r.projects as ProjectRef),
+  )
 
   const startCandidates = features.schedule
     ? projectRows.filter(
@@ -385,6 +398,15 @@ export async function getActionItems(
     reportedAt: c.reported_at,
   }))
 
+  const changeOrders: ActionChangeOrder[] = changeOrderRows.map((r) => ({
+    id: r.id,
+    projectId: r.project_id,
+    projectName: projectName(r.projects as ProjectRef),
+    coNumber: r.co_number,
+    title: r.title,
+    reviewStartedAt: r.review_started_at,
+  }))
+
   const authoritative = new Set<ActionEntityType>()
   if (manager && features.warranty && !claimsRes.error && claimRows.length < SOURCE_LIMIT) authoritative.add('warranty_claim')
   if (qualification?.state === 'ready') authoritative.add('subcontractor')
@@ -401,6 +423,7 @@ export async function getActionItems(
       qualification: qualification?.state === 'ready' ? qualification.items : [],
       issues,
       warrantyClaims,
+      changeOrders,
       authoritative,
     },
     { today, userId, manager, features },

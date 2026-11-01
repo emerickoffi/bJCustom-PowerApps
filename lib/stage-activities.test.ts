@@ -51,6 +51,21 @@ test('dependencies win over due date; undated last; overdue flagged', () => {
   assert.equal(late?.state === 'next' && late.activity.overdue, true)
 })
 
+test('a real activity whose title matches the stage name is kept, not replaced or dropped', () => {
+  const gate = row({ name: 'Preconstruction', phase: 'Preconstruction' })
+  const r = summarizeStageActivities(
+    'preconstruction',
+    [gate, row({ name: 'Site Preparation', phase: 'Site work' })],
+    [],
+    TODAY,
+  )
+  assert.equal(r?.state, 'next')
+  if (r?.state !== 'next') return
+  assert.equal(r.activity.id, gate.id)
+  assert.equal(r.total, 1)
+  assert.equal(r.completed, 0)
+})
+
 test('empty, complete, and stages without a working schedule', () => {
   assert.deepEqual(summarizeStageActivities('preconstruction', [row({ phase: 'Closeout' })], [], TODAY), { state: 'empty' })
   assert.deepEqual(summarizeStageActivities('punch_list', [row({ phase: 'Closeout', status: 'completed' })], [], TODAY), {

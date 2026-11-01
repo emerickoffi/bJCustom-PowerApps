@@ -51,6 +51,7 @@ export type ActionEntityType =
   | 'subcontractor'
   | 'project_issue'
   | 'warranty_claim'
+  | 'change_order'
 
 export type ActionItem = {
   /** Stable entity-based key; two sources describing one obligation share it. */
@@ -85,6 +86,17 @@ export type ActionFeatures = {
   estimates?: boolean
   invoices?: boolean
   issues?: boolean
+  change_orders?: boolean
+}
+
+/** A change order sitting in internal review: the builder, not the homeowner, owes the next step. */
+export type ActionChangeOrder = {
+  id: string
+  projectId: string
+  projectName: string | null
+  coNumber: string
+  title: string
+  reviewStartedAt: string | null
 }
 
 export type ActionEstimateApproval = {
@@ -174,6 +186,7 @@ export type ActionSources = {
   qualification?: QualificationAttention[]
   issues?: ActionIssue[]
   warrantyClaims?: ActionWarrantyClaim[]
+  changeOrders?: ActionChangeOrder[]
   /**
    * Entity types whose authoritative source loaded fully for this user. Unread notifications pointing at one of
    * these entities are kept only when the live record still needs action, so resolved work stops resurfacing.
@@ -385,6 +398,29 @@ function estimateItems(rows: ActionEstimateApproval[], ctx: ActionContext): Acti
       source: 'Estimate',
       resolutionCondition: 'Estimate approved or rejected',
     }))
+}
+
+function changeOrderItems(rows: ActionChangeOrder[], ctx: ActionContext): ActionItem[] {
+  if (!ctx.manager || !ctx.features.change_orders) return []
+  return rows.map((r) => ({
+    id: key('change_order', r.id),
+    projectId: r.projectId,
+    projectName: r.projectName,
+    entityType: 'change_order',
+    entityId: r.id,
+    category: 'approvals',
+    severity: 'warning',
+    tier: 3,
+    title: `Review change order ${r.coNumber}`,
+    description: `“${clip(r.title, 80)}” is in internal review. Approve it for the homeowner or send it back to draft.`,
+    dueDate: null,
+    createdAt: r.reviewStartedAt?.slice(0, 10) ?? null,
+    responsibleUserId: null,
+    href: `/projects/${encodeURIComponent(r.projectId)}/change-orders/${encodeURIComponent(r.id)}`,
+    actionLabel: 'Review Change Order',
+    source: 'Change Order',
+    resolutionCondition: 'Sent to the homeowner, returned to draft or voided',
+  }))
 }
 
 function signedArtifactItems(rows: ActionSignedArtifact[], ctx: ActionContext): ActionItem[] {
@@ -678,6 +714,7 @@ export function buildActionItems(sources: ActionSources, ctx: ActionContext): Ac
     ...scheduleItems(sources.activities ?? [], ctx),
     ...dailyLogItems(sources.logDelays ?? [], ctx),
     ...estimateItems(sources.estimateApprovals ?? [], ctx),
+    ...changeOrderItems(sources.changeOrders ?? [], ctx),
     ...signedArtifactItems(sources.signedArtifacts ?? [], ctx),
     ...projectItems(sources.projects ?? [], ctx),
     ...invoiceItems(sources.invoices ?? [], ctx),
