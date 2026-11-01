@@ -80,8 +80,11 @@ export function ActivityFitList({
           : next,
       )
     }
+    let disposed = false
     const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(measure)
+      // fonts.ready can resolve after cleanup; never touch state from a disposed effect.
+      if (disposed || frame) return
+      frame = requestAnimationFrame(measure)
     }
 
     // Observing the list (not the clipped wrapper) catches width-driven reflow without reacting to our own height.
@@ -96,6 +99,7 @@ export function ActivityFitList({
     schedule()
 
     return () => {
+      disposed = true
       if (frame) cancelAnimationFrame(frame)
       observer.disconnect()
       mql.removeEventListener('change', schedule)
