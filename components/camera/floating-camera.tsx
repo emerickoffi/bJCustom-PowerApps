@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState, type RefObject } from 'react'
-import { Camera, ImagePlus } from 'lucide-react'
+import { Camera, ImagePlus, Save } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +19,8 @@ import { FLOATING_ABOVE_ASSISTANT, FLOATING_CORNER_SECONDARY, type FloatingPlace
  * uploads on its own: it opens that uploader's own file inputs, so validation, storage
  * paths, registration actions and RLS all stay with the module.
  */
-type CameraTarget = {
+type CaptureTarget = {
+  kind: 'capture'
   id: string
   label: string
   disabled: boolean
@@ -27,6 +28,22 @@ type CameraTarget = {
   gallery: RefObject<HTMLInputElement | null>
   inline: RefObject<HTMLElement | null>
 }
+
+/**
+ * A record that must be saved before photos can attach (e.g. an unsaved daily log).
+ * Selecting it runs the module's own save; the module then routes to its uploader.
+ */
+type SaveFirstTarget = {
+  kind: 'save-first'
+  id: string
+  label: string
+  actionLabel: string
+  disabled: boolean
+  onSelect: () => void
+  inline: RefObject<HTMLElement | null>
+}
+
+type CameraTarget = CaptureTarget | SaveFirstTarget
 
 type Registry = { upsert: (target: CameraTarget) => void; remove: (id: string) => void }
 
@@ -78,9 +95,37 @@ export function useFloatingCameraTarget({
   const id = useId()
   useEffect(() => {
     if (!registry || !enabled || !label) return
-    registry.upsert({ id, label, disabled, camera, gallery, inline })
+    registry.upsert({ kind: 'capture', id, label, disabled, camera, gallery, inline })
     return () => registry.remove(id)
   }, [registry, id, label, enabled, disabled, camera, gallery, inline])
+}
+
+/**
+ * Offers an explicit "save, then add photos" action for a record that does not exist yet.
+ * Nothing is saved until the user picks the menu item; `onSelect` must be stable.
+ */
+export function useFloatingCameraSaveFirst({
+  label,
+  actionLabel,
+  enabled,
+  disabled = false,
+  onSelect,
+  inline,
+}: {
+  label: string
+  actionLabel: string
+  enabled: boolean
+  disabled?: boolean
+  onSelect: () => void
+  inline: RefObject<HTMLElement | null>
+}) {
+  const registry = useContext(FloatingCameraContext)
+  const id = useId()
+  useEffect(() => {
+    if (!registry || !enabled) return
+    registry.upsert({ kind: 'save-first', id, label, actionLabel, disabled, onSelect, inline })
+    return () => registry.remove(id)
+  }, [registry, id, label, actionLabel, enabled, disabled, onSelect, inline])
 }
 
 /** Tracks which targets currently have their own inline photo controls on screen. */
@@ -150,14 +195,23 @@ function FloatingCameraButton({ targets, placement }: { targets: CameraTarget[];
               <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
                 {target.label}
               </DropdownMenuLabel>
-              <DropdownMenuItem disabled={target.disabled} onSelect={() => target.camera.current?.click()}>
-                <Camera aria-hidden="true" />
-                Take Photo
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled={target.disabled} onSelect={() => target.gallery.current?.click()}>
-                <ImagePlus aria-hidden="true" />
-                Upload from Gallery
-              </DropdownMenuItem>
+              {target.kind === 'save-first' ? (
+                <DropdownMenuItem disabled={target.disabled} onSelect={target.onSelect}>
+                  <Save aria-hidden="true" />
+                  {target.actionLabel}
+                </DropdownMenuItem>
+              ) : (
+                <>
+                  <DropdownMenuItem disabled={target.disabled} onSelect={() => target.camera.current?.click()}>
+                    <Camera aria-hidden="true" />
+                    Take Photo
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled={target.disabled} onSelect={() => target.gallery.current?.click()}>
+                    <ImagePlus aria-hidden="true" />
+                    Upload from Gallery
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuGroup>
           ))}
         </DropdownMenuContent>
