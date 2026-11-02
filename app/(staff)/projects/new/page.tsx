@@ -26,6 +26,7 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
         defaults={{ primary_client_id: data.preselected }}
         clientAddresses={data.clientAddresses}
         clientOptions={data.clientOptions}
+        canCreateClient
         managerOptions={data.managerOptions}
         scheduleSetup={data.scheduleSetup}
         cover={{ orgId: session.organizationId }}

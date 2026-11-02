@@ -45,7 +45,6 @@ export function ClientForm({
 }) {
   const [state, formAction] = useActionState(action, initialActionState)
   const fe = state.fieldErrors ?? {}
-  const d = (v: string | null | undefined) => v ?? ''
   const defaults: ClientFormValues = { ...initialDefaults, ...state.values }
   const formKey = state.values ? JSON.stringify(state.values) : 'initial'
   const { inOverlay: flat, dirty, formProps } = useSmartForm(state, formKey)
@@ -58,48 +57,81 @@ export function ClientForm({
         message={<FormMessage state={state} />}
         submit={<SubmitButton pendingLabel={pendingLabel}>{submitLabel}</SubmitButton>}
       >
+        <ClientFormFields
+          defaults={defaults}
+          fieldErrors={fe}
+          flat={flat}
+          additionalContacts={additionalContacts ? { values: state.values } : undefined}
+        />
+      </SmartFormLayout>
+    </form>
+  )
+}
+
+/**
+ * The client record fields, shared by the client pages and the inline "Create new client" dialog.
+ * `idPrefix` keeps element ids unique when these fields render next to another form.
+ */
+export function ClientFormFields({
+  defaults,
+  fieldErrors: fe,
+  flat,
+  idPrefix,
+  additionalContacts,
+}: {
+  defaults: ClientFormValues
+  fieldErrors: Record<string, string>
+  flat?: boolean
+  idPrefix?: string
+  additionalContacts?: { values?: Record<string, string> }
+}) {
+  const d = (v: string | null | undefined) => v ?? ''
+  const id = (name: string) => (idPrefix ? `${idPrefix}${name}` : undefined)
+
+  return (
+    <>
       <FormSection flat={flat} icon={UserRoundIcon} title="Homeowner information" description="The primary person this client record represents.">
-        <TextField name="first_name" label="First name" required defaultValue={d(defaults.first_name)} error={fe.first_name} autoComplete="off" />
-        <TextField name="middle_name" label="Middle name" defaultValue={d(defaults.middle_name)} error={fe.middle_name} autoComplete="off" />
-        <TextField name="last_name" label="Last name" required defaultValue={d(defaults.last_name)} error={fe.last_name} autoComplete="off" />
-        <TextField name="company_name" label="Company or trust" defaultValue={d(defaults.company_name)} error={fe.company_name} hint="Optional, if the home is owned by an entity." />
+        <TextField id={id('first_name')} name="first_name" label="First name" required defaultValue={d(defaults.first_name)} error={fe.first_name} autoComplete="off" />
+        <TextField id={id('middle_name')} name="middle_name" label="Middle name" defaultValue={d(defaults.middle_name)} error={fe.middle_name} autoComplete="off" />
+        <TextField id={id('last_name')} name="last_name" label="Last name" required defaultValue={d(defaults.last_name)} error={fe.last_name} autoComplete="off" />
+        <TextField id={id('company_name')} name="company_name" label="Company or trust" defaultValue={d(defaults.company_name)} error={fe.company_name} hint="Optional, if the home is owned by an entity." />
       </FormSection>
 
       <FormSection flat={flat} icon={PhoneIcon} title="Contact details" description="How your team reaches this homeowner.">
-        <TextField name="email" label="Email" type="email" defaultValue={d(defaults.email)} error={fe.email} hint="Required to invite them to the homeowner portal." />
+        <TextField id={id('email')} name="email" label="Email" type="email" defaultValue={d(defaults.email)} error={fe.email} hint="Required to invite them to the homeowner portal." />
         <SelectField
+          id={id('preferred_communication')}
           name="preferred_communication"
           label="Preferred contact"
           defaultValue={defaults.preferred_communication ?? 'email'}
           options={Object.entries(COMMUNICATION_LABELS).map(([value, label]) => ({ value, label }))}
         />
-        <TextField name="phone" label="Phone" type="tel" defaultValue={d(defaults.phone)} error={fe.phone} />
-        <TextField name="alternate_phone" label="Alternate phone" type="tel" defaultValue={d(defaults.alternate_phone)} error={fe.alternate_phone} />
+        <TextField id={id('phone')} name="phone" label="Phone" type="tel" defaultValue={d(defaults.phone)} error={fe.phone} />
+        <TextField id={id('alternate_phone')} name="alternate_phone" label="Alternate phone" type="tel" defaultValue={d(defaults.alternate_phone)} error={fe.alternate_phone} />
       </FormSection>
 
       <FormSection flat={flat} icon={MapPinIcon} title="Mailing address" description="Where the homeowner currently lives, not the build site.">
-        <TextField name="address_line1" label="Street address" defaultValue={d(defaults.address_line1)} error={fe.address_line1} className="sm:col-span-2" />
-        <TextField name="address_line2" label="Apt, suite, etc." defaultValue={d(defaults.address_line2)} error={fe.address_line2} className="sm:col-span-2" />
-        <TextField name="city" label="City" defaultValue={d(defaults.city)} error={fe.city} />
-        <TextField name="state" label="State" defaultValue={d(defaults.state)} error={fe.state} />
-        <TextField name="postal_code" label="ZIP code" defaultValue={d(defaults.postal_code)} error={fe.postal_code} />
-        <TextField name="country" label="Country" defaultValue={defaults.country ?? 'United States'} error={fe.country} />
+        <TextField id={id('address_line1')} name="address_line1" label="Street address" defaultValue={d(defaults.address_line1)} error={fe.address_line1} className="sm:col-span-2" />
+        <TextField id={id('address_line2')} name="address_line2" label="Apt, suite, etc." defaultValue={d(defaults.address_line2)} error={fe.address_line2} className="sm:col-span-2" />
+        <TextField id={id('city')} name="city" label="City" defaultValue={d(defaults.city)} error={fe.city} />
+        <TextField id={id('state')} name="state" label="State" defaultValue={d(defaults.state)} error={fe.state} />
+        <TextField id={id('postal_code')} name="postal_code" label="ZIP code" defaultValue={d(defaults.postal_code)} error={fe.postal_code} />
+        <TextField id={id('country')} name="country" label="Country" defaultValue={defaults.country ?? 'United States'} error={fe.country} />
       </FormSection>
 
-      {additionalContacts && <AdditionalContactsSection values={state.values} fieldErrors={fe} flat={flat} />}
+      {additionalContacts && <AdditionalContactsSection values={additionalContacts.values} fieldErrors={fe} flat={flat} />}
 
       <FormSection flat={flat} icon={ClipboardListIcon} title="Internal notes & record" description="Status and internal notes are only visible to your team.">
         <SelectField
+          id={id('status')}
           name="status"
           label="Client status"
           defaultValue={defaults.status ?? 'active'}
           options={Object.entries(CLIENT_STATUS_LABELS).map(([value, label]) => ({ value, label }))}
         />
         <div className="hidden sm:block" />
-        <TextAreaField name="notes" label="Internal notes" defaultValue={d(defaults.notes)} error={fe.notes} className="sm:col-span-2" />
+        <TextAreaField id={id('notes')} name="notes" label="Internal notes" defaultValue={d(defaults.notes)} error={fe.notes} className="sm:col-span-2" />
       </FormSection>
-
-      </SmartFormLayout>
-    </form>
+    </>
   )
 }

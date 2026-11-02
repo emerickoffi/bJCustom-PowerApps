@@ -1,6 +1,7 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import type { ClientStatus, OrgRole, ProjectStatus } from '@/lib/domain'
+import { formatClientOptionLabel } from '@/lib/client-options'
 
 export type ClientSummary = {
   id: string
@@ -95,6 +96,6 @@ export async function getClientOptions(organizationId: string) {
     .limit(500)
   return (data ?? []).map((c) => ({
     value: c.id,
-    label: `${c.last_name}, ${c.first_name}${c.company_name ? ` (${c.company_name})` : ''} — #${c.client_number}`,
+    label: formatClientOptionLabel(c),
   }))
 }

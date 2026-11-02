@@ -11,19 +11,122 @@ import { getOrgFeatures } from '@/lib/features'
 import { ADDITIONAL_CONTACT_PREFIX, MAX_ADDITIONAL_CONTACTS } from '@/lib/additional-contacts'
 import { buildPrimaryContact } from '@/lib/primary-contact'
 import { isSelectableContactRelationship } from '@/lib/domain'
+import { findPossibleDuplicates, type DuplicateReason } from '@/lib/project-homeowners'
+import { formatClientOptionLabel } from '@/lib/client-options'
+import type { ClientMailingAddress } from '@/components/projects/project-form'
 
 const uuid = z.uuid()
 const UNAVAILABLE_RELATIONSHIP =
   'This relationship is no longer available for homeowner contacts. Add agents, attorneys, and property managers as business contacts instead.'
 
+type ClientCreator = { userId: string; organizationId: string }
+
+async function getClientCreator(): Promise<{ creator: ClientCreator } | { error: string }> {
+  const session = await getSession()
+  if (!session) return { error: 'Your session has expired. Please sign in again.' }
+  if (!session.organizationId || !session.role || session.role === 'client') {
+    return { error: 'Your account is not associated with an active construction company.' }
+  }
+  if (!canManage(session.role)) return { error: 'Your role does not allow you to create clients.' }
+  return { creator: { userId: session.userId, organizationId: session.organizationId } }
+}
+
+type ParsedClient = z.infer<typeof clientSchema>
+type SaveClientResult =
+  | { ok: true; id: string; client: ParsedClient; contactsFailed: boolean }
+  | { ok: false; state: ActionState }
+
 export async function createClientAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const values = formValues(formData)
-  const session = await getSession()
-  if (!session) return { error: 'Your session has expired. Please sign in again.', values }
-  if (!session.organizationId || !session.role || session.role === 'client') {
-    return { error: 'Your account is not associated with an active construction company.', values }
+  const auth = await getClientCreator()
+  if ('error' in auth) return { error: auth.error, values }
+
+  const result = await saveNewClient(auth.creator, values)
+  if (!result.ok) return result.state
+
+  revalidatePath('/clients')
+  redirect(`/clients/${result.id}?notice=${result.contactsFailed ? 'contacts_not_saved' : 'created'}`)
+}
+
+export type InlineClientMatch = { id: string; label: string; reasons: DuplicateReason[]; selectable: boolean }
+export type InlineClientState = ActionState & {
+  client?: { id: string; label: string; address: ClientMailingAddress }
+  matches?: InlineClientMatch[]
+}
+
+/**
+ * Creates a client from the New Project form without leaving it. Possible duplicates are
+ * returned for the user to pick from; a new record is only created once they confirm.
+ */
+export async function createClientInlineAction(_prev: InlineClientState, formData: FormData): Promise<InlineClientState> {
+  const values = formValues(formData)
+  const auth = await getClientCreator()
+  if ('error' in auth) return { error: auth.error, values }
+
+  const parsed = clientSchema.safeParse(values)
+  if (!parsed.success) return { ...fromZodError(parsed.error), error: 'Please correct the highlighted fields.', values }
+
+  if (values.confirm_new !== 'true') {
+    const supabase = await createClient()
+    const { data: existing } = await supabase
+      .from('clients')
+      .select('id, first_name, last_name, company_name, client_number, email, phone, alternate_phone, status')
+      .eq('organization_id', auth.creator.organizationId)
+      .limit(5000)
+    const matches = findPossibleDuplicates(
+      {
+        first_name: parsed.data.first_name,
+        last_name: parsed.data.last_name,
+        email: parsed.data.email ?? null,
+        phone: parsed.data.phone ?? null,
+        alternate_phone: parsed.data.alternate_phone ?? null,
+      },
+      existing ?? [],
+    )
+    if (matches.length > 0) {
+      return {
+        error: 'This may be an existing client. Select them below, or confirm this is a different person.',
+        values,
+        matches: matches.slice(0, 5).map(({ contact, reasons }) => ({
+          id: contact.id,
+          label: formatClientOptionLabel(contact),
+          reasons,
+          selectable: contact.status !== 'archived',
+        })),
+      }
+    }
   }
-  if (!canManage(session.role)) return { error: 'Your role does not allow you to create clients.', values }
+
+  const result = await saveNewClient(auth.creator, values)
+  if (!result.ok) return result.state
+
+  const { data: saved } = await (await createClient())
+    .from('clients')
+    .select('client_number')
+    .eq('id', result.id)
+    .maybeSingle()
+  const c = result.client
+  revalidatePath('/clients')
+  return {
+    success: `${c.first_name} ${c.last_name} was added as a client.`,
+    savedId: result.id,
+    client: {
+      id: result.id,
+      label: formatClientOptionLabel({ ...c, company_name: c.company_name ?? null, client_number: saved?.client_number ?? null }),
+      address: {
+        address_line1: c.address_line1 ?? '',
+        address_line2: c.address_line2 ?? '',
+        city: c.city ?? '',
+        state: c.state ?? '',
+        postal_code: c.postal_code ?? '',
+      },
+    },
+  }
+}
+
+async function saveNewClient(creator: ClientCreator, values: Record<string, string>): Promise<SaveClientResult> {
+  const session = creator
+  const fail = (state: ActionState): SaveClientResult => ({ ok: false, state })
 
   const parsed = clientSchema.safeParse(values)
   const extras = parseAdditionalContacts(values)
@@ -31,16 +134,16 @@ export async function createClientAction(_prev: ActionState, formData: FormData)
   if (extras.entries.length > 0) {
     const features = await getOrgFeatures(session.organizationId)
     if (!features.additional_contacts) {
-      return { error: 'Additional contacts are not enabled for your company.', values }
+      return fail({ error: 'Additional contacts are not enabled for your company.', values })
     }
   }
   if (extras.tooMany) {
-    return { error: `You can add up to ${MAX_ADDITIONAL_CONTACTS} additional contacts here. Add more from the client page.`, values }
+    return fail({ error: `You can add up to ${MAX_ADDITIONAL_CONTACTS} additional contacts here. Add more from the client page.`, values })
   }
 
   if (!parsed.success || Object.keys(extras.fieldErrors).length > 0) {
     const base = parsed.success ? {} : (fromZodError(parsed.error).fieldErrors ?? {})
-    return { error: 'Please correct the highlighted fields.', fieldErrors: { ...base, ...extras.fieldErrors }, values }
+    return fail({ error: 'Please correct the highlighted fields.', fieldErrors: { ...base, ...extras.fieldErrors }, values })
   }
 
   const duplicateErrors: Record<string, string> = {}
@@ -50,7 +153,7 @@ export async function createClientAction(_prev: ActionState, formData: FormData)
     }
   }
   if (Object.keys(duplicateErrors).length > 0) {
-    return { error: 'Please correct the highlighted fields.', fieldErrors: duplicateErrors, values }
+    return fail({ error: 'Please correct the highlighted fields.', fieldErrors: duplicateErrors, values })
   }
 
   const supabase = await createClient()
@@ -71,7 +174,7 @@ export async function createClientAction(_prev: ActionState, formData: FormData)
     }
     const message =
       error.code === '42501' ? 'The client could not be saved. Please try again.' : friendlyDbError(error)
-    return { error: message, values }
+    return fail({ error: message, values })
   }
 
   // Once migration 20261103000010 is applied, a trigger creates this row inside the
@@ -95,11 +198,8 @@ export async function createClientAction(_prev: ActionState, formData: FormData)
         console.error('[clients] primary contact failed', { code: primaryError.code, message: primaryError.message })
       }
       const { error: undoError } = await supabase.from('clients').delete().eq('id', data.id)
-      if (undoError) {
-        revalidatePath('/clients')
-        redirect(`/clients/${data.id}?notice=contacts_not_saved`)
-      }
-      return { error: 'The client could not be saved because its primary contact failed. Nothing was saved; please try again.', values }
+      if (undoError) return { ok: true, id: data.id, client: parsed.data, contactsFailed: true }
+      return fail({ error: 'The client could not be saved because its primary contact failed. Nothing was saved; please try again.', values })
     }
   }
 
@@ -122,8 +222,7 @@ export async function createClientAction(_prev: ActionState, formData: FormData)
     }
   }
 
-  revalidatePath('/clients')
-  redirect(`/clients/${data.id}?notice=${contactsFailed ? 'contacts_not_saved' : 'created'}`)
+  return { ok: true, id: data.id, client: parsed.data, contactsFailed }
 }
 
 const ADDITIONAL_CONTACT_FIELDS = [
