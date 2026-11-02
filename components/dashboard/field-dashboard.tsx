@@ -24,7 +24,8 @@ import { visibleIn, type DashboardKey, type ResolvedWidget, type WidgetId } from
 import { isOverdueItem, pickFocus } from '@/lib/field-dashboard'
 import { ACTION_CATEGORY_LABELS, type ActionItem } from '@/lib/action-items'
 import { ACTIVE_PROJECT_STATUSES, PROJECT_STATUS_LABELS } from '@/lib/domain'
-import { LIFECYCLE_GROUP_CLASSES, lifecycleGroup } from '@/lib/project-lifecycle'
+import { lifecycleGroup } from '@/lib/project-lifecycle'
+import { stageColor } from '@/lib/stage-colors'
 import { formatDate } from '@/lib/format'
 import { greeting } from '@/lib/greeting'
 import { cn } from '@/lib/utils'
@@ -146,7 +147,7 @@ function Panel({ id, title, icon, action, children }: { id: string; title: strin
 
 function StageBadge({ status }: { status: FieldDashboardData['assignedJobs'][number]['status'] }) {
   return (
-    <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', LIFECYCLE_GROUP_CLASSES[lifecycleGroup(status)])}>
+    <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', stageColor(status).badgeClass)}>
       {PROJECT_STATUS_LABELS[status] ?? status}
     </span>
   )

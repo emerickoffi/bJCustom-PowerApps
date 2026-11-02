@@ -13,6 +13,9 @@ import { createClient } from '@/lib/supabase/server'
 import { getStaffMembers } from '@/lib/queries'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { ProjectFilter } from '@/components/schedule/project-filter'
+import { ScheduleBody, ScheduleSelectionProvider } from '@/components/schedule/schedule-selection'
+import { RememberJob } from '@/components/app/job-switcher'
+import { getRememberedJob } from '@/lib/job-context'
 import { ScheduleBoard, type BoardGroup } from '@/components/schedule/schedule-board'
 import { InitializeScheduleButton } from '@/components/schedule/schedule-controls'
 import {
@@ -39,15 +42,6 @@ type ProjectRow = {
   completion_date: string | null
 }
 
-/** Order used to pick a sensible default project: actively building first. */
-const DEFAULT_PRIORITY: ProjectStatus[] = [
-  'under_construction',
-  'final_inspection',
-  'punch_list',
-  'substantially_complete',
-  'preconstruction',
-]
-
 const UPCOMING_DAYS = 14
 
 function addDays(iso: string, days: number) {
@@ -63,39 +57,72 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   const { project: projectParam } = await searchParams
   const supabase = await createClient()
 
-  const [{ data: projectData }, { data: activityData }, staff] = await Promise.all([
+  const [{ data: projectData }, { data: countData }, staff, remembered] = await Promise.all([
     supabase
       .from('projects')
       .select('id, name, project_number, status, progress_percent, completion_date')
       .eq('organization_id', session.organizationId)
       .is('archived_at', null)
       .order('name'),
-    supabase
-      .from('schedule_activities')
-      .select(`${ACTIVITY_COLUMNS}, project_id`)
-      .eq('organization_id', session.organizationId)
-      .order('sort_order')
-      .order('created_at')
-      .limit(5000),
+    supabase.from('schedule_activities').select('project_id').eq('organization_id', session.organizationId).limit(5000),
     getStaffMembers(session.organizationId, ['org_admin', 'project_manager', 'builder_staff']),
+    projectParam ? Promise.resolve(null) : getRememberedJob(session.organizationId),
   ])
   const projects = (projectData ?? []) as ProjectRow[]
-  const allActivities = (activityData ?? []) as unknown as Activity[]
 
   const activityCount = new Map<string, number>()
-  for (const a of allActivities) activityCount.set(a.project_id, (activityCount.get(a.project_id) ?? 0) + 1)
+  for (const a of (countData ?? []) as { project_id: string }[]) {
+    activityCount.set(a.project_id, (activityCount.get(a.project_id) ?? 0) + 1)
+  }
 
-  const defaultProject =
-    DEFAULT_PRIORITY.flatMap((s) => projects.filter((p) => p.status === s && activityCount.has(p.id)))[0] ??
-    projects.find((p) => activityCount.has(p.id)) ??
-    projects[0] ??
-    null
+  // Selection is always explicit: the URL wins, then the remembered current job. Never guess a project.
+  const showAll = projectParam === 'all'
+  const requestedId = showAll ? null : (projectParam ?? remembered?.id ?? null)
+  const selected = requestedId ? (projects.find((p) => p.id === requestedId) ?? null) : null
+  const invalidSelection = Boolean(projectParam) && !showAll && !selected
+  const filterProjects = projects.map((p) => ({
+    id: p.id,
+    name: p.name,
+    meta: activityCount.has(p.id) ? PROJECT_STATUS_LABELS[p.status] : 'No schedule',
+  }))
 
-  const showAll = projectParam === 'all' || !defaultProject
-  const selected = showAll ? null : (projects.find((p) => p.id === projectParam) ?? defaultProject)
+  if (!showAll && !selected) {
+    return (
+      <ScheduleSelectionProvider>
+        <div className="flex flex-col gap-6">
+          <PageHeader
+            icon={CalendarDaysIcon}
+            eyebrow="Workspace"
+            title="Schedule"
+            description="Choose a project to view and manage its construction activities."
+            actions={<ProjectFilter value="" projects={filterProjects} />}
+          />
+          <ScheduleBody>
+            <EmptyState
+              icon={CalendarDaysIcon}
+              title={invalidSelection ? 'Project not available' : 'Select a project'}
+              description={
+                invalidSelection
+                  ? 'That project does not exist, was archived, or you do not have access to it. Choose another project to continue.'
+                  : 'Pick a project from the selector to see its schedule, or choose All projects for an overview.'
+              }
+            />
+          </ScheduleBody>
+        </div>
+      </ScheduleSelectionProvider>
+    )
+  }
+
   const visibleProjects = selected ? [selected] : projects
   const visibleIds = new Set(visibleProjects.map((p) => p.id))
-  const activities = allActivities.filter((a) => visibleIds.has(a.project_id))
+  let activityQuery = supabase
+    .from('schedule_activities')
+    .select(`${ACTIVITY_COLUMNS}, project_id`)
+    .eq('organization_id', session.organizationId)
+  if (selected) activityQuery = activityQuery.eq('project_id', selected.id)
+  const { data: activityData } = await activityQuery.order('sort_order').order('created_at').limit(5000)
+  const activities = (activityData ?? []) as unknown as Activity[]
+  const allActivities = activities
 
   const { data: depData } = visibleIds.size
     ? await supabase
@@ -149,6 +176,8 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   ]
 
   return (
+    <ScheduleSelectionProvider>
+    {selected && projectParam === selected.id && remembered?.id !== selected.id && <RememberJob projectId={selected.id} />}
     <div className="flex flex-col gap-6">
       <PageHeader
         icon={CalendarDaysIcon}
@@ -160,16 +189,11 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
             : 'All projects, grouped by project. Changes here update the same records as each project tracker.'
         }
         actions={
-          <ProjectFilter
-            value={selected ? selected.id : 'all'}
-            projects={projects.map((p) => ({
-              id: p.id,
-              name: p.name,
-              meta: activityCount.has(p.id) ? PROJECT_STATUS_LABELS[p.status] : 'No schedule',
-            }))}
-          />
+          <ProjectFilter value={selected ? selected.id : 'all'} projects={filterProjects} />
         }
       />
+
+      <ScheduleBody>
 
       {selected && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -278,6 +302,8 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
           </ul>
         </section>
       )}
+      </ScheduleBody>
     </div>
+    </ScheduleSelectionProvider>
   )
 }

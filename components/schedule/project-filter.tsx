@@ -1,18 +1,17 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { useTransition } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { useScheduleSelection } from '@/components/schedule/schedule-selection'
 
 export function ProjectFilter({
   projects,
   value,
 }: {
   projects: { id: string; name: string; meta?: string }[]
+  /** Selected project id, "all" for the overview, or "" when nothing is selected. */
   value: string
 }) {
-  const router = useRouter()
-  const [pending, startTransition] = useTransition()
+  const { pending, select } = useScheduleSelection()
 
   return (
     <div className="flex w-full flex-col gap-1.5 sm:w-auto">
@@ -26,11 +25,15 @@ export function ProjectFilter({
           disabled={pending}
           aria-busy={pending}
           onChange={(e) => {
-            const next = e.target.value
-            startTransition(() => router.push(`/schedule?project=${encodeURIComponent(next)}`))
+            if (e.target.value) select(e.target.value)
           }}
           className="h-11 w-full min-w-64 appearance-none rounded-lg border border-input bg-card pl-3 pr-9 text-sm font-medium text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 sm:w-72"
         >
+          {value === '' && (
+            <option value="" disabled>
+              Select a project
+            </option>
+          )}
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.meta ? `${p.name} — ${p.meta}` : p.name}
