@@ -60,11 +60,9 @@ export function AssignPrimaryClient({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button type="button" variant={changing ? 'ghost' : 'default'} size="sm">
-          <UserRoundPlus className="size-4" aria-hidden="true" />
-          {changing ? 'Change primary' : 'Assign client'}
-        </Button>
+      <DialogTrigger render={<Button type="button" variant={changing ? 'ghost' : 'default'} size="sm" />}>
+        <UserRoundPlus className="size-4" aria-hidden="true" />
+        {changing ? 'Change primary' : 'Assign client'}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
