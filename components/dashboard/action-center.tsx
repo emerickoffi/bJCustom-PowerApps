@@ -149,20 +149,21 @@ function CategoryFilters({
   links: ActionCenterLinks
 }) {
   const counts = categoryCounts(items)
-  const present = ACTION_CATEGORIES.filter((c) => counts[c])
+  // A filter from the URL stays visible as a tab even when it has no items, so the active scope is never hidden.
+  const present = ACTION_CATEGORIES.filter((c) => counts[c] || c === selected)
   if (present.length < 2 && !selected) return null
   const tab = (active: boolean) =>
     cn(
-      '-mb-px inline-flex min-h-10 items-center gap-1.5 border-b-2 px-1 text-sm transition-colors focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      '-mb-px inline-flex min-h-11 items-center gap-1.5 border-b-[3px] px-1 text-sm transition-colors focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       active
         ? 'border-primary font-semibold text-primary'
-        : 'border-transparent font-medium text-muted-foreground hover:border-[#9FB3A7] hover:text-foreground',
+        : 'border-transparent font-medium text-[#536159] hover:border-[#9FB3A7] hover:text-[#18251F]',
     )
   const count = (active: boolean, n: number) => (
     <span
       className={cn(
-        'rounded-full px-1.5 text-xs tabular-nums',
-        active ? 'bg-sage text-primary' : 'bg-muted text-muted-foreground',
+        'rounded-full px-1.5 text-xs font-semibold tabular-nums',
+        active ? 'bg-primary text-primary-foreground' : 'bg-[#EEF1EE] text-[#536159]',
       )}
     >
       {n}
@@ -204,6 +205,54 @@ function ModuleNotice({ issues }: { issues: ActionModuleIssue[] }) {
   )
 }
 
+function EmptyState({
+  selected,
+  otherPending,
+  partial,
+  viewAllHref,
+}: {
+  selected: ActionCategory | null
+  /** Items in the whole queue; only reached when the current filter shows none. */
+  otherPending: number
+  partial: boolean
+  viewAllHref: string
+}) {
+  const filteredWithOthers = selected && otherPending > 0
+  const title = selected
+    ? `No pending ${ACTION_CATEGORY_LABELS[selected]} items`
+    : partial
+      ? 'Nothing pending in the modules checked'
+      : 'Nothing needs your attention'
+  const detail = filteredWithOthers
+    ? `${otherPending} item${otherPending === 1 ? '' : 's'} still pending in other categories.`
+    : partial
+      ? 'Some modules could not be checked. See the note below.'
+      : selected
+        ? 'Other categories are clear too.'
+        : 'Items appear here when a live record needs action.'
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-5" role="status">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#EEF1EE] text-primary" aria-hidden="true">
+        <CircleCheck className="size-[18px]" />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <p className="text-sm font-semibold text-[#18251F]">{title}</p>
+        <p className="text-pretty text-sm text-[#536159]">{detail}</p>
+      </div>
+      {filteredWithOthers && (
+        <Link
+          href={viewAllHref}
+          scroll={false}
+          className="group inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-[#805B2A] underline-offset-4 hover:text-[#62421D] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          View all pending items
+          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+        </Link>
+      )}
+    </div>
+  )
+}
+
 export function ActionCenter({
   items,
   totalIsLowerBound,
@@ -235,21 +284,21 @@ export function ActionCenter({
   return (
     <section aria-labelledby="action-center-heading" className="surface flex flex-col">
       <div className="flex items-center gap-3 rounded-t-[inherit] border-b border-[#D8DED8] bg-card px-4 py-3 md:px-6">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sage text-primary" aria-hidden="true">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#F5EDDF] text-[#805B2A]" aria-hidden="true">
           <ListChecks className="size-[18px]" />
         </span>
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Heading id="action-center-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-foreground">
+            <Heading id="action-center-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-[#18251F]">
               Action Center
             </Heading>
             {items.length > 0 && (
-              <span className="rounded-full border border-primary/15 bg-sage px-2 py-px text-xs font-medium leading-4 tabular-nums text-primary">
+              <span className="rounded-full border border-[#805B2A]/20 bg-[#F5EDDF] px-2 py-px text-xs font-semibold leading-4 tabular-nums text-[#62421D]">
                 {`${countLabel} pending`}
               </span>
             )}
           </div>
-          <p className="text-pretty text-[13px] leading-[18px] text-muted-foreground">
+          <p className="text-pretty text-[13px] leading-[18px] text-[#536159]">
             Everything waiting on you, across your projects.
           </p>
         </div>
@@ -259,19 +308,12 @@ export function ActionCenter({
       <CategoryFilters items={items} selected={selected} links={links} />
 
       {visible.length === 0 ? (
-        <div className="flex items-start gap-3 rounded-xl bg-sage/60 p-4" role="status">
-          <CircleCheck className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="text-sm font-semibold text-foreground">
-              {selected ? `No open ${ACTION_CATEGORY_LABELS[selected]} items` : 'Nothing waiting on you'}
-            </p>
-            <p className="text-pretty text-sm text-muted-foreground">
-              {unavailable.length
-                ? 'No open items in the modules that could be checked. See the note below for the rest.'
-                : 'Every checked module is clear. Items appear here only when a live record needs action.'}
-            </p>
-          </div>
-        </div>
+        <EmptyState
+          selected={selected}
+          otherPending={items.length}
+          partial={unavailable.length > 0}
+          viewAllHref={links.href(null)}
+        />
       ) : (
         <ul className="flex flex-col divide-y">
           {visible.map((item) => (
