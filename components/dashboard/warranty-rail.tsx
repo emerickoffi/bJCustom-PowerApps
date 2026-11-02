@@ -18,17 +18,20 @@ export function WarrantyRail({ overview }: { overview: WarrantyOverview }) {
   )
 
   return (
-    <section aria-labelledby="warranty-heading" className="surface flex flex-col gap-3 p-4">
-      <DashboardSectionHeader
-        id="warranty-heading"
-        title="Warranty"
-        description={
-          overview.state === 'available'
-            ? `${overview.value.total} ${overview.value.total === 1 ? 'home' : 'homes'} monitored`
-            : undefined
-        }
-        icon={ShieldCheck}
-      />
+    <section aria-labelledby="warranty-heading" className="surface flex flex-col">
+      <div className="p-5 md:px-6">
+        <DashboardSectionHeader
+          id="warranty-heading"
+          title="Warranty"
+          description={
+            overview.state === 'available'
+              ? `${overview.value.total} ${overview.value.total === 1 ? 'home' : 'homes'} monitored`
+              : undefined
+          }
+          icon={ShieldCheck}
+        />
+      </div>
+      <div className="flex flex-1 flex-col gap-3 border-t px-5 pb-5 pt-5 md:px-6">
       {overview.state === 'unavailable' ? (
         <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground">{overview.reason}</p>
       ) : sorted.length ? (
@@ -67,6 +70,7 @@ export function WarrantyRail({ overview }: { overview: WarrantyOverview }) {
       {sorted.length > VISIBLE && (
         <p className="text-xs text-muted-foreground">{`${sorted.length - VISIBLE} more monitored`}</p>
       )}
+      </div>
     </section>
   )
 }
