@@ -39,6 +39,8 @@ const CATEGORY_ICONS: Record<ActionCategory, LucideIcon> = {
   setup: Settings2,
 }
 
+const BRONZE_ICON_CATEGORIES = new Set<ActionCategory>(['approvals', 'documents'])
+
 const DATE_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 const formatDate = (iso: string) => DATE_FORMAT.format(new Date(`${iso.slice(0, 10)}T00:00:00Z`))
 
@@ -67,10 +69,13 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
   return (
     <li className="flex gap-3 py-3.5 first:pt-0 last:pb-0">
       <span
-        className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground"
+        className={cn(
+          'flex size-9 shrink-0 items-center justify-center rounded-full bg-[#F5EDDF]',
+          BRONZE_ICON_CATEGORIES.has(item.category) ? 'text-[#805B2A]' : 'text-primary',
+        )}
         aria-hidden="true"
       >
-        <Icon className="size-4" />
+        <Icon className="size-[18px]" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -123,7 +128,7 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
         </div>
         <Link
           href={item.href}
-          className="group -mx-2 inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-md px-2 text-sm font-medium text-primary hover:bg-sage/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mx-0 sm:self-center"
+          className="group -mx-2 inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-md px-2 text-sm font-medium text-[#805B2A] underline-offset-4 hover:text-[#62421D] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mx-0 sm:self-center"
         >
           {item.actionLabel}
           <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />

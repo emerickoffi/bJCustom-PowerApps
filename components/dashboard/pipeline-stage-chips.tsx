@@ -13,32 +13,54 @@ function percent(count: number, total: number) {
   return total ? Math.round((count / total) * 100) : 0
 }
 
-function StageChip({ status, count, total }: StageCount & { total: number }) {
+/** Stage name, count, and an equal-length colour accent bar (not a completion measure). */
+function StageSummary({ status, count, total }: StageCount & { total: number }) {
   const label = PROJECT_STATUS_LABELS[status]
   return (
-    <li>
+    <li className="min-w-0 border-l border-border/70 px-4">
       <Link
         href={`/projects?status=${status}`}
         aria-label={`${label}: ${count} ${count === 1 ? 'project' : 'projects'}, ${percent(count, total)}% of portfolio. View projects.`}
-        className={cn(
-          'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors',
-          'hover:border-primary/30 hover:bg-sage/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          count === 0 ? 'border-dashed text-muted-foreground' : 'bg-card text-foreground',
-        )}
+        className="group -mx-2 flex min-h-11 flex-col gap-1.5 rounded-md px-2 py-1.5 transition-colors hover:bg-sage/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
+        <span className="truncate text-xs font-medium text-muted-foreground group-hover:text-foreground">{label}</span>
         <span
-          className={cn('size-2 shrink-0 rounded-full', count === 0 && 'opacity-40')}
-          style={{ backgroundColor: stageIndicatorColor(status) }}
+          className={cn(
+            'tabular font-serif text-2xl font-semibold leading-none',
+            count === 0 ? 'text-muted-foreground' : 'text-foreground',
+          )}
+        >
+          {count}
+        </span>
+        <span
           aria-hidden="true"
+          data-stage={status}
+          className={cn('mt-1 h-1 w-full rounded-full', count === 0 && 'opacity-35')}
+          style={{ backgroundColor: stageIndicatorColor(status) }}
         />
-        <span>{label}</span>
-        <span className="tabular font-semibold">{count}</span>
       </Link>
     </li>
   )
 }
 
-/** Nonzero chips by default; zero-count stages are revealed on request. On Hold and Cancelled stay a separate status group. */
+/** Separators are left borders; the -ml-px inside an overflow-hidden wrapper hides the one starting each row. */
+function SummaryGrid({ items, total, label, labelledBy }: { items: StageCount[]; total: number; label?: string; labelledBy?: string }) {
+  return (
+    <div className="overflow-hidden">
+      <ol
+        aria-label={label}
+        aria-labelledby={labelledBy}
+        className="-ml-px grid grid-cols-1 gap-y-4 min-[22rem]:grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]"
+      >
+        {items.map((s) => (
+          <StageSummary key={s.status} {...s} total={total} />
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+/** Nonzero stages by default; zero-count stages are revealed on request. On Hold and Cancelled stay a separate status group. */
 export function PipelineStageChips({
   stages,
   statuses,
@@ -55,24 +77,14 @@ export function PipelineStageChips({
   const shownStatuses = visible(statuses)
 
   return (
-    <div className="flex flex-col gap-3">
-      {shownStages.length > 0 && (
-        <ol className="flex flex-wrap gap-1.5" aria-label="Projects by stage">
-          {shownStages.map((s) => (
-            <StageChip key={s.status} {...s} total={total} />
-          ))}
-        </ol>
-      )}
+    <div className="flex flex-col gap-4">
+      {shownStages.length > 0 && <SummaryGrid items={shownStages} total={total} label="Projects by stage" />}
       {shownStatuses.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+        <div className="flex flex-col gap-2 border-t border-border/70 pt-4">
           <span className="text-xs font-medium text-muted-foreground" id="pipeline-status-label">
             Status
           </span>
-          <ul className="flex flex-wrap gap-1.5" aria-labelledby="pipeline-status-label">
-            {shownStatuses.map((s) => (
-              <StageChip key={s.status} {...s} total={total} />
-            ))}
-          </ul>
+          <SummaryGrid items={shownStatuses} total={total} labelledBy="pipeline-status-label" />
         </div>
       )}
       {hiddenCount > 0 && (
