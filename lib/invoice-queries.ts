@@ -109,6 +109,18 @@ export async function listInvoices(
   return (data ?? []) as InvoiceRow[]
 }
 
+/** Same scope as listInvoices, but surfaces retrieval failures so callers never mistake them for "no invoices". */
+export async function listInvoicesResult(organizationId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('invoices')
+    .select(INVOICE_SELECT)
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: false })
+    .limit(300)
+  return { invoices: (data ?? []) as InvoiceRow[], failed: Boolean(error) }
+}
+
 export async function getInvoice(id: string, organizationId?: string) {
   const supabase = await createClient()
   let query = supabase.from('invoices').select(INVOICE_SELECT).eq('id', id)
