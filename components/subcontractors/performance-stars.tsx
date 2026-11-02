@@ -1,6 +1,6 @@
 import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatRating, ratingCountLabel, type PerformanceSummary } from '@/lib/subcontractor-performance'
+import { formatRating, reviewCountLabel, type PerformanceSummary } from '@/lib/subcontractor-performance'
 
 /** Read-only 5-star display with partial fill for fractional averages. */
 export function StarDisplay({ value, className }: { value: number | null; className?: string }) {
@@ -33,7 +33,7 @@ export function PerformanceCell({ summary }: { summary: PerformanceSummary | und
         <StarDisplay value={summary.average} />
         <span className="text-sm font-semibold tabular-nums text-foreground">{formatRating(summary.average)}</span>
       </span>
-      <span className="text-xs text-muted-foreground">{ratingCountLabel(summary.count)}</span>
+      <span className="text-xs text-muted-foreground">{reviewCountLabel(summary.count)}</span>
     </div>
   )
 }
