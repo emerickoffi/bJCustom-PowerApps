@@ -134,6 +134,7 @@ export async function OwnerDashboard({
       managerName: p.project_manager_id ? (managers.get(p.project_manager_id) ?? null) : null,
       contractCents: budget?.state === 'established' ? budget.contractCents : null,
       health: h?.level ?? null,
+      healthReasons: h?.reasons,
       stageActivities: d?.stageActivities ?? null,
       closeoutReason: p.status === 'completed' ? (closeoutReasons.get(p.id) ?? null) : null,
       canSetUpSchedule: features.schedule && canManage(session.role),

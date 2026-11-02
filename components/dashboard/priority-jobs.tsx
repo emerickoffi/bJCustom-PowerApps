@@ -4,15 +4,10 @@ import {
   ArrowRight,
   CalendarDays,
   ChevronRight,
-  CircleAlert,
-  CircleCheck,
-  CircleHelp,
-  FileQuestion,
   House,
-  TriangleAlert,
-  type LucideIcon,
 } from 'lucide-react'
 import { DashboardSectionHeader } from '@/components/dashboard/dashboard-section-header'
+import { HealthBadge } from '@/components/dashboard/health-badge'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { formatDate } from '@/lib/format'
 import { ACTIVITY_TYPE_LABELS, type ActivityType } from '@/lib/schedule'
@@ -31,6 +26,8 @@ export type PriorityJob = {
   /** Approved contract value; null when not established or not permitted. */
   contractCents: number | null
   health: HealthLevel | null
+  /** The assessment's own reasons for this project's health result. */
+  healthReasons?: readonly string[]
   /** Activities in the current stage; null when scheduling is off or the stage has no working schedule. */
   stageActivities: StageActivities | null
   /** Completed jobs remain listed only with a verified open action item; this is its title. */
@@ -53,40 +50,9 @@ function StageDot({ status }: { status: ProjectStatus }) {
   )
 }
 
-type HealthIndicatorKey = HealthLevel | 'closed' | 'not_assessed'
-
-const HEALTH_INDICATOR: Record<HealthIndicatorKey, { icon: LucideIcon; className: string }> = {
-  on_track: { icon: CircleCheck, className: 'bg-sage text-success' },
-  needs_attention: { icon: TriangleAlert, className: 'bg-champagne-soft text-warning' },
-  at_risk: { icon: CircleAlert, className: 'bg-destructive/8 text-destructive' },
-  insufficient_data: { icon: FileQuestion, className: 'bg-slate-100 text-slate-600' },
-  not_assessed: { icon: CircleHelp, className: 'bg-slate-100 text-slate-600' },
-  closed: { icon: CircleCheck, className: 'bg-muted text-muted-foreground' },
-}
-
-const UNKNOWN_INDICATOR = { icon: CircleHelp, className: 'bg-muted text-muted-foreground' }
-
 function HealthCell({ job }: { job: PriorityJob }) {
-  const key: HealthIndicatorKey = job.health ?? (job.status === 'completed' ? 'closed' : 'not_assessed')
-  const label = job.health
-    ? (HEALTH_LABELS[job.health] ?? job.health)
-    : key === 'closed'
-      ? 'Closed'
-      : 'Not assessed'
-  const { icon: Icon, className } = HEALTH_INDICATOR[key] ?? UNKNOWN_INDICATOR
-
-  return (
-    <span
-      data-health={key}
-      className={cn(
-        'inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-[0.7rem] font-semibold leading-4 @2xl:whitespace-nowrap',
-        className,
-      )}
-    >
-      <Icon className="size-4 shrink-0" aria-hidden="true" />
-      <span className="min-w-0">{label}</span>
-    </span>
-  )
+  const key = job.health ?? (job.status === 'completed' ? 'closed' : 'not_assessed')
+  return <HealthBadge healthKey={key} reasons={job.health ? job.healthReasons : undefined} />
 }
 
 function shortDate(value: string): string {
@@ -103,7 +69,11 @@ function JobIdentity({ job }: { job: PriorityJob }) {
     <div className="flex min-w-0 flex-col gap-0.5">
       <Link
         href={`/projects/${job.id}`}
-        className={cn('truncate text-sm font-semibold text-foreground underline-offset-2 hover:text-primary hover:underline', focusRing)}
+        title={job.name}
+        className={cn(
+          'line-clamp-2 break-words text-sm font-semibold leading-snug text-foreground underline-offset-2 hover:text-primary hover:underline',
+          focusRing,
+        )}
       >
         {job.name}
       </Link>
@@ -189,12 +159,14 @@ function NextActivity({ job }: { job: PriorityJob }) {
 
   const { activity } = data
   const typeLabel = activity.type && activity.type !== 'task' ? ACTIVITY_TYPE_LABELS[activity.type as ActivityType] : null
+  const activityHref = `/projects/${job.id}/schedule?activity=${encodeURIComponent(activity.id)}`
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
       <Link
-        href={`/projects/${job.id}/schedule?activity=${activity.id}`}
+        href={activityHref}
+        title={activity.name}
         className={cn(
-          'relative z-10 truncate text-sm text-foreground underline-offset-2 hover:text-primary hover:underline',
+          'relative z-10 line-clamp-2 break-words text-sm text-foreground underline-offset-2 hover:text-primary hover:underline',
           focusRing,
         )}
       >
@@ -216,7 +188,18 @@ function NextActivity({ job }: { job: PriorityJob }) {
           </span>
         )
       ) : (
-        muted('No due date')
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          {muted('No due date')}
+          {job.canSetUpSchedule && (
+            <Link
+              href={activityHref}
+              aria-label={`Set date for ${activity.name}`}
+              className={cn('relative z-10 text-xs font-medium text-primary underline-offset-2 hover:underline', focusRing)}
+            >
+              Set date
+            </Link>
+          )}
+        </span>
       )}
     </div>
   )
@@ -252,8 +235,8 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
           <table className="hidden w-full table-fixed text-left text-sm @2xl:table">
             <thead>
               <tr className="border-b text-xs text-muted-foreground">
-                <th scope="col" className="w-[30%] pb-2 pl-2 pr-4 font-medium">Project</th>
-                <th scope="col" className="w-[23%] pb-2 pr-4 font-medium">Stage</th>
+                <th scope="col" className="w-[33%] pb-2 pl-2 pr-4 font-medium">Project</th>
+                <th scope="col" className="w-[20%] pb-2 pr-4 font-medium">Stage</th>
                 <th scope="col" className="pb-2 pr-4 font-medium">Next step</th>
                 <th scope="col" className="w-[17%] pb-2 pr-2 font-medium">Health</th>
                 <th scope="col" className="w-12 pb-2">
