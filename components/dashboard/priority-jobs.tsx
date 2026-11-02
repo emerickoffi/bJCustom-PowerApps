@@ -31,12 +31,12 @@ export type PriorityJob = {
 
 const focusRing = 'focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
-function StageIndicator({ status, className }: { status: ProjectStatus; className?: string }) {
+function StageDot({ status }: { status: ProjectStatus }) {
   return (
     <span
       aria-hidden="true"
       data-stage={status}
-      className={cn('w-1 shrink-0 self-stretch rounded-full', className)}
+      className="size-2.5 shrink-0 rounded-full"
       style={{ backgroundColor: stageIndicatorColor(status) }}
     />
   )
@@ -85,7 +85,10 @@ function CurrentStage({ job }: { job: PriorityJob }) {
   const label = stageLabel(job.status)
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="truncate text-sm font-medium text-foreground">{label}</span>
+      <span className="flex min-w-0 items-center gap-2">
+        <StageDot status={job.status} />
+        <span className="truncate text-sm font-medium text-foreground">{label}</span>
+      </span>
       {counts && (
         <>
           <div
@@ -197,7 +200,7 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
           <table className="hidden w-full table-fixed text-left text-sm md:table">
             <thead>
               <tr className="border-b text-xs text-muted-foreground">
-                <th scope="col" className="w-[31%] pb-2 pl-4 font-medium">Job</th>
+                <th scope="col" className="w-[31%] pb-2 pr-4 font-medium">Job</th>
                 <th scope="col" className="w-[24%] pb-2 pr-4 font-medium">Current Stage</th>
                 <th scope="col" className="pb-2 pr-4 font-medium">Next Activity</th>
                 <th scope="col" className="w-[17%] pb-2 font-medium">Health</th>
@@ -210,10 +213,7 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
                   className="group relative align-top transition-colors focus-within:bg-sage/40 hover:bg-sage/40"
                 >
                   <td className="py-3.5 pr-4">
-                    <div className="flex gap-3">
-                      <StageIndicator status={job.status} className="min-h-10" />
-                      <JobIdentity job={job} />
-                    </div>
+                    <JobIdentity job={job} />
                   </td>
                   <td className="py-3.5 pr-4">
                     <CurrentStage job={job} />
@@ -235,7 +235,6 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
                 key={job.id}
                 className="relative flex gap-3 py-3.5 first:pt-0 last:pb-0 focus-within:rounded-lg focus-within:ring-2 focus-within:ring-ring"
               >
-                <StageIndicator status={job.status} />
                 <div className="flex min-w-0 flex-1 flex-col gap-3">
                   <div className="flex items-start justify-between gap-3">
                     <JobIdentity job={job} />

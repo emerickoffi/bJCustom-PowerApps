@@ -7,7 +7,7 @@ import { Check, ChevronsUpDown, Layers, Loader2, Search } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { searchJobsAction, setCurrentJobAction } from '@/app/actions/job-context'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
-import { LIFECYCLE_GROUP_CLASSES, lifecycleGroup } from '@/lib/project-lifecycle'
+import { stageColor, stageIndicatorColor } from '@/lib/stage-colors'
 import { cn } from '@/lib/utils'
 
 export type CurrentJob = { id: string; name: string; projectNumber: string | null; status: ProjectStatus }
@@ -103,7 +103,8 @@ export function JobSwitcher({ currentJob }: { currentJob: CurrentJob | null }) {
       >
         {currentJob ? (
           <span
-            className={cn('size-2 shrink-0 rounded-full', LIFECYCLE_GROUP_CLASSES[lifecycleGroup(currentJob.status)].split(' ')[0])}
+            className="size-2 shrink-0 rounded-full"
+            style={{ backgroundColor: stageIndicatorColor(currentJob.status) }}
             aria-hidden="true"
           />
         ) : (
@@ -170,7 +171,6 @@ export function JobSwitcher({ currentJob }: { currentJob: CurrentJob | null }) {
             {jobs.map((job, i) => {
               const row = i + 1
               const selected = currentJob?.id === job.id
-              const group = lifecycleGroup(job.status)
               return (
                 <li
                   key={job.id}
@@ -187,7 +187,7 @@ export function JobSwitcher({ currentJob }: { currentJob: CurrentJob | null }) {
                       {[job.projectNumber, job.city].filter(Boolean).join(' · ') || 'No job number'}
                     </span>
                   </span>
-                  <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium', LIFECYCLE_GROUP_CLASSES[group])}>
+                  <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium', stageColor(job.status).badgeClass)}>
                     {PROJECT_STATUS_LABELS[job.status] ?? job.status}
                   </span>
                   {selected && <Check className="size-4 shrink-0 text-primary" aria-label="Current" />}

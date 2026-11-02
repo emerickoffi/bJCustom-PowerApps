@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
-import { LIFECYCLE_GROUP_CLASSES, PROJECT_LIFECYCLE_GROUP } from '@/lib/project-lifecycle'
+import { STAGE_COLOR_FALLBACK, stageColor } from '@/lib/stage-colors'
 
 type StatusStyle = { icon: LucideIcon; className: string }
 
@@ -38,14 +38,11 @@ const STATUS_ICONS: Record<ProjectStatus, LucideIcon> = {
 }
 
 /**
- * Single source of truth for project status colors. Color follows the lifecycle group (pipeline, active
- * build, closed, on hold) and the icon plus label identify the exact stage, so status never relies on color.
+ * Project status badge styles. Colours come from the shared stage palette (lib/stage-colors) so badges,
+ * dashboard dots, and pipeline accents always agree; the icon plus label keep meaning independent of colour.
  */
 export const PROJECT_STATUS_STYLES = Object.fromEntries(
-  (Object.keys(STATUS_ICONS) as ProjectStatus[]).map((s) => [
-    s,
-    { icon: STATUS_ICONS[s], className: LIFECYCLE_GROUP_CLASSES[PROJECT_LIFECYCLE_GROUP[s]] },
-  ]),
+  (Object.keys(STATUS_ICONS) as ProjectStatus[]).map((s) => [s, { icon: STATUS_ICONS[s], className: stageColor(s).badgeClass }]),
 ) as Record<ProjectStatus, StatusStyle>
 
 export function ProjectStatusBanner({
@@ -57,7 +54,7 @@ export function ProjectStatusBanner({
   compact?: boolean
   className?: string
 }) {
-  const style = PROJECT_STATUS_STYLES[status] ?? { icon: ClipboardList, className: 'bg-slate-500 text-white' }
+  const style = PROJECT_STATUS_STYLES[status] ?? { icon: ClipboardList, className: STAGE_COLOR_FALLBACK.badgeClass }
   const Icon = style.icon
   const label = PROJECT_STATUS_LABELS[status] ?? status
 

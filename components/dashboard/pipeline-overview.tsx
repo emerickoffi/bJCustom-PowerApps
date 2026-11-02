@@ -1,11 +1,6 @@
-import { ALL_PROJECT_STATUSES, PROJECT_PIPELINE, PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
-import { stageIndicatorColor } from '@/lib/stage-colors'
+import { ALL_PROJECT_STATUSES, PROJECT_PIPELINE, type ProjectStatus } from '@/lib/domain'
 import { cn } from '@/lib/utils'
 import { PipelineStageChips } from '@/components/dashboard/pipeline-stage-chips'
-
-function percent(count: number, total: number) {
-  return total ? Math.round((count / total) * 100) : 0
-}
 
 function Metric({ label, value, emphasis }: { label: string; value: number; emphasis?: boolean }) {
   return (
@@ -25,7 +20,6 @@ export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectSta
   const inPipeline = PROJECT_PIPELINE.filter((s) => s !== 'completed').reduce((sum, s) => sum + countOf(s), 0)
   const onHold = countOf('on_hold')
   const cancelled = countOf('cancelled')
-  const segments = ALL_PROJECT_STATUSES.filter((s) => countOf(s) > 0)
 
   return (
     <section aria-labelledby="pipeline-heading" className="surface flex flex-col gap-4 p-5">
@@ -40,26 +34,7 @@ export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectSta
         </dl>
       </div>
 
-      {total > 0 ? (
-        <div
-          role="img"
-          aria-label={`Portfolio distribution: ${segments
-            .map((s) => `${PROJECT_STATUS_LABELS[s]} ${countOf(s)} (${percent(countOf(s), total)}%)`)
-            .join(', ')}`}
-          className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-sage/70"
-        >
-          {segments.map((s) => (
-            <span
-              key={s}
-              title={`${PROJECT_STATUS_LABELS[s]}: ${countOf(s)}`}
-                className="h-full first:rounded-l-full last:rounded-r-full"
-                style={{ width: `${(countOf(s) / total) * 100}%`, backgroundColor: stageIndicatorColor(s) }}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">No projects yet.</p>
-      )}
+      {total === 0 && <p className="text-sm text-muted-foreground">No projects yet.</p>}
 
       <PipelineStageChips
         stages={PROJECT_PIPELINE.map((s) => ({ status: s, count: countOf(s) }))}
