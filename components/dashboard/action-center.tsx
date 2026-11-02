@@ -2,13 +2,22 @@ import Link from 'next/link'
 import {
   ArrowRight,
   CalendarClock,
+  CalendarPlus,
   ChevronDown,
   CircleAlert,
   CircleCheck,
+  ClipboardCheck,
   ClipboardList,
+  Contact,
   FileCheck2,
+  FilePen,
+  FileSearch,
   FileText,
+  Files,
   ListChecks,
+  ListFilter,
+  MapPin,
+  NotebookText,
   Receipt,
   Settings2,
   ShieldCheck,
@@ -39,6 +48,31 @@ const CATEGORY_ICONS: Record<ActionCategory, LucideIcon> = {
   setup: Settings2,
 }
 
+/** Category tabs use review-oriented icons where the spec calls for them; others reuse the row icon. */
+const TAB_ICONS: Partial<Record<ActionCategory, LucideIcon>> = {
+  approvals: ClipboardCheck,
+  documents: Files,
+  compliance: ShieldCheck,
+}
+
+/** Keyed by the existing action label so the icon always matches what the button does. */
+const ACTION_ICONS: Record<string, LucideIcon> = {
+  'Review Signed Document': FileSearch,
+  'Review Estimate': ClipboardCheck,
+  'Review Change Order': FilePen,
+  'Review Qualification': ShieldCheck,
+  'Review Invoice': Receipt,
+  'View Schedule': CalendarClock,
+  'Build Schedule': CalendarPlus,
+  'Open Log': NotebookText,
+  'Manage Contacts': Contact,
+  'Add Jobsite Address': MapPin,
+  'Resolve Issue': CircleAlert,
+  'Review Issue': CircleAlert,
+  'Open Warranty Claim': Wrench,
+  'Open Warranty': Wrench,
+}
+
 const BRONZE_ICON_CATEGORIES = new Set<ActionCategory>(['approvals', 'documents'])
 
 const DATE_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
@@ -67,7 +101,7 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
       : null
   const meta = [item.projectName, ACTION_CATEGORY_LABELS[item.category]].filter(Boolean) as string[]
   return (
-    <li className="flex gap-3 py-3.5 first:pt-0 last:pb-0">
+    <li className="flex items-start gap-3 py-4 first:pt-1 last:pb-1">
       <span
         className={cn(
           'flex size-9 shrink-0 items-center justify-center rounded-full bg-[#F5EDDF]',
@@ -77,9 +111,16 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
       >
         <Icon className="size-[18px]" />
       </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <p className="text-pretty text-sm font-semibold leading-snug text-foreground">{item.title}</p>
+      <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <p className="text-pretty text-[15px] font-semibold leading-snug text-foreground">
+            <Link
+              href={item.href}
+              className="rounded-sm underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {item.title}
+            </Link>
+          </p>
           <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
             {urgency && (
               <span className="inline-flex items-center gap-1 font-medium text-destructive">
@@ -126,16 +167,35 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
             </details>
           )}
         </div>
-        <Link
-          href={item.href}
-          className="group -mx-2 inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-md px-2 text-sm font-medium text-[#805B2A] underline-offset-4 hover:text-[#62421D] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mx-0 sm:self-center"
-        >
-          {item.actionLabel}
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-          <span className="sr-only">{`: ${item.title}`}</span>
-        </Link>
+        <ActionIconLink item={item} />
       </div>
     </li>
+  )
+}
+
+/** Compact review button; it only opens the record, never approves or completes it. */
+function ActionIconLink({ item }: { item: ActionItem }) {
+  const Icon = ACTION_ICONS[item.actionLabel] ?? ArrowRight
+  const tipId = `action-tip-${item.id.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+  const name = `${item.actionLabel}: ${item.title}`
+  return (
+    <span className="group/tip relative shrink-0">
+      <Link
+        href={item.href}
+        aria-label={name}
+        aria-describedby={tipId}
+        className="flex size-10 items-center justify-center rounded-lg bg-[#F5EDDF] text-[#805B2A] transition-colors hover:bg-[#EDE0C9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <Icon className="size-[19px]" aria-hidden="true" />
+      </Link>
+      <span
+        id={tipId}
+        role="tooltip"
+        className="pointer-events-none invisible absolute bottom-full right-0 z-20 mb-2 w-max max-w-56 rounded-md bg-[#18251F] px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-focus-within/tip:visible group-focus-within/tip:opacity-100 group-hover/tip:visible group-hover/tip:opacity-100"
+      >
+        {item.actionLabel}
+      </span>
+    </span>
   )
 }
 
@@ -174,16 +234,21 @@ function CategoryFilters({
       <ul className="flex w-max min-w-full gap-5 border-b">
         <li>
           <Link href={links.href(null)} scroll={false} className={tab(!selected)} aria-current={!selected ? 'true' : undefined}>
+            <ListFilter className="size-4 shrink-0" aria-hidden="true" />
             All {count(!selected, items.length)}
           </Link>
         </li>
-        {present.map((c) => (
-          <li key={c}>
-            <Link href={links.href(c)} scroll={false} className={tab(selected === c)} aria-current={selected === c ? 'true' : undefined}>
-              {ACTION_CATEGORY_LABELS[c]} {count(selected === c, counts[c] ?? 0)}
-            </Link>
-          </li>
-        ))}
+        {present.map((c) => {
+          const TabIcon = TAB_ICONS[c] ?? CATEGORY_ICONS[c]
+          return (
+            <li key={c}>
+              <Link href={links.href(c)} scroll={false} className={tab(selected === c)} aria-current={selected === c ? 'true' : undefined}>
+                <TabIcon className="size-4 shrink-0" aria-hidden="true" />
+                {ACTION_CATEGORY_LABELS[c]} {count(selected === c, counts[c] ?? 0)}
+              </Link>
+            </li>
+          )
+        })}
       </ul>
     </nav>
   )
