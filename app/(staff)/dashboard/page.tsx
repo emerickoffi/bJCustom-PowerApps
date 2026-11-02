@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: 'Dashboard' }
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ portfolio?: string; actions?: string; agenda?: string }>
+  searchParams: Promise<{ portfolio?: string; actions?: string; agenda?: string; project?: string }>
 }) {
   const session = await requireStaff()
   const [query, features] = await Promise.all([searchParams, getOrgFeatures(session.organizationId)])
@@ -19,7 +19,7 @@ export default async function DashboardPage({
   return (
     <div data-dashboard-theme className="contents">
       {key === 'project_manager' || key === 'builder_staff' ? (
-        <FieldDashboard session={session} features={features} dashboardKey={key} />
+        <FieldDashboard session={session} features={features} dashboardKey={key} projectId={query.project ?? null} />
       ) : (
         <OwnerDashboard session={session} features={features} query={query} />
       )}

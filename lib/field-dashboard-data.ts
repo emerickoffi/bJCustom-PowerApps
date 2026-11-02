@@ -1,6 +1,7 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
-import { getRememberedJob, type JobSummary } from '@/lib/job-context'
+import { getAuthorizedJob, type JobSummary } from '@/lib/job-context'
+import { isProjectId } from '@/lib/route-job'
 import { getActionItems } from '@/lib/attention-data'
 import { assignedProjectsFilter } from '@/lib/my-work'
 import { todayIso } from '@/lib/schedule'
@@ -42,17 +43,22 @@ const UPCOMING_LIMIT = 6
 const ASSIGNED_LIMIT = 8
 
 /**
- * Everything the field dashboard needs, scoped to jobs the user is authorized for. The remembered job is
- * re-verified through RLS (getRememberedJob), and every per-job query filters by that verified id.
+ * Everything the field dashboard needs, scoped to jobs the user is authorized for. The selected job comes
+ * from the URL (`?project=`), is re-verified through RLS (getAuthorizedJob), and every per-job query filters
+ * by that verified id.
  */
-export async function loadFieldDashboard(session: StaffSession, features: FeatureMap): Promise<FieldDashboardData> {
+export async function loadFieldDashboard(
+  session: StaffSession,
+  features: FeatureMap,
+  projectParam?: string | null,
+): Promise<FieldDashboardData> {
   const supabase = await createClient()
   const orgId = session.organizationId
   const manager = session.role === 'org_admin' || session.role === 'project_manager'
   const today = todayIso()
 
   const [job, memberRes, attention] = await Promise.all([
-    getRememberedJob(orgId),
+    isProjectId(projectParam) ? getAuthorizedJob(orgId, projectParam) : Promise.resolve(null),
     supabase.from('project_members').select('project_id').eq('organization_id', orgId).eq('user_id', session.userId),
     getActionItems(orgId, session.userId, { manager, features }),
   ])

@@ -44,13 +44,15 @@ export async function FieldDashboard({
   session,
   features,
   dashboardKey,
+  projectId,
 }: {
   session: StaffSession
   features: FeatureMap
   dashboardKey: Exclude<DashboardKey, 'owner'>
+  projectId?: string | null
 }) {
   const [data, layout] = await Promise.all([
-    loadFieldDashboard(session, features),
+    loadFieldDashboard(session, features, projectId),
     loadDashboardLayout(session.organizationId, session.userId, dashboardKey, features),
   ])
   const wantsHealth = layout.widgets.some((w) => w.id === 'project_health' && w.visible)
@@ -163,7 +165,7 @@ function CurrentJobCard({ data }: { data: FieldDashboardData }) {
         </h2>
         <p className="text-sm text-muted-foreground">
           {data.assignedJobs.length
-            ? 'Use Switch job at the top of the page, or open one of your jobs below. Your choice is remembered.'
+            ? 'Use the project selector at the top of the page, or open one of your jobs below.'
             : 'You are not assigned to any active jobs yet. Ask your project manager to add you to a job.'}
         </p>
       </section>
