@@ -13,7 +13,6 @@ const DESKTOP_QUERY = '(min-width: 80rem)'
 export function Sidebar({
   items,
   logo,
-  monogram,
   homeLabel,
   homeHref = '/dashboard',
   defaultMode,
@@ -21,7 +20,6 @@ export function Sidebar({
 }: {
   items: NavItem[]
   logo: React.ReactNode
-  monogram: string
   homeLabel: string
   homeHref?: string
   defaultMode: SidebarMode
@@ -54,15 +52,22 @@ export function Sidebar({
     >
       {variants.map(({ collapsed, className }) => (
         <div key={String(collapsed)} className={cn('flex min-h-0 flex-1 flex-col', className)}>
-          <div className={cn('flex h-24 shrink-0 items-center border-b border-sidebar-border', collapsed ? 'justify-center px-2' : 'px-7')}>
-            <Link href={homeHref} aria-label={homeLabel} className={cn('block', collapsed ? 'w-auto' : 'w-44')}>
-              {collapsed ? (
-                <span className="flex size-10 items-center justify-center rounded-xl bg-primary font-serif text-base font-semibold italic text-champagne">
-                  {monogram}
-                </span>
-              ) : (
-                logo
+          <div
+            className={cn(
+              'flex h-24 shrink-0 items-center border-b border-[#D8DED8] bg-white',
+              collapsed ? 'justify-center px-2' : 'px-7',
+            )}
+          >
+            {/* No compact logo asset exists, so the collapsed rail contains the original logo at a smaller width. */}
+            <Link
+              href={homeHref}
+              aria-label={homeLabel}
+              className={cn(
+                'block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18543D] focus-visible:ring-offset-2',
+                collapsed ? 'w-14' : 'w-44',
               )}
+            >
+              {logo}
             </Link>
           </div>
           <div className={cn('flex-1 overflow-y-auto py-6', collapsed ? 'px-3' : 'px-4')}>
@@ -75,7 +80,7 @@ export function Sidebar({
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               aria-expanded={!collapsed}
               className={cn(
-                'flex h-9 items-center gap-2 rounded-[0.625rem] px-3.5 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/45',
+                'flex h-9 items-center gap-2 rounded-[0.625rem] px-3.5 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
                 collapsed ? 'w-9 justify-center px-0' : 'w-full',
               )}
             >

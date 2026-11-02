@@ -229,7 +229,7 @@ export function ActionCenter({
 
   return (
     <section aria-labelledby="action-center-heading" className="surface flex flex-col">
-      <div className="flex items-center gap-3 rounded-t-[inherit] border-b border-[#D6DFD9] bg-[#EAF0EC] px-4 py-3 md:px-6">
+      <div className="flex items-center gap-3 rounded-t-[inherit] border-b border-[#D8DED8] bg-card px-4 py-3 md:px-6">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sage text-primary" aria-hidden="true">
           <ListChecks className="size-[18px]" />
         </span>
