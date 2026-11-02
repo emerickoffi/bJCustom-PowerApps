@@ -29,6 +29,9 @@ export function CompanyContacts({
   canEdit,
   companyInactive,
   subcontractor,
+  heading = 'Contact persons',
+  previewLimit,
+  className,
 }: {
   target: Target
   contacts: CompanyContact[]
@@ -37,31 +40,50 @@ export function CompanyContacts({
   companyInactive?: boolean
   /** Uses the subcontractor role presets. */
   subcontractor?: boolean
+  heading?: string
+  /** Shows the primary contact first plus this many people in total, with a "View all" toggle for the rest. */
+  previewLimit?: number
+  className?: string
 }) {
   const [open, setOpen] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
-  const current = contacts.filter((c) => c.status === 'active')
+  const [showAll, setShowAll] = useState(false)
+  const active = contacts.filter((c) => c.status === 'active')
+  // Primary first when one is designated; otherwise keep the existing order rather than inventing a primary.
+  const current = previewLimit ? [...active.filter((c) => c.is_primary_contact), ...active.filter((c) => !c.is_primary_contact)] : active
+  const visible = previewLimit && !showAll ? current.slice(0, previewLimit) : current
+  const hiddenCount = current.length - visible.length
   const past = contacts.filter((c) => c.status === 'ended')
   const linkedIds = new Set(current.map((c) => c.person_id))
+  const compact = Boolean(previewLimit)
 
   return (
-    <section className="flex flex-col gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-xs sm:p-6" aria-labelledby="company-contacts-heading">
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-4">
+    <section
+      className={`flex flex-col rounded-xl border border-border/80 bg-card shadow-xs ${compact ? 'gap-3 p-4 sm:p-5' : 'gap-4 p-5 sm:p-6'} ${className ?? ''}`}
+      aria-labelledby="company-contacts-heading"
+    >
+      <header className={`flex flex-wrap items-start justify-between gap-3 border-b border-border/60 ${compact ? 'pb-3' : 'pb-4'}`}>
         <div className="flex items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary ring-1 ring-inset ring-primary/10">
             <Users className="size-4" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-0.5 pt-0.5">
             <h2 id="company-contacts-heading" className="text-sm font-semibold text-foreground">
-              Contact persons
+              {heading}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {current.length ? `${current.length} current ${current.length === 1 ? 'contact' : 'contacts'}` : 'No current contacts yet'}
+              {current.length ? `${current.length} current ${current.length === 1 ? 'contact' : 'contacts'}` : 'No contact person added'}
             </p>
           </div>
         </div>
         {canEdit && (
-          <Button variant="outline" onClick={() => setOpen(true)} disabled={companyInactive} title={companyInactive ? 'Activate this company to add contacts' : undefined}>
+          <Button
+            variant="outline"
+            size={compact ? 'sm' : 'default'}
+            onClick={() => setOpen(true)}
+            disabled={companyInactive}
+            title={companyInactive ? 'Activate this company to add contacts' : undefined}
+          >
             <Plus data-icon="inline-start" />
             Add contact person
           </Button>
@@ -69,13 +91,29 @@ export function CompanyContacts({
       </header>
 
       {current.length ? (
-        <ul className="flex flex-col divide-y divide-border/70">
-          {current.map((c) => (
-            <ContactRow key={c.relationship_id} contact={c} canEdit={canEdit} />
+        <ul id="company-contacts-list" className="flex flex-col divide-y divide-border/70">
+          {visible.map((c) => (
+            <ContactRow key={c.relationship_id} contact={c} canEdit={canEdit} compact={compact} />
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-muted-foreground">Add the people your team talks to at this company, such as the owner, foreman, or office contact.</p>
+        <p className="text-sm text-muted-foreground">
+          {compact
+            ? 'No contact person added. Add the owner, foreman, or office contact so your team knows who to call.'
+            : 'Add the people your team talks to at this company, such as the owner, foreman, or office contact.'}
+        </p>
+      )}
+
+      {compact && current.length > previewLimit! && (
+        <button
+          type="button"
+          onClick={() => setShowAll((s) => !s)}
+          aria-expanded={showAll}
+          aria-controls="company-contacts-list"
+          className="w-fit text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
+          {showAll ? 'Show fewer' : `View all ${current.length} contacts (${hiddenCount} more)`}
+        </button>
       )}
 
       {past.length > 0 && (
@@ -114,11 +152,17 @@ export function CompanyContacts({
   )
 }
 
-function ContactRow({ contact: c, canEdit }: { contact: CompanyContact; canEdit: boolean }) {
+function ContactRow({ contact: c, canEdit, compact }: { contact: CompanyContact; canEdit: boolean; compact?: boolean }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   return (
-    <li className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+    <li
+      className={
+        compact
+          ? 'flex flex-col gap-2 py-3 first:pt-1 last:pb-1 xl:flex-row xl:items-center xl:justify-between'
+          : 'flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between'
+      }
+    >
       <div className="flex min-w-0 items-start gap-3">
         <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground" aria-hidden="true">
           <UserRound className="size-4" />
@@ -194,7 +238,7 @@ function ContactRow({ contact: c, canEdit }: { contact: CompanyContact; canEdit:
   )
 }
 
-function AddContactDialog({
+export function AddContactDialog({
   open,
   onOpenChange,
   target,

@@ -24,7 +24,7 @@ export type VettingStatus = (typeof VETTING_STATUSES)[number]
 
 export const VETTING_STATUS_LABELS: Record<VettingStatus, string> = {
   new: 'New',
-  requested: 'Requested',
+  requested: 'Documents Requested',
   in_review: 'In Review',
   missing_items: 'Missing Items',
   conditional: 'Conditional',
