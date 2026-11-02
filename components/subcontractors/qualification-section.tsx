@@ -5,18 +5,20 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   AlertTriangle,
+  ChevronRight,
   ClipboardCheck,
   FileText,
   History,
   Lock,
-  MailPlus,
   ShieldAlert,
   ShieldCheck,
   ShieldX,
   StickyNote,
   Upload,
 } from 'lucide-react'
-import { VettingStatusPanel, VettingStepper } from '@/components/subcontractors/vetting-progress'
+import { VettingStepper } from '@/components/subcontractors/vetting-progress'
+import { RequestDocumentsButton, type LastRequest } from '@/components/subcontractors/request-documents-dialog'
+import type { CompanyContact } from '@/lib/contacts-data'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,6 +37,8 @@ import {
   ITEM_STATE_LABELS,
   expiryLabel,
   expiryTier,
+  nextRequiredAction,
+  progressSummary,
   validateEvidenceFile,
   vettingStatusOf,
   type EffectiveState,
@@ -44,7 +48,6 @@ import type { ChecklistItem, QualificationEvent } from '@/lib/subcontractor-qual
 import {
   addVettingNoteAction,
   decideQualificationAction,
-  requestDocumentsAction,
   discardEvidenceUpload,
   evidenceUrlAction,
   prepareEvidenceUpload,
@@ -63,10 +66,24 @@ type Props = {
   events: QualificationEvent[]
   isAdmin: boolean
   today: string
-  contactCount: number
+  contacts: CompanyContact[]
+  people: { id: string; label: string }[]
+  lastRequest: LastRequest
 }
 
 type Outcome = 'approved' | 'conditional' | 'not_cleared'
+
+type ItemFilter = 'all' | 'attention' | 'required' | 'approved'
+const ITEM_FILTERS: { key: ItemFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'attention', label: 'Needs attention' },
+  { key: 'required', label: 'Required' },
+  { key: 'approved', label: 'Approved' },
+]
+
+const needsAttention = (i: ChecklistItem) => i.effective !== 'satisfied'
+const matchesItemFilter = (i: ChecklistItem, f: ItemFilter) =>
+  f === 'all' ? true : f === 'attention' ? needsAttention(i) : f === 'required' ? i.mandatory : i.effective === 'satisfied'
 
 const EFFECTIVE_STYLES: Record<EffectiveState, { label: string; className: string }> = {
   satisfied: { label: 'Satisfied', className: 'bg-primary/10 text-primary' },
@@ -83,10 +100,12 @@ export function QualificationSection(props: Props) {
   const [uploadFor, setUploadFor] = useState<ChecklistItem | null>(null)
   const [reviewFor, setReviewFor] = useState<ChecklistItem | null>(null)
   const [decision, setDecision] = useState<Outcome | null>(null)
-  const [noteMode, setNoteMode] = useState<'request' | 'note' | null>(null)
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [filter, setFilter] = useState<ItemFilter>('all')
 
   const vetting = vettingStatusOf(summary)
   const started = items.some((i) => i.itemId)
+  const nextAction = nextRequiredAction(summary, today)
 
   function start() {
     startTransition(async () => {
@@ -104,6 +123,32 @@ export function QualificationSection(props: Props) {
     () => CATEGORIES.map((c) => ({ category: c, items: items.filter((i) => i.category === c) })).filter((g) => g.items.length),
     [items],
   )
+  const filterCounts = useMemo(
+    () => Object.fromEntries(ITEM_FILTERS.map((f) => [f.key, items.filter((i) => matchesItemFilter(i, f.key)).length])) as Record<ItemFilter, number>,
+    [items],
+  )
+  // Open the first category that still has unresolved required items; everything else starts collapsed.
+  const [openCategories, setOpenCategories] = useState<Set<string>>(() => {
+    const first = grouped.find((g) => g.items.some((i) => i.mandatory && i.effective !== 'satisfied'))
+    return new Set(first ? [first.category] : [])
+  })
+  const visibleGroups = grouped
+    .map((g) => ({ ...g, shown: g.items.filter((i) => matchesItemFilter(i, filter)) }))
+    .filter((g) => g.shown.length)
+
+  function chooseFilter(f: ItemFilter) {
+    setFilter(f)
+    if (f !== 'all') setOpenCategories(new Set(grouped.map((g) => g.category)))
+  }
+
+  function toggleCategory(c: string) {
+    setOpenCategories((s) => {
+      const next = new Set(s)
+      if (next.has(c)) next.delete(c)
+      else next.add(c)
+      return next
+    })
+  }
 
   return (
     <Surface id="qualification" aria-labelledby="qualification-heading" className="scroll-mt-20 gap-4">
@@ -137,30 +182,40 @@ export function QualificationSection(props: Props) {
           Qualification could not be loaded. Refresh the page to try again.
         </p>
       ) : (
-        <div className="flex flex-col gap-5 border-t pt-4">
-          <div className="rounded-xl border bg-muted/20 px-4 py-5 sm:px-6">
+        <div className="flex flex-col gap-4 border-t pt-4">
+          <div className="rounded-lg border bg-muted/20 px-4 py-3">
             <VettingStepper summary={summary} />
           </div>
 
-          <VettingStatusPanel summary={summary} today={today} contactCount={props.contactCount} />
-
-          <div className="flex flex-wrap gap-2">
-            {(vetting === 'new' || !started) && (
-              <Button size="sm" onClick={start} disabled={starting}>
-                <ShieldCheck data-icon="inline-start" />
-                {starting ? 'Starting…' : 'Start vetting'}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p className="text-sm text-muted-foreground text-pretty">
+              {summary ? <span className="font-medium text-foreground">{progressSummary(summary)}.</span> : null}
+              {nextAction ? ` ${nextAction}` : ''}
+            </p>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              {(vetting === 'new' || !started) && (
+                <Button size="sm" onClick={start} disabled={starting}>
+                  <ShieldCheck data-icon="inline-start" />
+                  {starting ? 'Starting…' : 'Start vetting'}
+                </Button>
+              )}
+              {vetting !== 'qualified' && vetting !== 'not_qualified' && (
+                <RequestDocumentsButton
+                  companyId={companyId}
+                  companyName={props.companyName}
+                  items={items}
+                  contacts={props.contacts}
+                  people={props.people}
+                  companyInactive={!companyActive}
+                  lastRequest={props.lastRequest}
+                  variant={vetting === 'new' ? 'outline' : 'default'}
+                />
+              )}
+              <Button size="sm" variant="ghost" onClick={() => setNoteOpen(true)}>
+                <StickyNote data-icon="inline-start" />
+                Add note
               </Button>
-            )}
-            {vetting !== 'qualified' && vetting !== 'not_qualified' && (
-              <Button size="sm" variant={vetting === 'new' ? 'outline' : 'default'} onClick={() => setNoteMode('request')}>
-                <MailPlus data-icon="inline-start" />
-                {summary?.requested_at ? 'Request again' : 'Request documents'}
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={() => setNoteMode('note')}>
-              <StickyNote data-icon="inline-start" />
-              Add note
-            </Button>
+            </div>
           </div>
 
           {!started && (
@@ -170,34 +225,84 @@ export function QualificationSection(props: Props) {
           )}
 
           {grouped.length > 0 && (
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Qualification checklist</h3>
-          )}
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-foreground">Checklist</h3>
+                <div role="group" aria-label="Filter checklist items" className="flex flex-wrap gap-1 rounded-lg border bg-muted/40 p-1">
+                  {ITEM_FILTERS.map((f) => (
+                    <button
+                      key={f.key}
+                      type="button"
+                      aria-pressed={filter === f.key}
+                      onClick={() => chooseFilter(f.key)}
+                      className={cn(
+                        'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                        filter === f.key ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {f.label}
+                      <span className="ml-1.5 tabular-nums text-muted-foreground">{filterCounts[f.key]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          {grouped.map((g) => (
-            <section key={g.category} aria-labelledby={`cat-${g.category}`} className="flex flex-col gap-2">
-              <h3 id={`cat-${g.category}`} className="text-sm font-semibold text-foreground">
-                {CATEGORY_LABELS[g.category]}
-              </h3>
-              <ul className="flex flex-col divide-y rounded-lg border">
-                {g.items.map((item) => (
-                  <ChecklistRow
-                    key={item.requirementId}
-                    item={item}
-                    today={today}
-                    isAdmin={isAdmin}
-                    onUpload={() => setUploadFor(item)}
-                    onReview={() => setReviewFor(item)}
-                  />
-                ))}
-              </ul>
-            </section>
-          ))}
+              {visibleGroups.length === 0 && (
+                <p className="rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">No items match this filter.</p>
+              )}
+
+              {visibleGroups.map((g) => {
+                const expanded = openCategories.has(g.category)
+                const approved = g.items.filter((i) => i.effective === 'satisfied').length
+                const attention = g.items.filter(needsAttention).length
+                const panelId = `cat-panel-${g.category}`
+                return (
+                  <section key={g.category} aria-labelledby={`cat-${g.category}`} className="rounded-lg border">
+                    <h4 id={`cat-${g.category}`}>
+                      <button
+                        type="button"
+                        aria-expanded={expanded}
+                        aria-controls={panelId}
+                        onClick={() => toggleCategory(g.category)}
+                        className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left hover:bg-muted/40"
+                      >
+                        <ChevronRight className={cn('size-4 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-90')} aria-hidden="true" />
+                        <span className="text-sm font-semibold text-foreground">{CATEGORY_LABELS[g.category]}</span>
+                        <span className="ml-auto flex flex-wrap items-center justify-end gap-2 text-xs text-muted-foreground">
+                          <span className="tabular-nums">
+                            {approved}/{g.items.length} approved
+                          </span>
+                          {attention > 0 && (
+                            <span className="rounded-full bg-warning/15 px-2 py-0.5 font-medium text-warning-foreground tabular-nums">
+                              {attention} need attention
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    </h4>
+                    {expanded && (
+                      <ul id={panelId} className="flex flex-col divide-y border-t">
+                        {g.shown.map((item) => (
+                          <ChecklistRow
+                            key={item.requirementId}
+                            item={item}
+                            today={today}
+                            isAdmin={isAdmin}
+                            onUpload={() => setUploadFor(item)}
+                            onReview={() => setReviewFor(item)}
+                          />
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                )
+              })}
+            </div>
+          )}
 
           {isAdmin && summary && started && (
             <DecisionPanel summary={summary} companyActive={companyActive} onDecide={setDecision} />
           )}
-
-          <HistoryList events={props.events} />
         </div>
       )}
 
@@ -217,47 +322,24 @@ export function QualificationSection(props: Props) {
           onDone={() => router.refresh()}
         />
       )}
-      {noteMode && (
-        <NoteDialog
-          companyId={companyId}
-          companyName={props.companyName}
-          mode={noteMode}
-          onClose={() => setNoteMode(null)}
-          onDone={() => router.refresh()}
-        />
-      )}
+      {noteOpen && <NoteDialog companyId={companyId} onClose={() => setNoteOpen(false)} onDone={() => router.refresh()} />}
     </Surface>
   )
 }
 
-function NoteDialog({
-  companyId,
-  companyName,
-  mode,
-  onClose,
-  onDone,
-}: {
-  companyId: string
-  companyName: string
-  mode: 'request' | 'note'
-  onClose: () => void
-  onDone: () => void
-}) {
+function NoteDialog({ companyId, onClose, onDone }: { companyId: string; onClose: () => void; onDone: () => void }) {
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
-  const requesting = mode === 'request'
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const notes = String(new FormData(e.currentTarget).get('notes') ?? '').trim()
-    if (!requesting && !notes) return setError('Enter a note.')
+    if (!notes) return setError('Enter a note.')
     setError(null)
     startTransition(async () => {
-      const result = requesting
-        ? await requestDocumentsAction({ companyId, notes })
-        : await addVettingNoteAction({ companyId, notes })
+      const result = await addVettingNoteAction({ companyId, notes })
       if (!result.ok) return setError(result.error)
-      toast.success(requesting ? 'Document request recorded.' : 'Note added to vetting history.')
+      toast.success('Note added to vetting history.')
       onClose()
       onDone()
     })
@@ -268,15 +350,11 @@ function NoteDialog({
       <DialogContent className="sm:max-w-md">
         <form onSubmit={submit} className="flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>{requesting ? `Request documents from ${companyName}` : 'Add vetting note'}</DialogTitle>
-            <DialogDescription>
-              {requesting
-                ? 'Records that you asked for qualification documents and moves vetting to Requested. Send the request through your usual email or phone.'
-                : 'Internal note. Visible to administrators and project managers in the vetting history.'}
-            </DialogDescription>
+            <DialogTitle>Add vetting note</DialogTitle>
+            <DialogDescription>Internal note. Visible to administrators and project managers in the vetting history.</DialogDescription>
           </DialogHeader>
-          <Field id="n-notes" label={requesting ? 'What was requested (optional)' : 'Note'}>
-            <Textarea id="n-notes" name="notes" maxLength={2000} rows={3} required={!requesting} />
+          <Field id="n-notes" label="Note">
+            <Textarea id="n-notes" name="notes" maxLength={2000} rows={3} required />
           </Field>
           {error && (
             <p role="alert" className="text-sm text-destructive">
@@ -288,7 +366,7 @@ function NoteDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? 'Saving…' : requesting ? 'Record request' : 'Add note'}
+              {pending ? 'Saving…' : 'Add note'}
             </Button>
           </DialogFooter>
         </form>
@@ -848,22 +926,40 @@ const EVENT_LABELS: Record<string, string> = {
   mode_changed: 'Assignment mode changed',
 }
 
-function HistoryList({ events }: { events: QualificationEvent[] }) {
-  if (!events.length) return null
+/** Full vetting history for the History tab. */
+export function QualificationHistory({ events, availability }: { events: QualificationEvent[]; availability: Props['availability'] }) {
   return (
-    <details className="group rounded-lg border">
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold text-foreground">
+    <Surface aria-labelledby="history-heading" className="gap-4">
+      <div className="flex items-center gap-2">
         <History className="size-4 text-primary" aria-hidden="true" />
-        Vetting history
-        <span className="ml-auto text-xs font-normal text-muted-foreground">{events.length} recent</span>
-      </summary>
-      <ol className="flex flex-col divide-y border-t">
+        <h2 id="history-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+          Vetting history
+        </h2>
+        {events.length > 0 && <span className="ml-auto text-xs text-muted-foreground">{events.length} most recent</span>}
+      </div>
+      {availability !== 'ready' ? (
+        <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+          {availability === 'error' ? 'History could not be loaded. Refresh the page to try again.' : 'Subcontractor vetting is not set up in this environment yet.'}
+        </p>
+      ) : events.length ? (
+        <HistoryList events={events} />
+      ) : (
+        <p className="rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">No vetting activity yet.</p>
+      )}
+    </Surface>
+  )
+}
+
+function HistoryList({ events }: { events: QualificationEvent[] }) {
+  return (
+    <div className="rounded-lg border">
+      <ol className="flex flex-col divide-y">
         {events.map((e) => (
           <li key={e.id} className="flex flex-col gap-0.5 px-4 py-2.5 text-sm sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
             <span className="min-w-0">
               <span className="font-medium text-foreground">{EVENT_LABELS[e.event] ?? e.event.replace(/_/g, ' ')}</span>
               {e.item_title && <span className="text-muted-foreground">{` · ${e.item_title}`}</span>}
-              {e.detail && <span className="block text-xs text-muted-foreground">{e.detail}</span>}
+              {e.detail && <span className="block whitespace-pre-line text-xs text-muted-foreground">{e.detail}</span>}
             </span>
             <span className="shrink-0 text-xs text-muted-foreground">
               {formatDateTime(e.created_at)}
@@ -872,6 +968,6 @@ function HistoryList({ events }: { events: QualificationEvent[] }) {
           </li>
         ))}
       </ol>
-    </details>
+    </div>
   )
 }

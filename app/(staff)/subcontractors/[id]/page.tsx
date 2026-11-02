@@ -21,7 +21,9 @@ import { loadQualificationDetail } from '@/lib/subcontractor-qualification-data'
 import { todayIn } from '@/lib/subcontractor-qualification'
 import { APP_TIME_ZONE } from '@/lib/format'
 import { QualificationBadge } from '@/components/subcontractors/qualification-badge'
-import { QualificationSection } from '@/components/subcontractors/qualification-section'
+import { QualificationHistory, QualificationSection } from '@/components/subcontractors/qualification-section'
+import { QualificationOverview } from '@/components/subcontractors/qualification-overview'
+import { DetailTabs, detailTabHref, parseDetailTab } from '@/components/subcontractors/detail-tabs'
 import { SubcontractorPortalAccess, type SubPortalAccountRow } from '@/components/subcontractor-work/portal-access'
 import { loadPerformanceDetail } from '@/lib/subcontractor-performance-data'
 import { getPeopleNames } from '@/lib/people'
@@ -34,7 +36,7 @@ export default async function SubcontractorDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ saved?: string; projects?: string; rate?: string; work?: string }>
+  searchParams: Promise<{ saved?: string; projects?: string; rate?: string; work?: string; tab?: string }>
 }) {
   const session = await requireManager()
   await requireFeature(session.organizationId, 'subcontractors')
@@ -81,6 +83,13 @@ export default async function SubcontractorDetailPage({
   const { current, history } = splitProjectAssignments(records, projectAcceptsNewAssignments)
   const addedProjects = Number.parseInt(sp.projects ?? '', 10)
   const editHref = `/subcontractors/${company.id}/edit`
+  // A rating deep link (?rate=) targets the Performance card, which lives on Overview.
+  const tab = initialRate ? 'overview' : parseDetailTab(sp.tab)
+  const contacts = businessCompany?.contacts ?? []
+  const today = todayIn(APP_TIME_ZONE)
+  const requestEvent = qualification.events.find((e) => e.event === 'documents_requested')
+  const lastRequest = requestEvent ? { at: requestEvent.created_at, actor: requestEvent.actor_name } : null
+  const qualificationHref = detailTabHref(company.id, 'qualification')
 
   return (
     <div className="flex w-full max-w-5xl flex-col gap-5">
@@ -89,12 +98,21 @@ export default async function SubcontractorDetailPage({
         backLabel="Subcontractors"
         title={company.company_name}
         titleAddon={
-          <span className="flex flex-wrap items-center gap-2">
-            <SubcontractorStatusBadge status={company.status} />
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Company:</span>
+              <SubcontractorStatusBadge status={company.status} />
+            </span>
             {qualification.availability === 'ready' && (
-              <a href="#qualification" className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+              <Link
+                href={qualificationHref}
+                scroll={false}
+                aria-label="Qualification status, open Qualification tab"
+                className="flex items-center gap-1.5 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                <span className="text-xs font-medium text-muted-foreground">Qualification:</span>
                 <QualificationBadge summary={qualification.summary} />
-              </a>
+              </Link>
             )}
           </span>
         }
@@ -126,17 +144,15 @@ export default async function SubcontractorDetailPage({
         </p>
       )}
 
-      <Surface aria-labelledby="company-heading" className="gap-4">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+      <Surface aria-labelledby="company-heading" className="gap-3">
         <h2 id="company-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
           Company Information
         </h2>
-        <dl className="grid grid-cols-1 gap-x-8 gap-y-4 border-t pt-4 sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t pt-3 sm:grid-cols-2">
           <InfoItem label="Trade">{company.trade}</InfoItem>
-          <InfoItem label="Status">
-            <SubcontractorStatusBadge status={company.status} />
-          </InfoItem>
           <InfoItem label="Date Added">{formatDate(company.created_at)}</InfoItem>
-          <InfoItem label="Email">
+          <InfoItem label="Company email">
             {company.email ? (
               <a
                 href={`mailto:${company.email}`}
@@ -149,7 +165,7 @@ export default async function SubcontractorDetailPage({
               <NotProvided />
             )}
           </InfoItem>
-          <InfoItem label="Phone">
+          <InfoItem label="Company phone">
             {company.phone ? (
               <a
                 href={`tel:${company.phone.replace(/[^0-9+]/g, '')}`}
@@ -163,51 +179,114 @@ export default async function SubcontractorDetailPage({
             )}
           </InfoItem>
         </dl>
+        <p className="text-xs text-muted-foreground">Company-level details. Individual contact details are listed under Contact people.</p>
       </Surface>
-
-      <QualificationSection
-        companyId={company.id}
-        companyName={company.company_name}
-        companyActive={company.status === 'active'}
-        availability={qualification.availability}
-        summary={qualification.summary}
-        items={qualification.items}
-        events={qualification.events}
-        isAdmin={session.role === 'org_admin'}
-        today={todayIn(APP_TIME_ZONE)}
-        contactCount={businessCompany?.contacts?.length ?? 0}
-      />
-
-      <PerformanceSection
-        companyId={company.id}
-        companyName={company.company_name}
-        availability={availability === 'ready' ? performance.availability : availability}
-        summary={performance.summary}
-        reviews={performance.reviews}
-        assignments={rateableAssignments}
-        verifiedWork={performance.verifiedWork}
-        reviewerNames={reviewerNames}
-        initialRate={initialRate}
-      />
 
       <CompanyContacts
         target={{ subcontractorId: company.id }}
-        contacts={businessCompany?.contacts ?? []}
+        contacts={contacts}
         people={people}
         canEdit
         companyInactive={company.status === 'inactive'}
         subcontractor
+        heading="Contact people"
+        previewLimit={3}
       />
+      </div>
 
-      {portalAccounts && (
-        <SubcontractorPortalAccess
+      <DetailTabs companyId={company.id} active={tab} counts={{ projects: current.length }} />
+
+      {tab === 'overview' && (
+        <>
+          <QualificationOverview
+            companyId={company.id}
+            companyName={company.company_name}
+            companyActive={company.status === 'active'}
+            availability={qualification.availability}
+            summary={qualification.summary}
+            items={qualification.items}
+            lastUpdate={qualification.events[0]?.created_at ?? null}
+            today={today}
+            contacts={contacts}
+            people={people}
+            lastRequest={lastRequest}
+            qualificationHref={qualificationHref}
+          />
+
+          <Surface aria-labelledby="projects-summary-heading" className="gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 id="projects-summary-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+                Current Projects
+              </h2>
+              <Link
+                href={detailTabHref(company.id, 'projects')}
+                scroll={false}
+                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                View all projects
+              </Link>
+            </div>
+            {availability !== 'ready' ? (
+              <p className="text-sm text-muted-foreground">Project assignments are not available right now.</p>
+            ) : current.length === 0 ? (
+              <p className="rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">Not assigned to any current project.</p>
+            ) : (
+              <ul className="flex flex-col divide-y rounded-lg border">
+                {current.slice(0, 3).map((r) => (
+                  <AssignmentRow key={r.assignment_id} record={r} />
+                ))}
+                {current.length > 3 && (
+                  <li className="px-4 py-2.5 text-xs text-muted-foreground">{`and ${current.length - 3} more current projects`}</li>
+                )}
+              </ul>
+            )}
+          </Surface>
+
+          {(availability === 'ready' ? performance.availability : availability) === 'ready' && (
+            <PerformanceSection
+              companyId={company.id}
+              companyName={company.company_name}
+              availability="ready"
+              summary={performance.summary}
+              reviews={performance.reviews}
+              assignments={rateableAssignments}
+              verifiedWork={performance.verifiedWork}
+              reviewerNames={reviewerNames}
+              initialRate={initialRate}
+            />
+          )}
+
+          {portalAccounts && (
+            <SubcontractorPortalAccess
+              companyId={company.id}
+              accounts={portalAccounts}
+              canEdit
+              companyInactive={company.status === 'inactive'}
+            />
+          )}
+        </>
+      )}
+
+      {tab === 'qualification' && (
+        <QualificationSection
           companyId={company.id}
-          accounts={portalAccounts}
-          canEdit
-          companyInactive={company.status === 'inactive'}
+          companyName={company.company_name}
+          companyActive={company.status === 'active'}
+          availability={qualification.availability}
+          summary={qualification.summary}
+          items={qualification.items}
+          events={qualification.events}
+          isAdmin={session.role === 'org_admin'}
+          today={today}
+          contacts={contacts}
+          people={people}
+          lastRequest={lastRequest}
         />
       )}
 
+      {tab === 'history' && <QualificationHistory events={qualification.events} availability={qualification.availability} />}
+
+      {tab === 'projects' && (
       <Surface aria-labelledby="projects-heading" className="gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-0.5">
@@ -253,6 +332,7 @@ export default async function SubcontractorDetailPage({
           </div>
         )}
       </Surface>
+      )}
     </div>
   )
 }
