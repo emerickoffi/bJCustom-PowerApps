@@ -28,7 +28,7 @@ import { DetailTabs, detailTabHref, parseDetailTab } from '@/components/subcontr
 import { SubcontractorPortalAccess, type SubPortalAccountRow } from '@/components/subcontractor-work/portal-access'
 import { loadPerformanceDetail } from '@/lib/subcontractor-performance-data'
 import { getPeopleNames } from '@/lib/people'
-import { PerformanceSection } from '@/components/subcontractors/performance-section'
+import { PerformanceRating } from '@/components/subcontractors/performance-rating'
 
 export const metadata: Metadata = { title: 'Subcontractor' }
 
@@ -37,7 +37,7 @@ export default async function SubcontractorDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ saved?: string; projects?: string; rate?: string; work?: string; tab?: string }>
+  searchParams: Promise<{ saved?: string; projects?: string; rate?: string; review?: string; tab?: string }>
 }) {
   const session = await requireManager()
   await requireFeature(session.organizationId, 'subcontractors')
@@ -62,17 +62,16 @@ export default async function SubcontractorDetailPage({
       .order('full_name'),
     loadPerformanceDetail(supabase, session.organizationId, id),
   ])
-  const reviewerNames = await getPeopleNames(performance.reviews.map((r) => r.reviewed_by))
-  const rateableAssignments = records.map((r) => ({
-    assignmentId: r.assignment_id,
-    projectId: r.project.id,
-    projectName: r.project.name,
-    projectNumber: r.project.project_number,
-    associatedAt: r.associated_at,
-    endedAt: r.ended_at,
+  const reviewerNames = await getPeopleNames(performance.reviews.map((r) => r.reviewer_id))
+  const ratingProjects = [...new Map(records.map((r) => [r.project.id, r.project])).values()].map((p) => ({
+    projectId: p.id,
+    projectName: p.name,
+    projectNumber: p.project_number,
   }))
-  const initialRate =
-    sp.rate && isUuid(sp.rate) ? { assignmentId: sp.rate, submissionId: sp.work && isUuid(sp.work) ? sp.work : null } : null
+  // ?rate= deep links carry an assignment id (from verified work); ?review= carries a project id.
+  const initialReviewProject =
+    (sp.rate && isUuid(sp.rate) ? records.find((r) => r.assignment_id === sp.rate)?.project.id : null) ??
+    (sp.review && isUuid(sp.review) ? sp.review : null)
   const portalAccounts: SubPortalAccountRow[] | null = portalRes.error
     ? null
     : (portalRes.data ?? []).map((a) => ({
@@ -84,8 +83,7 @@ export default async function SubcontractorDetailPage({
   const { current, history } = splitProjectAssignments(records, projectAcceptsNewAssignments)
   const addedProjects = Number.parseInt(sp.projects ?? '', 10)
   const editHref = `/subcontractors/${company.id}/edit`
-  // A rating deep link (?rate=) targets the Performance card, which lives on Overview.
-  const tab = initialRate ? 'overview' : parseDetailTab(sp.tab)
+  const tab = parseDetailTab(sp.tab)
   const contacts = businessCompany?.contacts ?? []
   const today = todayIn(APP_TIME_ZONE)
   const requestEvent = qualification.events.find((e) => e.event === 'documents_requested')
@@ -119,6 +117,18 @@ export default async function SubcontractorDetailPage({
                 <QualificationBadge summary={qualification.summary} />
               </Link>
             )}
+            <PerformanceRating
+              companyId={company.id}
+              companyName={company.company_name}
+              availability={availability === 'ready' ? performance.availability : availability}
+              summary={performance.summary}
+              reviews={performance.reviews}
+              reviewerNames={reviewerNames}
+              projects={ratingProjects}
+              currentUserId={session.userId}
+              canReview={session.role === 'org_admin' || session.role === 'project_manager'}
+              initialProjectId={initialReviewProject}
+            />
           </span>
         }
         avatar={
@@ -250,20 +260,6 @@ export default async function SubcontractorDetailPage({
               </ul>
             )}
           </Surface>
-
-          {(availability === 'ready' ? performance.availability : availability) === 'ready' && (
-            <PerformanceSection
-              companyId={company.id}
-              companyName={company.company_name}
-              availability="ready"
-              summary={performance.summary}
-              reviews={performance.reviews}
-              assignments={rateableAssignments}
-              verifiedWork={performance.verifiedWork}
-              reviewerNames={reviewerNames}
-              initialRate={initialRate}
-            />
-          )}
 
           {portalAccounts && (
             <SubcontractorPortalAccess

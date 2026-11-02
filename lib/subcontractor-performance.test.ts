@@ -1,43 +1,55 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { comparePerformance, formatRating, overallRating, parseStars, summarizePerformance } from './subcontractor-performance.ts'
+import { comparePerformance, formatRating, parseStars, ratingLabel, reviewCountLabel, summarizePerformance } from './subcontractor-performance.ts'
 
-test('overall averages all five criteria', () => {
-  assert.equal(overallRating({ quality: 5, timeliness: 4, communication: 3, professionalism: 5, issue_resolution: 3 }), 4)
+const row = (overall: number, cats: Partial<Record<string, number | null>> = {}) => ({
+  overall_rating: overall,
+  quality: null,
+  schedule_reliability: null,
+  communication: null,
+  cleanliness: null,
+  safety: null,
+  ...cats,
 })
 
-test('overall excludes issue resolution when not applicable', () => {
-  assert.equal(overallRating({ quality: 5, timeliness: 4, communication: 4, professionalism: 4, issue_resolution: null }), 4.25)
+test('overall average is the mean of submitted Overall ratings, independent of categories', () => {
+  const s = summarizePerformance([row(5, { quality: 1, safety: 1 }), row(4), row(4)])
+  assert.equal(s.count, 3)
+  assert.equal(s.average, 4.33)
 })
 
-test('summary averages criteria and skips N/A issue resolution', () => {
-  const s = summarizePerformance([
-    { overall_rating: 4, quality: 4, timeliness: 4, communication: 4, professionalism: 4, issue_resolution: 4 },
-    { overall_rating: 5, quality: 5, timeliness: 5, communication: 5, professionalism: 5, issue_resolution: null },
-  ])
-  assert.equal(s.count, 2)
-  assert.equal(s.average, 4.5)
-  assert.equal(s.criteria.quality, 4.5)
-  assert.equal(s.criteria.issue_resolution, 4)
+test('unassessed categories are excluded from category averages, never counted as zero', () => {
+  const s = summarizePerformance([row(4, { quality: 4, safety: 5 }), row(5, { quality: 2 }), row(3)])
+  assert.deepEqual(s.criteria.quality, { average: 3, count: 2 })
+  assert.deepEqual(s.criteria.safety, { average: 5, count: 1 })
+  assert.deepEqual(s.criteria.communication, { average: null, count: 0 })
 })
 
-test('empty summary has no average', () => {
+test('no reviews yields no average', () => {
   const s = summarizePerformance([])
   assert.equal(s.average, null)
   assert.equal(formatRating(s.average), '–')
 })
 
-test('sorting puts rated companies first, highest first', () => {
-  const rated = (average: number, count = 1) => ({ average, count, criteria: {} as never })
-  const list = [undefined, rated(3.5), rated(4.8), rated(4.8, 3)]
+test('rated companies sort before unrated ones, higher averages first', () => {
+  const a = summarizePerformance([row(4)])
+  const b = summarizePerformance([row(5)])
+  const list = [undefined, a, b]
   list.sort(comparePerformance)
-  assert.deepEqual(list.map((s) => s && [s.average, s.count]), [[4.8, 3], [4.8, 1], [3.5, 1], undefined])
+  assert.deepEqual(list, [b, a, undefined])
 })
 
-test('parses star inputs strictly', () => {
-  assert.equal(parseStars('4'), 4)
-  assert.equal(parseStars('0'), undefined)
-  assert.equal(parseStars('4.5'), undefined)
-  assert.equal(parseStars('na'), undefined)
+test('parseStars accepts only integers 1 to 5', () => {
+  assert.equal(parseStars('3'), 3)
+  for (const bad of ['0', '6', '3.5', '-1', 'x', '']) assert.equal(parseStars(bad), undefined)
   assert.equal(parseStars('na', { allowNa: true }), null)
+  assert.equal(parseStars('', { allowNa: true }), null)
+  assert.equal(parseStars('7', { allowNa: true }), undefined)
+})
+
+test('labels', () => {
+  assert.equal(reviewCountLabel(1), '1 review')
+  assert.equal(reviewCountLabel(8), '8 reviews')
+  assert.equal(ratingLabel(3), 'Meets expectations')
+  assert.equal(ratingLabel(null), 'Not assessed')
 })
