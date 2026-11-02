@@ -3,7 +3,8 @@
 import { useActionState, useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Mail, Phone, Plus, Star, UserRound, Users } from 'lucide-react'
+import { Mail, Phone, Plus, Star, UserRound, Users, UsersRound } from 'lucide-react'
+import { CardSectionHeader } from '@/components/shared/card-section-header'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -59,9 +60,31 @@ export function CompanyContacts({
 
   return (
     <section
-      className={`flex flex-col rounded-xl border border-border/80 bg-card shadow-xs ${compact ? 'gap-3 p-4 sm:p-5' : 'gap-4 p-5 sm:p-6'} ${className ?? ''}`}
+      className={`flex flex-col rounded-xl border border-border/80 bg-card shadow-xs ${compact ? 'gap-4 p-5 md:p-6' : 'gap-4 p-5 sm:p-6'} ${className ?? ''}`}
       aria-labelledby="company-contacts-heading"
     >
+      {compact ? (
+        <CardSectionHeader
+          id="company-contacts-heading"
+          title={heading}
+          icon={UsersRound}
+          subtitle={current.length ? `${current.length} current ${current.length === 1 ? 'contact' : 'contacts'}` : undefined}
+          action={
+            canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOpen(true)}
+                disabled={companyInactive}
+                title={companyInactive ? 'Activate this company to add contacts' : undefined}
+              >
+                <Plus data-icon="inline-start" />
+                Add contact person
+              </Button>
+            )
+          }
+        />
+      ) : (
       <header className={`flex flex-wrap items-start justify-between gap-3 border-b border-border/60 ${compact ? 'pb-3' : 'pb-4'}`}>
         <div className="flex items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary ring-1 ring-inset ring-primary/10">
@@ -89,6 +112,7 @@ export function CompanyContacts({
           </Button>
         )}
       </header>
+      )}
 
       {current.length ? (
         <ul id="company-contacts-list" className="flex flex-col divide-y divide-border/70">
@@ -99,7 +123,7 @@ export function CompanyContacts({
       ) : (
         <p className="text-sm text-muted-foreground">
           {compact
-            ? 'No contact person added. Add the owner, foreman, or office contact so your team knows who to call.'
+            ? 'Add an owner, foreman, or office contact.'
             : 'Add the people your team talks to at this company, such as the owner, foreman, or office contact.'}
         </p>
       )}

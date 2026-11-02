@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { AlertTriangle, CheckCircle2, FolderKanban, History, Mail, Pencil, Phone } from 'lucide-react'
+import { CardSectionHeader } from '@/components/shared/card-section-header'
+import { AlertTriangle, Building2, CheckCircle2, FolderKanban, History, Mail, Pencil, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
@@ -97,8 +98,12 @@ export default async function SubcontractorDetailPage({
         backHref="/subcontractors"
         backLabel="Subcontractors"
         title={company.company_name}
-        titleAddon={
+        description={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {company.trade && <span className="font-medium text-foreground/80">{company.trade}</span>}
+            {company.trade && (
+              <span aria-hidden="true" className="hidden h-4 w-px bg-border sm:block" />
+            )}
             <span className="flex items-center gap-1.5">
               <span className="text-xs font-medium text-muted-foreground">Company:</span>
               <SubcontractorStatusBadge status={company.status} />
@@ -116,7 +121,6 @@ export default async function SubcontractorDetailPage({
             )}
           </span>
         }
-        description={company.trade}
         avatar={
           <span
             aria-hidden="true"
@@ -145,11 +149,9 @@ export default async function SubcontractorDetailPage({
       )}
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-      <Surface aria-labelledby="company-heading" className="gap-3">
-        <h2 id="company-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
-          Company Information
-        </h2>
-        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t pt-3 sm:grid-cols-2">
+      <Surface aria-labelledby="company-heading" className="gap-4">
+        <CardSectionHeader id="company-heading" title="Company Information" icon={Building2} />
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
           <InfoItem label="Trade">{company.trade}</InfoItem>
           <InfoItem label="Date Added">{formatDate(company.created_at)}</InfoItem>
           <InfoItem label="Company email">
@@ -179,7 +181,6 @@ export default async function SubcontractorDetailPage({
             )}
           </InfoItem>
         </dl>
-        <p className="text-xs text-muted-foreground">Company-level details. Individual contact details are listed under Contact people.</p>
       </Surface>
 
       <CompanyContacts
@@ -213,19 +214,21 @@ export default async function SubcontractorDetailPage({
             qualificationHref={qualificationHref}
           />
 
-          <Surface aria-labelledby="projects-summary-heading" className="gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 id="projects-summary-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
-                Current Projects
-              </h2>
-              <Link
-                href={detailTabHref(company.id, 'projects')}
-                scroll={false}
-                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-              >
-                View all projects
-              </Link>
-            </div>
+          <Surface aria-labelledby="projects-summary-heading" className="gap-4">
+            <CardSectionHeader
+              id="projects-summary-heading"
+              title="Current Projects"
+              icon={FolderKanban}
+              action={
+                <Link
+                  href={detailTabHref(company.id, 'projects')}
+                  scroll={false}
+                  className="rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  View all projects
+                </Link>
+              }
+            />
             {availability !== 'ready' ? (
               <p className="text-sm text-muted-foreground">Project assignments are not available right now.</p>
             ) : current.length === 0 ? (

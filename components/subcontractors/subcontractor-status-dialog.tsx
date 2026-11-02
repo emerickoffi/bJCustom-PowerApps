@@ -95,7 +95,13 @@ export function SubcontractorStatusButton(props: { companyId: string; companyNam
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button type="button" variant="outline" size="lg" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        variant={props.status === 'active' ? 'ghost' : 'outline'}
+        size="lg"
+        className={props.status === 'active' ? 'text-muted-foreground hover:text-destructive' : undefined}
+        onClick={() => setOpen(true)}
+      >
         {props.status === 'active' ? 'Deactivate' : 'Activate'}
       </Button>
       <SubcontractorStatusDialog {...props} open={open} onOpenChange={setOpen} />
