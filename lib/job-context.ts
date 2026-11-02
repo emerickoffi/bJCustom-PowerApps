@@ -1,14 +1,11 @@
 import 'server-only'
-import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import type { ProjectStatus } from '@/lib/domain'
 
 /**
- * Remembers the job a staff member is working on. The cookie only stores a hint (organization + project id);
- * every read re-queries the project under RLS, so a stale or unauthorized id silently falls back to All Jobs.
- * Kept separate from dashboard widget preferences on purpose.
+ * Job lookups for the global project selector. Project context comes from the URL only (see lib/route-job);
+ * every id is re-queried under RLS before its name is shown.
  */
-export const CURRENT_JOB_COOKIE = 'bj_current_job'
 export const JOB_SEARCH_LIMIT = 8
 
 export type JobSummary = {
@@ -32,16 +29,6 @@ const toSummary = (r: JobRow): JobSummary => ({
   city: r.city,
 })
 
-export function encodeJobCookie(organizationId: string, projectId: string) {
-  return `${organizationId}:${projectId}`
-}
-
-export function decodeJobCookie(value: string | undefined, organizationId: string): string | null {
-  if (!value) return null
-  const [org, project] = value.split(':')
-  return org === organizationId && UUID.test(project ?? '') ? project : null
-}
-
 /** Escapes characters that carry meaning in PostgREST `or` filters and ILIKE patterns. */
 export function sanitizeJobQuery(query: string): string {
   return query
@@ -51,24 +38,21 @@ export function sanitizeJobQuery(query: string): string {
     .slice(0, 60)
 }
 
-/** Loads one authorized, non-archived job. Returns null when RLS hides it or it no longer exists. */
-export async function getAuthorizedJob(organizationId: string, projectId: string): Promise<JobSummary | null> {
+/**
+ * Loads one authorized job. Returns null when RLS hides it or it no longer exists. Archived jobs are excluded
+ * unless `includeArchived` is set (an archived project's own pages are still viewable).
+ */
+export async function getAuthorizedJob(
+  organizationId: string,
+  projectId: string,
+  { includeArchived = false }: { includeArchived?: boolean } = {},
+): Promise<JobSummary | null> {
   if (!UUID.test(projectId)) return null
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('projects')
-    .select(JOB_COLUMNS)
-    .eq('id', projectId)
-    .eq('organization_id', organizationId)
-    .is('archived_at', null)
-    .maybeSingle()
+  let query = supabase.from('projects').select(JOB_COLUMNS).eq('id', projectId).eq('organization_id', organizationId)
+  if (!includeArchived) query = query.is('archived_at', null)
+  const { data } = await query.maybeSingle()
   return data ? toSummary(data as JobRow) : null
-}
-
-export async function getRememberedJob(organizationId: string): Promise<JobSummary | null> {
-  const store = await cookies()
-  const projectId = decodeJobCookie(store.get(CURRENT_JOB_COOKIE)?.value, organizationId)
-  return projectId ? getAuthorizedJob(organizationId, projectId) : null
 }
 
 /** Bounded, RLS-scoped search. Selects only identity columns, never financial data. */

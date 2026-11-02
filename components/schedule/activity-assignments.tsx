@@ -1,8 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
-import { HardHat, Repeat, UserPlus, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { HardHat, Plus, Repeat, UserPlus, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { CreateSubcontractorDialog, type CreatedSubcontractor } from '@/components/subcontractors/create-subcontractor-dialog'
 import { Button } from '@/components/ui/button'
 import { SubmitButton } from '@/components/shared/form-message'
 import { SelectField, TextAreaField } from '@/components/shared/form-field'
@@ -35,15 +38,42 @@ function QualificationNotes({ companies }: { companies: CompanyOption[] }) {
   )
 }
 
-function CompanyFields({ companies, defaultCompany, defaultScope }: { companies: CompanyOption[]; defaultCompany?: string; defaultScope?: string }) {
+function CompanyFields({
+  companies,
+  defaultCompany,
+  defaultScope,
+  onCreateNew,
+  createTriggerRef,
+}: {
+  companies: CompanyOption[]
+  defaultCompany?: string
+  defaultScope?: string
+  onCreateNew?: () => void
+  createTriggerRef?: React.RefObject<HTMLButtonElement | null>
+}) {
   return (
     <>
       <SelectField
+        // Remount only the select when a newly created company becomes the default; the scope text stays as typed.
+        key={defaultCompany ?? 'none'}
         name="subcontractor_company_id"
         label="Subcontractor"
         required
         placeholder="Choose an active subcontractor"
         defaultValue={defaultCompany}
+        labelAction={
+          onCreateNew ? (
+            <button
+              ref={createTriggerRef}
+              type="button"
+              onClick={onCreateNew}
+              className="flex items-center gap-1 text-xs font-medium text-primary underline-offset-4 hover:underline"
+            >
+              <Plus className="size-3.5" aria-hidden="true" />
+              Create new subcontractor
+            </button>
+          ) : undefined
+        }
         options={companies.map((c) => ({
           value: c.value,
           label: c.qualificationNote
@@ -151,6 +181,7 @@ export function ActivityAssignments({
   assignments,
   companies,
   acceptsNew,
+  canCreateSubcontractor = false,
 }: {
   projectId: string
   activityId: string
@@ -158,8 +189,37 @@ export function ActivityAssignments({
   assignments: ActivityAssignment[]
   companies: CompanyOption[]
   acceptsNew: boolean
+  /** Shows "Create new subcontractor" next to the selector. Pass only for users allowed to add subcontractors. */
+  canCreateSubcontractor?: boolean
 }) {
+  const router = useRouter()
   const [adding, setAdding] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [created, setCreated] = useState<CompanyOption[]>([])
+  const [selectedNew, setSelectedNew] = useState<string | undefined>()
+  const createTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const emptyStateTriggerRef = useRef<HTMLButtonElement | null>(null)
+
+  const onCreated = useCallback(
+    (company: CreatedSubcontractor) => {
+      setCreating(false)
+      router.refresh()
+      if (!company.id) {
+        toast.success(`${company.label || 'The subcontractor'} was added to your directory. Choose it from the list.`)
+        return
+      }
+      const id = company.id
+      setCreated((prev) => (prev.some((c) => c.value === id) ? prev : [...prev, { value: id, label: company.label, trade: company.trade }]))
+      setSelectedNew(id)
+      setAdding(true)
+      toast.success(`${company.label} was added to your subcontractors and selected.`)
+    },
+    [router],
+  )
+
+  // Server data wins once the refresh lands (it carries qualification notes); locally created entries fill the gap until then.
+  const allCompanies = [...companies, ...created.filter((c) => !companies.some((s) => s.value === c.value))]
+  const openCreate = canCreateSubcontractor ? () => setCreating(true) : undefined
 
   if (availability === 'setup-required') {
     return (
@@ -173,10 +233,18 @@ export function ActivityAssignments({
   }
 
   const assignedIds = new Set(assignments.map((a) => a.subcontractor_company_id))
-  const available = companies.filter((c) => !assignedIds.has(c.value))
+  const available = allCompanies.filter((c) => !assignedIds.has(c.value))
 
   return (
     <div className="flex flex-col gap-3">
+      {canCreateSubcontractor && (
+        <CreateSubcontractorDialog
+          open={creating}
+          onOpenChange={setCreating}
+          onCreated={onCreated}
+          finalFocus={allCompanies.length ? createTriggerRef : emptyStateTriggerRef}
+        />
+      )}
       {assignments.length > 0 ? (
         <ul className="flex flex-col divide-y rounded-lg border">
           {assignments.map((a) => (
@@ -195,23 +263,49 @@ export function ActivityAssignments({
           New subcontractor work can only be assigned while the project is in preconstruction, construction, or closeout.
           Existing assignments stay here as history.
         </p>
-      ) : companies.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {'No active subcontractors yet. '}
-          <Link href="/subcontractors/new" className="font-medium text-primary underline-offset-4 hover:underline">
-            Add one to the directory
-          </Link>
-          {' to assign work.'}
-        </p>
+      ) : allCompanies.length === 0 ? (
+        canCreateSubcontractor ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
+            <p className="text-sm text-muted-foreground">No active subcontractors yet.</p>
+            <Button ref={emptyStateTriggerRef} type="button" variant="outline" onClick={() => setCreating(true)} className="w-full sm:w-fit">
+              <Plus data-icon="inline-start" />
+              Create new subcontractor
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {'No active subcontractors yet. '}
+            <Link href="/subcontractors/new" className="font-medium text-primary underline-offset-4 hover:underline">
+              Add one to the directory
+            </Link>
+            {' to assign work.'}
+          </p>
+        )
       ) : adding ? (
         <InlineActionForm
           action={assignSubcontractorAction.bind(null, projectId, activityId)}
-          onSuccess={() => setAdding(false)}
+          onSuccess={() => {
+            setAdding(false)
+            setSelectedNew(undefined)
+          }}
           className="flex flex-col gap-3 rounded-lg border p-3"
         >
-          <CompanyFields companies={available.length ? available : companies} />
+          <CompanyFields
+            companies={available.length ? available : allCompanies}
+            defaultCompany={selectedNew}
+            onCreateNew={openCreate}
+            createTriggerRef={createTriggerRef}
+          />
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => setAdding(false)} className="flex-1">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setAdding(false)
+                setSelectedNew(undefined)
+              }}
+              className="flex-1"
+            >
               <X data-icon="inline-start" />
               Cancel
             </Button>

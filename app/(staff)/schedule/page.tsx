@@ -14,8 +14,6 @@ import { getStaffMembers } from '@/lib/queries'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { ProjectFilter } from '@/components/schedule/project-filter'
 import { ScheduleBody, ScheduleSelectionProvider } from '@/components/schedule/schedule-selection'
-import { RememberJob } from '@/components/app/job-switcher'
-import { getRememberedJob } from '@/lib/job-context'
 import { ScheduleBoard, type BoardGroup } from '@/components/schedule/schedule-board'
 import { InitializeScheduleButton } from '@/components/schedule/schedule-controls'
 import {
@@ -57,7 +55,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   const { project: projectParam } = await searchParams
   const supabase = await createClient()
 
-  const [{ data: projectData }, { data: countData }, staff, remembered] = await Promise.all([
+  const [{ data: projectData }, { data: countData }, staff] = await Promise.all([
     supabase
       .from('projects')
       .select('id, name, project_number, status, progress_percent, completion_date')
@@ -66,7 +64,6 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
       .order('name'),
     supabase.from('schedule_activities').select('project_id').eq('organization_id', session.organizationId).limit(5000),
     getStaffMembers(session.organizationId, ['org_admin', 'project_manager', 'builder_staff']),
-    projectParam ? Promise.resolve(null) : getRememberedJob(session.organizationId),
   ])
   const projects = (projectData ?? []) as ProjectRow[]
 
@@ -75,9 +72,9 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     activityCount.set(a.project_id, (activityCount.get(a.project_id) ?? 0) + 1)
   }
 
-  // Selection is always explicit: the URL wins, then the remembered current job. Never guess a project.
+  // Selection comes from the URL only. Never guess or remember a project.
   const showAll = projectParam === 'all'
-  const requestedId = showAll ? null : (projectParam ?? remembered?.id ?? null)
+  const requestedId = showAll ? null : (projectParam ?? null)
   const selected = requestedId ? (projects.find((p) => p.id === requestedId) ?? null) : null
   const invalidSelection = Boolean(projectParam) && !showAll && !selected
   const filterProjects = projects.map((p) => ({
@@ -177,7 +174,6 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
   return (
     <ScheduleSelectionProvider>
-    {selected && projectParam === selected.id && remembered?.id !== selected.id && <RememberJob projectId={selected.id} />}
     <div className="flex flex-col gap-6">
       <PageHeader
         icon={CalendarDaysIcon}
