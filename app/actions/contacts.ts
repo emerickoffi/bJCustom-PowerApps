@@ -869,6 +869,72 @@ export async function endRelationshipAction(relationshipId: string): Promise<Act
   return { success: 'Relationship ended. It is kept in the history.' }
 }
 
+const companyContactPersonSchema = personSchema.pick({ first_name: true, last_name: true, email: true, primary_phone: true })
+
+/**
+ * Edits a current company contact in place. Personal details are saved to the shared person record (so every company and
+ * project that lists them stays consistent); role and primary designation are saved only on this company relationship.
+ * Fields the dialog does not show (middle name, notes, other phones) are never touched.
+ */
+export async function updateCompanyContactAction(relationshipId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const values = formValues(formData)
+  const gate = await requireContactsManager('edit')
+  if (!gate.ok) return { error: gate.error, values }
+  if (!isUuid(relationshipId)) return { error: 'This contact could not be found.', values }
+  const { session, supabase } = gate
+
+  const person = companyContactPersonSchema.safeParse(values)
+  const role = roleSchema.safeParse(values.role)
+  const fieldErrors: Record<string, string> = person.success ? {} : (fromZodError(person.error).fieldErrors ?? {})
+  if (!role.success) fieldErrors.role = role.error.issues[0]?.message ?? 'Enter a valid role'
+  if (!person.success || !role.success) return { error: 'Please correct the highlighted fields. Nothing was saved.', fieldErrors, values }
+
+  const { data: rel } = await supabase
+    .from('business_person_companies')
+    .select('id, person_id, company_id, status, is_primary_contact')
+    .eq('organization_id', session.organizationId)
+    .eq('id', relationshipId)
+    .maybeSingle()
+  if (!rel || rel.status !== 'active') return { error: 'Nothing was saved. This person is no longer a current contact here. Reload the page.', values }
+
+  let personQuery = supabase
+    .from('business_people')
+    .update({ ...person.data, updated_by: session.userId })
+    .eq('organization_id', session.organizationId)
+    .eq('id', rel.person_id)
+  if (values.expected_updated_at) personQuery = personQuery.eq('updated_at', values.expected_updated_at)
+  const { data: savedPerson, error: personError } = await personQuery.select('id')
+  if (personError) {
+    if (personError.code === '23505') return { error: 'Please correct the highlighted fields. Nothing was saved.', fieldErrors: { email: EMAIL_TAKEN }, values }
+    return { error: `Nothing was saved. ${dbError(personError)}`, values }
+  }
+  if (!savedPerson?.length) {
+    return { error: 'Nothing was saved. Someone else changed this contact after you opened it. Reload the page to see their changes, then try again.', values }
+  }
+
+  const paths = await relationshipPaths(supabase, rel.company_id, rel.person_id)
+  const { error: relError } = await supabase
+    .from('business_person_companies')
+    .update({ position_or_role: role.data, updated_by: session.userId })
+    .eq('organization_id', session.organizationId)
+    .eq('id', relationshipId)
+    .eq('status', 'active')
+  if (relError) {
+    revalidateDirectory(...paths)
+    return { error: `Personal details were saved, but the company role was not. ${relationshipError(relError)}`, values }
+  }
+
+  if (values.make_primary === 'on' && !rel.is_primary_contact) {
+    const primary = await setPrimaryContactAction(relationshipId)
+    if (primary.error) {
+      revalidateDirectory(...paths)
+      return { error: `Contact details were saved, but the primary contact was not changed. ${primary.error}`, values }
+    }
+  }
+  revalidateDirectory(...paths)
+  return { success: 'Contact updated.' }
+}
+
 /** Makes one active relationship the company's primary contact, clearing any previous primary first. */
 export async function setPrimaryContactAction(relationshipId: string): Promise<ActionState> {
   const gate = await requireContactsManager('edit')

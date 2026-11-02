@@ -321,6 +321,12 @@ export type CompanyContact = {
   relationship_id: string
   person_id: string
   name: string
+  first_name: string
+  last_name: string
+  /** Optimistic lock for person-level edits. */
+  person_updated_at: string | null
+  /** Other companies this person is currently a contact at; their personal details are shared with those. */
+  other_company_count: number
   email: string | null
   primary_phone: string | null
   person_status: ContactStatus
@@ -382,20 +388,37 @@ export async function loadCompanyProfile(
 
 export async function loadCompanyContacts(supabase: Supabase, organizationId: string, companyId: string): Promise<CompanyContact[]> {
   const { data } = await supabase
-    .from('business_person_companies')
-    .select(
-      'id, person_id, position_or_role, is_primary_contact, status, started_at, ended_at, person:business_people(first_name, last_name, email, primary_phone, status)',
-    )
-    .eq('organization_id', organizationId)
-    .eq('company_id', companyId)
-    .order('status')
-    .order('is_primary_contact', { ascending: false })
-    .order('started_at', { ascending: false })
+  .from('business_person_companies')
+  .select(
+  'id, person_id, position_or_role, is_primary_contact, status, started_at, ended_at, person:business_people(first_name, last_name, email, primary_phone, status, updated_at)',
+  )
+  .eq('organization_id', organizationId)
+  .eq('company_id', companyId)
+  .order('status')
+  .order('is_primary_contact', { ascending: false })
+  .order('started_at', { ascending: false })
+  .order('id')
+  const personIds = [...new Set((data ?? []).filter((r) => r.status === 'active').map((r) => r.person_id as string))]
+  const otherCompanies = new Map<string, number>()
+  if (personIds.length) {
+    const { data: others } = await supabase
+      .from('business_person_companies')
+      .select('person_id')
+      .eq('organization_id', organizationId)
+      .eq('status', 'active')
+      .neq('company_id', companyId)
+      .in('person_id', personIds)
+    for (const o of others ?? []) otherCompanies.set(o.person_id as string, (otherCompanies.get(o.person_id as string) ?? 0) + 1)
+  }
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any -- embedded relation typing from PostgREST */
   return ((data ?? []) as any[]).map((r) => ({
-    relationship_id: r.id,
-    person_id: r.person_id,
-    name: r.person ? personName(r.person) : 'Unknown contact',
+  relationship_id: r.id,
+  person_id: r.person_id,
+  name: r.person ? personName(r.person) : 'Unknown contact',
+  first_name: r.person?.first_name ?? '',
+  last_name: r.person?.last_name ?? '',
+  person_updated_at: r.person?.updated_at ?? null,
+  other_company_count: otherCompanies.get(r.person_id) ?? 0,
     email: r.person?.email ?? null,
     primary_phone: r.person?.primary_phone ?? null,
     person_status: r.person?.status ?? 'inactive',
