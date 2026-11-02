@@ -33,6 +33,8 @@ import {
 import { isAllowedSourceUrl } from '@/lib/ai/market-source-urls'
 import { useAssistantProject, type AssistantProject } from './assistant-context'
 import { AssistantMarkdown } from './assistant-markdown'
+import { EstimateDraftPreview, isDraftProposal } from './estimate-draft-preview'
+import type { DraftProposal } from '@/lib/ai/estimate-draft'
 
 type QuickActionKey = 'overview' | 'schedule' | 'update' | 'warranty'
 
@@ -86,6 +88,7 @@ type Message =
       sources?: AnswerSource[]
       health?: HealthBadge
       market?: MarketPanel
+      estimateDraft?: DraftProposal
     }
 
 const QUICK_ACTIONS: { key: QuickActionKey; label: string; hint: string; icon: LucideIcon }[] = [
@@ -224,6 +227,7 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
         sources?: AnswerSource[]
         health?: HealthBadge
         market?: unknown
+        estimateDraft?: unknown
         requestId?: string
       } | null
       if (!res.ok || !data?.text) {
@@ -254,7 +258,8 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
       const health =
         data.health && typeof data.health.label === 'string' && data.health.indicator in HEALTH_STYLES ? data.health : undefined
       const market = parseMarket(data.market)
-      settle({ id: loadingId, role: 'assistant', status: 'answer', text: answerText, reviewDraft, links, sources, health, market, options })
+      const estimateDraft = isDraftProposal(data.estimateDraft) ? data.estimateDraft : undefined
+      settle({ id: loadingId, role: 'assistant', status: 'answer', text: answerText, reviewDraft, links, sources, health, market, options, estimateDraft })
     } catch {
       if (controller.signal.aborted) return
       settle({ id: loadingId, role: 'assistant', status: 'error', text: 'Network problem. Check your connection and try again.', question, reviewDraft })
@@ -331,6 +336,10 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
                   actionable={i === messages.length - 1 && !busy}
                   onRetry={(failed) => void send(failed.question, failed.reviewDraft, failed.id)}
                   onChooseProject={(name) => void send(`Continue with ${name}`)}
+                  onReviseDraft={() => {
+                    setDraft('Revise the estimate draft: ')
+                    requestAnimationFrame(() => document.getElementById('assistant-input')?.focus())
+                  }}
                 />
               </li>
             ))}
@@ -458,6 +467,7 @@ function MessageBubble({
   message,
   onNavigate,
   actionable,
+  onReviseDraft,
   onRetry,
   onChooseProject,
 }: {
@@ -466,6 +476,7 @@ function MessageBubble({
   actionable: boolean
   onRetry: (failed: Extract<Message, { status: 'error' }>) => void
   onChooseProject: (name: string) => void
+  onReviseDraft: () => void
 }) {
   if (message.role === 'user') {
     return (
@@ -543,6 +554,9 @@ function MessageBubble({
                   </li>
                 ))}
               </ul>
+            )}
+            {message.estimateDraft && (
+              <EstimateDraftPreview proposal={message.estimateDraft} onRevise={onReviseDraft} onNavigate={onNavigate} />
             )}
             {message.market && (
               <section aria-label={`Market indicators for ${message.market.location}`} className="flex flex-col gap-2 rounded-xl border bg-card px-3 py-2.5">
