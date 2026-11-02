@@ -75,6 +75,8 @@ export type ActionItem = {
   responsibleUserId: string | null
   href: string
   actionLabel: string
+  /** Record-specific accessible name for the action button, e.g. "Review estimate EST-0002". */
+  actionName?: string
   source: string
   resolutionCondition: string
 }
@@ -401,6 +403,7 @@ function estimateItems(rows: ActionEstimateApproval[], ctx: ActionContext): Acti
       responsibleUserId: null,
       href: `/estimates/${r.estimateId}`,
       actionLabel: 'Review Estimate',
+      actionName: `Review estimate ${r.estimateNumber}`,
       source: 'Estimate',
       resolutionCondition: 'Estimate approved or rejected',
     }))
@@ -435,6 +438,12 @@ export function shortDocumentRef(title: string): string {
   return /^[A-Z][a-z]/.test(head) ? head[0].toLowerCase() + head.slice(1) : head
 }
 
+/** "Estimate EST-0002 Rev 1 — kitchen" → "EST-0002 Rev 1"; falls back to the title head when no record code is present. */
+export function documentCode(title: string): string {
+  const head = title.split(/\s+[—–]\s+/)[0].trim() || title
+  return head.match(/[A-Z]{2,}-\d+.*$/)?.[0] ?? head
+}
+
 function signedArtifactItems(rows: ActionSignedArtifact[], ctx: ActionContext): ActionItem[] {
   if (!ctx.manager || !ctx.features.e_signatures || !ctx.features.documents) return []
   const now = ctx.now ?? new Date()
@@ -466,6 +475,7 @@ function signedArtifactItems(rows: ActionSignedArtifact[], ctx: ActionContext): 
       responsibleUserId: null,
       href: `/projects/${r.projectId}/documents`,
       actionLabel: 'Review Signed Document',
+      actionName: `Review signed document ${documentCode(r.title)}`,
       source: 'E-signature',
       resolutionCondition: 'Signed PDF stored and filed in project documents',
     }))
@@ -602,6 +612,7 @@ function qualificationItems(rows: QualificationAttention[], ctx: ActionContext):
     responsibleUserId: null,
     href: q.href,
     actionLabel: 'Review Qualification',
+    actionName: `Review qualification for ${q.companyName}`,
     source: 'Qualification',
     resolutionCondition: 'Evidence reviewed or replaced, or a qualification decision recorded',
   }))

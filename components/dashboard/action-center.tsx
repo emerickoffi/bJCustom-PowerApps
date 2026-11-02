@@ -19,8 +19,10 @@ import {
   MapPin,
   NotebookText,
   Receipt,
+  ScanSearch,
   Settings2,
   ShieldCheck,
+  ShieldQuestion,
   UserRound,
   Wrench,
   type LucideIcon,
@@ -58,9 +60,9 @@ const TAB_ICONS: Partial<Record<ActionCategory, LucideIcon>> = {
 /** Keyed by the existing action label so the icon always matches what the button does. */
 const ACTION_ICONS: Record<string, LucideIcon> = {
   'Review Signed Document': FileSearch,
-  'Review Estimate': ClipboardCheck,
+  'Review Estimate': ScanSearch,
   'Review Change Order': FilePen,
-  'Review Qualification': ShieldCheck,
+  'Review Qualification': ShieldQuestion,
   'Review Invoice': Receipt,
   'View Schedule': CalendarClock,
   'Build Schedule': CalendarPlus,
@@ -176,24 +178,24 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
 /** Compact review button; it only opens the record, never approves or completes it. */
 function ActionIconLink({ item }: { item: ActionItem }) {
   const Icon = ACTION_ICONS[item.actionLabel] ?? ArrowRight
-  const tipId = `action-tip-${item.id.replace(/[^a-zA-Z0-9_-]/g, '-')}`
-  const name = `${item.actionLabel}: ${item.title}`
+  const name = item.actionName ?? `${item.actionLabel}: ${item.title}`
   return (
-    <span className="group/tip relative shrink-0">
+    // -mt-3 centres the 44px target on the title's first line so every button sits in the same column and row position.
+    <span className="group/tip relative -mt-3 shrink-0">
       <Link
         href={item.href}
         aria-label={name}
-        aria-describedby={tipId}
-        className="flex size-10 items-center justify-center rounded-lg bg-[#F5EDDF] text-[#805B2A] transition-colors hover:bg-[#EDE0C9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="group/btn flex size-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18543D] focus-visible:ring-offset-2"
       >
-        <Icon className="size-[19px]" aria-hidden="true" />
+        <span className="flex size-10 items-center justify-center rounded-lg border border-[#C9DCCE] bg-[#E7F0E9] text-[#18543D] transition-colors group-hover/btn:bg-[#D5E6DA] group-hover/btn:text-[#123D2E]">
+          <Icon className="size-[19px]" strokeWidth={2} aria-hidden="true" />
+        </span>
       </Link>
       <span
-        id={tipId}
-        role="tooltip"
-        className="pointer-events-none invisible absolute bottom-full right-0 z-20 mb-2 w-max max-w-56 rounded-md bg-[#18251F] px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-focus-within/tip:visible group-focus-within/tip:opacity-100 group-hover/tip:visible group-hover/tip:opacity-100"
+        aria-hidden="true"
+        className="pointer-events-none invisible absolute right-full top-1/2 z-20 mr-2 w-max max-w-60 -translate-y-1/2 rounded-md bg-[#18251F] px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-focus-within/tip:visible group-focus-within/tip:opacity-100 group-hover/tip:visible group-hover/tip:opacity-100"
       >
-        {item.actionLabel}
+        {name}
       </span>
     </span>
   )
