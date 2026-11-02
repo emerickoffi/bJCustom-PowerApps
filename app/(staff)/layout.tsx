@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
-import { requireStaff, type StaffSession } from '@/lib/session'
+import { requireStaff } from '@/lib/session'
 import { QuickActionsProvider, QuickCreateMenu } from '@/components/app/quick-actions'
-import { JobSwitcher } from '@/components/app/job-switcher'
-import { getRememberedJob, type JobSummary } from '@/lib/job-context'
-import { buildGlobalQuickActions, buildProjectQuickActions } from '@/lib/quick-actions'
-import type { FeatureMap } from '@/lib/feature-registry'
+import { JobSwitcher, RouteBreadcrumbs } from '@/components/app/job-switcher'
+import { buildGlobalQuickActions } from '@/lib/quick-actions'
+import { dashboardKeyForRole } from '@/lib/dashboard-layout'
+import type { ProjectFilterRoute } from '@/lib/route-job'
 import { landingPathForRole, NAV_GROUPS_COOKIE, navForRole, parseClosedNavGroups } from '@/lib/navigation'
 import { WorkspaceSwitcher } from '@/components/app/workspace-switcher'
 import { getOrgFeatures } from '@/lib/features'
@@ -21,7 +21,6 @@ import { AssistantLauncher } from '@/components/assistant/assistant-launcher'
 import { FloatingCameraProvider } from '@/components/camera/floating-camera'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import {
-  Breadcrumbs,
   HeaderSearch,
   NotificationBell,
   ProfileMenu,
@@ -68,36 +67,21 @@ async function loadNotifications(userId: string): Promise<HeaderNotification[]> 
   return items
 }
 
-/** Job-scoped "New" actions for the remembered job, using the same guards as the project layout. */
-async function loadJobScope(job: JobSummary, role: StaffSession['role'], features: FeatureMap) {
-  const supabase = await createClient()
-  const { data: canViewInternal } = await supabase.rpc('can_view_project_internal', { p_project: job.id })
-  return {
-    projectName: job.name,
-    actions: buildProjectQuickActions({
-      projectId: job.id,
-      status: job.status,
-      archived: false,
-      role,
-      features,
-      canViewInternal: Boolean(canViewInternal),
-    }),
-  }
-}
-
 /**
  * `modal` is the single slot for every create/edit drawer. Because it lives at the staff level, a soft
  * navigation from any staff page (Dashboard, Quick Actions, a project's tabs) opens the drawer over that page.
  */
 export default async function StaffLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const session = await requireStaff()
-  const [cookieStore, notifications, features, currentJob] = await Promise.all([
+  const [cookieStore, notifications, features] = await Promise.all([
     cookies(),
     loadNotifications(session.userId),
     getOrgFeatures(session.organizationId),
-    getRememberedJob(session.organizationId),
   ])
-  const jobScope = currentJob ? await loadJobScope(currentJob, session.role, features) : null
+  // Only pages whose content really filters by `?project=` keep the selection there; elsewhere picking a
+  // project opens it. The owner dashboard is portfolio-wide and has no per-project filter.
+  const projectFilterRoutes: ProjectFilterRoute[] =
+    dashboardKeyForRole(session.role) === 'owner' ? ['/schedule'] : ['/schedule', '/dashboard']
   const sidebarMode = parseSidebarMode(cookieStore.get(SIDEBAR_COOKIE)?.value)
   const closedGroups = parseClosedNavGroups(cookieStore.get(NAV_GROUPS_COOKIE)?.value)
   const items = navForRole(session.role, features)
@@ -135,15 +119,16 @@ export default async function StaffLayout({ children, modal }: { children: React
                 {logo}
               </Link>
               <div className="hidden min-w-0 flex-1 lg:block">
-                <Breadcrumbs
+                <RouteBreadcrumbs
+                  organizationId={session.organizationId}
+                  filterRoutes={projectFilterRoutes}
                   rootHref="/dashboard"
                   rootLabel="Dashboard"
-                  labels={currentJob ? { [currentJob.id]: currentJob.name } : undefined}
                 />
               </div>
               <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
-                <JobSwitcher currentJob={currentJob} />
-                <QuickCreateMenu globalActions={globalQuickActions} jobScope={jobScope} />
+                <JobSwitcher organizationId={session.organizationId} filterRoutes={projectFilterRoutes} />
+                <QuickCreateMenu globalActions={globalQuickActions} jobScope={null} />
                 <HeaderSearch />
                 <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />
                 <NotificationBell items={notifications} emptyHref="/dashboard" />
