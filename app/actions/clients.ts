@@ -12,7 +12,8 @@ import { ADDITIONAL_CONTACT_PREFIX, MAX_ADDITIONAL_CONTACTS } from '@/lib/additi
 import { buildPrimaryContact } from '@/lib/primary-contact'
 import { isSelectableContactRelationship } from '@/lib/domain'
 import { findPossibleDuplicates, type DuplicateReason } from '@/lib/project-homeowners'
-import { formatClientOptionLabel } from '@/lib/client-options'
+import { formatClientOptionDetail, formatClientOptionLabel } from '@/lib/client-options'
+import { assignPrimaryClient, checkUnassignedProject } from '@/lib/project-client-assignment'
 import type { ClientMailingAddress } from '@/components/projects/project-form'
 
 const uuid = z.uuid()
@@ -41,16 +42,44 @@ export async function createClientAction(_prev: ActionState, formData: FormData)
   const auth = await getClientCreator()
   if ('error' in auth) return { error: auth.error, values }
 
+  // Optional project link. Checked before the client is created so a bad choice saves nothing,
+  // then rechecked atomically by the assignment itself in case the project was taken meanwhile.
+  const rawProjectId = values.assign_project_id?.trim()
+  const projectId = rawProjectId && rawProjectId !== 'none' ? rawProjectId : null
+  if (projectId) {
+    const supabase = await createClient()
+    const projectError = uuid.safeParse(projectId).success
+      ? await checkUnassignedProject(supabase, auth.creator.organizationId, projectId)
+      : 'Choose a project from the list or leave it empty.'
+    if (projectError) {
+      return { error: 'Please correct the highlighted fields.', fieldErrors: { assign_project_id: projectError }, values }
+    }
+  }
+
   const result = await saveNewClient(auth.creator, values)
   if (!result.ok) return result.state
 
   revalidatePath('/clients')
-  redirect(`/clients/${result.id}?notice=${result.contactsFailed ? 'contacts_not_saved' : 'created'}`)
+  if (projectId) {
+    const link = await assignPrimaryClient(await createClient(), {
+      ...auth.creator,
+      projectId,
+      clientId: result.id,
+      expectedClientId: null,
+    })
+    revalidatePath('/projects')
+    revalidatePath(`/projects/${projectId}`)
+    if (!link.ok) {
+      // The client is saved; the redirect leaves the form so resubmitting can't create a duplicate.
+      redirect(`/clients/${result.id}?notice=project_not_linked&project=${projectId}`)
+    }
+  }
+  redirect(`/clients/${result.id}?notice=${result.contactsFailed ? 'contacts_not_saved' : projectId ? 'created_linked' : 'created'}`)
 }
 
 export type InlineClientMatch = { id: string; label: string; reasons: DuplicateReason[]; selectable: boolean }
 export type InlineClientState = ActionState & {
-  client?: { id: string; label: string; address: ClientMailingAddress }
+  client?: { id: string; label: string; detail?: string; address: ClientMailingAddress }
   matches?: InlineClientMatch[]
 }
 
@@ -113,6 +142,7 @@ export async function createClientInlineAction(_prev: InlineClientState, formDat
     client: {
       id: result.id,
       label: formatClientOptionLabel({ ...c, company_name: c.company_name ?? null, client_number: saved?.client_number ?? null }),
+      detail: formatClientOptionDetail(c),
       address: {
         address_line1: c.address_line1 ?? '',
         address_line2: c.address_line2 ?? '',

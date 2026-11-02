@@ -1,6 +1,6 @@
 'use client'
 
-import { UserRound as UserRoundIcon, Phone as PhoneIcon, MapPin as MapPinIcon, ClipboardList as ClipboardListIcon } from 'lucide-react'
+import { UserRound as UserRoundIcon, Phone as PhoneIcon, MapPin as MapPinIcon, ClipboardList as ClipboardListIcon, Folder as FolderIcon } from 'lucide-react'
 import { useActionState } from 'react'
 import { initialActionState, type ActionState } from '@/lib/action-state'
 import { CLIENT_STATUS_LABELS, COMMUNICATION_LABELS } from '@/lib/domain'
@@ -35,6 +35,7 @@ export function ClientForm({
   pendingLabel,
   cancelHref,
   additionalContacts = false,
+  projectOptions,
 }: {
   pendingLabel?: string
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
@@ -42,6 +43,8 @@ export function ClientForm({
   submitLabel: string
   cancelHref: string
   additionalContacts?: boolean
+  /** Unassigned projects the new client can become the primary homeowner of. */
+  projectOptions?: { value: string; label: string }[]
 }) {
   const [state, formAction] = useActionState(action, initialActionState)
   const fe = state.fieldErrors ?? {}
@@ -63,6 +66,24 @@ export function ClientForm({
           flat={flat}
           additionalContacts={additionalContacts ? { values: state.values } : undefined}
         />
+        {projectOptions && (
+          <FormSection
+            flat={flat}
+            icon={FolderIcon}
+            title="Project"
+            description="Optionally make this client the primary homeowner of a project that has none yet."
+          >
+            <SelectField
+              name="assign_project_id"
+              label="Assign to project"
+              defaultValue={state.values?.assign_project_id || 'none'}
+              error={fe.assign_project_id}
+              options={[{ value: 'none', label: 'No project' }, ...projectOptions]}
+              hint={projectOptions.length === 0 ? 'All projects already have a primary homeowner.' : undefined}
+              className="sm:col-span-2"
+            />
+          </FormSection>
+        )}
       </SmartFormLayout>
     </form>
   )

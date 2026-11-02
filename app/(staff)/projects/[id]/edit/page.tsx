@@ -49,6 +49,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
           savedKind: coverKind,
         }}
         clientOptions={clientOptions}
+        expectedClientId={project.primary_client_id ?? ''}
         managerOptions={managers.map((m) => ({ value: m.user_id, label: m.full_name || m.email || 'Team member' }))}
         submitLabel="Save changes"
         cancelHref={`/projects/${project.id}`}

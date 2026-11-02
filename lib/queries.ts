@@ -1,7 +1,7 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import type { ClientStatus, OrgRole, ProjectStatus } from '@/lib/domain'
-import { formatClientOptionLabel } from '@/lib/client-options'
+import { formatClientOptionDetail, formatClientOptionLabel } from '@/lib/client-options'
 
 export type ClientSummary = {
   id: string
@@ -89,7 +89,7 @@ export async function getClientOptions(organizationId: string) {
   const supabase = await createClient()
   const { data } = await supabase
     .from('clients')
-    .select('id, first_name, last_name, company_name, client_number')
+    .select('id, first_name, last_name, company_name, client_number, email, phone, city, state')
     .eq('organization_id', organizationId)
     .neq('status', 'archived')
     .order('last_name')
@@ -97,5 +97,24 @@ export async function getClientOptions(organizationId: string) {
   return (data ?? []).map((c) => ({
     value: c.id,
     label: formatClientOptionLabel(c),
+    detail: formatClientOptionDetail(c),
+  }))
+}
+
+/** Active projects that have no primary homeowner yet, for linking from the New client form. */
+export async function getUnassignedProjectOptions(organizationId: string) {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('projects')
+    .select('id, name, project_number, address_line1, city')
+    .eq('organization_id', organizationId)
+    .is('primary_client_id', null)
+    .is('archived_at', null)
+    .order('created_at', { ascending: false })
+    .limit(500)
+  return (data ?? []).map((p) => ({
+    value: p.id,
+    label: `${p.name} — ${p.project_number}`,
+    detail: [p.address_line1, p.city].filter(Boolean).join(', ') || undefined,
   }))
 }

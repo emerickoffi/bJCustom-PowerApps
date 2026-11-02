@@ -12,10 +12,11 @@ import { getOrgFeatures } from '@/lib/features'
 import { includeOptionalActivityAction, initializeScheduleAction } from '@/app/actions/schedule'
 import { isCoverKind, isCoverPathForOrg } from '@/lib/project-cover'
 import { MEDIA_BUCKET } from '@/lib/walkthroughs'
+import { assignPrimaryClient, checkAssignableClient } from '@/lib/project-client-assignment'
 
 const uuid = z.uuid()
 
-function toProjectRow(data: z.infer<typeof projectSchema>) {
+function toProjectRow<T extends Omit<z.infer<typeof projectSchema>, 'primary_client_id'>>(data: T) {
   const { estimated_budget, ...rest } = data
   return { ...rest, estimated_budget_cents: estimated_budget }
 }
@@ -67,6 +68,13 @@ export async function createProjectAction(_prev: ActionState, formData: FormData
   }
   if (cover.action === 'replace' && (await coverPathInUse(supabase, cover.path))) {
     return { error: 'The cover image upload is not valid. Please choose it again.', values }
+  }
+  if (parsed.data.primary_client_id) {
+    const clientError = await checkAssignableClient(supabase, session.organizationId, parsed.data.primary_client_id)
+    if (clientError) {
+      await discardCoverUpload(supabase, cover)
+      return { error: 'Please correct the highlighted fields.', fieldErrors: { primary_client_id: clientError }, values }
+    }
   }
   const coverKind = isCoverKind(values.cover_image_kind) ? values.cover_image_kind : null
 
@@ -130,7 +138,7 @@ export async function updateProjectAction(
 
   const { data: current } = await supabase
     .from('projects')
-    .select('cover_image_path')
+    .select('cover_image_path, primary_client_id')
     .eq('id', projectId)
     .eq('organization_id', session.organizationId)
     .maybeSingle()
@@ -142,6 +150,29 @@ export async function updateProjectAction(
     return { error: 'The cover image upload is not valid. Please choose it again.', values }
   }
 
+  // The homeowner is compared against what the form was opened with, so a change made
+  // elsewhere in the meantime is reported instead of overwritten.
+  const { primary_client_id: requestedClientId, ...projectFields } = parsed.data
+  const currentClientId = current.primary_client_id as string | null
+  const expectedClientId = 'primary_client_expected' in values ? values.primary_client_expected || null : currentClientId
+  // Untouched homeowner field: keep whatever is current rather than reverting a newer change.
+  const nextClientId = requestedClientId === expectedClientId ? currentClientId : requestedClientId
+  if (requestedClientId !== expectedClientId && currentClientId !== expectedClientId) {
+    await discardCoverUpload(supabase, cover)
+    return {
+      error: 'Someone else changed this project’s homeowner while you were editing. Reload the page to see the current homeowner.',
+      fieldErrors: { primary_client_id: 'Changed by someone else' },
+      values,
+    }
+  }
+  if (nextClientId && nextClientId !== current.primary_client_id) {
+    const clientError = await checkAssignableClient(supabase, session.organizationId, nextClientId)
+    if (clientError) {
+      await discardCoverUpload(supabase, cover)
+      return { error: 'Please correct the highlighted fields.', fieldErrors: { primary_client_id: clientError }, values }
+    }
+  }
+
   const previousPath = current.cover_image_path as string | null
   const nextPath = cover.action === 'replace' ? cover.path : cover.action === 'remove' ? null : previousPath
   const coverKind = nextPath && isCoverKind(values.cover_image_kind) ? values.cover_image_kind : null
@@ -149,7 +180,7 @@ export async function updateProjectAction(
   const { error } = await supabase
     .from('projects')
     .update({
-      ...toProjectRow(parsed.data),
+      ...toProjectRow(projectFields),
       cover_image_path: nextPath,
       cover_image_kind: coverKind,
       ...(nextPath !== previousPath ? { cover_image_updated_at: nextPath ? new Date().toISOString() : null } : {}),
@@ -162,6 +193,23 @@ export async function updateProjectAction(
     return { error: friendlyDbError(error), values }
   }
   if (previousPath && previousPath !== nextPath) await removeCoverIfUnused(supabase, previousPath)
+
+  const previousClientId = currentClientId
+  if (nextClientId !== previousClientId) {
+    const link = await assignPrimaryClient(supabase, {
+      organizationId: session.organizationId,
+      userId: session.userId,
+      projectId,
+      clientId: nextClientId,
+      expectedClientId: previousClientId,
+    })
+    revalidatePath(`/projects/${projectId}`)
+    if (!link.ok) {
+      return { error: `Project details were saved, but the homeowner was not changed. ${link.error}`, values }
+    }
+    revalidatePath('/clients')
+    for (const id of [nextClientId, previousClientId]) if (id) revalidatePath(`/clients/${id}`)
+  }
 
   revalidatePath(`/projects/${projectId}`)
   revalidatePath('/projects')

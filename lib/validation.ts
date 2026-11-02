@@ -141,7 +141,11 @@ export const activitySchema = z.object({
 export const projectSchema = z
   .object({
     name: z.string().trim().min(2, 'Project name is required').max(160),
-    primary_client_id: z.uuid('Select a client'),
+    // Empty means "Assign later": the project is saved with no primary homeowner.
+  primary_client_id: z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null),
+    z.uuid('Choose a client from the list or select Assign later').nullable(),
+  ),
     project_type: z.enum(['new_custom_home', 'renovation', 'addition', 'remodel', 'other']),
     description: optionalText(4000),
     address_line1: z.string().trim().min(1, 'Street address is required').max(160),
