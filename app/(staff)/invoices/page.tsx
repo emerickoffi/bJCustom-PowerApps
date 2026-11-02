@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { AlertTriangle, CircleCheck, FileText, Plus, Receipt, Wallet } from 'lucide-react'
+import { AlertTriangle, CircleCheck, FileText, Plus, Receipt, SearchX, Wallet } from 'lucide-react'
 import { requireStaff } from '@/lib/session'
 import { getInvoiceAccess } from '@/lib/invoice-access'
-import { listInvoices, invoiceClientName, type InvoiceRow } from '@/lib/invoice-queries'
+import { listInvoicesResult, invoiceClientName, type InvoiceRow } from '@/lib/invoice-queries'
 import { INVOICE_STATUSES, INVOICE_STATUS_LABELS, balanceCents, isOverdue } from '@/lib/invoices'
 import { formatCentsExact } from '@/lib/estimates'
 import { formatDate } from '@/lib/format'
@@ -18,7 +18,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const session = await requireStaff()
   const { status } = await searchParams
   const statusFilter = INVOICE_STATUSES.includes(status as never) || status === 'overdue' ? status : undefined
-  const all = await listInvoices(session.organizationId)
+  const { invoices: all, failed } = await listInvoicesResult(session.organizationId)
   const matchesFilter = (inv: InvoiceRow, filter: string | undefined) =>
     !filter ? true : filter === 'overdue' ? isOverdue(inv) : inv.status === filter
   const invoices = all.filter((inv) => matchesFilter(inv, statusFilter))
@@ -37,14 +37,19 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   ].map((f) => ({ ...f, count: all.filter((inv) => matchesFilter(inv, f.value)).length }))
 
   return (
-    <div className="flex flex-col gap-6 md:gap-8">
+    <div className="flex flex-col gap-5 md:gap-6">
       <PageHeader
+        tone="forest"
         icon={Receipt}
         title="Invoices"
         description="Progress draws and invoices for your projects. Payments are recorded manually."
         actions={
           manager ? (
-            <Button render={<Link href="/invoices/new" />} nativeButton={false}>
+            <Button
+              render={<Link href="/invoices/new" />}
+              nativeButton={false}
+              className="bg-[#F3E7CF] text-[#513B1C] hover:bg-[#EADBBE] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#123D2E]"
+            >
               <Plus data-icon="inline-start" />
               New invoice
             </Button>
@@ -52,22 +57,24 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         }
       />
 
-      <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <dl className="grid gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
         <Stat
           icon={Wallet}
+          tone="blue"
           label="Outstanding"
           value={formatCentsExact(outstanding)}
           note={`${open.length} open invoice${open.length === 1 ? '' : 's'}`}
         />
         <Stat
           icon={AlertTriangle}
+          tone={overdueCents > 0 ? 'danger' : 'amber'}
           label="Overdue"
           value={formatCentsExact(overdueCents)}
-          note={`${overdue.length} past due`}
-          danger={overdue.length > 0}
+          note={overdueCents > 0 ? `${overdue.length} past due` : 'Nothing past due'}
         />
         <Stat
           icon={CircleCheck}
+          tone="green"
           label="Collected to date"
           value={formatCentsExact(collected)}
           note="Net of reversals"
@@ -115,13 +122,43 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
           </nav>
         </div>
 
-        {all.length === 0 ? (
-          <FirstInvoiceState manager={manager} />
+        {failed ? (
+          <EmptyState
+            icon={AlertTriangle}
+            role="alert"
+            title="Invoices couldn't be loaded"
+            body="Something went wrong retrieving your invoices. Refresh the page to try again."
+          />
+        ) : all.length === 0 ? (
+          <EmptyState
+            icon={FileText}
+            title="Your first invoice starts here"
+            body="Bill a project with a standard invoice or a progress draw tied to a construction milestone. Drafts stay private until you issue them."
+            action={
+              manager ? (
+                <Button render={<Link href="/invoices/new" />} nativeButton={false} className="min-h-11 md:min-h-9">
+                  <Plus data-icon="inline-start" />
+                  Create First Invoice
+                </Button>
+              ) : undefined
+            }
+          />
         ) : invoices.length === 0 ? (
-          <div className="flex flex-col items-center gap-1.5 px-6 py-10 text-center">
-            <p className="font-medium text-foreground">No invoices match this filter</p>
-            <p className="text-sm text-muted-foreground">Try a different status.</p>
-          </div>
+          <EmptyState
+            icon={SearchX}
+            title={`No ${(filters.find((f) => f.value === statusFilter)?.label ?? '').toLowerCase()} invoices`}
+            body="None of your invoices match this status right now."
+            action={
+              <Button
+                variant="outline"
+                render={<Link href="/invoices" />}
+                nativeButton={false}
+                className="min-h-11 md:min-h-9"
+              >
+                View all invoices
+              </Button>
+            }
+          />
         ) : (
           <>
             <InvoiceTable invoices={invoices} />
@@ -139,39 +176,47 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   )
 }
 
+const STAT_TONES = {
+  blue: 'bg-[#E8F0FF] text-[#1D4ED8] ring-[#1D4ED8]/10',
+  amber: 'bg-[#FEF3C7] text-[#92400E] ring-[#92400E]/10',
+  green: 'bg-[#DCFCE7] text-[#166534] ring-[#166534]/10',
+  danger: 'bg-destructive/10 text-destructive ring-destructive/15',
+} as const
+
 function Stat({
   icon: Icon,
+  tone,
   label,
   value,
   note,
-  danger,
   className,
 }: {
   icon: React.ComponentType<{ className?: string; 'aria-hidden'?: 'true' }>
+  tone: keyof typeof STAT_TONES
   label: string
   value: string
   note: string
-  danger?: boolean
   className?: string
 }) {
+  const danger = tone === 'danger'
   return (
-    <div className={cn('surface flex items-start justify-between gap-4 p-5 md:p-6', className)}>
-      <div className="flex min-w-0 flex-col gap-2">
-        <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</dt>
+    <div className={cn('surface flex items-start justify-between gap-4 p-4 md:p-5', className)}>
+      <div className="flex min-w-0 flex-col gap-1.5">
+        <dt className="text-xs font-medium uppercase tracking-wider text-[#536159]">{label}</dt>
         <dd
           className={cn(
             'truncate font-serif text-3xl font-semibold leading-none tracking-tight tabular-nums',
-            danger ? 'text-destructive' : 'text-foreground',
+            danger ? 'text-destructive' : 'text-[#18251F]',
           )}
         >
           {value}
         </dd>
-        <dd className="text-sm text-muted-foreground">{note}</dd>
+        <dd className="text-sm text-[#536159]">{note}</dd>
       </div>
       <span
         className={cn(
           'flex size-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset',
-          danger ? 'bg-destructive/10 text-destructive ring-destructive/15' : 'bg-[#EAF0E9] text-[#174D32] ring-[#174D32]/10',
+          STAT_TONES[tone],
         )}
       >
         <Icon className="size-5" aria-hidden="true" />
@@ -271,25 +316,29 @@ function StatusCell({ invoice: inv }: { invoice: InvoiceRow }) {
   )
 }
 
-function FirstInvoiceState({ manager }: { manager: boolean }) {
+function EmptyState({
+  icon: Icon,
+  title,
+  body,
+  action,
+  role,
+}: {
+  icon: React.ComponentType<{ className?: string; 'aria-hidden'?: 'true' }>
+  title: string
+  body: string
+  action?: React.ReactNode
+  role?: 'alert'
+}) {
   return (
-    <div className="flex flex-col items-center gap-4 px-6 py-10 text-center md:py-12">
-      <span className="flex size-12 items-center justify-center rounded-xl bg-[#EAF0E9] text-[#174D32] ring-1 ring-inset ring-[#174D32]/10">
-        <FileText className="size-6" aria-hidden="true" />
+    <div role={role} className="flex flex-col items-center gap-4 px-6 py-8 text-center md:py-12">
+      <span className="flex size-12 items-center justify-center rounded-xl bg-[#F5EDDF] text-[#805B2A] ring-1 ring-inset ring-[#805B2A]/10">
+        <Icon className="size-6" aria-hidden="true" />
       </span>
       <div className="flex max-w-md flex-col gap-1.5">
-        <h3 className="font-serif text-xl font-semibold tracking-tight text-foreground">Your first invoice starts here</h3>
-        <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-          Bill a project with a standard invoice or a progress draw tied to a construction milestone. Drafts stay private
-          and aren&apos;t shared with homeowners until you issue them.
-        </p>
+        <h3 className="text-balance font-serif text-xl font-semibold tracking-tight text-[#18251F]">{title}</h3>
+        <p className="text-pretty text-sm leading-relaxed text-[#536159]">{body}</p>
       </div>
-      {manager && (
-        <Button render={<Link href="/invoices/new" />} nativeButton={false} className="min-h-11 md:min-h-9">
-          <Plus data-icon="inline-start" />
-          Create First Invoice
-        </Button>
-      )}
+      {action}
     </div>
   )
 }

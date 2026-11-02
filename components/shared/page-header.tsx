@@ -10,7 +10,7 @@ type PageHeaderProps = {
   backHref?: string
   backLabel?: string
   actions?: React.ReactNode
-  tone?: 'plain' | 'sage'
+  tone?: 'plain' | 'sage' | 'forest'
   /** Replaces the icon tile, e.g. with a person's initials. */
   avatar?: React.ReactNode
   /** Rendered inline after the title, e.g. a status badge. */
@@ -30,13 +30,14 @@ export function PageHeader({
   tone = 'sage',
 }: PageHeaderProps) {
   const sage = tone === 'sage'
+  const forest = tone === 'forest'
   return (
     <header
       className={cn(
         'flex min-w-0 flex-col gap-3 md:gap-4',
-        sage
-          ? 'rounded-xl border border-[#E2E8E2] bg-[#EAF0E9] px-4 py-4 md:px-6 md:py-5'
-          : 'border-b border-border/70 pb-4 md:pb-6',
+        sage && 'rounded-xl border border-[#E2E8E2] bg-[#EAF0E9] px-4 py-4 md:px-6 md:py-5',
+        forest && 'rounded-xl bg-[#123D2E] px-4 py-3.5 md:px-6 md:py-4',
+        tone === 'plain' && 'border-b border-border/70 pb-4 md:pb-6',
       )}
     >
       {backHref && <BackLink href={backHref} label={backLabel} />}
@@ -47,7 +48,11 @@ export function PageHeader({
             <span
               className={cn(
                 'flex size-9 shrink-0 items-center justify-center rounded-xl text-primary ring-1 ring-inset md:size-11',
-                sage ? 'bg-white ring-[#174D32]/12' : 'bg-sage ring-primary/10',
+                forest
+                  ? 'bg-white/10 text-white ring-white/15'
+                  : sage
+                    ? 'bg-white ring-[#174D32]/12'
+                    : 'bg-sage ring-primary/10',
               )}
             >
               <Icon className="size-5" aria-hidden="true" />
@@ -67,12 +72,22 @@ export function PageHeader({
                 {titleAddon}
               </div>
             ) : (
-              <h1 className="text-balance font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-3xl">
+              <h1
+                className={cn(
+                  'text-balance font-serif text-2xl font-semibold leading-tight tracking-tight md:text-3xl',
+                  forest ? 'text-white' : 'text-foreground',
+                )}
+              >
                 {title}
               </h1>
             )}
             {description && (
-              <div className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground md:text-[0.95rem]">
+              <div
+                className={cn(
+                  'max-w-2xl text-pretty text-sm leading-relaxed md:text-[0.95rem]',
+                  forest ? 'text-[#E0ECE4]' : 'text-muted-foreground',
+                )}
+              >
                 {description}
               </div>
             )}
