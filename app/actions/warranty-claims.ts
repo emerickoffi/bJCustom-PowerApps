@@ -12,17 +12,27 @@ const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/h
 
 type MediaKind = 'original' | 'info' | 'repair'
 
-function collectFiles(formData: FormData): File[] | string {
-  const files = formData.getAll('photos').filter((f): f is File => f instanceof File && f.size > 0)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+type ClaimFile = { file: File; key: string | null }
+
+/** Files arrive as `photos`, each optionally paired by position with a client-generated `photo_keys` UUID. */
+function collectFiles(formData: FormData): ClaimFile[] | string {
+  const keys = formData.getAll('photo_keys').map(String)
+  const files: ClaimFile[] = []
+  formData.getAll('photos').forEach((f, i) => {
+    if (f instanceof File && f.size > 0) files.push({ file: f, key: UUID_RE.test(keys[i] ?? '') ? keys[i] : null })
+  })
   if (files.length > MAX_FILES) return `Attach up to ${MAX_FILES} files at a time.`
-  for (const f of files) {
+  for (const { file: f } of files) {
     if (!ALLOWED_TYPES.has(f.type)) return `${f.name} is not a supported file type (JPG, PNG, WebP, HEIC or PDF).`
     if (f.size > MAX_BYTES) return `${f.name} is larger than 15 MB.`
   }
   return files
 }
 
-async function uploadClaimFiles(claimId: string, files: File[], kind: MediaKind): Promise<string | null> {
+/** Uploads every file it can, skipping ones already recorded under the same client key. Returns names that failed. */
+async function uploadClaimFiles(claimId: string, files: ClaimFile[], kind: MediaKind): Promise<string | null> {
   if (files.length === 0) return null
   const supabase = await createClient()
   const { data: claim } = await supabase
@@ -31,13 +41,23 @@ async function uploadClaimFiles(claimId: string, files: File[], kind: MediaKind)
     .eq('id', claimId)
     .maybeSingle()
   if (!claim) return 'Claim not found.'
-  for (const file of files) {
+  const keys = files.map((f) => f.key).filter((k): k is string => Boolean(k))
+  const { data: existing } = keys.length
+    ? await supabase.from('warranty_claim_media').select('client_key').eq('claim_id', claimId).in('client_key', keys)
+    : { data: [] }
+  const done = new Set((existing ?? []).map((r) => r.client_key as string))
+  const failed: string[] = []
+  for (const { file, key } of files) {
+    if (key && done.has(key)) continue
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80) || 'file'
     const path = `${claim.organization_id}/${claim.project_id}/${claimId}/${crypto.randomUUID()}-${safeName}`
     const { error: uploadError } = await supabase.storage
       .from('warranty-claims')
       .upload(path, file, { contentType: file.type, upsert: false })
-    if (uploadError) return `Could not upload ${file.name}.`
+    if (uploadError) {
+      failed.push(file.name)
+      continue
+    }
     const { error: rowError } = await supabase.from('warranty_claim_media').insert({
       claim_id: claimId,
       organization_id: claim.organization_id,
@@ -47,10 +67,12 @@ async function uploadClaimFiles(claimId: string, files: File[], kind: MediaKind)
       file_name: file.name.slice(0, 200),
       content_type: file.type,
       size_bytes: file.size,
+      client_key: key,
     })
-    if (rowError) return friendlyDbError(rowError)
+    // A unique-key conflict means an earlier attempt already recorded this file.
+    if (rowError && rowError.code !== '23505') failed.push(file.name)
   }
-  return null
+  return failed.length ? `${failed.join(', ')} could not be attached.` : null
 }
 
 function revalidateClaimPaths(projectId: string) {
@@ -77,6 +99,7 @@ export async function submitClaimAction(_prev: ActionState, formData: FormData):
   const files = collectFiles(formData)
   if (typeof files === 'string') return { error: files, values }
 
+  const submissionKey = String(formData.get('submission_key') ?? '')
   const supabase = await createClient()
   const d = parsed.data
   const { data: claimId, error } = await supabase.rpc('submit_warranty_claim', {
@@ -86,13 +109,20 @@ export async function submitClaimAction(_prev: ActionState, formData: FormData):
     p_location: d.location,
     p_title: d.title,
     p_description: d.description,
+    p_submission_key: UUID_RE.test(submissionKey) ? submissionKey : null,
   })
   if (error || !claimId) return { error: friendlyDbError(error), values }
 
   const uploadError = await uploadClaimFiles(claimId as string, files, 'original')
   revalidateClaimPaths(d.project_id)
-  if (uploadError) return { error: `Claim submitted, but ${uploadError}` }
-  return { success: 'Claim submitted. Your builder has been notified.' }
+  if (uploadError) {
+    return {
+      warning: `Your claim was saved, but ${uploadError} Retry to finish attaching — nothing will be duplicated.`,
+      savedId: claimId as string,
+      values,
+    }
+  }
+  return { success: 'Claim submitted. Your builder has been notified.', savedId: claimId as string }
 }
 
 const STAFF_ACTIONS = [
