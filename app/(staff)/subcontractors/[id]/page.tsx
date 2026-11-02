@@ -134,7 +134,7 @@ export default async function SubcontractorDetailPage({
             <SubcontractorStatusButton companyId={company.id} companyName={company.company_name} status={company.status} />
             <Button size="lg" render={<Link href={editHref} />} nativeButton={false}>
               <Pencil data-icon="inline-start" />
-              Edit
+              Edit company
             </Button>
           </>
         }
@@ -148,10 +148,14 @@ export default async function SubcontractorDetailPage({
         </p>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
       <Surface aria-labelledby="company-heading" className="gap-4">
-        <CardSectionHeader id="company-heading" title="Company Information" icon={Building2} />
-        <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+        <CardSectionHeader id="company-heading" title="Company & Contacts" icon={Building2} />
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-0">
+        <section aria-labelledby="company-details-heading" className="flex min-w-0 flex-col gap-3 lg:pr-6">
+        <h3 id="company-details-heading" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Company details
+        </h3>
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-1">
           <InfoItem label="Trade">{company.trade}</InfoItem>
           <InfoItem label="Date Added">{formatDate(company.created_at)}</InfoItem>
           <InfoItem label="Company email">
@@ -181,19 +185,21 @@ export default async function SubcontractorDetailPage({
             )}
           </InfoItem>
         </dl>
+        </section>
+        <CompanyContacts
+          target={{ subcontractorId: company.id }}
+          contacts={contacts}
+          people={people}
+          canEdit
+          companyInactive={company.status === 'inactive'}
+          subcontractor
+          heading="Contact people"
+          previewLimit={3}
+          variant="section"
+          className="border-t border-border/60 pt-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6"
+        />
+        </div>
       </Surface>
-
-      <CompanyContacts
-        target={{ subcontractorId: company.id }}
-        contacts={contacts}
-        people={people}
-        canEdit
-        companyInactive={company.status === 'inactive'}
-        subcontractor
-        heading="Contact people"
-        previewLimit={3}
-      />
-      </div>
 
       <DetailTabs companyId={company.id} active={tab} counts={{ projects: current.length }} />
 
