@@ -404,6 +404,7 @@ export function ActivityEditor({
                     assignments={assignments.byActivity.get(activity.id) ?? []}
                     companies={assignments.companies}
                     acceptsNew={assignments.acceptsNew}
+                    canCreateSubcontractor={canManage}
                   />
                 </section>
               )}
