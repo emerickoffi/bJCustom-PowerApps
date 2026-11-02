@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { requireManager } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
+import { createClient } from '@/lib/supabase/server'
+import { getUnassignedProjectOptions } from '@/lib/project-client-assignment'
 import { createClientAction } from '@/app/actions/clients'
 import { PageHeader } from '@/components/shared/page-header'
 import { ClientForm } from '@/components/clients/client-form'
@@ -10,7 +12,12 @@ export const metadata: Metadata = { title: 'New client' }
 
 export default async function NewClientPage() {
   const session = await requireManager()
-  const features = session.organizationId ? await getOrgFeatures(session.organizationId) : null
+  const [features, projectOptions] = session.organizationId
+    ? await Promise.all([
+        getOrgFeatures(session.organizationId),
+        getUnassignedProjectOptions(await createClient(), session.organizationId),
+      ])
+    : [null, undefined]
   return (
     <div className="flex w-full max-w-4xl flex-col gap-6">
       <PageHeader icon={UserRoundPlusIcon}
@@ -25,6 +32,7 @@ export default async function NewClientPage() {
         pendingLabel="Creating client…"
         cancelHref="/clients"
         additionalContacts={Boolean(features?.additional_contacts)}
+        projectOptions={projectOptions}
       />
     </div>
   )

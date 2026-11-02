@@ -17,7 +17,7 @@ type BaseProps = {
   labelAction?: React.ReactNode
 }
 
-function FieldShell({
+export function FieldShell({
   name,
   id,
   label,

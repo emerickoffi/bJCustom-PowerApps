@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getOrgFeatures } from '@/lib/features'
-import { getStaffMembers } from '@/lib/queries'
+import { getClientOptions, getStaffMembers } from '@/lib/queries'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { coverAlt, coverDesignBadge } from '@/lib/project-cover'
 import { CoverImage } from '@/components/projects/cover-image'
@@ -157,7 +157,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           .limit(200)
       : Promise.resolve({ data: [] as { document_id: string; status: string; created_at: string }[] }),
   ])
-  const projectContacts = await projectContactsPromise
+  const [projectContacts, clientOptions] = await Promise.all([
+    projectContactsPromise,
+    manager ? getClientOptions(session.organizationId) : Promise.resolve(undefined),
+  ])
   const isCompleted = project.status === 'completed'
   const [readiness, completionRecord, warrantyRes] = await Promise.all([
     showsCompletionReadiness(project.status) ? loadCompletionReadiness(supabase, id, features, manager) : Promise.resolve(null),
@@ -590,7 +593,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </a>
             </section>
           )}
-          <ProjectClientsPanel projectId={project.id} homeowners={homeowners} canEdit={manager} />
+          <ProjectClientsPanel projectId={project.id} homeowners={homeowners} canEdit={manager} clientOptions={clientOptions} />
           <div id={PROJECT_SECTION_ANCHORS.team} className="scroll-mt-24">
             <ProjectTeamPanel
               projectId={project.id}

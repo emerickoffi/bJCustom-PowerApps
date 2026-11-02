@@ -11,6 +11,8 @@ import { CONTACT_RELATIONSHIP_LABELS, PROJECT_CLIENT_RELATIONSHIP_LABELS } from 
 import { HOMEOWNER_PORTAL_STATUS } from '@/lib/project-homeowners'
 import type { HomeownerContact, ProjectHomeowners } from '@/lib/project-homeowners-data'
 import { AddAdditionalContactDialog } from '@/components/projects/add-additional-contact-dialog'
+import { AssignPrimaryClient } from '@/components/projects/assign-primary-client'
+import type { ClientOption } from '@/lib/client-options'
 import { ActionButton, InlineActionForm } from '@/components/shared/inline-action'
 import { ConfirmActionButton } from '@/components/shared/confirm-action-button'
 import { SelectField } from '@/components/shared/form-field'
@@ -135,27 +137,47 @@ export function ProjectClientsPanel({
   projectId,
   homeowners,
   canEdit,
+  clientOptions,
 }: {
   projectId: string
   homeowners: ProjectHomeowners
   canEdit: boolean
+  clientOptions?: ClientOption[]
 }) {
   const { groups, primaryClientId } = homeowners
   const primaryGroup = groups.find((g) => g.client?.id === primaryClientId)
+  const assign =
+    canEdit && clientOptions ? (
+      <AssignPrimaryClient projectId={projectId} currentClientId={primaryClientId ?? null} clients={clientOptions} />
+    ) : null
 
   return (
     <Panel
       title="Homeowners"
       action={
         primaryClientId ? (
-          <PanelLink href={`/clients/${primaryClientId}`} icon={Users}>
-            Manage contacts
-          </PanelLink>
+          <div className="flex items-center gap-1">
+            {assign}
+            <PanelLink href={`/clients/${primaryClientId}`} icon={Users}>
+              Manage contacts
+            </PanelLink>
+          </div>
         ) : undefined
       }
     >
+      {!primaryClientId && (
+        <div className="flex flex-col gap-3 rounded-lg border border-dashed bg-[#F8F7F3] p-4">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-foreground">Primary client: Unassigned</span>
+            <span className="text-xs text-muted-foreground">
+              Assign a homeowner to enable portal access and client communication for this project.
+            </span>
+          </div>
+          {assign && <div>{assign}</div>}
+        </div>
+      )}
       {groups.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No homeowners linked to this project.</p>
+        primaryClientId ? <p className="text-sm text-muted-foreground">No homeowners linked to this project.</p> : null
       ) : (
         <div className="flex flex-col gap-4">
           {groups.map((group) => {

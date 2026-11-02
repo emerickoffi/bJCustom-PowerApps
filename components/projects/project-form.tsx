@@ -10,6 +10,8 @@ import {
   Plus as PlusIcon,
 } from 'lucide-react'
 import { CreateClientDialog } from '@/components/projects/create-client-dialog'
+import { ClientCombobox } from '@/components/projects/client-combobox'
+import type { ClientOption } from '@/lib/client-options'
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { formValues, initialActionState, type ActionState } from '@/lib/action-state'
@@ -18,7 +20,7 @@ import { CoverImageField, uploadProjectCover } from '@/components/projects/cover
 import { PROJECT_TYPE_LABELS } from '@/lib/domain'
 import { calculateTargetCompletion, parseBusinessDays } from '@/lib/business-days'
 import { cn } from '@/lib/utils'
-import { FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
+import { FieldShell, FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { SmartFormLayout, useSmartForm } from '@/components/shared/smart-form'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 
@@ -78,10 +80,13 @@ export function ProjectForm({
   cover,
   clientAddresses: initialClientAddresses,
   canCreateClient = false,
+  expectedClientId,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   defaults?: ProjectFormValues
-  clientOptions: Option[]
+  clientOptions: ClientOption[]
+  /** On edit: the homeowner when the form loaded, so the server can detect a concurrent change. */
+  expectedClientId?: string
   /** Shows “Create new client” beside the homeowner selector. Only pass for users allowed to create clients. */
   canCreateClient?: boolean
   managerOptions: Option[]
@@ -99,57 +104,34 @@ export function ProjectForm({
   // Clients created inline are appended here so the selector updates without a reload.
   const [options, setOptions] = useState(clientOptions)
   const [clientAddresses, setClientAddresses] = useState(initialClientAddresses)
+  // A failed submit echoes back the same value, so the selection survives without re-seeding.
+  const [clientId, setClientId] = useState(defaults.primary_client_id ?? '')
+  const selectedAddress = clientId ? clientAddresses?.[clientId] : undefined
   const [clientDialogOpen, setClientDialogOpen] = useState(false)
-  const [pendingClientId, setPendingClientId] = useState<string | null>(null)
   const [clientNotice, setClientNotice] = useState<string | null>(null)
-  const clientSelectRef = useRef<HTMLElement | null>(null)
-
-  const getClientSelect = () =>
-    (formRef.current?.elements.namedItem('primary_client_id') as HTMLSelectElement | null) ?? null
+  const clientInputRef = useRef<HTMLElement | null>(null)
 
   const openClientDialog = () => {
-    clientSelectRef.current = getClientSelect()
+    clientInputRef.current = document.getElementById('primary_client_search')
     setClientDialogOpen(true)
   }
 
-  const chooseClient = (option: Option, address?: ClientMailingAddress) => {
+  const chooseClient = (option: ClientOption, address?: ClientMailingAddress) => {
     setOptions((prev) => (prev.some((o) => o.value === option.value) ? prev : [...prev, option]))
     if (address && Object.values(address).some(Boolean)) {
       setClientAddresses((prev) => (prev ? { ...prev, [option.value]: address } : prev))
     }
-    setPendingClientId(option.value)
+    setClientId(option.value)
+    setAddressNotice(null)
+    setClientNotice(`${option.label} selected as the primary homeowner.`)
     setClientDialogOpen(false)
   }
 
-  // Select the client after its <option> has rendered, then notify listeners (dirty tracking).
-  useEffect(() => {
-    if (!pendingClientId) return
-    const select = getClientSelect()
-    if (select && [...select.options].some((o) => o.value === pendingClientId)) {
-      select.value = pendingClientId
-      select.dispatchEvent(new Event('change', { bubbles: true }))
-      const label = select.selectedOptions[0]?.textContent ?? 'Client'
-      setClientNotice(`${label} selected as the primary homeowner.`)
-    }
-    setPendingClientId(null)
-    // getClientSelect reads a ref; only the pending id matters here.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingClientId, options])
-
   const copyClientMailingAddress = () => {
     const form = formRef.current
-    if (!form || !clientAddresses) return
-    const clientId = (form.elements.namedItem('primary_client_id') as HTMLSelectElement | null)?.value
-    if (!clientId) {
-      setAddressNotice({ tone: 'info', text: 'Choose the primary homeowner first.' })
-      return
-    }
-    const address = clientAddresses[clientId]
-    if (!address) {
-      setAddressNotice({ tone: 'info', text: 'This client has no mailing address on file. Enter the site address below.' })
-      return
-    }
-    for (const [name, value] of Object.entries(address)) {
+    if (!form || !selectedAddress) return
+    // Fills the site fields only on request; the builder reviews before saving.
+    for (const [name, value] of Object.entries(selectedAddress)) {
       const input = form.elements.namedItem(name) as HTMLInputElement | null
       if (input) input.value = value
     }
@@ -222,13 +204,10 @@ export function ProjectForm({
       >
       <FormSection flat={flat} icon={HouseIcon} title="Project" description="Name the project and choose the homeowner it is being built for.">
         <TextField name="name" label="Project name" required defaultValue={v('name', defaults.name)} error={fe.name} className="sm:col-span-2" />
-        <SelectField
+        <FieldShell
           name="primary_client_id"
-          label="Primary homeowner"
-          required
-          placeholder="Select a client"
-          options={options}
-          defaultValue={v('primary_client_id', defaults.primary_client_id)}
+          id="primary_client_search"
+          label="Primary homeowner / client (optional)"
           error={fe.primary_client_id}
           labelAction={
             canCreateClient ? (
@@ -240,13 +219,27 @@ export function ProjectForm({
           }
           hint={
             clientNotice ??
-            (options.length
-              ? 'Other contacts on this client get project access only through portal access settings.'
-              : canCreateClient
-                ? 'No clients yet. Use “Create new client” to add one.'
-                : 'Create a client first.')
+            (options.length || canCreateClient
+              ? 'Select an existing client, create one now, or assign one later.'
+              : 'No clients yet. You can assign one later.')
           }
-        />
+        >
+          <ClientCombobox
+            id="primary_client_search"
+            name="primary_client_id"
+            clients={options}
+            value={clientId}
+            onValueChange={(next) => {
+              setClientId(next)
+              setClientNotice(null)
+              setAddressNotice(null)
+            }}
+            onCreateNew={canCreateClient ? openClientDialog : undefined}
+            invalid={Boolean(fe.primary_client_id)}
+            describedBy={fe.primary_client_id ? 'primary_client_search-error' : 'primary_client_search-hint'}
+          />
+          {expectedClientId !== undefined && <input type="hidden" name="primary_client_expected" value={expectedClientId} />}
+        </FieldShell>
         <SelectField
           name="project_type"
           label="Project type"
@@ -295,17 +288,29 @@ export function ProjectForm({
       <FormSection flat={flat} icon={MapPinIcon} title="Site" description="Where the home is being built. This is separate from the homeowner's mailing address.">
         {clientAddresses && (
           <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center">
-            <Button type="button" variant="outline" size="sm" className="self-start" onClick={copyClientMailingAddress}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={copyClientMailingAddress}
+              disabled={!selectedAddress}
+              aria-describedby="client-address-status"
+            >
               Use client mailing address
             </Button>
-            {addressNotice && (
-              <p
-                role="status"
-                className={cn('text-sm', addressNotice.tone === 'success' ? 'text-primary' : 'text-muted-foreground')}
-              >
-                {addressNotice.text}
-              </p>
-            )}
+            <p
+              id="client-address-status"
+              role="status"
+              className={cn('text-sm', addressNotice?.tone === 'success' ? 'text-primary' : 'text-muted-foreground')}
+            >
+              {addressNotice?.text ??
+                (!clientId
+                  ? 'Select a homeowner to copy their mailing address.'
+                  : !selectedAddress
+                    ? 'This client has no mailing address on file.'
+                    : null)}
+            </p>
           </div>
         )}
         <TextField name="address_line1" label="Street address" required autoComplete="off" defaultValue={v('address_line1', defaults.address_line1)} error={fe.address_line1} className="sm:col-span-2" />
@@ -467,7 +472,7 @@ export function ProjectForm({
       <CreateClientDialog
         open={clientDialogOpen}
         onOpenChange={setClientDialogOpen}
-        finalFocus={clientSelectRef}
+        finalFocus={clientInputRef}
         onCreated={(client) => chooseClient({ value: client.id, label: client.label }, client.address)}
         onSelectExisting={(id, label) => chooseClient({ value: id, label })}
       />
