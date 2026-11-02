@@ -11,38 +11,55 @@ type BaseProps = {
   hint?: string
   required?: boolean
   className?: string
+  /** Overrides the element id (defaults to `name`) so the same field can appear twice on one page. */
+  id?: string
+  /** Rendered on the label row, aligned to the right. */
+  labelAction?: React.ReactNode
 }
 
 function FieldShell({
   name,
+  id,
   label,
   error,
   hint,
   required,
   className,
+  labelAction,
   children,
 }: BaseProps & { children: React.ReactNode }) {
+  const fieldId = id ?? name
+  const labelNode = (
+    <Label htmlFor={fieldId} className="text-sm font-medium text-foreground">
+      {label}
+      {required && (
+        <>
+          <span className="text-destructive" aria-hidden="true">
+            *
+          </span>
+          <span className="sr-only">(required)</span>
+        </>
+      )}
+    </Label>
+  )
   return (
     <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
-      <Label htmlFor={name} className="text-sm font-medium text-foreground">
-        {label}
-        {required && (
-          <>
-            <span className="text-destructive" aria-hidden="true">
-              *
-            </span>
-            <span className="sr-only">(required)</span>
-          </>
-        )}
-      </Label>
+      {labelAction ? (
+        <div className="flex min-h-5 items-center justify-between gap-2">
+          {labelNode}
+          {labelAction}
+        </div>
+      ) : (
+        labelNode
+      )}
       {children}
       {error ? (
-        <p id={`${name}-error`} className="flex items-start gap-1.5 text-xs leading-relaxed text-destructive">
+        <p id={`${fieldId}-error`} className="flex items-start gap-1.5 text-xs leading-relaxed text-destructive">
           <AlertCircle className="mt-px size-3.5 shrink-0" aria-hidden="true" />
           {error}
         </p>
       ) : hint ? (
-        <p id={`${name}-hint`} className="text-xs leading-relaxed text-muted-foreground">
+        <p id={`${fieldId}-hint`} className="text-xs leading-relaxed text-muted-foreground">
           {hint}
         </p>
       ) : null}
@@ -52,15 +69,16 @@ function FieldShell({
 
 type TextFieldProps = BaseProps & Omit<React.ComponentProps<'input'>, 'name' | 'className'>
 
-export function TextField({ name, label, error, hint, required, className, ...inputProps }: TextFieldProps) {
+export function TextField({ name, id, label, error, hint, required, className, labelAction, ...inputProps }: TextFieldProps) {
+  const fieldId = id ?? name
   return (
-    <FieldShell name={name} label={label} error={error} hint={hint} required={required} className={className}>
+    <FieldShell name={name} id={id} label={label} error={error} hint={hint} required={required} className={className} labelAction={labelAction}>
       <Input
-        id={name}
+        id={fieldId}
         name={name}
         required={required}
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${name}-error` : hint ? `${name}-hint` : undefined}
+        aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
         className="h-10 placeholder:text-muted-foreground/80"
         {...inputProps}
       />
@@ -70,15 +88,16 @@ export function TextField({ name, label, error, hint, required, className, ...in
 
 type TextAreaFieldProps = BaseProps & Omit<React.ComponentProps<'textarea'>, 'name' | 'className'>
 
-export function TextAreaField({ name, label, error, hint, required, className, ...props }: TextAreaFieldProps) {
+export function TextAreaField({ name, id, label, error, hint, required, className, labelAction, ...props }: TextAreaFieldProps) {
+  const fieldId = id ?? name
   return (
-    <FieldShell name={name} label={label} error={error} hint={hint} required={required} className={className}>
+    <FieldShell name={name} id={id} label={label} error={error} hint={hint} required={required} className={className} labelAction={labelAction}>
       <Textarea
-        id={name}
+        id={fieldId}
         name={name}
         required={required}
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${name}-error` : hint ? `${name}-hint` : undefined}
+        aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
         className="min-h-28 placeholder:text-muted-foreground/80"
         {...props}
       />
@@ -95,6 +114,7 @@ type SelectFieldProps = BaseProps & {
 
 export function SelectField({
   name,
+  id,
   label,
   error,
   hint,
@@ -104,16 +124,19 @@ export function SelectField({
   defaultValue,
   placeholder,
   disabled,
+  labelAction,
 }: SelectFieldProps) {
+  const fieldId = id ?? name
   return (
-    <FieldShell name={name} label={label} error={error} hint={hint} required={required} className={className}>
+    <FieldShell name={name} id={id} label={label} error={error} hint={hint} required={required} className={className} labelAction={labelAction}>
       <NativeSelect
-        id={name}
+        id={fieldId}
         name={name}
         required={required}
         disabled={disabled}
         defaultValue={defaultValue ?? ''}
         aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
       >
         {placeholder !== undefined && (
           <option value="" disabled={required}>

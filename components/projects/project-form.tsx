@@ -7,7 +7,9 @@ import {
   ListChecks as ListChecksIcon,
   Lock as LockIcon,
   Image as ImageIcon,
+  Plus as PlusIcon,
 } from 'lucide-react'
+import { CreateClientDialog } from '@/components/projects/create-client-dialog'
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { formValues, initialActionState, type ActionState } from '@/lib/action-state'
@@ -74,11 +76,14 @@ export function ProjectForm({
   cancelHref,
   scheduleSetup,
   cover,
-  clientAddresses,
+  clientAddresses: initialClientAddresses,
+  canCreateClient = false,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   defaults?: ProjectFormValues
   clientOptions: Option[]
+  /** Shows “Create new client” beside the homeowner selector. Only pass for users allowed to create clients. */
+  canCreateClient?: boolean
   managerOptions: Option[]
   submitLabel: string
   pendingLabel?: string
@@ -90,6 +95,46 @@ export function ProjectForm({
   clientAddresses?: Record<string, ClientMailingAddress>
 }) {
   const [addressNotice, setAddressNotice] = useState<{ tone: 'success' | 'info'; text: string } | null>(null)
+
+  // Clients created inline are appended here so the selector updates without a reload.
+  const [options, setOptions] = useState(clientOptions)
+  const [clientAddresses, setClientAddresses] = useState(initialClientAddresses)
+  const [clientDialogOpen, setClientDialogOpen] = useState(false)
+  const [pendingClientId, setPendingClientId] = useState<string | null>(null)
+  const [clientNotice, setClientNotice] = useState<string | null>(null)
+  const clientSelectRef = useRef<HTMLElement | null>(null)
+
+  const getClientSelect = () =>
+    (formRef.current?.elements.namedItem('primary_client_id') as HTMLSelectElement | null) ?? null
+
+  const openClientDialog = () => {
+    clientSelectRef.current = getClientSelect()
+    setClientDialogOpen(true)
+  }
+
+  const chooseClient = (option: Option, address?: ClientMailingAddress) => {
+    setOptions((prev) => (prev.some((o) => o.value === option.value) ? prev : [...prev, option]))
+    if (address && Object.values(address).some(Boolean)) {
+      setClientAddresses((prev) => (prev ? { ...prev, [option.value]: address } : prev))
+    }
+    setPendingClientId(option.value)
+    setClientDialogOpen(false)
+  }
+
+  // Select the client after its <option> has rendered, then notify listeners (dirty tracking).
+  useEffect(() => {
+    if (!pendingClientId) return
+    const select = getClientSelect()
+    if (select && [...select.options].some((o) => o.value === pendingClientId)) {
+      select.value = pendingClientId
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+      const label = select.selectedOptions[0]?.textContent ?? 'Client'
+      setClientNotice(`${label} selected as the primary homeowner.`)
+    }
+    setPendingClientId(null)
+    // getClientSelect reads a ref; only the pending id matters here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingClientId, options])
 
   const copyClientMailingAddress = () => {
     const form = formRef.current
@@ -167,6 +212,7 @@ export function ProjectForm({
   const [scheduleMode, setScheduleMode] = useState(sv?.schedule_setup ?? 'standard')
 
   return (
+    <>
     <form key={formKey} action={formAction} {...formProps} noValidate={false}>
       <SmartFormLayout
         dirty={dirty}
@@ -181,13 +227,24 @@ export function ProjectForm({
           label="Primary homeowner"
           required
           placeholder="Select a client"
-          options={clientOptions}
+          options={options}
           defaultValue={v('primary_client_id', defaults.primary_client_id)}
           error={fe.primary_client_id}
+          labelAction={
+            canCreateClient ? (
+              <Button type="button" variant="link" size="sm" className="h-auto gap-1 p-0" onClick={openClientDialog}>
+                <PlusIcon className="size-3.5" aria-hidden="true" />
+                Create new client
+              </Button>
+            ) : undefined
+          }
           hint={
-            clientOptions.length
+            clientNotice ??
+            (options.length
               ? 'Other contacts on this client get project access only through portal access settings.'
-              : 'Create a client first.'
+              : canCreateClient
+                ? 'No clients yet. Use “Create new client” to add one.'
+                : 'Create a client first.')
           }
         />
         <SelectField
@@ -406,5 +463,15 @@ export function ProjectForm({
 
       </SmartFormLayout>
     </form>
+    {canCreateClient && (
+      <CreateClientDialog
+        open={clientDialogOpen}
+        onOpenChange={setClientDialogOpen}
+        finalFocus={clientSelectRef}
+        onCreated={(client) => chooseClient({ value: client.id, label: client.label }, client.address)}
+        onSelectExisting={(id, label) => chooseClient({ value: id, label })}
+      />
+    )}
+    </>
   )
 }
