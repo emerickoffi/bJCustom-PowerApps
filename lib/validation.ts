@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ALL_PROJECT_STATUSES } from '@/lib/domain'
+import { addBusinessDays, parseBusinessDays } from '@/lib/business-days'
 
 const optionalText = (max: number) =>
   z
@@ -171,6 +172,21 @@ export const projectSchema = z
       .transform((v) => (v === '' || v === 'none' ? null : v))
       .refine((v) => v === null || z.uuid().safeParse(v).success, 'Select a project manager'),
     internal_notes: optionalText(4000),
+    planned_business_days: z
+      .string()
+      .optional()
+      .default('')
+      .superRefine((v, ctx) => {
+        const { error } = parseBusinessDays(v)
+        if (error) ctx.addIssue({ code: 'custom', message: error })
+      })
+      .transform((v) => parseBusinessDays(v).value),
+  })
+  // The server recalculates so a stale or tampered completion date can never disagree with the duration.
+  .transform((v) => {
+    if (!v.proposed_start_date || v.planned_business_days === null) return v
+    const target = addBusinessDays(v.proposed_start_date, v.planned_business_days)
+    return target ? { ...v, target_completion_date: target } : v
   })
   .refine(
     (v) => !v.proposed_start_date || !v.target_completion_date || v.target_completion_date >= v.proposed_start_date,

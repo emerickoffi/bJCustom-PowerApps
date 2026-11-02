@@ -18,7 +18,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   const { data: project } = await supabase
     .from('projects')
     .select(
-      'id, project_number, name, primary_client_id, project_type, description, address_line1, address_line2, city, state, postal_code, lot, block, phase, community, legal_description, estimated_budget_cents, proposed_start_date, target_completion_date, project_manager_id, internal_notes, cover_image_path, cover_image_kind',
+      'id, project_number, name, primary_client_id, project_type, description, address_line1, address_line2, city, state, postal_code, lot, block, phase, community, legal_description, estimated_budget_cents, proposed_start_date, target_completion_date, planned_business_days, project_manager_id, internal_notes, cover_image_path, cover_image_kind',
     )
     .eq('id', id)
     .eq('organization_id', session.organizationId)

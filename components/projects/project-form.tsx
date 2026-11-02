@@ -14,6 +14,7 @@ import { formValues, initialActionState, type ActionState } from '@/lib/action-s
 import { validateCoverFile } from '@/lib/project-cover'
 import { CoverImageField, uploadProjectCover } from '@/components/projects/cover-image-field'
 import { PROJECT_TYPE_LABELS } from '@/lib/domain'
+import { calculateTargetCompletion, parseBusinessDays } from '@/lib/business-days'
 import { cn } from '@/lib/utils'
 import { FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { SmartFormLayout, useSmartForm } from '@/components/shared/smart-form'
@@ -37,6 +38,7 @@ export type ProjectFormValues = {
   estimated_budget_cents?: number | null
   proposed_start_date?: string | null
   target_completion_date?: string | null
+  planned_business_days?: number | null
   project_manager_id?: string | null
   internal_notes?: string | null
   cover_image_kind?: string | null
@@ -148,6 +150,20 @@ export function ProjectForm({
       : ''
 
   const [startDate, setStartDate] = useState(v('proposed_start_date', defaults.proposed_start_date))
+  const [businessDays, setBusinessDays] = useState(
+    sv ? (sv.planned_business_days ?? '') : defaults.planned_business_days != null ? String(defaults.planned_business_days) : '',
+  )
+  const [targetDate, setTargetDate] = useState(v('target_completion_date', defaults.target_completion_date))
+  const businessDaysError = parseBusinessDays(businessDays).error
+  const calculatedTarget = calculateTargetCompletion(startDate, businessDays)
+  const isCalculated = calculatedTarget !== null && calculatedTarget === targetDate
+
+  const updateSchedule = (start: string, days: string) => {
+    setStartDate(start)
+    setBusinessDays(days)
+    const next = calculateTargetCompletion(start, days)
+    if (next) setTargetDate(next)
+  }
   const [scheduleMode, setScheduleMode] = useState(sv?.schedule_setup ?? 'standard')
 
   return (
@@ -274,23 +290,42 @@ export function ProjectForm({
           error={fe.project_manager_id}
           hint={managerOptions.length ? undefined : 'No active admins or project managers in your company yet.'}
         />
-        <TextField
-          name="proposed_start_date"
-          label="Proposed start"
-          type="date"
-          defaultValue={startDate}
-          onChange={(e) => setStartDate(e.currentTarget.value)}
-          error={fe.proposed_start_date}
-        />
-        <TextField
-          name="target_completion_date"
-          label="Target completion"
-          type="date"
-          min={startDate || undefined}
-          defaultValue={v('target_completion_date', defaults.target_completion_date)}
-          error={fe.target_completion_date}
-          hint="Must be on or after the proposed start."
-        />
+        <div className="@container min-w-0 sm:col-span-2">
+          <div className="grid gap-5 @xl:grid-cols-3">
+            <TextField
+              name="proposed_start_date"
+              label="Proposed start"
+              type="date"
+              value={startDate}
+              onChange={(e) => updateSchedule(e.currentTarget.value, businessDays)}
+              error={fe.proposed_start_date}
+            />
+            <TextField
+              name="planned_business_days"
+              label="Business days"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="e.g. 55"
+              value={businessDays}
+              onChange={(e) => updateSchedule(startDate, e.currentTarget.value)}
+              error={businessDaysError ?? fe.planned_business_days}
+              hint="Mon–Fri · Start date counts as day 1."
+            />
+            <TextField
+              name="target_completion_date"
+              label="Target completion"
+              type="date"
+              min={startDate || undefined}
+              value={targetDate}
+              onChange={(e) => {
+                setTargetDate(e.currentTarget.value)
+                setBusinessDays('')
+              }}
+              error={fe.target_completion_date}
+              hint={isCalculated ? 'Calculated automatically' : 'Must be on or after the proposed start.'}
+            />
+          </div>
+        </div>
         <TextAreaField
           name="internal_notes"
           label="Internal notes"
