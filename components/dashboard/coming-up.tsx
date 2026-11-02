@@ -63,13 +63,16 @@ export function ComingUp({
   const visible = events.slice(0, COMING_UP_VISIBLE)
   const windowLabel = range === 'today' ? 'today' : `in the ${COMING_UP_RANGE_LABELS[range].toLowerCase()}`
   return (
-    <section aria-labelledby="coming-up-heading" className="surface flex flex-col gap-3 p-4">
-      <DashboardSectionHeader
-        id="coming-up-heading"
-        title="Coming Up"
-        description="Your upcoming schedule"
-        icon={CalendarClock}
-      />
+    <section aria-labelledby="coming-up-heading" className="surface flex flex-col">
+      <div className="p-5 md:px-6">
+        <DashboardSectionHeader
+          id="coming-up-heading"
+          title="Coming Up"
+          description="Your upcoming schedule"
+          icon={CalendarClock}
+        />
+      </div>
+      <div className="flex flex-1 flex-col gap-3 border-t px-5 pb-5 pt-5 md:px-6">
       <RangeControls range={range} hrefFor={hrefFor} />
       {visible.length ? (
         <ul className="flex flex-col divide-y divide-border/60">
@@ -122,6 +125,7 @@ export function ComingUp({
             <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </Link>
         )}
+      </div>
       </div>
     </section>
   )
