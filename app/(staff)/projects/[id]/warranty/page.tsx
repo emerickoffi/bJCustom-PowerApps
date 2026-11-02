@@ -1,7 +1,15 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, ShieldCheck as ShieldCheckIcon } from 'lucide-react'
+import {
+  CalendarCog,
+  CalendarRange,
+  ChevronDown,
+  ClipboardList,
+  History as HistoryIcon,
+  Mail,
+  Plus,
+  ShieldCheck as ShieldCheckIcon,
+} from 'lucide-react'
 import { canManage, requireStaff } from '@/lib/session'
 import { SubmitClaimForm, type StaffOption } from '@/components/warranty/claim-forms'
 import { ClaimList } from '@/components/warranty/claim-list'
@@ -9,6 +17,7 @@ import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/format'
 import { PageHeader } from '@/components/shared/page-header'
+import { CardSectionHeader } from '@/components/shared/card-section-header'
 import { ArchiveWarrantyButton } from '@/components/warranty/run-warranty-button'
 import { CorrectCompletionForm, EnrollWarrantyForm, FollowupForm } from '@/components/warranty/warranty-forms'
 import { WARRANTY_STAGE_LABELS, type WarrantyStage } from '@/components/warranty/stage'
@@ -17,6 +26,10 @@ import { CoverageTimeline, type TimelineMilestone } from '@/components/warranty/
 export const metadata: Metadata = { title: 'Project warranty' }
 
 type Coverage = { coverage_key: string; name: string; description: string | null; exclusions: string | null }
+type HistoryEntry = { id: string; summary: string; created_at: string }
+
+const HISTORY_PREVIEW = 6
+const CARD_HEADER = 'px-5 pt-5 md:px-6'
 
 export default async function ProjectWarrantyPage({
   params,
@@ -93,21 +106,16 @@ export default async function ProjectWarrantyPage({
     : { data: [] as { coverage_key: string }[] }
   const openClaimsByCoverage: Record<string, number> = {}
   for (const c of openClaimRows ?? []) openClaimsByCoverage[c.coverage_key] = (openClaimsByCoverage[c.coverage_key] ?? 0) + 1
+  const openClaimCount = (openClaimRows ?? []).length
 
   const stage = warranty?.stage as WarrantyStage | undefined
   const snapshot = warranty?.terms_snapshot as { template_name?: string; disclaimer?: string; coverages?: Coverage[] } | undefined
+  const history = (events ?? []) as HistoryEntry[]
 
   return (
-    <div className="flex flex-col gap-8">
-      <Link
-        href={`/projects/${id}`}
-        className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        {project.name}
-      </Link>
-
-      <PageHeader icon={ShieldCheckIcon}
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        icon={ShieldCheckIcon}
         title="Warranty"
         description={
           warranty
@@ -144,71 +152,75 @@ export default async function ProjectWarrantyPage({
 
       {warranty && (
         <>
-          <section aria-labelledby="status" className="surface flex flex-wrap items-center justify-between gap-4 p-5">
-            <div className="flex flex-col gap-1">
-              <h2 id="status" className="text-sm text-muted-foreground">
-                Status
+          <section aria-labelledby="status" className="surface flex flex-wrap items-center justify-between gap-4 px-5 py-4 md:px-6">
+            <div className="flex flex-col gap-0.5">
+              <h2 id="status" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Warranty stage
               </h2>
-              <p className="font-serif text-xl font-semibold">{stage ? WARRANTY_STAGE_LABELS[stage] : '-'}</p>
+              <p className="font-serif text-xl font-semibold text-foreground">{stage ? WARRANTY_STAGE_LABELS[stage] : '-'}</p>
             </div>
             <p className="text-sm text-muted-foreground">
               {openIssues ?? 0} open issue{openIssues === 1 ? '' : 's'} on this project
             </p>
           </section>
 
-          <section aria-labelledby="milestones" className="flex flex-col gap-3">
-            <h2 id="milestones" className="font-serif text-lg font-semibold">
-              Coverage periods
-            </h2>
+          <section aria-labelledby="milestones" className="surface flex flex-col overflow-hidden">
+            <CardSectionHeader
+              id="milestones"
+              title="Coverage periods"
+              subtitle="Bars show the share of each period that has elapsed."
+              icon={CalendarRange}
+              className={CARD_HEADER}
+            />
             <CoverageTimeline
               startDate={warranty.start_date}
               milestones={(milestones ?? []) as TimelineMilestone[]}
               todayIso={todayIso}
               openClaimsByCoverage={openClaimsByCoverage}
             />
-            {snapshot?.disclaimer && <p className="text-xs text-muted-foreground">{snapshot.disclaimer}</p>}
+            {snapshot?.disclaimer && (
+              <p className="border-t border-border/60 px-5 py-3 text-xs leading-relaxed text-muted-foreground md:px-6">
+                {snapshot.disclaimer}
+              </p>
+            )}
           </section>
 
           {(tasks ?? []).length > 0 && (
-            <section aria-labelledby="followups" className="surface flex flex-col gap-4 p-5">
-              <h2 id="followups" className="font-serif text-lg font-semibold">
-                Anniversary card
-              </h2>
-              {(tasks ?? []).map((t) =>
-                t.status === 'sent' ? (
-                  <p key={t.id} className="text-sm text-muted-foreground">
-                    Sent {t.sent_on ? formatDate(t.sent_on) : ''} by {String(t.delivery_method).replace('_', ' ')}.
-                  </p>
-                ) : (
-                  <FollowupForm key={t.id} taskId={t.id} projectId={id} status={t.status} today={todayIso} />
-                ),
-              )}
-            </section>
-          )}
-
-          {isAdmin && stage !== 'archived' && (
-            <section aria-labelledby="correct" className="surface flex flex-col gap-4 p-5">
-              <div className="flex flex-col gap-1">
-                <h2 id="correct" className="font-serif text-lg font-semibold">
-                  Correct completion date
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Official date: {project.completion_date ? formatDate(project.completion_date) : 'not recorded'}.
-                  Corrections move every unreached milestone and are recorded with your reason.
-                </p>
+            <section aria-labelledby="followups" className="surface flex flex-col gap-4 pb-5">
+              <CardSectionHeader id="followups" title="Anniversary card" icon={Mail} className={CARD_HEADER} />
+              <div className="flex flex-col gap-4 px-5 md:px-6">
+                {(tasks ?? []).map((t) =>
+                  t.status === 'sent' ? (
+                    <p key={t.id} className="text-sm text-muted-foreground">
+                      Sent {t.sent_on ? formatDate(t.sent_on) : ''} by {String(t.delivery_method).replace('_', ' ')}.
+                    </p>
+                  ) : (
+                    <FollowupForm key={t.id} taskId={t.id} projectId={id} status={t.status} today={todayIso} />
+                  ),
+                )}
               </div>
-              <CorrectCompletionForm projectId={id} today={todayIso} />
             </section>
           )}
 
-          <section id="claims-section" aria-labelledby="claims" className="flex scroll-mt-20 flex-col gap-3">
-            <h2 id="claims" className="font-serif text-lg font-semibold">
-              Warranty claims
-            </h2>
+          <section
+            id="claims-section"
+            aria-labelledby="claims"
+            className="surface flex scroll-mt-36 flex-col overflow-hidden"
+          >
+            <CardSectionHeader
+              id="claims"
+              title="Warranty claims"
+              subtitle={`${openClaimCount} open claim${openClaimCount === 1 ? '' : 's'}`}
+              icon={ClipboardList}
+              className={CARD_HEADER}
+            />
             {warranty.stage !== 'archived' && (
-              <details className="surface p-5" open={openClaimForm}>
-                <summary className="cursor-pointer text-sm font-medium">Log a claim on the homeowner&apos;s behalf</summary>
-                <div className="mt-4">
+              <details className="group border-b border-border/60" open={openClaimForm}>
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-5 py-3 text-sm font-medium text-primary outline-none hover:bg-sage/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:px-6 [&::-webkit-details-marker]:hidden">
+                  <Plus className="size-4 transition-transform group-open:rotate-45" aria-hidden="true" />
+                  Log a claim on the homeowner&apos;s behalf
+                </summary>
+                <div className="px-5 pb-5 md:px-6">
                   <SubmitClaimForm
                     projectId={id}
                     coverages={(milestones ?? []).map((m) => ({
@@ -226,30 +238,111 @@ export default async function ProjectWarrantyPage({
               audience="staff"
               isManager={canManage(session.role)}
               staff={staffOptions}
+              embedded
               coverageNames={Object.fromEntries((milestones ?? []).map((m) => [m.coverage_key, m.coverage_name]))}
             />
           </section>
 
-          <section aria-labelledby="history" className="flex flex-col gap-3">
-            <h2 id="history" className="font-serif text-lg font-semibold">
-              History
-            </h2>
-            <ol className="surface flex flex-col divide-y">
-              {(events ?? []).map((e) => (
-                <li key={e.id} className="flex flex-wrap justify-between gap-2 px-5 py-3 text-sm">
-                  <span>{e.summary}</span>
-                  <time dateTime={e.created_at} className="text-muted-foreground">
-                    {formatDate(e.created_at)}
-                  </time>
-                </li>
-              ))}
-              {(corrections ?? []).length === 0 && (events ?? []).length === 0 && (
-                <li className="px-5 py-3 text-sm text-muted-foreground">No history yet.</li>
+          <section aria-labelledby="history" className="surface flex flex-col gap-4 pb-5">
+            <CardSectionHeader
+              id="history"
+              title="History"
+              subtitle={history.length ? `${history.length} event${history.length === 1 ? '' : 's'}` : undefined}
+              icon={HistoryIcon}
+              className={CARD_HEADER}
+            />
+            <div className="px-5 md:px-6">
+              {history.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No history yet.</p>
+              ) : (
+                <>
+                  <HistoryTimeline entries={history.slice(0, HISTORY_PREVIEW)} />
+                  {history.length > HISTORY_PREVIEW && (
+                    <details className="group">
+                      <summary className="mt-1 inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-md text-sm font-medium text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                        <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+                        <span className="group-open:hidden">Show all {history.length} events</span>
+                        <span className="hidden group-open:inline">Show fewer</span>
+                      </summary>
+                      <HistoryTimeline entries={history.slice(HISTORY_PREVIEW)} />
+                    </details>
+                  )}
+                </>
               )}
-            </ol>
+            </div>
           </section>
+
+          {isAdmin && stage !== 'archived' && (
+            <details className="surface group overflow-hidden">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 outline-none hover:bg-sage/30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:px-6 [&::-webkit-details-marker]:hidden">
+                <span className="flex min-w-0 items-center gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary ring-1 ring-inset ring-primary/10"
+                  >
+                    <CalendarCog className="size-5" />
+                  </span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="font-serif text-lg font-semibold leading-tight text-foreground">Warranty administration</span>
+                    <span className="text-sm text-muted-foreground">
+                      Official completion date: {project.completion_date ? formatDate(project.completion_date) : 'not recorded'}
+                    </span>
+                  </span>
+                </span>
+                <ChevronDown className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <div className="flex flex-col gap-5 border-t border-border/60 px-5 py-5 md:px-6">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-sm font-semibold text-foreground">Correct completion date</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Corrections move every unreached milestone and are recorded with your reason.
+                  </p>
+                </div>
+                <CorrectCompletionForm projectId={id} today={todayIso} />
+                {(corrections ?? []).length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">Correction log</h3>
+                    <ul className="flex flex-col divide-y divide-border/60 rounded-lg border border-border/60">
+                      {(corrections ?? []).map((c) => (
+                        <li key={c.id} className="flex flex-col gap-0.5 px-4 py-3 text-sm">
+                          <span className="tabular-nums text-foreground">
+                            {c.previous_date ? formatDate(c.previous_date) : 'Not recorded'} → {formatDate(c.new_date)}
+                          </span>
+                          <span className="text-muted-foreground">{c.reason}</span>
+                          <time dateTime={c.created_at} className="text-xs text-muted-foreground">
+                            Recorded {formatDate(c.created_at)}
+                          </time>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
         </>
       )}
     </div>
+  )
+}
+
+function HistoryTimeline({ entries }: { entries: HistoryEntry[] }) {
+  return (
+    <ol className="flex flex-col">
+      {entries.map((e) => (
+        <li key={e.id} className="relative flex gap-3 pb-4 last:pb-1">
+          <span aria-hidden="true" className="relative flex w-3 shrink-0 justify-center">
+            <span className="mt-1.5 size-2 rounded-full bg-primary/50 ring-4 ring-card" />
+            <span className="absolute bottom-[-0.25rem] top-4 w-px bg-border" />
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
+            <span className="text-pretty text-sm text-foreground">{e.summary}</span>
+            <time dateTime={e.created_at} className="shrink-0 text-xs tabular-nums text-muted-foreground sm:text-sm">
+              {formatDate(e.created_at)}
+            </time>
+          </div>
+        </li>
+      ))}
+    </ol>
   )
 }

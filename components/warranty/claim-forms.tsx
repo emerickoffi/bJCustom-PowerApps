@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { initialActionState, type ActionState } from '@/lib/action-state'
 import { homeownerClaimAction, staffClaimAction, submitClaimAction } from '@/app/actions/warranty-claims'
 import { ClaimAttachments, useClaimAttachments, type ClaimAttachmentsController } from '@/components/warranty/claim-attachments'
+import { CoverageTag } from '@/components/warranty/coverage-accent'
 
 export type CoverageOption = { coverage_key: string; name: string; categories: string[]; ended: boolean }
 export type StaffOption = { id: string; name: string }
@@ -122,6 +123,7 @@ function ClaimDraft({
               </option>
             ))}
           </select>
+          {coverage && <CoverageTag coverageKey={coverage.coverage_key} name={coverage.name} className="text-xs" />}
           <FieldError state={state} name="coverage_key" />
         </div>
         <div className="flex flex-col gap-1.5">

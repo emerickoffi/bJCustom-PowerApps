@@ -4,6 +4,7 @@ import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { HomeownerClaimControls, StaffClaimControls, type StaffOption } from '@/components/warranty/claim-forms'
 import { ClaimProgress } from '@/components/warranty/claim-progress'
+import { CoverageTag } from '@/components/warranty/coverage-accent'
 
 export const CLAIM_STATUS_LABELS: Record<string, string> = {
   submitted: 'Submitted',
@@ -83,12 +84,15 @@ export async function ClaimList({
   coverageNames,
   isManager = false,
   staff = [],
+  embedded = false,
 }: {
   projectId: string
   audience: 'staff' | 'homeowner'
   coverageNames: Record<string, string>
   isManager?: boolean
   staff?: StaffOption[]
+  /** Render as divided rows inside a parent card instead of standalone cards. */
+  embedded?: boolean
 }) {
   const supabase = await createClient()
   const { data: claimRows } = await supabase
@@ -102,7 +106,7 @@ export async function ClaimList({
 
   if (claims.length === 0) {
     return (
-      <p className="surface p-5 text-sm text-muted-foreground">
+      <p className={cn('text-sm text-muted-foreground', embedded ? 'px-5 py-4 md:px-6' : 'surface p-5')}>
         {audience === 'homeowner' ? 'You have not submitted any warranty claims.' : 'No warranty claims for this project.'}
       </p>
     )
@@ -127,19 +131,23 @@ export async function ClaimList({
   const staffNames = new Map(staff.map((s) => [s.id, s.name]))
 
   return (
-    <ul className="flex flex-col gap-4">
+    <ul className={cn('flex flex-col', embedded ? 'divide-y divide-[#E2E8E2]' : 'gap-4')}>
       {claims.map((c) => {
         const statusLabel =
           (audience === 'staff' ? STAFF_STATUS_OVERRIDES[c.status] : undefined) ?? CLAIM_STATUS_LABELS[c.status] ?? c.status
         const claimEvents = events.filter((e) => e.claim_id === c.id)
         const claimMedia = media.filter((m) => m.claim_id === c.id)
         return (
-          <li key={c.id} className="surface flex flex-col gap-4 p-5">
+          <li key={c.id} className={cn('flex flex-col gap-4', embedded ? 'px-5 py-5 md:px-6' : 'surface p-5')}>
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex flex-col gap-1">
+              <div className="flex min-w-0 flex-col gap-1">
                 <h3 className="font-medium text-foreground">{c.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {coverageNames[c.coverage_key] ?? c.coverage_key} · {c.category} · {c.location}
+                <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground">
+                  <CoverageTag coverageKey={c.coverage_key} name={coverageNames[c.coverage_key] ?? c.coverage_key} />
+                  <span aria-hidden="true">·</span>
+                  <span>{c.category}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{c.location}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Reported {formatDate(c.reported_at)}
