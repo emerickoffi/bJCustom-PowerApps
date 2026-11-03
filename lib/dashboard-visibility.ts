@@ -21,7 +21,7 @@ export const DASHBOARD_VISIBILITY_ITEMS = [
     id: 'weather',
     kind: 'header',
     label: 'Jobsite Weather',
-    records: 'Shown while at least one active project has a jobsite address to report weather for.',
+    records: 'Always available: shows weather for your location or an active jobsite you choose.',
     attention: null,
   },
   {
