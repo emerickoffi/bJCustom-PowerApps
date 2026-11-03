@@ -11,7 +11,10 @@ export function CommandHeader({
   actionsAvailable,
   actionsHref = '#action-center-heading',
   weather,
+  compact = false,
 }: {
+  /** Tablet Home: a short carded header so work appears without scrolling. */
+  compact?: boolean
   /** Compact jobsite weather shown under the greeting. */
   weather?: ReactNode
   firstName: string | null
@@ -25,20 +28,32 @@ export function CommandHeader({
   const hello = firstName ? `${greeting()}, ${firstName}.` : `${greeting()}.`
 
   return (
-    <header className="flex flex-col gap-4 border-b pb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-      <div className="flex min-w-0 flex-col gap-1">
+    <header
+      className={cn(
+        'flex flex-col sm:flex-row sm:items-center sm:justify-between sm:gap-6',
+        compact ? 'gap-3 rounded-2xl border bg-card px-4 py-3 shadow-xs' : 'gap-4 border-b pb-4',
+      )}
+    >
+      <div className={cn('flex min-w-0 flex-col', compact ? 'gap-0.5' : 'gap-1')}>
         <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           <CalendarDays className="size-3.5" aria-hidden="true" />
           <time dateTime={today} title={formatLongDate(today)}>
             {formatShortDate(today)}
           </time>
         </p>
-        <h1 className="text-balance font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-[1.75rem]">
+        <h1
+          className={cn(
+            'text-balance font-serif font-semibold leading-tight tracking-tight text-foreground',
+            compact ? 'text-xl' : 'text-2xl md:text-[1.75rem]',
+          )}
+        >
           {hello}
         </h1>
-        <p className="text-pretty text-sm text-muted-foreground">
-          {'Here\u2019s what\u2019s happening across your projects today.'}
-        </p>
+        {!compact && (
+          <p className="text-pretty text-sm text-muted-foreground">
+            {'Here\u2019s what\u2019s happening across your projects today.'}
+          </p>
+        )}
         {weather && <div className="mt-1.5 self-start">{weather}</div>}
       </div>
 

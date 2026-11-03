@@ -43,7 +43,8 @@ import { TabletHome } from '@/components/dashboard/tablet-home'
 import { TabletJobFocus } from '@/components/dashboard/tablet-job-focus'
 import { TabletMyDay } from '@/components/dashboard/tablet-my-day'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
-import { parseTabletTab, tabletSections, type TabletTab } from '@/lib/tablet-home'
+import { buildTabletShortcuts, parseTabletTab, tabletSections, type TabletTab } from '@/lib/tablet-home'
+import { TabletShortcuts } from '@/components/dashboard/tablet-shortcuts'
 
 type ProjectRow = PortfolioRow &
   JobsiteAddress & {
@@ -331,18 +332,6 @@ export async function OwnerDashboard({
   const side = area('side')
   const below = area('below')
 
-  const greeting = (
-    <CommandHeader
-      firstName={session.fullName?.split(' ')[0] ?? null}
-      today={agendaData.today}
-      actionTotal={attention.total}
-      actionTotalIsLowerBound={attention.totalIsLowerBound}
-      actionsAvailable={attention.unavailable.length === 0 || attention.total > 0}
-      actionsHref={show.attention ? '#action-center-heading' : '/actions'}
-      weather={show.weather ? <WeatherStrip locations={weatherLocations} initialLocationId={weatherLocationId} /> : null}
-    />
-  )
-
   /** Same scoped data as Standard, narrowed to the selected project when one is chosen. */
   const inProject = <T extends { projectId: string | null }>(list: T[]) =>
     selectedRow ? list.filter((x) => x.projectId === selectedRow.id) : list
@@ -414,21 +403,40 @@ export async function OwnerDashboard({
     </p>
   ) : null
 
+  const shortcuts = buildTabletShortcuts({
+    role: session.role,
+    features,
+    project: selectedRow ? { id: selectedRow.id, name: selectedRow.name } : null,
+  })
+  const todayLead =
+    shortcuts.length > 0 || show.attention || show.coming_up ? (
+      <>
+        <TabletShortcuts shortcuts={shortcuts} />
+        {(show.attention || show.coming_up) && (
+          <div className="flex justify-end">
+            <WorkScopeControl scope={workScope} />
+          </div>
+        )}
+      </>
+    ) : undefined
+
   const tablet = (
     <div className="flex flex-col gap-4">
-      {greeting}
+      <CommandHeader
+        compact
+        firstName={session.fullName?.split(' ')[0] ?? null}
+        today={agendaData.today}
+        actionTotal={attention.total}
+        actionTotalIsLowerBound={attention.totalIsLowerBound}
+        actionsAvailable={attention.unavailable.length === 0 || attention.total > 0}
+        actionsHref={show.attention ? '#action-center-heading' : '/actions'}
+        weather={show.weather ? <WeatherStrip locations={weatherLocations} initialLocationId={weatherLocationId} /> : null}
+      />
       {scopeNote}
       <TabletHome
         initialTab={parseTabletTab(query.tab)}
         panels={{
-          today: tabletPanel(
-            'today',
-            (show.attention || show.coming_up) && (
-              <div className="flex justify-end">
-                <WorkScopeControl scope={workScope} />
-              </div>
-            ),
-          ),
+          today: tabletPanel('today', todayLead),
           jobs: tabletPanel('jobs', undefined, 'Priority jobs are hidden in dashboard settings.'),
           overview: tabletPanel(
             'overview',

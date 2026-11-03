@@ -1,4 +1,48 @@
 import type { DashboardLayout, VisibilityItemId } from '@/lib/dashboard-visibility'
+import type { OrgRole } from '@/lib/domain'
+
+export type TabletShortcutKey = 'daily_log' | 'documents'
+export type TabletShortcut = { key: TabletShortcutKey; label: string; hint: string; href: string }
+
+const DAILY_LOG_ROLES: OrgRole[] = ['org_admin', 'project_manager', 'builder_staff']
+
+/**
+ * Today-tab shortcuts into existing workflows. Each mirrors its destination's guard (feature switch, role), and
+ * the destination re-checks access server-side.
+ *
+ * - With a project selected, links carry it; `/daily-logs/new` only jumps to that project's form when it is an
+ *   eligible log project, otherwise it shows its own project picker.
+ * - With All projects, links open the unscoped page, which asks for a project. Nothing is chosen silently.
+ *
+ * Not offered: Take photo (the floating camera only attaches to an uploader on the current record, so Home has no
+ * valid destination) and To-dos (no such module exists).
+ */
+export function buildTabletShortcuts(input: {
+  role: OrgRole | null
+  features: { daily_logs?: boolean; documents?: boolean }
+  project: { id: string; name: string } | null
+}): TabletShortcut[] {
+  const { role, features, project } = input
+  const id = project ? encodeURIComponent(project.id) : null
+  const shortcuts: TabletShortcut[] = []
+  if (features.daily_logs && role && DAILY_LOG_ROLES.includes(role)) {
+    shortcuts.push({
+      key: 'daily_log',
+      label: 'Daily log',
+      hint: project ? project.name : 'Choose a project',
+      href: id ? `/daily-logs/new?project=${id}` : '/daily-logs/new',
+    })
+  }
+  if (features.documents) {
+    shortcuts.push({
+      key: 'documents',
+      label: 'Documents',
+      hint: project ? project.name : 'All projects',
+      href: id ? `/documents?project=${id}` : '/documents',
+    })
+  }
+  return shortcuts
+}
 
 /**
  * Tablet Home tab placement.
