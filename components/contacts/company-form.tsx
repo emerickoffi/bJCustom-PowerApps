@@ -11,6 +11,7 @@ import type { CompanyOption } from '@/lib/contacts-data'
 import { FormActions, FormSection, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { OverlayBody, OverlayFooter, useFormOverlay } from '@/components/shared/form-overlay'
+import { ProductCategoryPicker } from '@/components/contacts/product-category-picker'
 
 type CompanyDefaults = {
   company_name: string
@@ -149,12 +150,12 @@ export function CompanyForm({
         </fieldset>
 
         <div className={cn('sm:col-span-2', !suppliers && !isEdit && 'hidden')}>
-          <TextField
+          <ProductCategoryPicker
             name="product_categories"
             label="Supplier product categories"
             defaultValue={v.product_categories}
             error={fe.product_categories}
-            hint="Comma separated, for example Lumber, Windows, Cabinets."
+            onValueChange={overlay?.markDirty}
           />
         </div>
         {!isEdit && (
