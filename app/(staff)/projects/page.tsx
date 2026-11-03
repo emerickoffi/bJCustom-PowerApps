@@ -4,14 +4,16 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { DirectoryViews } from '@/components/shared/directory-views'
 import { DirectorySort } from '@/components/shared/directory-sort'
-import { DirectoryPagination } from '@/components/shared/directory-pagination'
+import { DirectoryPager } from '@/components/shared/directory-pager'
 import { ProjectTable } from '@/components/projects/project-table'
 import {
+  DIRECTORY_PAGE_SIZE,
   DIRECTORY_VIEW_COOKIE,
   PROJECT_SORTS,
   directoryHref,
   pageBounds,
   parsePage,
+  parsePageSize,
   parseSort,
   parseView,
   resultRange,
@@ -19,7 +21,7 @@ import {
   totalPages,
   type SortOrder,
 } from '@/lib/directory'
-import { FolderKanban, Home, Plus, UserRound, FolderKanban as FolderKanbanIcon } from 'lucide-react'
+import { AlertTriangle, FolderKanban, Home, Plus, UserRound, FolderKanban as FolderKanbanIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -47,6 +49,7 @@ export default async function ProjectsPage({
     city?: string
     sort?: string
     page?: string
+    size?: string
     view?: string
   }>
 }) {
@@ -59,6 +62,8 @@ export default async function ProjectsPage({
   const projectType = params.type && Object.hasOwn(PROJECT_TYPE_LABELS, params.type) ? params.type : null
   const sort = parseSort(params.sort, PROJECT_SORTS, 'updated')
   const page = parsePage(params.page)
+  const pageSize = parsePageSize(params.size)
+  const sizeParam = pageSize === DIRECTORY_PAGE_SIZE ? null : String(pageSize)
   const urlView = parseView(params.view)
   const initialView = urlView ?? parseView((await cookies()).get(DIRECTORY_VIEW_COOKIE.projects)?.value)
 
@@ -95,11 +100,12 @@ export default async function ProjectsPage({
     state: stateFilter || null,
     city: cityFilter || null,
     sort: sort === 'updated' ? null : sort,
+    size: sizeParam,
     view: urlView,
   }
   const hrefFor = (p: number) => directoryHref('/projects', { ...stateParams, page: p })
 
-  const { from, to } = pageBounds(page)
+  const { from, to } = pageBounds(page, pageSize)
   let query = supabase
     .from('projects')
     .select(`${PROJECT_SUMMARY_COLUMNS}, completion_date`, { count: 'exact' })
@@ -117,9 +123,10 @@ export default async function ProjectsPage({
     query = query.order(order.column, { ascending: order.ascending, nullsFirst: order.nullsFirst })
   }
   const { data, count, error } = await query.range(from, to)
+  const loadFailed = Boolean(error)
   const total = count ?? 0
-  const pageCount = totalPages(total)
-  if (page > 1 && (error || page > pageCount)) redirect(hrefFor(Math.min(page, pageCount)))
+  const pageCount = totalPages(total, pageSize)
+  if (!loadFailed && page > pageCount) redirect(hrefFor(pageCount))
   const projects = (data ?? []) as unknown as (ProjectSummary & {
     completion_date: string | null
     target_completion_date?: string | null
@@ -132,7 +139,8 @@ export default async function ProjectsPage({
   ])
   const manager = canManage(session.role)
   const filtered = Boolean(q || status || projectType || stateFilter || cityFilter)
-  const range = resultRange(page, projects.length, total)
+  const range = resultRange(page, projects.length, total, pageSize)
+  const summary = `Showing ${range.start}–${range.end} of ${total} ${total === 1 ? 'project' : 'projects'}`
   const rows = projects.map((p) => ({
     ...p,
     completion_date: p.completion_date ?? null,
@@ -173,16 +181,29 @@ export default async function ProjectsPage({
           },
         ]}
         location={{ options: locations, defaultState: stateFilter, defaultCity: cityFilter }}
-        clearHref={filtered ? directoryHref('/projects', { sort: stateParams.sort, view: urlView }) : undefined}
-        preserve={{ sort: stateParams.sort, view: urlView }}
+        clearHref={
+          filtered ? directoryHref('/projects', { sort: stateParams.sort, size: sizeParam, view: urlView }) : undefined
+        }
+        preserve={{ sort: stateParams.sort, size: sizeParam, view: urlView }}
       />
-      {projects.length ? (
-        <div className="flex flex-col gap-4">
+      {loadFailed ? (
+        <EmptyState
+          icon={AlertTriangle}
+          title="Projects couldn't be loaded"
+          description="Something went wrong while fetching the directory. Your records are unchanged. Try again in a moment."
+          action={
+            <Button variant="outline" render={<Link href={hrefFor(page)} />} nativeButton={false}>
+              Try again
+            </Button>
+          }
+        />
+      ) : projects.length ? (
+        <div id="projects-results" className="flex scroll-mt-24 flex-col gap-4">
         <DirectoryViews
           module="projects"
           initialView={initialView}
           desktopDefault="cards"
-          summary={`Showing ${range.start}–${range.end} of ${total} ${total === 1 ? 'project' : 'projects'}`}
+          summary={summary}
           controls={<DirectorySort value={sort} options={sortOptions(PROJECT_SORTS)} />}
           table={<ProjectTable rows={rows} />}
           cards={
@@ -232,9 +253,19 @@ export default async function ProjectsPage({
         </div>
           }
         />
-          <DirectoryPagination page={page} pageCount={pageCount} hrefFor={hrefFor} label="Projects pagination" />
+          <DirectoryPager
+            page={page}
+            pageCount={pageCount}
+            pageSize={pageSize}
+            summary={summary}
+            hrefFor={hrefFor}
+            resultsId="projects-results"
+            label="Projects pagination"
+          />
         </div>
       ) : (
+        <div className="flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground" aria-live="polite">0 projects</p>
         <EmptyState
           icon={FolderKanban}
           title={filtered ? 'No matching projects' : 'No projects yet'}
@@ -259,6 +290,7 @@ export default async function ProjectsPage({
             )
           }
         />
+        </div>
       )}
     </div>
   )

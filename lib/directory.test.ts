@@ -2,10 +2,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   CLIENT_SORTS,
+  DIRECTORY_PAGE_SIZES,
   PROJECT_SORTS,
   directoryHref,
   pageBounds,
+  pageItems,
   parsePage,
+  parsePageSize,
   parseSort,
   parseView,
   resultRange,
@@ -29,16 +32,59 @@ test('parsePage rejects invalid values and caps extremes', () => {
   assert.equal(parsePage('99999999'), 10_000)
 })
 
-test('pageBounds produces 20-record inclusive ranges', () => {
-  assert.deepEqual(pageBounds(1), { from: 0, to: 19 })
-  assert.deepEqual(pageBounds(6), { from: 100, to: 119 })
+test('pageBounds produces inclusive ranges for the default and chosen sizes', () => {
+  assert.deepEqual(pageBounds(1), { from: 0, to: 11 })
+  assert.deepEqual(pageBounds(3), { from: 24, to: 35 })
+  assert.deepEqual(pageBounds(2, 48), { from: 48, to: 95 })
+})
+
+test('parsePageSize accepts only 12, 24, or 48', () => {
+  assert.equal(parsePageSize(undefined), 12)
+  assert.equal(parsePageSize('24'), 24)
+  assert.equal(parsePageSize('48'), 48)
+  assert.equal(parsePageSize('20'), 12)
+  assert.equal(parsePageSize('1000'), 12)
+  assert.equal(parsePageSize('abc'), 12)
+})
+
+test('every page size covers 87 records without gaps or overlap', () => {
+  const total = 87
+  const ids = Array.from({ length: total }, (_, i) => i)
+  for (const size of DIRECTORY_PAGE_SIZES) {
+    const seen: number[] = []
+    for (let page = 1; page <= totalPages(total, size); page++) {
+      const { from, to } = pageBounds(page, size)
+      const slice = ids.slice(from, to + 1)
+      const range = resultRange(page, slice.length, total, size)
+      assert.equal(range.start, from + 1)
+      assert.equal(range.end, from + slice.length)
+      seen.push(...slice)
+    }
+    assert.deepEqual(seen, ids)
+  }
+  assert.equal(totalPages(87, 12), 8)
+  assert.deepEqual(resultRange(8, 3, 87, 12), { start: 85, end: 87 })
+})
+
+test('pageItems compacts long ranges with ellipses around the current page', () => {
+  assert.deepEqual(pageItems(1, 1), [1])
+  assert.deepEqual(pageItems(3, 7), [1, 2, 3, 4, 5, 6, 7])
+  assert.deepEqual(pageItems(1, 20), [1, 2, 3, 4, 5, 'ellipsis-end', 20])
+  assert.deepEqual(pageItems(4, 20), [1, 2, 3, 4, 5, 'ellipsis-end', 20])
+  assert.deepEqual(pageItems(10, 20), [1, 'ellipsis-start', 9, 10, 11, 'ellipsis-end', 20])
+  assert.deepEqual(pageItems(20, 20), [1, 'ellipsis-start', 16, 17, 18, 19, 20])
+  for (let page = 1; page <= 20; page++) {
+    const items = pageItems(page, 20)
+    assert.ok(items.includes(page))
+    assert.ok(items.length <= 7)
+  }
 })
 
 test('pagination covers a 134-record synthetic portfolio without gaps or overlap', () => {
   const total = 134
   const ids = Array.from({ length: total }, (_, i) => i)
   const pages = totalPages(total)
-  assert.equal(pages, 7)
+  assert.equal(pages, 12)
   const seen: number[] = []
   for (let page = 1; page <= pages; page++) {
     const { from, to } = pageBounds(page)

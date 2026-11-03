@@ -1,8 +1,32 @@
 export type DirectoryView = 'cards' | 'table'
 export type DirectoryModule = 'clients' | 'projects'
 
-export const DIRECTORY_PAGE_SIZE = 20
+export const DIRECTORY_PAGE_SIZES = [12, 24, 48] as const
+export type DirectoryPageSize = (typeof DIRECTORY_PAGE_SIZES)[number]
+export const DIRECTORY_PAGE_SIZE: DirectoryPageSize = 12
 const MAX_PAGE = 10_000
+
+export function parsePageSize(value: string | null | undefined): DirectoryPageSize {
+  const size = Number(value)
+  return (DIRECTORY_PAGE_SIZES as readonly number[]).includes(size) ? (size as DirectoryPageSize) : DIRECTORY_PAGE_SIZE
+}
+
+export type PageItem = number | 'ellipsis-start' | 'ellipsis-end'
+
+/** First, last, and the current page ±1; a gap of a single page shows that page instead of an ellipsis. */
+export function pageItems(page: number, pageCount: number): PageItem[] {
+  if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1)
+  const start = Math.max(2, Math.min(page - 1, pageCount - 4))
+  const end = Math.min(pageCount - 1, Math.max(page + 1, 5))
+  const items: PageItem[] = [1]
+  if (start > 3) items.push('ellipsis-start')
+  else for (let p = 2; p < start; p++) items.push(p)
+  for (let p = start; p <= end; p++) items.push(p)
+  if (end < pageCount - 2) items.push('ellipsis-end')
+  else for (let p = end + 1; p < pageCount; p++) items.push(p)
+  items.push(pageCount)
+  return items
+}
 
 /** Cookie remembering an explicit Cards/Table choice per module. Not a database preference. */
 export const DIRECTORY_VIEW_COOKIE: Record<DirectoryModule, string> = {

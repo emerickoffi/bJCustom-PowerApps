@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { Plus, Users, Users as UsersIcon } from 'lucide-react'
+import { AlertTriangle, Plus, Users, Users as UsersIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -10,7 +10,7 @@ import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { ListFilters } from '@/components/shared/list-filters'
 import { DirectoryViews } from '@/components/shared/directory-views'
 import { DirectorySort } from '@/components/shared/directory-sort'
-import { DirectoryPagination } from '@/components/shared/directory-pagination'
+import { DirectoryPager } from '@/components/shared/directory-pager'
 import { ClientCard, type DirectoryContact } from '@/components/clients/client-card'
 import { ClientTable } from '@/components/clients/client-table'
 import type { ClientProject } from '@/components/clients/client-projects-disclosure'
@@ -19,10 +19,12 @@ import { sanitizeSearch } from '@/lib/format'
 import type { ClientSummary } from '@/lib/queries'
 import {
   CLIENT_SORTS,
+  DIRECTORY_PAGE_SIZE,
   DIRECTORY_VIEW_COOKIE,
   directoryHref,
   pageBounds,
   parsePage,
+  parsePageSize,
   parseSort,
   parseView,
   resultRange,
@@ -39,7 +41,7 @@ const CLIENT_COLUMNS =
 export default async function ClientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; sort?: string; page?: string; view?: string }>
+  searchParams: Promise<{ q?: string; status?: string; sort?: string; page?: string; size?: string; view?: string }>
 }) {
   const session = await requireStaff()
   const params = await searchParams
@@ -47,25 +49,29 @@ export default async function ClientsPage({
   const status = CLIENT_STATUSES.includes(params.status as ClientStatus) ? (params.status as ClientStatus) : null
   const sort = parseSort(params.sort, CLIENT_SORTS, 'name_asc')
   const page = parsePage(params.page)
+  const pageSize = parsePageSize(params.size)
   const urlView = parseView(params.view)
   const initialView = urlView ?? parseView((await cookies()).get(DIRECTORY_VIEW_COOKIE.clients)?.value)
-  const stateParams = { q, status, sort: sort === 'name_asc' ? null : sort, view: urlView }
+  const sizeParam = pageSize === DIRECTORY_PAGE_SIZE ? null : String(pageSize)
+  const stateParams = { q, status, sort: sort === 'name_asc' ? null : sort, size: sizeParam, view: urlView }
   const hrefFor = (p: number) => directoryHref('/clients', { ...stateParams, page: p })
 
   const supabase = await createClient()
   let contactClientIds: string[] = []
+  let contactSearchFailed = false
   if (q) {
-    const { data: contactMatches } = await supabase
+    const { data: contactMatches, error: contactSearchError } = await supabase
       .from('client_contacts')
       .select('client_id')
       .eq('organization_id', session.organizationId)
       .is('archived_at', null)
       .or(`first_name.ilike.*${q}*,last_name.ilike.*${q}*,email.ilike.*${q}*,phone.ilike.*${q}*`)
       .limit(300)
+    contactSearchFailed = Boolean(contactSearchError)
     contactClientIds = [...new Set((contactMatches ?? []).map((c) => c.client_id as string))]
   }
 
-  const { from, to } = pageBounds(page)
+  const { from, to } = pageBounds(page, pageSize)
   let query = supabase
     .from('clients')
     .select(CLIENT_COLUMNS, { count: 'exact' })
@@ -87,10 +93,11 @@ export default async function ClientsPage({
   for (const order of CLIENT_SORTS[sort].orders) {
     query = query.order(order.column, { ascending: order.ascending })
   }
-  const { data, count, error } = await query.range(from, to)
+  const { data, count, error: queryError } = await query.range(from, to)
+  const loadFailed = Boolean(queryError || contactSearchFailed)
   const total = count ?? 0
-  const pageCount = totalPages(total)
-  if (page > 1 && (error || page > pageCount)) redirect(hrefFor(Math.min(page, pageCount)))
+  const pageCount = totalPages(total, pageSize)
+  if (!loadFailed && page > pageCount) redirect(hrefFor(pageCount))
 
   const clients = (data ?? []) as ClientSummary[]
   const manager = canManage(session.role)
@@ -172,7 +179,8 @@ export default async function ClientsPage({
         .sort((a, b) => a.name.localeCompare(b.name)),
     }
   })
-  const range = resultRange(page, clients.length, total)
+  const range = resultRange(page, clients.length, total, pageSize)
+  const summary = `Showing ${range.start}–${range.end} of ${total} ${total === 1 ? 'client' : 'clients'}`
 
   return (
     <div className="flex flex-col gap-8">
@@ -193,16 +201,29 @@ export default async function ClientsPage({
         defaultQuery={q}
         defaultStatus={status ?? ''}
         statusOptions={CLIENT_STATUSES.map((s) => ({ value: s, label: CLIENT_STATUS_LABELS[s] }))}
-        clearHref={filtered ? directoryHref('/clients', { sort: stateParams.sort, view: urlView }) : undefined}
-        preserve={{ sort: stateParams.sort, view: urlView }}
+        clearHref={
+          filtered ? directoryHref('/clients', { sort: stateParams.sort, size: sizeParam, view: urlView }) : undefined
+        }
+        preserve={{ sort: stateParams.sort, size: sizeParam, view: urlView }}
       />
-      {clients.length ? (
-        <div className="flex flex-col gap-4">
+      {loadFailed ? (
+        <EmptyState
+          icon={AlertTriangle}
+          title="Clients couldn't be loaded"
+          description="Something went wrong while fetching the directory. Your records are unchanged. Try again in a moment."
+          action={
+            <Button variant="outline" render={<Link href={hrefFor(page)} />} nativeButton={false}>
+              Try again
+            </Button>
+          }
+        />
+      ) : clients.length ? (
+        <div id="clients-results" className="flex scroll-mt-24 flex-col gap-4">
           <DirectoryViews
             module="clients"
             initialView={initialView}
             desktopDefault="table"
-            summary={`Showing ${range.start}–${range.end} of ${total} ${total === 1 ? 'client' : 'clients'}`}
+            summary={summary}
             controls={<DirectorySort value={sort} options={sortOptions(CLIENT_SORTS)} />}
             cards={
               <ul className="grid gap-4 2xl:grid-cols-2" aria-label={`${clients.length} clients`}>
@@ -230,9 +251,19 @@ export default async function ClientsPage({
               />
             }
           />
-          <DirectoryPagination page={page} pageCount={pageCount} hrefFor={hrefFor} label="Clients pagination" />
+          <DirectoryPager
+            page={page}
+            pageCount={pageCount}
+            pageSize={pageSize}
+            summary={summary}
+            hrefFor={hrefFor}
+            resultsId="clients-results"
+            label="Clients pagination"
+          />
         </div>
       ) : (
+        <div className="flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground" aria-live="polite">0 clients</p>
         <EmptyState
           icon={Users}
           title={filtered ? 'No matching clients' : 'No clients yet'}
@@ -257,6 +288,7 @@ export default async function ClientsPage({
             )
           }
         />
+        </div>
       )}
     </div>
   )
