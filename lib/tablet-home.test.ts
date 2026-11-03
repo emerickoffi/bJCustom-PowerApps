@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { defaultLayout } from './dashboard-visibility.ts'
-import { parseTabletTab, tabletSections } from './tablet-home.ts'
+import { buildTabletShortcuts, parseTabletTab, tabletSections } from './tablet-home.ts'
 
 const all = () => true
 
@@ -31,4 +31,34 @@ test('hidden sections leave no slot', () => {
   const layout = defaultLayout()
   assert.deepEqual(tabletSections(layout, 'jobs', (id) => id !== 'priority_jobs'), [])
   assert.ok(!tabletSections(layout, 'today', (id) => id !== 'coming_up').includes('coming_up'))
+})
+
+test('shortcuts with All projects open unscoped pages that ask for a project', () => {
+  const s = buildTabletShortcuts({ role: 'org_admin', features: { daily_logs: true, documents: true }, project: null })
+  assert.deepEqual(
+    s.map((x) => [x.key, x.href]),
+    [
+      ['daily_log', '/daily-logs/new'],
+      ['documents', '/documents'],
+    ],
+  )
+})
+
+test('shortcuts carry the selected project', () => {
+  const s = buildTabletShortcuts({
+    role: 'project_manager',
+    features: { daily_logs: true, documents: true },
+    project: { id: 'p 1', name: 'Yaupon Dr' },
+  })
+  assert.equal(s[0].href, '/daily-logs/new?project=p%201')
+  assert.equal(s[1].href, '/documents?project=p%201')
+  assert.equal(s[0].hint, 'Yaupon Dr')
+})
+
+test('shortcuts are omitted when the module or role is unavailable', () => {
+  assert.deepEqual(buildTabletShortcuts({ role: 'org_admin', features: {}, project: null }), [])
+  assert.deepEqual(
+    buildTabletShortcuts({ role: null, features: { daily_logs: true }, project: null }).map((x) => x.key),
+    [],
+  )
 })
