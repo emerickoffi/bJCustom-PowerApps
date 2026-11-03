@@ -7,7 +7,8 @@ export type ShowWhen = 'always' | 'records' | 'attention'
 
 export type VisibilityItem = {
   id: string
-  kind: 'card' | 'section'
+  /** Header items live in the greeting row and have no layout position. */
+  kind: 'card' | 'section' | 'header'
   label: string
   /** What "When relevant records exist" means for this item, in plain language. */
   records: string
@@ -16,6 +17,13 @@ export type VisibilityItem = {
 }
 
 export const DASHBOARD_VISIBILITY_ITEMS = [
+  {
+    id: 'weather',
+    kind: 'header',
+    label: 'Jobsite Weather',
+    records: 'Shown while at least one active project has a jobsite address to report weather for.',
+    attention: null,
+  },
   {
     id: 'card_approval',
     kind: 'card',
@@ -188,6 +196,7 @@ const DEFAULT_LAYOUT: DashboardLayout = {
 
 /** Areas each item may occupy. Action Center and Priority Jobs need the main column's width. */
 export const ALLOWED_AREAS: Record<VisibilityItemId, readonly LayoutArea[]> = {
+  weather: [],
   card_approval: ['summary'],
   card_contract: ['summary'],
   card_schedule: ['summary'],
@@ -200,7 +209,11 @@ export const ALLOWED_AREAS: Record<VisibilityItemId, readonly LayoutArea[]> = {
   pipeline: ['above', 'below'],
 }
 
-const ITEM_IDS = DASHBOARD_VISIBILITY_ITEMS.map((i) => i.id) as VisibilityItemId[]
+/** Items that take a layout position; header items are toggled but never placed. */
+const ITEM_IDS = DASHBOARD_VISIBILITY_ITEMS.filter((i) => i.kind !== 'header').map((i) => i.id) as VisibilityItemId[]
+export const HEADER_ITEM_IDS = DASHBOARD_VISIBILITY_ITEMS.filter((i) => i.kind === 'header').map(
+  (i) => i.id,
+) as VisibilityItemId[]
 
 export function defaultLayout(): DashboardLayout {
   return {

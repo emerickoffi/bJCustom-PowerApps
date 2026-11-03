@@ -8,6 +8,7 @@ import {
   type ComingUpEvent,
   type ComingUpRange,
 } from '@/lib/coming-up'
+import { addIsoDays } from '@/lib/agenda'
 import { cn } from '@/lib/utils'
 import { segmentClass } from '@/lib/interaction-styles'
 
@@ -51,13 +52,40 @@ function RangeControls({ range, hrefFor }: { range: ComingUpRange; hrefFor: (ran
   )
 }
 
+/** Events are already date-sorted; consecutive runs share a heading. Dates are org-zone calendar dates. */
+function groupByDay(events: ComingUpEvent[], today: string) {
+  const tomorrow = addIsoDays(today, 1)
+  const groups: { date: string; label: string; events: ComingUpEvent[] }[] = []
+  for (const e of events) {
+    const last = groups.at(-1)
+    if (last?.date === e.date) {
+      last.events.push(e)
+      continue
+    }
+    const label =
+      e.date === today
+        ? 'Today'
+        : e.date === tomorrow
+          ? 'Tomorrow'
+          : new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(
+              new Date(`${e.date}T00:00:00Z`),
+            )
+    groups.push({ date: e.date, label, events: [e] })
+  }
+  return groups
+}
+
 export function ComingUp({
   events,
+  today,
   range,
   hrefFor,
   scheduleEnabled,
+  scopedToMe = false,
 }: {
   events: ComingUpEvent[]
+  today: string
+  scopedToMe?: boolean
   range: ComingUpRange
   hrefFor: (range: ComingUpRange) => string
   scheduleEnabled: boolean
@@ -77,8 +105,17 @@ export function ComingUp({
       <div className="flex flex-1 flex-col gap-3 border-t px-5 pb-5 pt-5 md:px-6">
       <RangeControls range={range} hrefFor={hrefFor} />
       {visible.length ? (
+        <div className="flex flex-col gap-3">
+        {groupByDay(visible, today).map((group) => (
+        <section key={group.date} aria-labelledby={`coming-up-${group.date}`} className="flex flex-col">
+        <h3
+          id={`coming-up-${group.date}`}
+          className="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground"
+        >
+          {group.label}
+        </h3>
         <ul className="flex flex-col divide-y divide-border/60">
-          {visible.map((e) => (
+          {group.events.map((e) => (
             <li key={e.key}>
               <Link
                 href={e.href}
@@ -107,9 +144,14 @@ export function ComingUp({
             </li>
           ))}
         </ul>
+        </section>
+        ))}
+        </div>
       ) : (
         <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
-          {scheduleEnabled
+          {scopedToMe
+            ? `Nothing assigned to you ${windowLabel}.`
+            : scheduleEnabled
             ? `Nothing open or dated ${windowLabel}.`
             : 'The Schedule module is off, so only proposed starts and warranty milestones appear here.'}
         </p>

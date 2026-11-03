@@ -22,6 +22,9 @@ export type AttentionActivity = {
   projectName: string | null
   /** Companies with an active assignment on this activity. */
   companies?: string[]
+  /** Staff member the activity is assigned to on the schedule. */
+  assigned_to?: string | null
+  assigneeName?: string | null
 }
 
 /** A Daily Log that recorded a delay. Text fields are field notes: displayed as quoted, never interpreted. */

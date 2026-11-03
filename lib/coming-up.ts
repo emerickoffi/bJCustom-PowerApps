@@ -27,6 +27,8 @@ export type ComingUpEvent = {
   /** Proposed dates are not commitments and are labelled Tentative. */
   tentative: boolean
   assigneeName: string | null
+  /** Explicit assignee only; never inferred from project manager or creator. */
+  responsibleUserId: string | null
 }
 
 export type ProposedStartInput = { id: string; name: string; status: ProjectStatus; proposed_start_date: string | null }
@@ -101,6 +103,7 @@ export function buildComingUp(input: {
       kind: 'schedule',
       tentative: false,
       assigneeName: a.assigned_to ? (input.assigneeNames?.get(a.assigned_to) ?? null) : null,
+      responsibleUserId: a.assigned_to ?? null,
     })
   }
 
@@ -117,6 +120,7 @@ export function buildComingUp(input: {
       kind: 'proposed_start',
       tentative: true,
       assigneeName: null,
+      responsibleUserId: null,
     })
   }
 
@@ -133,6 +137,7 @@ export function buildComingUp(input: {
       kind: 'warranty',
       tentative: false,
       assigneeName: null,
+      responsibleUserId: null,
     })
   }
 

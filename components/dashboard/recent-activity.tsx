@@ -23,6 +23,10 @@ type ActivityItem = {
   created_at: string;
   client_id: string;
   clients: { first_name: string; last_name: string } | null;
+  project_id?: string | null;
+  projects?: { name: string } | null;
+  /** Resolved name of `created_by`; "System" only for genuine automated entries with no person attached. */
+  actorName?: string | null;
 };
 
 const ACTIVITY_ICONS: Record<
@@ -113,8 +117,13 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
         <div className="flex flex-wrap items-center justify-between gap-x-2 text-xs">
-          <span className="font-medium text-primary">
-            {ACTIVITY_TYPE_LABELS[item.activity_type] ?? item.activity_type}
+          <span className="min-w-0 truncate">
+            {item.actorName && (
+              <span className="font-semibold text-foreground">{`${item.actorName} · `}</span>
+            )}
+            <span className="font-medium text-primary">
+              {ACTIVITY_TYPE_LABELS[item.activity_type] ?? item.activity_type}
+            </span>
           </span>
           <time dateTime={item.created_at} className="text-muted-foreground">
             {formatDateTime(item.created_at)}
@@ -123,13 +132,26 @@ function ActivityRow({ item }: { item: ActivityItem }) {
         <p className="text-pretty text-sm leading-relaxed text-foreground">
           {item.summary}
         </p>
-        {item.clients && (
-          <Link
-            href={`/clients/${item.client_id}`}
-            className="w-fit text-xs font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
-          >
-            {`${item.clients.first_name} ${item.clients.last_name}`}
-          </Link>
+        {(item.clients || (item.project_id && item.projects)) && (
+          <div className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+            {item.project_id && item.projects && (
+              <Link
+                href={`/projects/${item.project_id}`}
+                className="font-medium underline-offset-4 transition-colors hover:text-primary hover:underline"
+              >
+                {item.projects.name}
+              </Link>
+            )}
+            {item.project_id && item.projects && item.clients && <span aria-hidden="true">·</span>}
+            {item.clients && (
+              <Link
+                href={`/clients/${item.client_id}`}
+                className="font-medium underline-offset-4 transition-colors hover:text-primary hover:underline"
+              >
+                {`${item.clients.first_name} ${item.clients.last_name}`}
+              </Link>
+            )}
+          </div>
         )}
       </div>
     </>
