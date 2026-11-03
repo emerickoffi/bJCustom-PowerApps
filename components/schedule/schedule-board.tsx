@@ -25,7 +25,7 @@ type View = 'stages' | 'timeline' | 'list'
 
 const VIEWS: { value: View; label: string; icon: typeof Layers }[] = [
   { value: 'stages', label: 'Stages', icon: Layers },
-  { value: 'timeline', label: 'Timeline', icon: GanttChart },
+  { value: 'timeline', label: 'Gantt', icon: GanttChart },
   { value: 'list', label: 'List', icon: List },
 ]
 

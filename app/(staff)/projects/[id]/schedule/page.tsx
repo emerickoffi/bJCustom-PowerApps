@@ -278,6 +278,21 @@ export default async function SchedulePage({
             companies={assignmentData.companies}
             acceptsNewAssignments={assignmentData.acceptsNew}
             initialActivityId={typeof focusActivity === 'string' ? focusActivity : null}
+            timeZone={timeZone}
+            baseline={
+              latest
+                ? {
+                    version: latest.version,
+                    name: latest.name,
+                    dates: Object.fromEntries(
+                      (latest.snapshot as { activity_id: string; planned_start: string | null; planned_end: string | null }[]).map((s) => [
+                        s.activity_id,
+                        { start: s.planned_start, end: s.planned_end },
+                      ]),
+                    ),
+                  }
+                : null
+            }
           />
 
           {assignmentData.availability !== 'off' && (

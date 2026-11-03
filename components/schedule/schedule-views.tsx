@@ -1,11 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { AlertTriangle, CalendarRange, ChevronLeft, ChevronRight, Diamond, Link2 } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { EmptyState } from '@/components/shared/page-header'
 import { cn } from '@/lib/utils'
-import { ActivityStatusBadge, ProgressBar, STATUS_BAR_TONE } from '@/components/schedule/schedule-badges'
+import { ScheduleGantt, type ScheduleGanttProps } from '@/components/schedule/schedule-gantt'
 import { ACTIVITY_TYPE_LABELS, isOverdue, todayIso, type ScheduleActivity, type ScheduleDependency } from '@/lib/schedule'
 import { formatDate } from '@/lib/format'
 
@@ -51,156 +50,9 @@ export function Flags({ activity, conflict, today }: { activity: ScheduleActivit
   )
 }
 
-export function ScheduleTimeline({ activities, dependencies, conflictIds, onSelect }: ViewProps) {
-  const today = todayIso()
-  const dated = activities.filter((a) => a.planned_start || a.planned_end)
-  const range = useMemo(() => {
-    const times = dated.flatMap((a) =>
-      [a.planned_start, a.planned_end, a.actual_start, a.actual_end].filter(Boolean).map((d) => toTime(d as string)),
-    )
-    if (!times.length) return null
-    const start = Math.min(...times, toTime(today)) - 7 * DAY
-    const end = Math.max(...times, toTime(today)) + 7 * DAY
-    return { start, end, span: end - start }
-  }, [dated, today])
-
-  if (!range) {
-    const undated = activities.length
-    return (
-      <EmptyState
-        icon={CalendarRange}
-        title={undated ? 'Activities need planned dates' : 'No activities yet'}
-        description={
-          undated
-            ? `${undated} ${undated === 1 ? 'activity has' : 'activities have'} no planned start or finish date. Open an activity from the List view and set its planned dates to place it on the timeline.`
-            : 'Add schedule activities with planned start and finish dates to build the construction timeline.'
-        }
-        action={
-          undated ? (
-            <Button variant="outline" size="sm" onClick={() => onSelect(activities[0])}>
-              Set dates for {activities[0].name}
-            </Button>
-          ) : undefined
-        }
-      />
-    )
-  }
-
-  const pct = (iso: string) => ((toTime(iso) - range.start) / range.span) * 100
-  const months: { label: string; left: number }[] = []
-  const cursor = new Date(range.start)
-  cursor.setDate(1)
-  cursor.setMonth(cursor.getMonth() + 1)
-  while (cursor.getTime() < range.end) {
-    months.push({
-      label: cursor.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-      left: ((cursor.getTime() - range.start) / range.span) * 100,
-    })
-    cursor.setMonth(cursor.getMonth() + 1)
-  }
-  const predCount = new Map<string, number>()
-  for (const d of dependencies) predCount.set(d.successor_id, (predCount.get(d.successor_id) ?? 0) + 1)
-  const todayLeft = pct(today)
-
-  return (
-    <div className="overflow-x-auto rounded-xl border border-[#D6DDE5] bg-white">
-      <div className="min-w-[56rem]">
-        <div className="flex border-b border-[#D6DDE5] bg-[#E9EDF2] text-xs text-[#526173]">
-          <div className="w-64 shrink-0 px-4 py-2 font-medium">Activity</div>
-          <div className="relative h-8 flex-1">
-            {months.map((m) => (
-              <span key={m.left} className="absolute top-2 -translate-x-1/2 whitespace-nowrap" style={{ left: `${m.left}%` }}>
-                {m.label}
-              </span>
-            ))}
-          </div>
-        </div>
-        <ul className="relative">
-          {groupByPhase(activities).map((group) => (
-            <li key={group.phase}>
-              <div className="border-b border-[#D6DDE5] bg-[#F7F9FB] px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#526173]">
-                {group.phase}
-              </div>
-              <ul>
-                {group.items.map((a) => {
-                  const s = a.planned_start ?? a.planned_end
-                  const e = a.planned_end ?? a.planned_start
-                  const late = isOverdue(a, today)
-                  const deps = predCount.get(a.id) ?? 0
-                  return (
-                    <li key={a.id} className="flex border-b border-[#E4E9EF] last:border-b-0">
-                      <button
-                        type="button"
-                        onClick={() => onSelect(a)}
-                        className="flex w-64 shrink-0 items-center gap-1.5 px-4 py-2 text-left text-sm font-medium text-[#17212B] hover:bg-[#F7F9FB] hover:text-[#006B78] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D38]"
-                      >
-                        <span className="line-clamp-2 min-w-0 break-words" title={a.name}>{a.name}</span>
-                        {deps > 0 && (
-                          <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-[#526173]" title={`${deps} predecessor(s)`}>
-                            <Link2 className="size-3" aria-hidden="true" />
-                            {deps}
-                            <span className="sr-only">predecessors</span>
-                          </span>
-                        )}
-                      </button>
-                      <div className="relative min-h-10 flex-1">
-                        {months.map((m) => (
-                          <span key={m.left} aria-hidden="true" className="absolute inset-y-0 w-px bg-[#E4E9EF]" style={{ left: `${m.left}%` }} />
-                        ))}
-                        {s && e && a.activity_type === 'milestone' ? (
-                          <button
-                            type="button"
-                            onClick={() => onSelect(a)}
-                            aria-label={`${a.name}, ${formatDate(e)}`}
-                            className={cn(
-                              'absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[2px]',
-                              STATUS_BAR_TONE[a.status],
-                              late && 'ring-2 ring-destructive ring-offset-1',
-                            )}
-                            style={{ left: `${pct(e)}%` }}
-                          />
-                        ) : s && e ? (
-                          <button
-                            type="button"
-                            onClick={() => onSelect(a)}
-                            aria-label={`${a.name}, ${formatDate(s)} to ${formatDate(e)}, ${Math.round(Number(a.percent_complete))}% complete`}
-                            className={cn(
-                              'absolute top-1/2 h-4 -translate-y-1/2 overflow-hidden rounded bg-muted-foreground/20',
-                              late && 'ring-2 ring-destructive',
-                              conflictIds.has(a.id) && 'outline-2 outline-dashed outline-warning',
-                            )}
-                            style={{ left: `${pct(s)}%`, width: `max(0.5rem, ${pct(e) - pct(s) + (DAY / range.span) * 100}%)` }}
-                          >
-                            <span
-                              className={cn('block h-full', STATUS_BAR_TONE[a.status])}
-                              style={{ width: a.status === 'not_started' ? '100%' : `${Number(a.percent_complete)}%` }}
-                            />
-                          </button>
-                        ) : null}
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            </li>
-          ))}
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 w-0.5 bg-destructive/70"
-            style={{ left: `calc(16rem + (100% - 16rem) * ${todayLeft / 100})` }}
-          />
-        </ul>
-        <div className="flex flex-wrap items-center gap-4 border-t border-[#D6DDE5] bg-[#F7F9FB] px-4 py-2 text-xs text-[#526173]">
-          <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded bg-primary" />Completed</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded bg-primary/60" />In progress</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded bg-destructive" />Delayed</span>
-          <span className="flex items-center gap-1.5"><span className="size-2.5 rotate-45 bg-muted-foreground/40" />Milestone</span>
-          <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-destructive/70" />Today</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded outline-2 outline-dashed outline-warning" />Dependency date conflict</span>
-        </div>
-      </div>
-    </div>
-  )
+/** The schedule's date view. Kept under its original name so existing callers get the Gantt. */
+export function ScheduleTimeline(props: ViewProps & Omit<ScheduleGanttProps, keyof ViewProps>) {
+  return <ScheduleGantt {...props} />
 }
 
 const KIND_TONE: Record<ScheduleActivity['activity_type'], string> = {
