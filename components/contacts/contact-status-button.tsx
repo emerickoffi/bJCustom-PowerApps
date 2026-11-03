@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ConfirmActionButton } from '@/components/shared/confirm-action-button'
+import { ActiveStatusBadge, SemanticBadge } from '@/components/shared/semantic-badge'
 import { setCompanyStatusAction, setPersonStatusAction } from '@/app/actions/contacts'
 
 /** Deactivation asks for confirmation; activation is immediate. History is never removed either way. */
@@ -93,15 +94,5 @@ export function ContactStatusButton({
 }
 
 export function ContactStatusBadge({ status }: { status: 'active' | 'inactive' }) {
-  return status === 'active' ? (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#C2E4D0] bg-[#E2F3E9] px-2 py-0.5 text-xs font-medium text-[#187542]">
-      <span className="size-1.5 rounded-full bg-[#187542]" aria-hidden="true" />
-      Active
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#D8E0E8] bg-[#E9EDF2] px-2 py-0.5 text-xs font-medium text-[#526174]">
-      <span className="size-1.5 rounded-full bg-[#526174]/60" aria-hidden="true" />
-      Inactive
-    </span>
-  )
+  return status === 'active' ? <ActiveStatusBadge /> : <SemanticBadge tone="neutral">Inactive</SemanticBadge>
 }

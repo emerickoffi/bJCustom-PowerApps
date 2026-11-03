@@ -18,7 +18,7 @@ export type TimelineMilestone = {
 }
 
 const STATE_TONE: Record<CoverageState, SemanticTone> = {
-  active: 'success',
+  active: 'active',
   expiring_soon: 'pending',
   expired: 'neutral',
   not_applicable: 'neutral',

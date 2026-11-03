@@ -1,9 +1,10 @@
 import { cn } from '@/lib/utils'
 
-export type SemanticTone = 'neutral' | 'info' | 'cobalt' | 'success' | 'pending' | 'danger' | 'orange'
+export type SemanticTone = 'neutral' | 'info' | 'cobalt' | 'success' | 'active' | 'pending' | 'danger' | 'orange'
 
 export const SEMANTIC_TONE: Record<SemanticTone, string> = {
   neutral: 'border-[#D8E0E8] bg-[#E9EDF2] text-[#526174]',
+  active: 'border-[#A7F3D0] bg-[#D1FAE5] text-[#047857]',
   cobalt: 'border-[#BFDBFE] bg-[#EFF6FF] text-[#1D4ED8]',
   info: 'border-[#C9DFFF] bg-[#E6F0FF] text-[#1D5FBD]',
   success: 'border-[#C2E4D0] bg-[#E2F3E9] text-[#187542]',
@@ -14,6 +15,7 @@ export const SEMANTIC_TONE: Record<SemanticTone, string> = {
 
 const DOT: Record<SemanticTone, string> = {
   neutral: 'bg-[#526174]/60',
+  active: 'bg-[#047857]',
   info: 'bg-[#1D5FBD]',
   cobalt: 'bg-[#1D4ED8]',
   success: 'bg-[#187542]',
@@ -42,5 +44,14 @@ export function SemanticBadge({
       <span className={cn('size-1.5 shrink-0 rounded-full', DOT[tone])} aria-hidden="true" />
       {children}
     </span>
+  )
+}
+
+/** The one record-status "Active" badge (clients, contacts, companies, subcontractors, accounts). Not for selected tabs or nav. */
+export function ActiveStatusBadge({ className, children = 'Active' }: { className?: string; children?: React.ReactNode }) {
+  return (
+    <SemanticBadge tone="active" className={className}>
+      {children}
+    </SemanticBadge>
   )
 }
