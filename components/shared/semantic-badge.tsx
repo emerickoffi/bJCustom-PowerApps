@@ -1,9 +1,10 @@
 import { cn } from '@/lib/utils'
 
-export type SemanticTone = 'neutral' | 'info' | 'success' | 'pending' | 'danger' | 'orange'
+export type SemanticTone = 'neutral' | 'info' | 'cobalt' | 'success' | 'pending' | 'danger' | 'orange'
 
 export const SEMANTIC_TONE: Record<SemanticTone, string> = {
   neutral: 'border-[#D8E0E8] bg-[#E9EDF2] text-[#526174]',
+  cobalt: 'border-[#BFDBFE] bg-[#EFF6FF] text-[#1D4ED8]',
   info: 'border-[#C9DFFF] bg-[#E6F0FF] text-[#1D5FBD]',
   success: 'border-[#C2E4D0] bg-[#E2F3E9] text-[#187542]',
   pending: 'border-[#F3DDB0] bg-[#FFF2DA] text-[#96570E]',
@@ -14,6 +15,7 @@ export const SEMANTIC_TONE: Record<SemanticTone, string> = {
 const DOT: Record<SemanticTone, string> = {
   neutral: 'bg-[#526174]/60',
   info: 'bg-[#1D5FBD]',
+  cobalt: 'bg-[#1D4ED8]',
   success: 'bg-[#187542]',
   pending: 'bg-[#C27A1A]',
   danger: 'bg-[#BD302B]',

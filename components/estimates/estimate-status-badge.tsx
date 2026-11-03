@@ -4,7 +4,7 @@ import { ESTIMATE_STATUS_LABELS, type EstimateStatus } from '@/lib/estimates'
 const ESTIMATE_SEMANTIC_TONE: Record<EstimateStatus, SemanticTone> = {
   draft: 'neutral',
   internal_review: 'info',
-  submitted: 'pending',
+  submitted: 'cobalt',
   approved: 'success',
   rejected: 'danger',
 }
