@@ -14,12 +14,30 @@ export const metadata: Metadata = {
   },
   description: 'Client, project, and construction management for B & J Custom Homes, Inc.',
   generator: 'v0.app',
+  applicationName: 'Bativo',
+  appleWebApp: {
+    capable: true,
+    title: 'Bativo',
+    statusBarStyle: 'default',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: [
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
 }
 
 export const viewport: Viewport = {
   themeColor: '#174D38',
   width: 'device-width',
   initialScale: 1,
+  // The shell already pads with env(safe-area-inset-*), so standalone mode can use the full screen in both iPad orientations.
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
