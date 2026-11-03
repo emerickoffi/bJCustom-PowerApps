@@ -46,7 +46,7 @@ export function InvoiceActions({
         </Button>
         {canManage && status === 'draft' && (
           <>
-            <Button variant="outline" render={<Link href={`/invoices/${invoiceId}/edit`} />} nativeButton={false}>
+            <Button variant="edit" render={<Link href={`/invoices/${invoiceId}/edit`} />} nativeButton={false}>
               <Pencil data-icon="inline-start" />
               Edit draft
             </Button>

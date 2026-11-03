@@ -44,7 +44,7 @@ export default async function DailyLogPage({
               PDF
             </Link>
             {editable && (
-              <Link href={`${dailyLogsPath(project.id)}/${log.id}/edit`} className={buttonVariants()}>
+              <Link href={`${dailyLogsPath(project.id)}/${log.id}/edit`} className={buttonVariants({ variant: 'edit' })}>
                 <Pencil className="size-4" aria-hidden="true" />
                 Edit
               </Link>

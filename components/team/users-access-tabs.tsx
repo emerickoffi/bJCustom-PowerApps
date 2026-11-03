@@ -17,7 +17,7 @@ export function UsersAccessTabs({ active }: { active: (typeof TABS)[number]['val
               <Link
                 href={tab.href}
                 aria-current={current ? 'page' : undefined}
-                className="-mb-px flex items-center gap-2 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-[#526173] transition-colors hover:text-[#174D38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38]/30 aria-[current=page]:border-[#174D38] aria-[current=page]:text-[#174D38]"
+                className="-mb-px flex items-center gap-2 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-interactive-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interactive/50 aria-[current=page]:border-interactive aria-[current=page]:text-interactive-strong"
               >
                 <tab.icon className="size-4" aria-hidden="true" />
                 {tab.label}

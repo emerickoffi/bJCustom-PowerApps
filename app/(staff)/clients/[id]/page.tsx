@@ -251,7 +251,7 @@ export default async function ClientDetailPage({
               ),
               actions: manager && (
                 <>
-                  <Button variant="outline" className="bg-white" render={<Link href={`/clients/${client.id}/edit`} />} nativeButton={false}>
+                  <Button variant="edit" render={<Link href={`/clients/${client.id}/edit`} />} nativeButton={false}>
                     <Pencil data-icon="inline-start" />
                     Edit
                   </Button>

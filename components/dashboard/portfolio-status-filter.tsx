@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import type { PortfolioStatusCount } from '@/lib/portfolio'
 import { cn } from '@/lib/utils'
+import { pillClass } from '@/lib/interaction-styles'
 
 function Chip({ href, label, count, active }: { href: string; label: string; count: number; active: boolean }) {
   return (
@@ -10,10 +11,8 @@ function Chip({ href, label, count, active }: { href: string; label: string; cou
       scroll={false}
       aria-current={active ? 'true' : undefined}
       className={cn(
-        'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        active
-          ? 'border-primary bg-primary text-primary-foreground'
-          : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
+        'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium',
+        pillClass(active),
       )}
     >
       {label}

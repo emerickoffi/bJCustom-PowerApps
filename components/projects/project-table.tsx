@@ -122,7 +122,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Button variant="outline" size="sm" render={<Link href={href} aria-label={`View project ${p.name}`} />} nativeButton={false}>
+                    <Button variant="view" size="sm" render={<Link href={href} aria-label={`View project ${p.name}`} />} nativeButton={false}>
                       View
                       <ArrowRight data-icon="inline-end" />
                     </Button>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ShieldCheck, ShieldCheck as ShieldCheckIcon } from 'lucide-react'
+import { buttonVariants } from '@/components/ui/button'
 import { requireStaff } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
@@ -21,6 +22,7 @@ import {
   addDaysIso,
   type ClaimStatus,
 } from '@/lib/warranty-coverage'
+import { pillClass } from '@/lib/interaction-styles'
 
 export const metadata: Metadata = { title: 'Warranty' }
 
@@ -182,10 +184,8 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
             href={f.value === 'all' ? '/warranty' : `/warranty?stage=${f.value}`}
             aria-current={filter === f.value ? 'page' : undefined}
             className={cn(
-              'flex min-h-11 items-center rounded-full border px-3.5 text-sm font-medium transition-colors md:min-h-0 md:py-1.5',
-              filter === f.value
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-[#D6DDE5] bg-card text-foreground hover:bg-[#E6F0EB] hover:text-primary',
+              'flex min-h-11 items-center rounded-full px-3.5 text-sm font-medium md:min-h-0 md:py-1.5',
+              pillClass(filter === f.value),
             )}
           >
             {f.label}
@@ -252,7 +252,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
                 </dl>
                 <Link
                   href={`/projects/${r.project_id}/warranty`}
-                  className="flex h-11 items-center justify-center rounded-lg border bg-card text-sm font-medium transition-colors hover:bg-sage hover:text-primary"
+                  className={buttonVariants({ variant: 'view', className: 'h-11 w-full rounded-lg' })}
                 >
                   View details
                   <span className="sr-only">{` for ${r.projects?.name ?? 'project'}`}</span>

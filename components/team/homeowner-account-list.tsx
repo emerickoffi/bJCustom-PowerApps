@@ -8,6 +8,7 @@ import {
   type HomeownerAccountRow,
   type HomeownerAccountStatus,
 } from '@/lib/homeowner-accounts'
+import { pillClass } from '@/lib/interaction-styles'
 
 const STATUS_TONE: Record<HomeownerAccountStatus, SemanticTone> = {
   active: 'success',
@@ -76,7 +77,7 @@ export function HomeownerAccountList({
               key={f.value}
               href={filterHref(f.value, q)}
               aria-current={filter === f.value ? 'page' : undefined}
-              className="rounded-full border border-[#D6DDE5] bg-card px-3 py-1 text-sm text-[#526173] transition-colors hover:bg-[#F3F4F6] hover:text-[#174D38] aria-[current=page]:border-[#174D38] aria-[current=page]:bg-[#174D38] aria-[current=page]:text-white"
+              className={`rounded-full px-3 py-1 text-sm ${pillClass(filter === f.value)}`}
             >
               {f.label}
             </Link>

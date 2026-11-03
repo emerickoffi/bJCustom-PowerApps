@@ -93,7 +93,7 @@ export function ClientTable({
                           Manage contacts
                         </Button>
                       )}
-                      <Button variant="outline" size="sm" render={<Link href={href} aria-label={`View client ${name}`} />} nativeButton={false}>
+                      <Button variant="view" size="sm" render={<Link href={href} aria-label={`View client ${name}`} />} nativeButton={false}>
                         View
                         <ArrowRight data-icon="inline-end" />
                       </Button>

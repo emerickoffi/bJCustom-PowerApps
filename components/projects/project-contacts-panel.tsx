@@ -14,6 +14,7 @@ import { formatPhone } from '@/lib/format'
 import type { ActionState } from '@/lib/action-state'
 import type { AssignablePerson, ProjectCompanyContacts, ProjectContact } from '@/lib/project-contacts-data'
 import { assignProjectContactAction, endPersonProjectAction } from '@/app/actions/contacts'
+import { segmentClass } from '@/lib/interaction-styles'
 
 export type Prefill = { personId: string; relationshipId: string; role: string } | null
 
@@ -128,11 +129,7 @@ export function ProjectContactsPanel({
                 type="button"
                 aria-pressed={showHistory === o.v}
                 onClick={() => setShowHistory(o.v)}
-                className={
-                  showHistory === o.v
-                    ? 'rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground'
-                    : 'rounded-md px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground'
-                }
+                className={`rounded-md px-2.5 text-xs font-medium ${segmentClass(showHistory === o.v)}`}
               >
                 {o.l}
               </button>

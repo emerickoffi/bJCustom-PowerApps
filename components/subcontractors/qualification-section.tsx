@@ -55,6 +55,7 @@ import {
   reviewItemAction,
   startVettingAction,
 } from '@/app/actions/subcontractor-qualification'
+import { segmentClass } from '@/lib/interaction-styles'
 
 type Props = {
   companyId: string
@@ -236,8 +237,9 @@ export function QualificationSection(props: Props) {
                       aria-pressed={filter === f.key}
                       onClick={() => chooseFilter(f.key)}
                       className={cn(
-                        'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-                        filter === f.key ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
+                        'rounded-md px-2.5 py-1 text-xs font-medium',
+                        segmentClass(filter === f.key),
+                        filter === f.key && 'shadow-xs',
                       )}
                     >
                       {f.label}

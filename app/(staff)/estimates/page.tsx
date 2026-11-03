@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowRight, Calculator, CircleCheckBig, Clock, FileText, LoaderCircle, Plus, Calculator as CalculatorIcon } from 'lucide-react'
 import { ConstructionTotalInfo, EstimatePdfAction } from '@/components/estimates/estimate-table-hints'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { clientDisplayName, listEstimates } from '@/lib/estimate-queries'
@@ -221,7 +221,7 @@ export default async function EstimatesPage({
                     <div className="flex items-center justify-end gap-1">
                       <Link
                         href={`/estimates/${e.id}`}
-                        className="inline-flex h-9 items-center gap-1 rounded-md border border-[#B9DDE0] bg-white px-2.5 text-sm font-medium text-[#006B78] transition-colors hover:border-[#93C5FD] hover:bg-[#E6F3F4] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#006B78]"
+                        className={buttonVariants({ variant: 'view', size: 'sm', className: 'h-9' })}
                       >
                         View
                         <span className="sr-only">{` ${e.estimate_number}`}</span>
@@ -270,8 +270,8 @@ export default async function EstimatesPage({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
-                    variant="outline"
-                    className="h-11 border-[#B9DDE0] text-[#006B78] hover:bg-[#E6F3F4] hover:text-[#006B78]"
+                    variant="view"
+                    className="h-11"
                     render={<Link href={`/estimates/${e.id}`} />} nativeButton={false}>
                     View
                     <span className="sr-only">{` ${e.estimate_number}`}</span>

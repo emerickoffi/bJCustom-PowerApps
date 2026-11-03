@@ -45,7 +45,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
           ) : (
             <>
               <ContactStatusButton kind="company" id={company.id} name={company.company_name} status={company.status} />
-              <Button size="lg" render={<Link href={`/contacts/companies/${company.id}/edit`} />} nativeButton={false}>
+              <Button variant="edit" size="lg" render={<Link href={`/contacts/companies/${company.id}/edit`} />} nativeButton={false}>
                 <Pencil data-icon="inline-start" />
                 Edit
               </Button>

@@ -8,6 +8,7 @@ import { ACCESS_DEFINITIONS, MATRIX_ROLES, PERMISSIONS_MATRIX, type Access } fro
 import { Input } from '@/components/ui/input'
 import { ACCESS_META, AccessBadge, effectiveCell } from '@/components/settings/access-badge'
 import { RoleDetailSheet } from '@/components/settings/role-detail-sheet'
+import { pillClass } from '@/lib/interaction-styles'
 
 const STATE_ORDER: Access[] = ['allowed', 'conditional', 'denied', 'unverified']
 
@@ -89,11 +90,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                   type="button"
                   aria-pressed={active}
                   onClick={() => setStateFilter(key)}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D38] ${
-                    active
-                      ? 'border-[#174D38] bg-[#174D38] text-white'
-                      : 'border-[#D6DDE5] bg-white text-[#526173] hover:bg-[#F3F4F6] hover:text-[#103B27]'
-                  }`}
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${pillClass(active)}`}
                 >
                   {key === 'all' ? 'All states' : ACCESS_META[key].label}
                 </button>

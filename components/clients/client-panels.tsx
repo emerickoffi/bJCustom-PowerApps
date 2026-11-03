@@ -280,7 +280,7 @@ function ContactCard({
         {canEdit && (
           <Button
             type="button"
-            variant="outline"
+            variant="edit"
             size="sm"
             aria-expanded={editing}
             aria-controls={`contact-edit-${c.id}`}

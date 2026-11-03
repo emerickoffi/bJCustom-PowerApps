@@ -47,6 +47,14 @@
   --color-link-hover: var(--link-hover);
   --color-link-soft: var(--link-soft);
   --color-link-border: var(--link-border);
+  --color-interactive: var(--interactive);
+  --color-interactive-hover: var(--interactive-hover);
+  --color-interactive-pressed: var(--interactive-pressed);
+  --color-interactive-soft: var(--interactive-soft);
+  --color-interactive-soft-hover: var(--interactive-soft-hover);
+  --color-interactive-soft-pressed: var(--interactive-soft-pressed);
+  --color-interactive-border: var(--interactive-border);
+  --color-interactive-strong: var(--interactive-strong);
   --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -99,6 +107,15 @@
   --link-hover: #005560;
   --link-soft: #e6f3f4;
   --link-border: #b9dde0;
+  /* Interaction teal: View actions, Edit actions, and selected controls. White on #007f8b is 4.9:1. */
+  --interactive: #007f8b;
+  --interactive-hover: #006773;
+  --interactive-pressed: #005560;
+  --interactive-soft: #e6f5f6;
+  --interactive-soft-hover: #cdecef;
+  --interactive-soft-pressed: #b8e2e6;
+  --interactive-border: #80c5cc;
+  --interactive-strong: #006773;
   --destructive: #b42318;
   --success: #1f7a4a;
   --warning: #8f5207;
