@@ -31,7 +31,9 @@ export function CommandHeader({
     <header
       className={cn(
         'flex flex-col sm:flex-row sm:items-center sm:justify-between sm:gap-6',
-        compact ? 'gap-3 rounded-2xl border bg-card px-4 py-3 shadow-xs' : 'gap-4 border-b pb-4',
+        compact
+          ? 'gap-3 rounded-2xl border border-l-4 border-l-interactive bg-card px-4 py-3 shadow-xs'
+          : 'gap-4 border-b pb-4',
       )}
     >
       <div className={cn('flex min-w-0 flex-col', compact ? 'gap-0.5' : 'gap-1')}>
