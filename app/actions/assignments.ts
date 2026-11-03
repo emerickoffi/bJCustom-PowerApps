@@ -9,6 +9,8 @@ import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/l
 import { assignSchema, revokeSchema } from '@/lib/assignments'
 import { isMissingTableError } from '@/lib/subcontractors'
 import { projectAcceptsNewAssignments } from '@/lib/domain'
+import { loadQualificationSummaries } from '@/lib/subcontractor-qualification-data'
+import { assignmentWarning } from '@/lib/subcontractor-qualification'
 
 const idSchema = z.uuid()
 
@@ -43,6 +45,21 @@ async function checkProjectEligibility(
     .maybeSingle()
   if (!project) return 'This project could not be found.'
   return projectAcceptsNewAssignments(project.status) ? null : INELIGIBLE_PROJECT
+}
+
+/**
+ * Mirrors the "Blocked" label shown in the assignment picker: in enforcement mode, companies that are not
+ * Qualified cannot receive new activity work. Advisory mode and unavailable vetting data never block.
+ */
+async function checkQualification(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  companyId: string,
+): Promise<string | null> {
+  const qualification = await loadQualificationSummaries(supabase, organizationId, [companyId])
+  if (qualification.availability !== 'ready') return null
+  const warning = assignmentWarning(qualification.byCompany[companyId] ?? null, qualification.mode)
+  return warning?.level === 'block' ? warning.message : null
 }
 
 function dbError(error: { code?: string; message?: string }): string {
@@ -86,6 +103,9 @@ export async function assignSubcontractorAction(
     .maybeSingle()
   if (!activity) return { error: 'This activity could not be found.', values }
 
+  const blocked = await checkQualification(supabase, auth.organizationId, parsed.data.subcontractor_company_id)
+  if (blocked) return { error: blocked, values }
+
   // organization_id and project_id are overwritten from the activity by the database trigger.
   const { error } = await supabase.from('schedule_activity_assignments').insert({
     organization_id: auth.organizationId,
@@ -118,6 +138,9 @@ export async function reassignSubcontractorAction(
   const supabase = await createClient()
   const ineligible = await checkProjectEligibility(supabase, auth.organizationId, projectId)
   if (ineligible) return { error: ineligible, values }
+
+  const blocked = await checkQualification(supabase, auth.organizationId, parsed.data.subcontractor_company_id)
+  if (blocked) return { error: blocked, values }
 
   const { error } = await supabase.rpc('reassign_schedule_assignment', {
     p_id: assignmentId,
