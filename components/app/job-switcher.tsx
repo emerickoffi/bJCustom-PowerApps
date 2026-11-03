@@ -6,6 +6,7 @@ import useSWR from 'swr'
 import { AlertCircle, Check, ChevronsUpDown, Layers, Loader2, Search } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Breadcrumbs } from '@/components/app/top-bar'
+import { useTabletLayout } from '@/components/app/layout-mode'
 import { getJobAction, searchJobsAction } from '@/app/actions/job-context'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { resolveRouteJob, switchDestination, type ProjectFilterRoute } from '@/lib/route-job'
@@ -71,11 +72,16 @@ export function RouteBreadcrumbs({
  */
 export function JobSwitcher({
   organizationId,
-  filterRoutes,
+  filterRoutes: standardFilterRoutes,
+  tabletFilterRoutes,
 }: {
   organizationId: string
   filterRoutes: readonly ProjectFilterRoute[]
+  /** Routes that filter by `?project=` only in the Tablet layout (the tabbed Home scopes by project). */
+  tabletFilterRoutes?: readonly ProjectFilterRoute[]
 }) {
+  const isTablet = useTabletLayout()
+  const filterRoutes = isTablet && tabletFilterRoutes ? tabletFilterRoutes : standardFilterRoutes
   const router = useRouter()
   const { scope, searchParams, projectId, job: currentJob, loading, unavailable } = useRouteJob(organizationId, filterRoutes)
   const [open, setOpen] = useState(false)

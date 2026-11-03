@@ -4,6 +4,20 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Tablet shell. Queries mirror lib/ui-layout.ts exactly; `data-layout` is set on the staff shell root. */
+@custom-variant tablet {
+  @media (min-width: 600px) {
+    [data-layout='tablet'] & {
+      @slot;
+    }
+  }
+  @media (min-width: 600px) and (max-width: 1400px) and (min-height: 600px) and (pointer: coarse) {
+    [data-layout='auto'] & {
+      @slot;
+    }
+  }
+}
+
 @theme inline {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;

@@ -16,6 +16,9 @@ import { BrandStyle } from '@/components/brand/brand-style'
 import { Sidebar } from '@/components/app/sidebar'
 import { SIDEBAR_COOKIE, parseSidebarMode } from '@/lib/sidebar'
 import { MobileNav } from '@/components/app/mobile-nav'
+import { LayoutModeProvider } from '@/components/app/layout-mode'
+import { TabletBottomNav } from '@/components/app/tablet-bottom-nav'
+import { readLayoutPreference } from '@/lib/dashboard-prefs'
 import { AssistantProvider } from '@/components/assistant/assistant-context'
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher'
 import { FloatingCameraProvider } from '@/components/camera/floating-camera'
@@ -26,6 +29,9 @@ import {
   ProfileMenu,
   type HeaderNotification,
 } from '@/components/app/top-bar'
+
+/** The tabbed Home scopes every role's dashboard by `?project=`. */
+const TABLET_FILTER_ROUTES: ProjectFilterRoute[] = ['/schedule', '/dashboard']
 
 type ProjectRef = { name: string } | { name: string }[] | null
 const projectName = (p: ProjectRef) => (Array.isArray(p) ? p[0]?.name : p?.name) ?? 'Project'
@@ -82,6 +88,7 @@ export default async function StaffLayout({ children, modal }: { children: React
   // project opens it. The owner dashboard is portfolio-wide and has no per-project filter.
   const projectFilterRoutes: ProjectFilterRoute[] =
     dashboardKeyForRole(session.role) === 'owner' ? ['/schedule'] : ['/schedule', '/dashboard']
+  const layoutPreference = await readLayoutPreference(session.userId, session.organizationId)
   const sidebarMode = parseSidebarMode(cookieStore.get(SIDEBAR_COOKIE)?.value)
   const closedGroups = parseClosedNavGroups(cookieStore.get(NAV_GROUPS_COOKIE)?.value)
   const items = navForRole(session.role, features)
@@ -102,23 +109,32 @@ export default async function StaffLayout({ children, modal }: { children: React
       <AssistantProvider>
       <QuickActionsProvider>
       <FloatingCameraProvider placement={showAssistant ? 'above-assistant' : 'corner'}>
+      <LayoutModeProvider preference={layoutPreference}>
       <div data-staff-shell className="flex min-h-svh bg-background">
-        <Sidebar
-          items={items}
-          logo={logo}
-          homeLabel={homeLabel}
-          homeHref={homeHref}
-          defaultMode={sidebarMode}
-          closedGroups={closedGroups}
-        />
+        <div className="contents tablet:hidden">
+          <Sidebar
+            items={items}
+            logo={logo}
+            homeLabel={homeLabel}
+            homeHref={homeHref}
+            defaultMode={sidebarMode}
+            closedGroups={closedGroups}
+          />
+        </div>
         <div className="flex min-w-0 flex-1 flex-col">
           <header data-app-header className="sticky top-0 z-30 border-b border-[#D6DDE5] bg-white pt-[env(safe-area-inset-top)] shadow-[0_1px_2px_rgba(23,77,50,0.04)]">
             <div className="flex h-14 items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:gap-3 sm:px-6 xl:px-10">
-              <MobileNav items={items} logo={logo} closedGroups={closedGroups} />
-              <Link href={homeHref} className="flex min-h-11 w-24 shrink-0 items-center sm:w-28 lg:hidden" aria-label={homeLabel}>
+              <div className="contents tablet:hidden">
+                <MobileNav items={items} logo={logo} closedGroups={closedGroups} />
+              </div>
+              <Link
+                href={homeHref}
+                className="flex min-h-11 w-24 shrink-0 items-center sm:w-28 lg:hidden tablet:flex"
+                aria-label={homeLabel}
+              >
                 {logo}
               </Link>
-              <div className="hidden min-w-0 flex-1 lg:block">
+              <div className="hidden min-w-0 flex-1 lg:block tablet:hidden">
                 <RouteBreadcrumbs
                   organizationId={session.organizationId}
                   filterRoutes={projectFilterRoutes}
@@ -127,7 +143,11 @@ export default async function StaffLayout({ children, modal }: { children: React
                 />
               </div>
               <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
-                <JobSwitcher organizationId={session.organizationId} filterRoutes={projectFilterRoutes} />
+                <JobSwitcher
+                  organizationId={session.organizationId}
+                  filterRoutes={projectFilterRoutes}
+                  tabletFilterRoutes={TABLET_FILTER_ROUTES}
+                />
                 <QuickCreateMenu globalActions={globalQuickActions} jobScope={null} />
                 <HeaderSearch />
                 <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />
@@ -142,9 +162,13 @@ export default async function StaffLayout({ children, modal }: { children: React
               </div>
             </div>
           </header>
-          <main className="mx-auto w-full max-w-[90rem] flex-1 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8 lg:pt-10 xl:px-10">{children}</main>
+          <main className="mx-auto w-full max-w-[90rem] flex-1 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8 lg:pt-10 xl:px-10 tablet:pb-[calc(11rem+env(safe-area-inset-bottom))] tablet:pt-6">
+            {children}
+          </main>
         </div>
       </div>
+      <TabletBottomNav items={items} homeHref={homeHref} closedGroups={closedGroups} />
+      </LayoutModeProvider>
       {modal}
       {showAssistant && <AssistantLauncher configured={getAssistantProviderConfig().configured} />}
       </FloatingCameraProvider>
