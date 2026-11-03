@@ -1,10 +1,10 @@
 import { cn } from '@/lib/utils'
 
-type Tone = 'forest' | 'bronze'
+type Tone = 'forest' | 'cobalt'
 
 const TONES: Record<Tone, string> = {
   forest: 'bg-sage text-primary ring-primary/10',
-  bronze: 'bg-[#FFF2DA] text-[#96570E] ring-[#96570E]/12',
+  cobalt: 'bg-cobalt-soft text-cobalt ring-cobalt-border',
 }
 
 /** Shared card heading: 36px icon tile, serif title, optional subtitle and right-aligned action, divider beneath. */

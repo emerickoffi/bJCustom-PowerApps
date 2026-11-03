@@ -48,7 +48,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
             <Button
               render={<Link href="/invoices/new" />}
               nativeButton={false}
-              className="bg-[#F3E7CF] text-[#513B1C] hover:bg-[#EADBBE] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#123D2E]"
+              className="bg-cobalt-fill text-white hover:bg-cobalt-hover focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#123D2E]"
             >
               <Plus data-icon="inline-start" />
               New invoice
@@ -331,7 +331,7 @@ function EmptyState({
 }) {
   return (
     <div role={role} className="flex flex-col items-center gap-4 px-6 py-8 text-center md:py-12">
-      <span className="flex size-12 items-center justify-center rounded-xl bg-[#F5EDDF] text-[#805B2A] ring-1 ring-inset ring-[#805B2A]/10">
+      <span className="flex size-12 items-center justify-center rounded-xl bg-cobalt-soft text-cobalt ring-1 ring-inset ring-cobalt-border">
         <Icon className="size-6" aria-hidden="true" />
       </span>
       <div className="flex max-w-md flex-col gap-1.5">

@@ -207,7 +207,7 @@ function FocusCard({ data }: { data: FieldDashboardData }) {
     return (
       <section aria-labelledby="focus-heading" className="flex flex-col gap-3 rounded-2xl bg-brand-deep p-5 text-white shadow-lift sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
-          <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-champagne" aria-hidden="true" />
+          <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-cobalt-border" aria-hidden="true" />
           <div className="flex flex-col gap-1">
             <h2 id="focus-heading" className="font-medium">
               Nothing needs you on this job right now
@@ -216,7 +216,7 @@ function FocusCard({ data }: { data: FieldDashboardData }) {
           </div>
         </div>
         {routine?.href && (
-          <Button render={<Link href={routine.href} />} nativeButton={false} className="min-h-11 bg-champagne text-white hover:bg-champagne/90">
+          <Button render={<Link href={routine.href} />} nativeButton={false} className="min-h-11 bg-cobalt-fill text-white hover:bg-cobalt-hover focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-deep">
             <FileText data-icon="inline-start" />
             Add today&apos;s log
           </Button>
@@ -229,7 +229,7 @@ function FocusCard({ data }: { data: FieldDashboardData }) {
   return (
     <section aria-labelledby="focus-heading" className="flex flex-col gap-4 rounded-2xl bg-brand-deep p-5 text-white shadow-lift sm:p-6">
       <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
-        <span className="uppercase tracking-wide text-champagne">Focus</span>
+        <span className="uppercase tracking-wide text-cobalt-border">Focus</span>
         <span
           className={cn(
             'rounded-full px-2.5 py-0.5',
@@ -251,7 +251,7 @@ function FocusCard({ data }: { data: FieldDashboardData }) {
           </p>
         )}
       </div>
-      <Button render={<Link href={focus.href} />} nativeButton={false} size="lg" className="min-h-12 self-start bg-champagne text-white hover:bg-champagne/90">
+      <Button render={<Link href={focus.href} />} nativeButton={false} size="lg" className="min-h-12 self-start bg-cobalt-fill text-white hover:bg-cobalt-hover focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-deep">
         {focus.actionLabel}
         <ArrowRight data-icon="inline-end" />
       </Button>
@@ -370,7 +370,7 @@ function AssignedJobs({ data }: { data: FieldDashboardData }) {
                 </span>
                 <StageBadge status={j.status} />
                 {j.openActions > 0 && (
-                  <span className="rounded-full bg-champagne/15 px-2 py-0.5 text-xs font-medium text-foreground">
+                  <span className="rounded-full bg-cobalt-soft px-2 py-0.5 text-xs font-medium text-cobalt">
                     {j.openActions}
                     <span className="sr-only"> open actions</span>
                   </span>

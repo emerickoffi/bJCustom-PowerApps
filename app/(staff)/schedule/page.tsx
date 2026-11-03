@@ -218,7 +218,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     { label: 'Total activities', value: activities.length, icon: ListChecks, iconTone: 'bg-[#E6F0EB] text-[#174D38]', hint: notScheduled ? `${notScheduled} not scheduled` : 'All scheduled' },
     { label: 'In progress', value: inProgress.length, icon: CalendarRange, iconTone: 'bg-[#E6F0FF] text-[#1D5FBD]', hint: inProgress.length ? null : 'None underway' },
     { label: 'Overdue', value: overdue.length, icon: AlertTriangle, iconTone: 'bg-[#FDE8E7] text-[#BD302B]', hint: 'Past planned finish', alert: overdue.length > 0 },
-    { label: 'Upcoming', value: upcoming.length, icon: CalendarClock, iconTone: 'bg-[#FFF2DA] text-[#96570E]', hint: `Next ${UPCOMING_DAYS} days` },
+    { label: 'Upcoming', value: upcoming.length, icon: CalendarClock, iconTone: 'bg-cobalt-soft text-cobalt', hint: `Next ${UPCOMING_DAYS} days` },
   ]
 
   return (

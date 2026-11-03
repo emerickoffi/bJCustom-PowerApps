@@ -53,7 +53,7 @@ function StageTracker({ status }: { status: ProjectStatus }) {
             key={s}
             className={cn(
               'h-2 flex-1 rounded-full',
-              i < stage ? 'bg-primary' : i === stage ? 'bg-champagne' : 'bg-sage',
+              i < stage ? 'bg-primary' : i === stage ? 'bg-cobalt-fill' : 'bg-sage',
             )}
           >
             <span className="sr-only">
@@ -137,8 +137,8 @@ export default async function PortalPage() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2.5 text-sm font-medium text-champagne">
-          <span className="h-px w-6 bg-champagne" aria-hidden="true" />
+        <div className="flex items-center gap-2.5 text-sm font-medium text-cobalt">
+          <span className="h-px w-6 bg-cobalt" aria-hidden="true" />
           My Home
         </div>
         <h1 className="text-balance font-serif text-3xl font-semibold leading-tight text-foreground md:text-[2.6rem]">
@@ -184,7 +184,7 @@ export default async function PortalPage() {
                         </div>
                         <h2 className="text-balance font-serif text-2xl font-semibold leading-tight sm:text-3xl">{p.name}</h2>
                         <p className="flex items-start gap-1.5 text-sm text-white/80">
-                          <MapPin className="mt-0.5 size-4 shrink-0 text-champagne" aria-hidden="true" />
+                          <MapPin className="mt-0.5 size-4 shrink-0 text-cobalt-border" aria-hidden="true" />
                           {`${p.address_line1}, ${p.city}, ${p.state} ${p.postal_code}`}
                         </p>
                       </div>
@@ -248,7 +248,7 @@ export default async function PortalPage() {
                 {walkthroughs.length > 0 && (
                   <section aria-labelledby={`walk-${p.id}`} className="surface flex flex-col gap-4 p-5 md:p-6">
                     <div className="flex items-center gap-3">
-                      <span className="flex size-10 items-center justify-center rounded-xl bg-champagne-soft text-champagne">
+                      <span className="flex size-10 items-center justify-center rounded-xl bg-cobalt-soft text-cobalt">
                         <ClipboardCheck className="size-4" aria-hidden="true" />
                       </span>
                       <div className="flex flex-col">

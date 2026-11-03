@@ -49,7 +49,7 @@ function UpdateRow({ update }: { update: ProjectUpdate }) {
   return (
     <>
       <span
-        className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-champagne-soft text-champagne-foreground ring-4 ring-card"
+        className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-cobalt-soft text-cobalt ring-4 ring-card"
         aria-hidden="true"
       >
         <Bell className="size-3.5" />

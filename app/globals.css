@@ -44,6 +44,11 @@
   --color-champagne: var(--champagne);
   --color-champagne-soft: var(--champagne-soft);
   --color-champagne-foreground: var(--champagne-foreground);
+  --color-cobalt: var(--cobalt);
+  --color-cobalt-fill: var(--cobalt-fill);
+  --color-cobalt-soft: var(--cobalt-soft);
+  --color-cobalt-border: var(--cobalt-border);
+  --color-cobalt-hover: var(--cobalt-hover);
   --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -83,6 +88,12 @@
   --champagne: #b89a69;
   --champagne-soft: #f4eee3;
   --champagne-foreground: #6e5630;
+  /* Decorative accent. Champagne above is kept only for semantic warning/status tones. */
+  --cobalt: #1d4ed8;
+  --cobalt-fill: #2563eb;
+  --cobalt-soft: #eff6ff;
+  --cobalt-border: #bfdbfe;
+  --cobalt-hover: #1e40af;
   --secondary: #e9edf2;
   --secondary-foreground: #17212b;
   --muted: #e9edf2;
