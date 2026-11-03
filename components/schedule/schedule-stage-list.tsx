@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { ChevronDown, Diamond, Eye, Pencil, UserRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ActivityStatusBadge, ProgressBar } from '@/components/schedule/schedule-badges'
@@ -91,7 +91,9 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
               className={cn(
                 'overflow-hidden rounded-xl border bg-white transition-shadow',
                 isCurrent ? 'border-[#174D32]/35 shadow-[0_1px_0_0_#174D32_inset,0_4px_14px_-10px_rgb(16_59_39/0.45)]' : 'border-[#E2E8E2]',
+                'tablet:border-l-[3px] tablet:border-l-(--stage-accent)',
               )}
+              style={{ '--stage-accent': style.accent } as CSSProperties}
             >
               <h3>
                 <button
@@ -99,7 +101,7 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
                   onClick={() => toggle(stage.key)}
                   aria-expanded={open}
                   aria-controls={panelId}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#F8F7F3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32] sm:px-5"
+                  className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left tablet:gap-4 tablet:py-3.5 transition-colors hover:bg-[#F8F7F3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32] sm:px-5"
                 >
                   <span
                     className="flex size-9 shrink-0 items-center justify-center rounded-lg"
@@ -110,7 +112,7 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="font-mono text-xs font-medium tabular-nums text-[#103B27]/50">
+                      <span className="font-mono text-xs font-medium tabular-nums text-[#103B27]/65">
                         {String(stage.number).padStart(2, '0')}
                       </span>
                       <span className="font-serif text-base font-semibold text-[#103B27]">{stage.phase}</span>
@@ -130,8 +132,21 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
                         : ''}
                     </span>
                   </span>
+                  {stage.counted > 0 && (
+                    <span className="hidden w-28 shrink-0 flex-col items-end gap-1 tablet:flex" aria-hidden="true">
+                      <span className="text-xs font-semibold tabular-nums text-[#103B27]">
+                        {`${Math.round((stage.done / stage.counted) * 100)}%`}
+                      </span>
+                      <span className="h-1.5 w-full overflow-hidden rounded-full bg-[#EEF1EE]">
+                        <span
+                          className="block h-full rounded-full"
+                          style={{ width: `${(stage.done / stage.counted) * 100}%`, backgroundColor: style.accent }}
+                        />
+                      </span>
+                    </span>
+                  )}
                   <ChevronDown
-                    className={cn('size-4 shrink-0 text-[#103B27]/60 transition-transform motion-reduce:transition-none', open && 'rotate-180')}
+                    className={cn('size-5 shrink-0 text-[#103B27]/60 transition-transform motion-reduce:transition-none', open && 'rotate-180')}
                     aria-hidden="true"
                   />
                 </button>
@@ -139,6 +154,16 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
 
               {open && (
                 <ul id={panelId} className="divide-y divide-[#EEF1EE] border-t border-[#EEF1EE]">
+                  <li
+                    aria-hidden="true"
+                    className="hidden grid-cols-[minmax(0,1fr)_9rem_11rem_8.5rem_5.5rem] gap-x-3 bg-[#F8F9F7] px-5 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#103B27]/65 tablet:md:grid"
+                  >
+                    <span>Activity</span>
+                    <span>Assigned</span>
+                    <span>Planned</span>
+                    <span>Progress</span>
+                    <span />
+                  </li>
                   {stage.items.map((a) => {
                     const late = isOverdue(a, today)
                     const milestone = a.activity_type === 'milestone'
@@ -149,7 +174,7 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
                         key={a.id}
                         className={cn(
                           'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-5',
-                          'md:grid-cols-[minmax(0,1fr)_9rem_11rem_8.5rem_auto]',
+                          'md:grid-cols-[minmax(0,1fr)_9rem_11rem_8.5rem_auto] tablet:md:grid-cols-[minmax(0,1fr)_9rem_11rem_8.5rem_5.5rem]',
                           milestone && 'bg-[#F8F7F3]',
                         )}
                       >

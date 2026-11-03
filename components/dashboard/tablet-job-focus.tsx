@@ -10,15 +10,15 @@ const PRIORITY_LIMIT = 4
 function JobFocusCard({ job, cover, large = false }: { job: PriorityJob; cover: ProjectCover | undefined; large?: boolean }) {
   const fallback = <ArchitecturalPlaceholder className="size-full" label="No site photos yet" />
   return (
-    <article className="relative flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-xs focus-within:ring-2 focus-within:ring-ring/40">
-      <div className={large ? 'aspect-[21/9] w-full bg-muted' : 'aspect-[16/7] w-full bg-muted'}>
+    <article className="relative flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-xs transition-[box-shadow,border-color] hover:border-interactive/40 hover:shadow-md focus-within:ring-2 focus-within:ring-ring/40 active:shadow-xs motion-reduce:transition-none">
+      <div className={large ? 'aspect-[21/9] w-full shrink-0 bg-muted' : 'aspect-[16/7] w-full shrink-0 bg-muted'}>
         {cover ? (
           <CoverImage src={cover.url} alt={coverAlt(cover.kind, job.name)} className="size-full object-cover" fallback={fallback} />
         ) : (
           fallback
         )}
       </div>
-      <div className="flex flex-col gap-3 p-4">
+      <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-0.5">
             {job.projectNumber && <span className="font-mono text-xs text-muted-foreground">{job.projectNumber}</span>}
@@ -36,7 +36,7 @@ function JobFocusCard({ job, cover, large = false }: { job: PriorityJob; cover: 
           </div>
         </div>
         <CurrentStage job={job} />
-        <div className="flex flex-col gap-1 border-t border-divider pt-3">
+        <div className="mt-auto flex flex-col gap-1 border-t border-divider pt-3">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Next activity</span>
           <NextActivity job={job} />
         </div>
