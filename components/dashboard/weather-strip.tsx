@@ -70,9 +70,12 @@ const deg = (n: number | null) => (n === null ? '\u2014' : `${n}\u00B0F`)
 export function WeatherStrip({
   locations,
   initialLocationId,
+  compact = false,
 }: {
   locations: WeatherLocation[]
   initialLocationId: string | null
+  /** Standard dashboard header: icon, temperature and location only; details live in the forecast dialog. */
+  compact?: boolean
 }) {
   const [locationId, setLocationId] = useState(
     initialLocationId && locations.some((l) => l.id === initialLocationId) ? initialLocationId : null,
@@ -100,7 +103,10 @@ export function WeatherStrip({
         <select
           value={locationId ?? ''}
           onChange={(e) => choose(e.target.value)}
-          className="h-7 max-w-[11rem] truncate rounded-md border border-input bg-background px-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={cn(
+            'truncate rounded-md border border-input bg-background px-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            compact ? 'h-9 max-w-[14rem] font-medium' : 'h-7 max-w-[11rem]',
+          )}
         >
           <option value="">Set weather location</option>
           {locations.map((l) => (
@@ -159,6 +165,39 @@ export function WeatherStrip({
   const tone = ICON_TONE[current?.kind ?? 'cloudy']
   const stale =
     data.stale || (data.updatedAt ? Date.now() - new Date(data.updatedAt).getTime() > WEATHER_STALE_MS : false)
+  const observedLabel = `${current?.source === 'forecast' ? 'Forecast' : 'Observed'}${
+    fmtTime(current?.at ?? data.updatedAt) ? ` ${fmtTime(current?.at ?? data.updatedAt)}` : ''
+  }${stale ? ' \u00B7 may be out of date' : ''}`
+
+  if (compact) {
+    return (
+      <div className={shell}>
+        <Dialog>
+          <DialogTrigger
+            className="flex min-h-9 items-center gap-1.5 rounded-md px-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label={`Jobsite weather for ${data.locationLabel}: ${current ? deg(current.temperatureF) : 'temperature unavailable'}, ${current?.condition ?? 'current conditions unavailable'}. Open details and 3-day forecast`}
+          >
+            <Icon className={cn('size-5 shrink-0', tone)} aria-hidden="true" />
+            <span className="font-semibold tabular-nums text-foreground">
+              {current ? deg(current.temperatureF) : '\u2014'}
+            </span>
+            {stale && <span className="text-xs text-muted-foreground">(may be out of date)</span>}
+          </DialogTrigger>
+          <ForecastDialog
+            data={data}
+            now={{
+              condition: current?.condition ?? 'Current conditions unavailable',
+              rain: data.rainChanceToday === null ? '\u2014' : `${data.rainChanceToday}%`,
+              wind:
+                current?.windMph === null || current?.windMph === undefined ? '\u2014' : `${current.windMph} mph`,
+              observed: observedLabel,
+            }}
+          />
+        </Dialog>
+        {selector}
+      </div>
+    )
+  }
 
   return (
     <div className={shell}>
@@ -199,7 +238,13 @@ export function WeatherStrip({
   )
 }
 
-function ForecastDialog({ data }: { data: Extract<WeatherResult, { state: 'ok' }> }) {
+function ForecastDialog({
+  data,
+  now,
+}: {
+  data: Extract<WeatherResult, { state: 'ok' }>
+  now?: { condition: string; rain: string; wind: string; observed: string }
+}) {
   return (
     <DialogContent className="sm:max-w-md">
       <DialogHeader>
@@ -208,6 +253,18 @@ function ForecastDialog({ data }: { data: Extract<WeatherResult, { state: 'ok' }
           {`${data.locationLabel}. Forecasts are predictions, not recorded conditions.`}
         </DialogDescription>
       </DialogHeader>
+      {now && (
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-lg border px-3 py-2.5 text-xs">
+          <dt className="text-muted-foreground">Now</dt>
+          <dd className="text-right text-foreground">{now.condition}</dd>
+          <dt className="text-muted-foreground">Rain chance today</dt>
+          <dd className="text-right tabular-nums text-foreground">{now.rain}</dd>
+          <dt className="text-muted-foreground">Wind</dt>
+          <dd className="text-right tabular-nums text-foreground">{now.wind}</dd>
+          <dt className="text-muted-foreground">Reading</dt>
+          <dd className="text-right text-foreground">{now.observed}</dd>
+        </dl>
+      )}
       {data.days.length === 0 ? (
         <p className="text-sm text-muted-foreground">No forecast days are available right now.</p>
       ) : (

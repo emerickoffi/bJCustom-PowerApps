@@ -65,7 +65,8 @@ export function WorkScopeControl({ scope }: { scope: WorkScope }) {
           role="tooltip"
           className="pointer-events-none invisible absolute right-0 top-full z-20 mt-1 w-64 rounded-md border bg-popover px-3 py-2 text-xs leading-relaxed text-popover-foreground opacity-0 shadow-md transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100 sm:left-0 sm:right-auto"
         >
-          My work shows only items assigned to you. Unassigned items appear under All work.
+          Applies to Action Center and Coming Up. My work shows only items assigned to you. Unassigned items appear
+          under All work.
         </span>
       </span>
     </div>

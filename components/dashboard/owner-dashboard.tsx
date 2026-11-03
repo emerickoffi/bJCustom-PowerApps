@@ -1,5 +1,5 @@
 import { ActionCenter } from '@/components/dashboard/action-center'
-import { CommandHeader } from '@/components/dashboard/command-header'
+import { AttentionSummary, CommandHeader } from '@/components/dashboard/command-header'
 import { ComingUp } from '@/components/dashboard/coming-up'
 import { FinancialKpis } from '@/components/dashboard/financial-kpis'
 import { PipelineOverview } from '@/components/dashboard/pipeline-overview'
@@ -452,6 +452,9 @@ export async function OwnerDashboard({
     </div>
   )
 
+  const showScopeToolbar = show.attention || show.coming_up
+  const attentionAvailable = attention.unavailable.length === 0 || attention.total > 0
+
   const standard = (
     <div className="flex flex-col gap-6">
       <div data-dashboard-section={'welcome' satisfies DashboardSectionId}>
@@ -462,8 +465,11 @@ export async function OwnerDashboard({
           actionTotalIsLowerBound={attention.totalIsLowerBound}
           actionsAvailable={attention.unavailable.length === 0 || attention.total > 0}
           actionsHref={show.attention ? '#action-center-heading' : '/actions'}
+          showAttention={!showScopeToolbar}
           weather={
-            show.weather ? <WeatherStrip locations={weatherLocations} initialLocationId={weatherLocationId} /> : null
+            show.weather ? (
+              <WeatherStrip compact locations={weatherLocations} initialLocationId={weatherLocationId} />
+            ) : null
           }
         />
       </div>
@@ -478,9 +484,19 @@ export async function OwnerDashboard({
         </section>
       )}
 
-      {(show.attention || show.coming_up) && (
-        <div className="flex justify-end">
-          <WorkScopeControl scope={workScope} />
+      {showScopeToolbar && (
+        <div className="-my-2 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Work scope</span>
+            <WorkScopeControl scope={workScope} />
+          </div>
+          {attentionAvailable && (
+            <AttentionSummary
+              total={attention.total}
+              isLowerBound={attention.totalIsLowerBound}
+              href={show.attention ? '#action-center-heading' : '/actions'}
+            />
+          )}
         </div>
       )}
 
