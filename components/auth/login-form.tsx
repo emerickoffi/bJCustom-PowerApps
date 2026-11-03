@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +16,6 @@ function loginErrorMessage(error: unknown): string {
 }
 
 export function LoginForm() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -34,8 +32,8 @@ export function LoginForm() {
       setIsLoading(false)
       return
     }
-    router.push('/')
-    router.refresh()
+    // "/" is a redirect-only route handler with no RSC payload, so a client-router push always fails its fetch.
+    window.location.assign('/')
   }
 
   return (
