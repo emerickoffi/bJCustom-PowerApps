@@ -14,7 +14,7 @@ export type WarrantyKpi = {
 const ICONS = { homes: Home, claims: ClipboardList, expiring: Hourglass, overdue: AlertTriangle } as const
 
 const TONE: Record<WarrantyKpi['tone'], string> = {
-  neutral: 'text-primary bg-[#EAF0E9]',
+  neutral: 'text-primary bg-[#E6F0EB]',
   pending: 'text-[#96570E] bg-[#FFF2DA]',
   danger: 'text-[#BD302B] bg-[#FDE8E7]',
 }
@@ -30,7 +30,7 @@ export function WarrantyKpis({ items }: { items: WarrantyKpi[] }) {
           <li key={k.key}>
             <Link
               href={k.href}
-              className="surface group flex h-full items-start gap-3 p-4 transition-colors hover:bg-[#F8F7F3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="surface group flex h-full items-start gap-3 p-4 transition-colors hover:bg-[#F3F4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <span
                 className={cn(

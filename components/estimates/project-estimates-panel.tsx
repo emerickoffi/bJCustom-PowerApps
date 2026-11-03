@@ -43,7 +43,7 @@ function SummaryCard({
   valueClassName?: string
 }) {
   return (
-    <div className="flex h-full min-w-0 flex-col gap-2 rounded-xl border border-[#E2E8E2] bg-[#F8F7F3] p-4">
+    <div className="flex h-full min-w-0 flex-col gap-2 rounded-xl border border-[#D6DDE5] bg-[#F3F4F6] p-4">
       <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</dt>
       <dd
         className={cn(
@@ -137,7 +137,7 @@ export async function ProjectEstimatesPanel({
         <ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
           {estimates.slice(0, 5).map((e) => (
             <li key={e.id}>
-              <Link href={`/estimates/${e.id}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[#F8F7F3]">
+              <Link href={`/estimates/${e.id}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[#F3F4F6]">
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <span className="truncate text-sm font-medium text-foreground">{e.name}</span>
                   <span className="font-mono text-xs text-muted-foreground">

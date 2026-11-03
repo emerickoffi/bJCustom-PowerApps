@@ -54,7 +54,7 @@ export function Sidebar({
         <div key={String(collapsed)} className={cn('flex min-h-0 flex-1 flex-col', className)}>
           <div
             className={cn(
-              'flex h-24 shrink-0 items-center border-b border-[#D8DED8] bg-white',
+              'flex h-24 shrink-0 items-center border-b border-[#D6DDE5] bg-white',
               collapsed ? 'justify-center px-2' : 'px-7',
             )}
           >
@@ -63,7 +63,7 @@ export function Sidebar({
               href={homeHref}
               aria-label={homeLabel}
               className={cn(
-                'block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18543D] focus-visible:ring-offset-2',
+                'block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38] focus-visible:ring-offset-2',
                 collapsed ? 'w-14' : 'w-44',
               )}
             >

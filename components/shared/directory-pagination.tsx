@@ -18,7 +18,7 @@ export function DirectoryPagination({
   const hasNext = page < pageCount
 
   return (
-    <nav aria-label={label} className="flex items-center justify-between gap-3 border-t border-[#E2E8E2] pt-4">
+    <nav aria-label={label} className="flex items-center justify-between gap-3 border-t border-[#D6DDE5] pt-4">
       {hasPrev ? (
         <Button variant="outline" size="lg" className="h-10" render={<Link href={hrefFor(page - 1)} rel="prev" />} nativeButton={false}>
           <ChevronLeft data-icon="inline-start" />

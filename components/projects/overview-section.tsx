@@ -33,7 +33,7 @@ export function OverviewSection({
       <header
         className={cn(
           'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between',
-          identity && 'border-b border-[#E2E8E2] bg-[#EAF0E9] px-5 py-5 md:px-6',
+          identity && 'border-b border-[#D6DDE5] bg-card px-5 py-5 md:px-6',
         )}
       >
         <div className={cn('flex min-w-0 gap-3', identity ? 'items-center gap-4' : 'items-start')}>
@@ -70,7 +70,7 @@ export function OverviewSection({
 
 export function OverviewNotice({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-dashed bg-[#F8F7F3] p-4">
+    <div className="flex items-start gap-3 rounded-xl border border-dashed bg-[#F3F4F6] p-4">
       <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-muted-foreground ring-1 ring-inset ring-border">
         <Icon className="size-4" aria-hidden="true" />
       </span>

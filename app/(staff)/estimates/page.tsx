@@ -130,7 +130,7 @@ export default async function EstimatesPage({
       ) : (
         <div className="surface overflow-hidden p-0">
           <table className="hidden w-full text-sm md:table">
-            <thead className="border-b border-[#E2E8E2] bg-[#F4F6F3] text-left text-xs font-medium uppercase tracking-wide text-[#64756D]">
+            <thead className="border-b border-[#D6DDE5] bg-[#F4F6F3] text-left text-xs font-medium uppercase tracking-wide text-[#526173]">
               <tr>
                 <th scope="col" className="min-w-64 px-5 py-3">Estimate</th>
                 <th scope="col" className="px-3 py-3">Client</th>
@@ -144,9 +144,9 @@ export default async function EstimatesPage({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E2E8E2]/80">
+            <tbody className="divide-y divide-[#D6DDE5]/80">
               {estimates.map((e) => (
-                <tr key={e.id} className="transition-colors hover:bg-[#F8F7F3]">
+                <tr key={e.id} className="transition-colors hover:bg-[#F3F4F6]">
                   <td className="px-5 py-3.5">
                   <div className="flex flex-col">
                     <div className="flex min-w-0 items-center gap-2">
@@ -195,7 +195,7 @@ export default async function EstimatesPage({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-[#64756D] hover:text-primary"
+                        className="text-[#526173] hover:text-primary"
                         render={<Link href={`/print/estimates/${e.id}`} target="_blank" />}
                         nativeButton={false}
                       >
@@ -210,7 +210,7 @@ export default async function EstimatesPage({
             </tbody>
           </table>
 
-          <ul className="divide-y divide-[#E2E8E2]/80 md:hidden">
+          <ul className="divide-y divide-[#D6DDE5]/80 md:hidden">
             {estimates.map((e) => (
               <li key={e.id} className="flex flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -237,7 +237,7 @@ export default async function EstimatesPage({
                   </Button>
                   <Button
                     variant="ghost"
-                    className="h-11 text-[#64756D] hover:text-primary"
+                    className="h-11 text-[#526173] hover:text-primary"
                     render={<Link href={`/print/estimates/${e.id}`} target="_blank" />}
                     nativeButton={false}
                   >

@@ -66,9 +66,9 @@ export function MemberList({ members }: { members: MemberRow[] }) {
         <h2 id="members-heading" className="font-serif text-lg font-semibold text-foreground">
           Members
         </h2>
-        <span className="text-sm text-[#64756D]">{`${members.length} ${members.length === 1 ? 'person' : 'people'}`}</span>
+        <span className="text-sm text-[#526173]">{`${members.length} ${members.length === 1 ? 'person' : 'people'}`}</span>
       </div>
-      <ul className="divide-y divide-[#E2E8E2]/80 overflow-hidden rounded-xl border border-[#E2E8E2] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
+      <ul className="divide-y divide-[#D6DDE5]/80 overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
         {members.map((m) => (
           <MemberItem key={m.id} member={m} />
         ))}
@@ -84,10 +84,10 @@ function MemberItem({ member: m }: { member: MemberRow }) {
   const isActive = m.status === 'active'
 
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 transition-colors hover:bg-[#F8F7F3]/70 sm:flex-nowrap sm:px-5">
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 transition-colors hover:bg-[#F3F4F6]/70 sm:flex-nowrap sm:px-5">
       <span
         aria-hidden="true"
-        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#EAF0E9] text-sm font-semibold text-[#174D32] ring-1 ring-inset ring-[#174D32]/12"
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#E6F0EB] text-sm font-semibold text-[#174D38] ring-1 ring-inset ring-[#174D38]/12"
       >
         {initials(m.name ?? m.email)}
       </span>
@@ -97,12 +97,12 @@ function MemberItem({ member: m }: { member: MemberRow }) {
           {m.isSelf && <SemanticBadge tone="neutral">You</SemanticBadge>}
           {!isActive && <SemanticBadge tone="danger">Suspended</SemanticBadge>}
         </span>
-        {m.email && <span className="truncate text-sm text-[#64756D]">{m.email}</span>}
+        {m.email && <span className="truncate text-sm text-[#526173]">{m.email}</span>}
       </div>
       <div className="ml-14 flex shrink-0 items-center gap-2 sm:ml-0">
         <SemanticBadge tone={ROLE_TONE[m.role]}>{ROLE_LABELS[m.role]}</SemanticBadge>
         {m.isSelf ? (
-          <span className="hidden text-xs text-[#64756D] md:inline" title="You cannot change your own role or access.">
+          <span className="hidden text-xs text-[#526173] md:inline" title="You cannot change your own role or access.">
             Your account
           </span>
         ) : (
@@ -204,7 +204,7 @@ function ChangeRoleForm({ member, onDone }: { member: MemberRow; onDone: () => v
         </NativeSelect>
       </div>
       {state.error && <FormMessage state={state} />}
-      <DialogFooter className="-mx-5 -mb-5 border-t bg-[#F8F7F3] px-5 py-3">
+      <DialogFooter className="-mx-5 -mb-5 border-t bg-[#F3F4F6] px-5 py-3">
         <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
         {role === member.role ? (
           <Button type="button" disabled>
@@ -232,7 +232,7 @@ function AccessForm({ member, onDone }: { member: MemberRow; onDone: () => void 
           {error}
         </p>
       )}
-      <DialogFooter className="-mx-5 -mb-5 border-t bg-[#F8F7F3] px-5 py-3">
+      <DialogFooter className="-mx-5 -mb-5 border-t bg-[#F3F4F6] px-5 py-3">
         <DialogClose render={<Button type="button" variant="outline" disabled={pending} />}>Cancel</DialogClose>
         <Button
           type="button"

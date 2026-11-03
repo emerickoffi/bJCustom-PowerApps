@@ -36,6 +36,9 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
   --color-brand-deep: var(--brand-deep);
+  --color-table-head: var(--table-head);
+  --color-divider: var(--divider);
+  --color-link: var(--link);
   --color-soft-green: var(--soft-green);
   --color-sage: var(--sage);
   --color-champagne: var(--champagne);
@@ -60,36 +63,43 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * App palette, matching the approved Schedule page: gray page, white surfaces, light-gray headers,
+ * cool-gray borders, forest-green primary actions, teal record links.
+ */
 :root {
   color-scheme: light;
-  --background: #f8f7f3;
-  --foreground: #202b25;
+  --background: #f3f4f6;
+  --foreground: #17212b;
   --card: #ffffff;
-  --card-foreground: #202b25;
+  --card-foreground: #17212b;
   --popover: #ffffff;
-  --popover-foreground: #202b25;
-  --primary: #174d32;
+  --popover-foreground: #17212b;
+  --primary: #174d38;
   --primary-foreground: #ffffff;
-  --brand-deep: #103b27;
-  --soft-green: #eaf0e9;
-  --sage: #eaf0e9;
+  --brand-deep: #103b2b;
+  --soft-green: #e6f0eb;
+  --sage: #e6f0eb;
   --champagne: #b89a69;
   --champagne-soft: #f4eee3;
   --champagne-foreground: #6e5630;
-  --secondary: #eaf0e9;
-  --secondary-foreground: #202b25;
-  --muted: #f1f1ec;
-  --muted-foreground: #64756d;
-  --accent: #eaf0e9;
-  --accent-foreground: #174d32;
+  --secondary: #e9edf2;
+  --secondary-foreground: #17212b;
+  --muted: #e9edf2;
+  --muted-foreground: #526173;
+  --accent: #e9edf2;
+  --accent-foreground: #17212b;
+  --table-head: #e9edf2;
+  --divider: #e4e9ef;
+  --link: #006b78;
   --destructive: #b42318;
   --success: #1f7a4a;
   --warning: #8f5207;
   --warning-foreground: #8f5207;
   --info: #3b5f86;
-  --border: #e2e8e2;
-  --input: #d8ddd5;
-  --ring: #174d32;
+  --border: #d6dde5;
+  --input: #c5ced9;
+  --ring: #174d38;
   --chart-1: #174d32;
   --chart-2: #4d7c62;
   --chart-3: #8aab96;
@@ -150,28 +160,27 @@
   --sidebar-ring: #f0f5f2;
 }
 
-/* Dashboard-only palette; scoped so other staff pages keep the shared tokens. */
-[data-staff-shell]:has([data-dashboard-theme]) {
-  --background: #f5f4ef;
-}
-
-/* Schedule-only page background. Sets the colour, not `--background`, so controls inside its white panels stay white. */
-[data-staff-shell]:has([data-schedule-page]) {
-  background-color: #f3f4f6;
+/* Generated customer documents keep their original palette so printed output is unchanged. */
+[data-print-document] {
+  --background: #f8f7f3;
+  --foreground: #202b25;
+  --card-foreground: #202b25;
+  --primary: #174d32;
+  --sage: #eaf0e9;
+  --secondary: #eaf0e9;
+  --muted: #f1f1ec;
+  --muted-foreground: #64756d;
+  --accent: #eaf0e9;
+  --border: #e2e8e2;
+  --input: #d8ddd5;
 }
 
 [data-dashboard-theme] {
-  --foreground: #18251f;
-  --card-foreground: #18251f;
-  --muted-foreground: #536159;
-  --primary: #18543d;
-  --ring: #18543d;
   --brand-deep: #123d2e;
-  --sage: #e8f0ea;
   /* `--border` drives internal row dividers; card outlines use `--surface-border`. */
-  --border: #e6eae6;
-  --surface-border: #d8ded8;
-  --shadow-soft: 0 2px 8px rgb(18 61 46 / 0.06);
+  --border: var(--divider);
+  --surface-border: #d6dde5;
+  --shadow-soft: 0 1px 2px rgb(23 33 43 / 0.04);
 }
 
 @utility shadow-soft {

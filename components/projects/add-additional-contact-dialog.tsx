@@ -188,7 +188,7 @@ export function AddAdditionalContactDialog({
           </div>
 
           {scopingAvailable && (
-            <label className="flex items-start gap-2.5 rounded-lg border bg-[#F8F7F3] p-3 text-sm sm:col-span-2">
+            <label className="flex items-start gap-2.5 rounded-lg border bg-[#F3F4F6] p-3 text-sm sm:col-span-2">
               <input
                 type="checkbox"
                 name="project_only"
@@ -259,7 +259,7 @@ export function AddAdditionalContactDialog({
           )}
 
           {confirmDiscard ? (
-            <div className="flex flex-col gap-3 rounded-lg border bg-[#F8F7F3] p-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between" role="alert">
+            <div className="flex flex-col gap-3 rounded-lg border bg-[#F3F4F6] p-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between" role="alert">
               <span className="text-sm text-foreground">Discard the details you entered?</span>
               <div className="flex gap-2">
                 <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmDiscard(false)}>

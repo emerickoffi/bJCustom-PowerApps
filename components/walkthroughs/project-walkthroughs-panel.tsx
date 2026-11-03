@@ -47,7 +47,7 @@ export async function ProjectWalkthroughsPanel({ projectId, canCreate }: { proje
             <li key={w.id}>
               <Link
                 href={`/projects/${projectId}/walkthroughs/${w.id}`}
-                className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[#F8F7F3]"
+                className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[#F3F4F6]"
               >
                 <span className="flex min-w-0 flex-col gap-0.5">
                   <span className="truncate text-sm font-medium text-foreground">{w.title}</span>
@@ -81,7 +81,7 @@ export async function ProjectWalkthroughsPanel({ projectId, canCreate }: { proje
               <li key={issue.id}>
                 <Link
                   href={`/projects/${projectId}/issues/${issue.id}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[#F8F7F3]"
+                  className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[#F3F4F6]"
                 >
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate text-sm font-medium text-foreground">{issue.item_label}</span>

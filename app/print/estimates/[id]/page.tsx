@@ -47,7 +47,7 @@ export default async function EstimatePrintPage({ params }: { params: Promise<{ 
   const { session, estimate } = await loadEstimate(id)
   if (!estimate.project) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-xl flex-col items-start justify-center gap-4 px-6">
+      <main data-print-document className="mx-auto flex min-h-dvh max-w-xl flex-col items-start justify-center gap-4 px-6">
         <h1 className="font-serif text-2xl font-semibold">Estimate PDF unavailable</h1>
         <p className="text-muted-foreground">
           {"This estimate's project record could not be loaded, so a PDF was not generated. Refresh the page or check that the project still exists."}
@@ -92,7 +92,7 @@ export default async function EstimatePrintPage({ params }: { params: Promise<{ 
   ]
 
   return (
-    <div className="min-h-dvh bg-muted/40 py-8 print:bg-white print:py-0">
+    <div data-print-document className="min-h-dvh bg-muted/40 py-8 print:bg-white print:py-0">
       <div className="mx-auto mb-6 flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 print:hidden">
         <Button variant="ghost" size="lg" render={<Link href={`/estimates/${estimate.id}`} />} nativeButton={false}>
           <ArrowLeft data-icon="inline-start" />

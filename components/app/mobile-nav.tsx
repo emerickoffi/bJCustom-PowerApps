@@ -25,7 +25,7 @@ export function MobileNav({
         <Menu className="size-5" aria-hidden="true" />
       </SheetTrigger>
       <SheetContent data-staff-nav side="left" className="flex w-[18rem] flex-col gap-0 border-sidebar-border bg-sidebar p-0">
-        <SheetHeader className="border-b border-[#D8DED8] bg-white px-7 py-6">
+        <SheetHeader className="border-b border-[#D6DDE5] bg-white px-7 py-6">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <div className="w-44">{logo}</div>
         </SheetHeader>

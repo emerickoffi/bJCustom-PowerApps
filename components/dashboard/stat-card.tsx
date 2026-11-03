@@ -28,7 +28,7 @@ const TONE: Record<StatTone, { card: string; icon: string; alert?: string }> = {
     alert: 'border-[#E3CB98] shadow-[inset_3px_0_0_#B7862F,var(--shadow-soft)] hover:border-[#C9A35E]',
   },
   contract: {
-    card: 'border-[#18543D] bg-[#18543D] hover:border-[#123D2E] [--foreground:#FFFFFF] [--muted-foreground:#E0ECE4] [--primary:#FFFFFF]',
+    card: 'border-[#174D38] bg-[#174D38] hover:border-[#123D2E] [--foreground:#FFFFFF] [--muted-foreground:#E0ECE4] [--primary:#FFFFFF]',
     icon: 'bg-white/12 text-white',
   },
   schedule: {

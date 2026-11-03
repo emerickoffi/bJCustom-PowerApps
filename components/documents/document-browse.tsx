@@ -119,7 +119,7 @@ function CategoryIcon({ category, active }: { category: string; active: boolean 
     <span
       className={cn(
         'flex size-7 shrink-0 items-center justify-center rounded-md',
-        active ? 'bg-white text-primary' : 'bg-[#EAF0E9] text-[#174D32]',
+        active ? 'bg-white text-primary' : 'bg-[#E6F0EB] text-[#174D38]',
       )}
       aria-hidden="true"
     >
@@ -140,7 +140,7 @@ export function CategoryNav({
   const total = Object.values(counts).reduce((a, b) => a + b, 0)
   const items = [{ key: '', label: 'All documents', count: total }, ...DOCUMENT_CATEGORIES.map((c) => ({ key: c.key, label: c.label, count: counts[c.key] }))]
   return (
-    <nav aria-labelledby="document-library-heading" className="rounded-xl border border-[#E2E8E2] bg-card p-2">
+    <nav aria-labelledby="document-library-heading" className="rounded-xl border border-[#D6DDE5] bg-card p-2">
       <h2 id="document-library-heading" className="px-3 pb-2 pt-2 font-serif text-base font-semibold text-foreground">
         Library
       </h2>
@@ -154,14 +154,14 @@ export function CategoryNav({
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                  active ? 'bg-[#EAF0E9] font-medium text-primary' : 'text-muted-foreground hover:bg-[#F8F7F3] hover:text-foreground',
+                  active ? 'bg-[#E6F0EB] font-medium text-primary' : 'text-muted-foreground hover:bg-[#F3F4F6] hover:text-foreground',
                 )}
               >
                 <span className="flex min-w-0 items-center gap-2.5">
                   <CategoryIcon category={item.key} active={active} />
                   <span className="whitespace-nowrap lg:whitespace-normal">{item.label}</span>
                 </span>
-                <span className={cn('rounded-full px-1.5 text-xs tabular-nums', active ? 'bg-white text-primary' : 'bg-[#F8F7F3]')}>
+                <span className={cn('rounded-full px-1.5 text-xs tabular-nums', active ? 'bg-white text-primary' : 'bg-[#F3F4F6]')}>
                   {item.count}
                 </span>
               </Link>

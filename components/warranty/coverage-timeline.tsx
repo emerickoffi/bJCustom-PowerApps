@@ -42,7 +42,7 @@ export function CoverageTimeline({
   }
 
   return (
-    <ol className="flex flex-col divide-y divide-[#E2E8E2]" aria-label="Coverage periods">
+    <ol className="flex flex-col divide-y divide-[#D6DDE5]" aria-label="Coverage periods">
       {milestones.map((m) => {
         const { state, daysRemaining } = coverageState(m, todayIso)
         const progress = coverageProgress(startDate, m.due_on, todayIso)

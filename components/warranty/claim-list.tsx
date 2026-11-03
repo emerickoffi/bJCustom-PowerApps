@@ -131,7 +131,7 @@ export async function ClaimList({
   const staffNames = new Map(staff.map((s) => [s.id, s.name]))
 
   return (
-    <ul className={cn('flex flex-col', embedded ? 'divide-y divide-[#E2E8E2]' : 'gap-4')}>
+    <ul className={cn('flex flex-col', embedded ? 'divide-y divide-[#D6DDE5]' : 'gap-4')}>
       {claims.map((c) => {
         const statusLabel =
           (audience === 'staff' ? STAFF_STATUS_OVERRIDES[c.status] : undefined) ?? CLAIM_STATUS_LABELS[c.status] ?? c.status

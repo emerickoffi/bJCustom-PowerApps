@@ -52,7 +52,7 @@ function ColorField({
         </p>
       ) : (
         <p id={`${name}-hint`} className="text-xs text-muted-foreground">
-          Hex, e.g. #174D32
+          Hex, e.g. #174D38
         </p>
       )}
     </div>
@@ -87,7 +87,7 @@ export function CompanyBrandingSection({
       <div className="flex flex-col gap-4 sm:col-span-2 lg:flex-row">
         <div className="flex flex-1 flex-col gap-3">
           <span className="text-sm font-medium text-foreground">Logo preview</span>
-          <div className="flex h-32 items-center justify-center rounded-lg border border-[#E2E8E2] bg-[#F8F7F3] p-4">
+          <div className="flex h-32 items-center justify-center rounded-lg border border-[#D6DDE5] bg-[#F3F4F6] p-4">
             {logoFailed && !usingDefault ? (
               <p className="text-center text-sm text-destructive">This logo URL could not be loaded.</p>
             ) : (
@@ -109,7 +109,7 @@ export function CompanyBrandingSection({
 
         <div className="flex flex-1 flex-col gap-3">
           <span className="text-sm font-medium text-foreground">Branding preview</span>
-          <div className="overflow-hidden rounded-lg border border-[#E2E8E2] bg-card">
+          <div className="overflow-hidden rounded-lg border border-[#D6DDE5] bg-card">
             <div className="flex items-center gap-3 px-4 py-3" style={{ backgroundColor: previewSecondary }}>
               <span className="truncate font-serif text-sm font-semibold text-white">{displayName}</span>
             </div>

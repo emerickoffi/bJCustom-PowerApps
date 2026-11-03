@@ -36,7 +36,7 @@ export function DirectoryViewSwitcher({
   label: string
 }) {
   return (
-    <div role="group" aria-label={label} className="inline-flex shrink-0 rounded-lg border border-[#E2E8E2] bg-card p-0.5">
+    <div role="group" aria-label={label} className="inline-flex shrink-0 rounded-lg border border-[#D6DDE5] bg-card p-0.5">
       {VIEW_OPTIONS.map(({ value: option, label: optionLabel, icon: Icon }) => {
         const active = option === value
         return (
@@ -48,7 +48,7 @@ export function DirectoryViewSwitcher({
             onClick={() => onChange(option)}
             className={cn(
               'inline-flex h-9 min-w-11 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50',
-              active ? 'bg-[#174D32] text-white shadow-xs' : 'text-muted-foreground hover:bg-[#EAF0E9] hover:text-[#103B27]',
+              active ? 'bg-[#174D38] text-white shadow-xs' : 'text-muted-foreground hover:bg-[#E6F0EB] hover:text-[#103B27]',
             )}
           >
             <Icon className="size-4" aria-hidden="true" />

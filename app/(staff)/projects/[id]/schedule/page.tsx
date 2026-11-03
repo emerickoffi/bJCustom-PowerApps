@@ -48,13 +48,13 @@ function KpiCard({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-[#E2E8E2] bg-white p-4">
+    <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-[#D6DDE5] bg-white p-4">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium uppercase tracking-wider text-[#103B27]/60">{label}</span>
         <span
           className={cn(
             'flex size-7 items-center justify-center rounded-lg',
-            tone === 'alert' ? 'bg-[#FDE8E7] text-[#BD302B]' : 'bg-[#EAF0E9] text-[#174D32]',
+            tone === 'alert' ? 'bg-[#FDE8E7] text-[#BD302B]' : 'bg-[#E6F0EB] text-[#174D38]',
           )}
           aria-hidden="true"
         >

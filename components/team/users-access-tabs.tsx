@@ -8,7 +8,7 @@ const TABS = [
 
 export function UsersAccessTabs({ active }: { active: (typeof TABS)[number]['value'] }) {
   return (
-    <nav aria-label="Account type" className="-mt-2 border-b border-[#E2E8E2]">
+    <nav aria-label="Account type" className="-mt-2 border-b border-[#D6DDE5]">
       <ul className="flex gap-1">
         {TABS.map((tab) => {
           const current = tab.value === active
@@ -17,7 +17,7 @@ export function UsersAccessTabs({ active }: { active: (typeof TABS)[number]['val
               <Link
                 href={tab.href}
                 aria-current={current ? 'page' : undefined}
-                className="-mb-px flex items-center gap-2 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-[#64756D] transition-colors hover:text-[#174D32] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D32]/30 aria-[current=page]:border-[#174D32] aria-[current=page]:text-[#174D32]"
+                className="-mb-px flex items-center gap-2 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-[#526173] transition-colors hover:text-[#174D38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38]/30 aria-[current=page]:border-[#174D38] aria-[current=page]:text-[#174D38]"
               >
                 <tab.icon className="size-4" aria-hidden="true" />
                 {tab.label}

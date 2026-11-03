@@ -13,7 +13,7 @@ export function ClaimProgress({ audience, ...input }: ClaimProgressInput & { aud
   const next = nextClaimAction(input.status, input.homeowner_validation, audience)
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg bg-[#F8F7F3] p-3 md:p-4">
+    <div className="flex flex-col gap-3 rounded-lg bg-[#F3F4F6] p-3 md:p-4">
       <ol className="flex flex-col gap-2 md:flex-row md:gap-0" aria-label="Claim progress">
         {steps.map((s, i) => (
           <li key={s.key} className="flex items-center gap-2 md:flex-1 md:flex-col md:items-start md:gap-1.5">

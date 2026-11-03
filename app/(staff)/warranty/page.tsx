@@ -185,7 +185,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
               'flex min-h-11 items-center rounded-full border px-3.5 text-sm font-medium transition-colors md:min-h-0 md:py-1.5',
               filter === f.value
                 ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-[#E2E8E2] bg-card text-foreground hover:bg-[#EAF0E9] hover:text-primary',
+                : 'border-[#D6DDE5] bg-card text-foreground hover:bg-[#E6F0EB] hover:text-primary',
             )}
           >
             {f.label}
@@ -263,7 +263,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
         </ul>
         <div className="surface hidden overflow-x-auto md:block">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-[#E2E8E2] bg-[#F4F6F3] text-left text-xs font-medium uppercase tracking-wide text-[#64756D]">
+            <thead className="border-b border-[#D6DDE5] bg-[#F4F6F3] text-left text-xs font-medium uppercase tracking-wide text-[#526173]">
               <tr>
                 <th scope="col" className="px-5 py-3 font-medium">Project</th>
                 <th scope="col" className="px-5 py-3 font-medium">Stage</th>
@@ -272,11 +272,11 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
                 <th scope="col" className="px-5 py-3 font-medium">Next milestone</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E2E8E2]/80">
+            <tbody className="divide-y divide-[#D6DDE5]/80">
               {rows.map((r) => {
                 const claims = openClaims.get(r.project_id) ?? 0
                 return (
-                  <tr key={r.id} className="transition-colors hover:bg-[#F8F7F3]">
+                  <tr key={r.id} className="transition-colors hover:bg-[#F3F4F6]">
                     <td className="max-w-xs px-5 py-3.5">
                       <div className="flex min-w-0 items-baseline gap-2 whitespace-nowrap">
                         <Link

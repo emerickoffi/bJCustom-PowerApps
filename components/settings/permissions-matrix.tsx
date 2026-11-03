@@ -52,7 +52,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <ul aria-label="Legend" className="grid gap-3 text-sm text-[#64756D] sm:grid-cols-2 lg:grid-cols-4">
+      <ul aria-label="Legend" className="grid gap-3 text-sm text-[#526173] sm:grid-cols-2 lg:grid-cols-4">
         {STATE_ORDER.map((key) => (
           <li key={key} className="flex items-start gap-2.5">
             <AccessBadge access={key} />
@@ -76,7 +76,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search module or action"
-            className="border-[#E2E8E2] bg-white pl-9"
+            className="border-[#D6DDE5] bg-white pl-9"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -89,10 +89,10 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                   type="button"
                   aria-pressed={active}
                   onClick={() => setStateFilter(key)}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D32] ${
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D38] ${
                     active
-                      ? 'border-[#174D32] bg-[#174D32] text-white'
-                      : 'border-[#E2E8E2] bg-white text-[#64756D] hover:bg-[#F8F7F3] hover:text-[#103B27]'
+                      ? 'border-[#174D38] bg-[#174D38] text-white'
+                      : 'border-[#D6DDE5] bg-white text-[#526173] hover:bg-[#F3F4F6] hover:text-[#103B27]'
                   }`}
                 >
                   {key === 'all' ? 'All states' : ACCESS_META[key].label}
@@ -103,7 +103,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
           <button
             type="button"
             onClick={toggleAll}
-            className="rounded-full px-3 py-1 text-xs font-medium text-[#174D32] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D32]"
+            className="rounded-full px-3 py-1 text-xs font-medium text-[#174D38] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D38]"
           >
             {allCollapsed ? 'Expand all' : 'Collapse all'}
           </button>
@@ -114,7 +114,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
         {resultCount} {resultCount === 1 ? 'permission' : 'permissions'} shown
       </p>
 
-      <div className="max-h-[75vh] overflow-auto rounded-xl border border-[#E2E8E2] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
+      <div className="max-h-[75vh] overflow-auto rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
         <table className="w-full min-w-[640px] border-separate border-spacing-0 text-sm">
           <caption className="sr-only">
             Effective permissions by role, module, and action. Select a cell to see its conditions.
@@ -123,7 +123,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
             <tr className="text-left">
               <th
                 scope="col"
-                className="sticky left-0 top-0 z-30 border-b border-[#E2E8E2] bg-[#F8F7F3] px-4 py-3 font-medium text-[#64756D]"
+                className="sticky left-0 top-0 z-30 border-b border-[#D6DDE5] bg-[#F3F4F6] px-4 py-3 font-medium text-[#526173]"
               >
                 Module / action
               </th>
@@ -131,12 +131,12 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                 <th
                   key={role}
                   scope="col"
-                  className="sticky top-0 z-20 w-32 border-b border-[#E2E8E2] bg-[#F8F7F3] px-2 py-3 text-center font-medium"
+                  className="sticky top-0 z-20 w-32 border-b border-[#D6DDE5] bg-[#F3F4F6] px-2 py-3 text-center font-medium"
                 >
                   <button
                     type="button"
                     onClick={() => setDetailRole(role)}
-                    className="rounded-md px-2 py-1 text-[#174D32] underline decoration-[#174D32]/30 underline-offset-4 hover:decoration-[#174D32] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D32]"
+                    className="rounded-md px-2 py-1 text-[#174D38] underline decoration-[#174D38]/30 underline-offset-4 hover:decoration-[#174D38] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D38]"
                   >
                     {ROLE_LABELS[role]}
                     <span className="sr-only">: view role details</span>
@@ -148,7 +148,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
           {visible.length === 0 && (
             <tbody>
               <tr>
-                <td colSpan={MATRIX_ROLES.length + 1} className="px-4 py-10 text-center text-[#64756D]">
+                <td colSpan={MATRIX_ROLES.length + 1} className="px-4 py-10 text-center text-[#526173]">
                   No permissions match your search and filter.
                 </td>
               </tr>
@@ -165,7 +165,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                     <th
                       scope="rowgroup"
                       colSpan={MATRIX_ROLES.length + 1}
-                      className="border-t border-[#E2E8E2] bg-white px-4 pb-1 pt-4 text-left first:border-t-0"
+                      className="border-t border-[#D6DDE5] bg-white px-4 pb-1 pt-4 text-left first:border-t-0"
                     >
                       <div className="sticky left-4 flex max-w-[calc(100vw-5rem)] flex-col gap-1 sm:max-w-none">
                         <button
@@ -173,10 +173,10 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                           aria-expanded={!isCollapsed}
                           aria-controls={groupId}
                           onClick={() => toggleModule(mod.id)}
-                          className="flex w-fit items-center gap-2 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D32]"
+                          className="flex w-fit items-center gap-2 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D38]"
                         >
                           <ChevronDown
-                            className={`size-4 text-[#64756D] transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+                            className={`size-4 text-[#526173] transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
                             aria-hidden="true"
                           />
                           <span className="font-serif text-base font-semibold text-foreground">{mod.module}</span>
@@ -186,12 +186,12 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                         </button>
                         <span className="flex flex-wrap items-center gap-2 pl-6 text-xs font-normal">
                           {off && (
-                            <span className="rounded-full bg-[#F4F4F1] px-2 py-0.5 font-medium text-[#64756D]">
+                            <span className="rounded-full bg-[#F4F4F1] px-2 py-0.5 font-medium text-[#526173]">
                               Turned off for your company
                             </span>
                           )}
                           <code className="text-[#8A948E]">{mod.guard}</code>
-                          <span className="text-[#64756D]">{mod.database}</span>
+                          <span className="text-[#526173]">{mod.database}</span>
                         </span>
                       </div>
                     </th>
@@ -226,8 +226,8 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                                   aria-label={`${ROLE_LABELS[role]}, ${row.action}: ${meta.label}. ${explanation}`}
                                   title={`${meta.label}: ${explanation}`}
                                   onClick={() => setSelected(isOpen ? null : { rowKey, role })}
-                                  className={`inline-flex rounded-full p-0.5 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#174D32] ${
-                                    isOpen ? 'ring-2 ring-[#174D32]/40' : 'hover:ring-2 hover:ring-[#E2E8E2]'
+                                  className={`inline-flex rounded-full p-0.5 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#174D38] ${
+                                    isOpen ? 'ring-2 ring-[#174D38]/40' : 'hover:ring-2 hover:ring-[#D6DDE5]'
                                   }`}
                                 >
                                   <AccessBadge access={cell.state} />
@@ -239,14 +239,14 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                         {open && openCell && (
                           <tr id={detailId}>
                             <td colSpan={MATRIX_ROLES.length + 1} className="px-4 pb-3">
-                              <div className="sticky left-4 flex max-w-[calc(100vw-5rem)] items-start gap-3 rounded-lg border border-[#E2E8E2] bg-[#F8F7F3] p-3 text-left sm:max-w-none">
+                              <div className="sticky left-4 flex max-w-[calc(100vw-5rem)] items-start gap-3 rounded-lg border border-[#D6DDE5] bg-[#F3F4F6] p-3 text-left sm:max-w-none">
                                 <AccessBadge access={openCell.state} />
                                 <div className="flex flex-col gap-1">
                                   <p className="text-sm font-medium text-foreground">
                                     {ROLE_LABELS[open.role]} · {ACCESS_META[openCell.state].label}
                                   </p>
                                   {openCell.why && <p className="text-sm text-[#103B27]">{openCell.why}</p>}
-                                  <p className="text-xs text-[#64756D]">{ACCESS_DEFINITIONS[openCell.state]}</p>
+                                  <p className="text-xs text-[#526173]">{ACCESS_DEFINITIONS[openCell.state]}</p>
                                 </div>
                               </div>
                             </td>
@@ -262,7 +262,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
         </table>
       </div>
 
-      <p className="text-xs text-[#64756D]">
+      <p className="text-xs text-[#526173]">
         This view can&apos;t be edited. Roles are assigned in Users &amp; Access. Each cell reflects the server-side
         checks and the live database security policies. Select a cell or a role name for the exact conditions.
       </p>
