@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import { CLIENT_STATUS_LABELS, type ClientStatus, type ProjectStatus } from '@/lib/domain'
 import { ProjectStatusBanner } from '@/components/shared/project-status-banner'
+import { ActiveStatusBadge } from '@/components/shared/semantic-badge'
 
 type Tone = 'neutral' | 'sage' | 'primary' | 'solid' | 'warning' | 'danger' | 'champagne' | 'info'
 
@@ -52,6 +53,7 @@ export function ProjectStatusBadge({ status, className }: { status: ProjectStatu
 }
 
 export function ClientStatusBadge({ status, className }: { status: ClientStatus; className?: string }) {
+  if (status === 'active') return <ActiveStatusBadge className={className}>{CLIENT_STATUS_LABELS[status]}</ActiveStatusBadge>
   return (
     <StatusPill tone={CLIENT_TONE[status]} className={cn(status === 'archived' && 'line-through', className)}>
       {CLIENT_STATUS_LABELS[status]}

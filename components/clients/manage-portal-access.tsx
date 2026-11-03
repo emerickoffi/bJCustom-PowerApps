@@ -10,6 +10,7 @@ import {
 } from '@/app/actions/provisioning'
 import { initialActionState } from '@/lib/action-state'
 import { Badge } from '@/components/ui/badge'
+import { ActiveStatusBadge } from '@/components/shared/semantic-badge'
 import { SelectField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { ActionButton } from '@/components/shared/inline-action'
@@ -54,7 +55,7 @@ function ProjectChecklist({ projects, selected }: { projects: PortalProjectOptio
 function AccountStatus({ account }: { account: PortalAccountRow }) {
   if (account.status === 'suspended') return <Badge variant="destructive">Suspended</Badge>
   if (account.activationRequired) return <Badge variant="outline">Awaiting first sign-in</Badge>
-  return <Badge variant="secondary">Active</Badge>
+  return <ActiveStatusBadge />
 }
 
 function AccountItem({ account, projects }: { account: PortalAccountRow; projects: PortalProjectOption[] }) {

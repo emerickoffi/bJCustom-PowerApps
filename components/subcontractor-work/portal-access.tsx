@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { ActiveStatusBadge } from '@/components/shared/semantic-badge'
 import { TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { ActionButton } from '@/components/shared/inline-action'
@@ -26,7 +27,7 @@ function AccountItem({ account, canEdit }: { account: SubPortalAccountRow; canEd
           <span className="font-medium text-foreground">{account.name}</span>
           <span className="break-all text-xs text-muted-foreground">{account.email}</span>
         </div>
-        {account.status === 'revoked' ? <Badge variant="destructive">Revoked</Badge> : <Badge variant="secondary">Active</Badge>}
+        {account.status === 'revoked' ? <Badge variant="destructive">Revoked</Badge> : <ActiveStatusBadge />}
       </div>
       {canEdit && (
         <div className="flex flex-wrap items-center gap-2">

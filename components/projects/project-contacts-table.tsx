@@ -13,6 +13,7 @@ import type { AssignablePerson, ProjectCompanyContacts, ProjectContact } from '@
 import { endPersonProjectAction } from '@/app/actions/contacts'
 import { AssignDialog, type Prefill } from '@/components/projects/project-contacts-panel'
 import { segmentClass } from '@/lib/interaction-styles'
+import { ActiveStatusBadge } from '@/components/shared/semantic-badge'
 
 type DialogState = { prefill: Prefill; mode: 'existing' | 'new' } | null
 
@@ -26,7 +27,7 @@ function StatusPill({ contact }: { contact: ProjectContact }) {
   if (contact.person_status === 'inactive') {
     return <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">Inactive contact</span>
   }
-  return <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Active</span>
+  return <ActiveStatusBadge />
 }
 
 function Dash() {

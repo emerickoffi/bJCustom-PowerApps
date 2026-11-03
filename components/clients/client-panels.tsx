@@ -40,6 +40,7 @@ import { ActionButton, InlineActionForm } from '@/components/shared/inline-actio
 import { SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { SubmitButton } from '@/components/shared/form-message'
 import { StatusPill } from '@/components/shared/status-badge'
+import { ActiveStatusBadge } from '@/components/shared/semantic-badge'
 
 export type ContactRow = {
   id: string
@@ -161,7 +162,7 @@ function PortalAccountLine({ status }: { status: PortalAccountStatus }) {
   return (
     <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
       <span>Portal account:</span>
-      <StatusPill tone={s.tone}>{s.label}</StatusPill>
+      {status === 'active' ? <ActiveStatusBadge>{s.label}</ActiveStatusBadge> : <StatusPill tone={s.tone}>{s.label}</StatusPill>}
     </p>
   )
 }

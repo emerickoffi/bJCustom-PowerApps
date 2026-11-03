@@ -11,7 +11,7 @@ import {
 import { pillClass } from '@/lib/interaction-styles'
 
 const STATUS_TONE: Record<HomeownerAccountStatus, SemanticTone> = {
-  active: 'success',
+  active: 'active',
   pending_activation: 'pending',
   suspended: 'danger',
   contact_disabled: 'orange',
