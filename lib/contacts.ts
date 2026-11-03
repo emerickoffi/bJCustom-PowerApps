@@ -238,16 +238,39 @@ export function validateInlineField(
   return { ok: true, value: result.data as string | null }
 }
 
+export const SUPPLIER_PRODUCT_CATEGORIES = [
+  'Lumber & Framing',
+  'Windows & Doors',
+  'Cabinets & Millwork',
+  'Roofing Materials',
+  'Electrical Supplies',
+  'Plumbing Supplies',
+  'HVAC Equipment',
+  'Flooring & Tile',
+  'Paint & Finishes',
+  'Concrete & Masonry',
+  'Drywall & Insulation',
+  'Hardware & Fasteners',
+  'Appliances',
+  'Countertops',
+  'Lighting',
+  'Landscaping Materials',
+  'Other',
+] as const
+
+export const MAX_PRODUCT_CATEGORIES = 20
+export const MAX_PRODUCT_CATEGORY_LENGTH = 60
+
 /** Product categories arrive as a comma separated list; trims, de-duplicates (case-insensitive), and caps. */
 export function parseProductCategories(raw: string | null | undefined): string[] {
   const seen = new Set<string>()
   const out: string[] = []
   for (const part of (raw ?? '').split(',')) {
-    const name = part.trim().replace(/\s+/g, ' ').slice(0, 60)
+    const name = part.trim().replace(/\s+/g, ' ').slice(0, MAX_PRODUCT_CATEGORY_LENGTH)
     if (!name || seen.has(name.toLowerCase())) continue
     seen.add(name.toLowerCase())
     out.push(name)
-    if (out.length >= 20) break
+    if (out.length >= MAX_PRODUCT_CATEGORIES) break
   }
   return out
 }
