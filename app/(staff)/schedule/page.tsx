@@ -51,7 +51,11 @@ function addDays(iso: string, days: number) {
 const isOpen = (a: Pick<ScheduleActivity, 'status'>) => a.status !== 'completed' && a.status !== 'skipped'
 
 function ScheduleShell({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-col gap-5 rounded-2xl bg-[#F3F4F6] p-3 sm:p-4 lg:p-5">{children}</div>
+  return (
+    <div data-schedule-page className="flex flex-col gap-5">
+      {children}
+    </div>
+  )
 }
 
 /** White header surface; overrides the shared plain header's own divider so only this border shows. */
