@@ -160,13 +160,16 @@ export default async function EstimatesPage({
             </thead>
             <tbody className="divide-y divide-[#E3E8EE] bg-white">
               {estimates.map((e) => (
-                <tr key={e.id} className="align-top transition-colors hover:bg-[#F7F9FB]">
+                <tr
+                  key={e.id}
+                  className="align-top transition-colors hover:bg-[#EFF6FF] has-[:focus-visible]:bg-[#EFF6FF] has-[:focus-visible]:shadow-[inset_3px_0_0_#1D4ED8]"
+                >
                   <td className="px-5 py-3">
                     <div className="flex min-w-0 flex-col gap-1">
                       <Link
                         href={`/estimates/${e.id}`}
                         title={e.name}
-                        className="line-clamp-2 break-words rounded-sm font-medium text-[#17212B] hover:text-[#1D4ED8] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D4ED8]"
+                        className="line-clamp-2 break-words rounded-sm font-medium text-[#1D4ED8] hover:text-[#1E40AF] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D4ED8]"
                       >
                         {e.name}
                       </Link>
@@ -210,7 +213,7 @@ export default async function EstimatesPage({
                       <span className="text-xs">{` of ${revisionCount.get(e.family_id)}`}</span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right font-medium tabular-nums">
+                  <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-[#17212B]">
                     {formatCents(e.construction_total_cents)}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 tabular-nums text-[#526173]">{formatDate(e.created_at)}</td>
@@ -218,7 +221,7 @@ export default async function EstimatesPage({
                     <div className="flex items-center justify-end gap-1">
                       <Link
                         href={`/estimates/${e.id}`}
-                        className="inline-flex h-9 items-center gap-1 rounded-md px-2.5 text-sm font-medium text-[#1D4ED8] transition-colors hover:bg-[#EFF6FF] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1D4ED8]"
+                        className="inline-flex h-9 items-center gap-1 rounded-md border border-[#BFDBFE] bg-white px-2.5 text-sm font-medium text-[#1D4ED8] transition-colors hover:border-[#93C5FD] hover:bg-[#EFF6FF] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1D4ED8]"
                       >
                         View
                         <span className="sr-only">{` ${e.estimate_number}`}</span>
@@ -238,7 +241,10 @@ export default async function EstimatesPage({
               <li key={e.id} className="flex flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 flex-col gap-1">
-                    <Link href={`/estimates/${e.id}`} className="break-words font-medium text-[#17212B] hover:text-[#1D4ED8]">
+                    <Link
+                      href={`/estimates/${e.id}`}
+                      className="break-words rounded-sm font-medium text-[#1D4ED8] hover:text-[#1E40AF] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D4ED8]"
+                    >
                       {e.name}
                     </Link>
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -250,7 +256,7 @@ export default async function EstimatesPage({
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-col items-end">
-                    <span className="font-medium tabular-nums text-[#17212B]">{formatCents(e.construction_total_cents)}</span>
+                    <span className="font-semibold tabular-nums text-[#17212B]">{formatCents(e.construction_total_cents)}</span>
                     <span className="text-xs text-[#526173]">Construction total</span>
                   </div>
                 </div>
@@ -263,7 +269,10 @@ export default async function EstimatesPage({
                   <span className="whitespace-nowrap">{formatDate(e.created_at)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" className="h-11" render={<Link href={`/estimates/${e.id}`} />} nativeButton={false}>
+                  <Button
+                    variant="outline"
+                    className="h-11 border-[#BFDBFE] text-[#1D4ED8] hover:bg-[#EFF6FF] hover:text-[#1D4ED8]"
+                    render={<Link href={`/estimates/${e.id}`} />} nativeButton={false}>
                     View
                     <span className="sr-only">{` ${e.estimate_number}`}</span>
                   </Button>
