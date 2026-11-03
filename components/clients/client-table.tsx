@@ -47,7 +47,7 @@ export function ClientTable({
               const location = [client.city, client.state].filter(Boolean).join(', ')
               const preference = preferenceLabel(primary?.preferred_communication)
               return (
-                <tr key={client.id} className="transition-colors hover:bg-[#F3F4F6]/70">
+                <tr key={client.id} className="transition-colors hover:bg-link-soft/60">
                   <td className="px-4 py-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <span
@@ -57,7 +57,7 @@ export function ClientTable({
                         {`${client.first_name.charAt(0)}${client.last_name.charAt(0)}`.toUpperCase()}
                       </span>
                       <div className="flex min-w-0 flex-col">
-                        <Link href={href} className="truncate font-medium text-foreground hover:text-primary hover:underline">
+                        <Link href={href} className="truncate font-medium text-link hover:text-link-hover hover:underline">
                           {name}
                         </Link>
                         <span className="text-xs text-muted-foreground">{`Client #${client.client_number}`}</span>

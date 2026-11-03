@@ -39,7 +39,7 @@ export function FinancialKpis({
                 : `${plural(count, 'signed estimate')} awaiting your decision`
               : 'No signed estimates awaiting a decision',
             href: count === 1 ? `/estimates/${items[0].id}` : '/actions?category=approvals',
-            accent: count ? ('cobalt' as const) : undefined,
+            accent: count ? ('link' as const) : undefined,
           }
         })()
       : { value: UNAVAILABLE, hint: estimates.reason, href: '/actions?category=approvals', accent: 'neutral' as const }

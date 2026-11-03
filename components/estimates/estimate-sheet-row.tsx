@@ -137,7 +137,7 @@ export const SheetRowView = memo(function SheetRowView({
   })
 
   return (
-    <tr className={cn('group border-b border-border/60 hover:bg-sage/30', row.is_allowance && 'bg-cobalt-soft/60')}>
+    <tr className={cn('group border-b border-border/60 hover:bg-sage/30', row.is_allowance && 'bg-link-soft/60')}>
       <th scope="row" className="h-10 border-r border-border/60 px-2 text-right text-xs font-normal tabular-nums text-muted-foreground">
         {index}
       </th>

@@ -253,7 +253,7 @@ function ContactRow({
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <Link
               href={`/contacts/people/${c.person_id}`}
-              className="min-w-0 break-words font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline"
+              className="min-w-0 break-words font-semibold text-link underline-offset-4 hover:text-link-hover hover:underline"
             >
               {c.name}
             </Link>

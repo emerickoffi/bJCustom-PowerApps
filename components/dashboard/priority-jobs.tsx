@@ -246,7 +246,7 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
             </thead>
             <tbody className="divide-y divide-border/60">
               {jobs.map((job) => (
-                <tr key={job.id} className="align-top transition-colors hover:bg-[#F7F8F5]">
+                <tr key={job.id} className="align-top transition-colors hover:bg-link-soft/60">
                   <td className="py-3.5 pl-2 pr-4">
                     <JobIdentity job={job} />
                   </td>

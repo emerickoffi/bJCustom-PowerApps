@@ -401,7 +401,7 @@ function AssignmentRow({ record: r }: { record: ProjectAssignmentRecord }) {
       <div className="flex min-w-0 flex-col gap-0.5">
         <Link
           href={`/projects/${r.project.id}`}
-          className="truncate text-sm font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+          className="truncate text-sm font-medium text-link underline-offset-4 hover:text-link-hover hover:underline"
         >
           {r.project.name}
         </Link>

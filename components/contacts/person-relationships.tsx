@@ -126,7 +126,7 @@ export function PersonCompanies({
             <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div className="flex min-w-0 flex-col gap-0.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Link href={`/contacts/companies/${r.company_id}`} className="font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline">
+                  <Link href={`/contacts/companies/${r.company_id}`} className="font-semibold text-link underline-offset-4 hover:text-link-hover hover:underline">
                     {r.company_name}
                   </Link>
                   {r.is_primary_contact && (
@@ -261,7 +261,7 @@ export function PersonProjects({
           {current.map((a) => (
             <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div className="flex min-w-0 flex-col gap-0.5">
-                <Link href={`/projects/${a.project_id}`} className="font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline">
+                <Link href={`/projects/${a.project_id}`} className="font-semibold text-link underline-offset-4 hover:text-link-hover hover:underline">
                   {a.name}
                 </Link>
                 <p className="text-sm text-muted-foreground">

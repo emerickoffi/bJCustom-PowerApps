@@ -161,7 +161,7 @@ function OrgChangeOrderTable({ rows }: { rows: OrgChangeOrderRow[] }) {
             const href = changeOrderPath(r.project_id, r.id)
             const date = keyDate(r)
             return (
-              <tr key={r.id} className="hover:bg-muted/40">
+              <tr key={r.id} className="hover:bg-link-soft/60">
                 <td className="max-w-[18rem] px-4 py-3 lg:px-5">
                   <Link href={href} className="flex min-w-0 flex-col underline-offset-4 hover:underline">
                     <span className="text-xs font-medium tabular-nums text-primary">{r.co_number}</span>

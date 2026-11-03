@@ -178,7 +178,7 @@ export function ProjectNav({
                         'flex h-11 items-center justify-center whitespace-nowrap rounded-lg px-3.5 text-sm font-medium transition-colors sm:h-9',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
                         active
-                          ? 'bg-primary text-primary-foreground shadow-xs ring-1 ring-inset ring-cobalt-border/50'
+                          ? 'bg-primary text-primary-foreground shadow-xs ring-1 ring-inset ring-link-border/50'
                           : 'text-muted-foreground hover:bg-sage hover:text-primary',
                       )}
                     >

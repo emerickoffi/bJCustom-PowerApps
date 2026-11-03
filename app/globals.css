@@ -44,11 +44,9 @@
   --color-champagne: var(--champagne);
   --color-champagne-soft: var(--champagne-soft);
   --color-champagne-foreground: var(--champagne-foreground);
-  --color-cobalt: var(--cobalt);
-  --color-cobalt-fill: var(--cobalt-fill);
-  --color-cobalt-soft: var(--cobalt-soft);
-  --color-cobalt-border: var(--cobalt-border);
-  --color-cobalt-hover: var(--cobalt-hover);
+  --color-link-hover: var(--link-hover);
+  --color-link-soft: var(--link-soft);
+  --color-link-border: var(--link-border);
   --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -88,12 +86,6 @@
   --champagne: #b89a69;
   --champagne-soft: #f4eee3;
   --champagne-foreground: #6e5630;
-  /* Decorative accent. Champagne above is kept only for semantic warning/status tones. */
-  --cobalt: #1d4ed8;
-  --cobalt-fill: #2563eb;
-  --cobalt-soft: #eff6ff;
-  --cobalt-border: #bfdbfe;
-  --cobalt-hover: #1e40af;
   --secondary: #e9edf2;
   --secondary-foreground: #17212b;
   --muted: #e9edf2;
@@ -102,7 +94,11 @@
   --accent-foreground: #17212b;
   --table-head: #e9edf2;
   --divider: #e4e9ef;
+  /* Schedule teal: the single interactive/decorative accent. Champagne is kept only for semantic tones. */
   --link: #006b78;
+  --link-hover: #005560;
+  --link-soft: #e6f3f4;
+  --link-border: #b9dde0;
   --destructive: #b42318;
   --success: #1f7a4a;
   --warning: #8f5207;

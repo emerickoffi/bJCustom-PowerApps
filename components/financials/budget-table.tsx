@@ -12,7 +12,7 @@ export function BudgetTable({ summary }: { summary: JobCostSummary }) {
     <div className="overflow-x-auto rounded-xl border border-border bg-card">
       <table className="w-full min-w-[720px] text-sm">
         <caption className="sr-only">Budget versus actual by cost code</caption>
-        <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
+        <thead className="border-b border-[#D6DDE5] bg-table-head text-xs font-medium text-[#526173]">
           <tr>
             <th scope="col" className="px-3 py-2 text-left font-medium">Cost code</th>
             <th scope="col" className="px-3 py-2 text-right font-medium">Original</th>

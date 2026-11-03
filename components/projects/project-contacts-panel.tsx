@@ -157,7 +157,7 @@ export function ProjectContactsPanel({
                 <div className="min-w-0">
                   <Link
                     href={`/contacts/people/${c.person_id}`}
-                    className="block truncate text-sm font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+                    className="block truncate text-sm font-medium text-link underline-offset-4 hover:text-link-hover hover:underline"
                   >
                     {c.name}
                   </Link>

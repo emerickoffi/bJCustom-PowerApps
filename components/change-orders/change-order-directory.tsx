@@ -145,7 +145,7 @@ function ChangeOrderTable({ projectId, projectName, rows }: { projectId: string;
           {rows.map((r) => {
             const href = changeOrderPath(projectId, r.id)
             return (
-              <tr key={r.id} className="hover:bg-muted/40">
+              <tr key={r.id} className="hover:bg-link-soft/60">
                 <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums lg:px-5">
                   <Link href={href} className="text-primary underline-offset-4 hover:underline">
                     {r.co_number}

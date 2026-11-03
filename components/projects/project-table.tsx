@@ -60,7 +60,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
               const panel = buildPanel(p)
               const date = dateCell(p)
               return (
-                <tr key={p.id} className="transition-colors hover:bg-[#F3F4F6]/70">
+                <tr key={p.id} className="transition-colors hover:bg-link-soft/60">
                   <td className="px-4 py-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="relative aspect-[4/3] w-14 shrink-0 overflow-hidden rounded-md bg-muted">
@@ -76,7 +76,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                         )}
                       </div>
                       <div className="flex min-w-0 flex-col">
-                        <Link href={href} className="line-clamp-2 font-medium text-foreground hover:text-primary hover:underline">
+                        <Link href={href} className="line-clamp-2 font-medium text-link hover:text-link-hover hover:underline">
                           {p.name}
                         </Link>
                         <span className="font-mono text-xs text-muted-foreground">{p.project_number}</span>

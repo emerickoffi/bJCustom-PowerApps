@@ -206,7 +206,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
             filter === 'all' ? (
               <Link
                 href="/projects"
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-card px-3.5 text-sm font-medium text-foreground transition-colors hover:bg-sage hover:text-primary"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-card px-3.5 text-sm font-medium text-link transition-colors hover:bg-sage hover:text-link-hover"
               >
                 Go to Projects
               </Link>
@@ -263,7 +263,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
         </ul>
         <div className="surface hidden overflow-x-auto md:block">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-[#D6DDE5] bg-[#F4F6F3] text-left text-xs font-medium uppercase tracking-wide text-[#526173]">
+            <thead className="border-b border-[#D6DDE5] bg-table-head text-left text-xs font-medium text-[#526173]">
               <tr>
                 <th scope="col" className="px-5 py-3 font-medium">Project</th>
                 <th scope="col" className="px-5 py-3 font-medium">Stage</th>
@@ -276,12 +276,12 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
               {rows.map((r) => {
                 const claims = openClaims.get(r.project_id) ?? 0
                 return (
-                  <tr key={r.id} className="transition-colors hover:bg-[#F3F4F6]">
+                  <tr key={r.id} className="transition-colors hover:bg-link-soft/60">
                     <td className="max-w-xs px-5 py-3.5">
                       <div className="flex min-w-0 items-baseline gap-2 whitespace-nowrap">
                         <Link
                           href={`/projects/${r.project_id}/warranty`}
-                          className="truncate font-semibold text-foreground hover:text-primary"
+                          className="truncate font-semibold text-link hover:text-link-hover"
                         >
                           {r.projects?.name ?? 'Project'}
                         </Link>
