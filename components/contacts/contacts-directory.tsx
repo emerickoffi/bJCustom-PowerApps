@@ -684,7 +684,7 @@ export function ContactsDirectory({
           <ul className="flex max-h-80 flex-col divide-y overflow-y-auto rounded-lg border">
             {projectsFor?.projects.map((p) => (
               <li key={`${p.project_id}-${p.association_id ?? ''}`} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                <Link href={`/projects/${p.project_id}`} className="min-w-0 truncate text-sm font-medium text-foreground underline-offset-4 hover:text-primary hover:underline">
+                <Link href={`/projects/${p.project_id}`} className="min-w-0 truncate text-sm font-medium text-link underline-offset-4 hover:text-link-hover hover:underline">
                   {p.name}
                 </Link>
                 <span className="shrink-0 text-xs text-muted-foreground">
@@ -781,7 +781,7 @@ function NameCell({ row }: { row: DirectoryRow }) {
         <Icon className="size-4" />
       </span>
       <div className="flex min-w-0 flex-col">
-        <Link href={isPerson ? overlayHref({ contact: row.id }) : rowHref(row)} scroll={isPerson ? false : undefined} className="truncate font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:underline">
+        <Link href={isPerson ? overlayHref({ contact: row.id }) : rowHref(row)} scroll={isPerson ? false : undefined} className="truncate font-semibold text-link underline-offset-4 hover:text-link-hover hover:underline focus-visible:underline">
           {rowName(row)}
         </Link>
         {row.kind === 'company' && row.company.subcontractor_company_id && (

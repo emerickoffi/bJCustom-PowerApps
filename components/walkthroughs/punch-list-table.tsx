@@ -245,7 +245,7 @@ export function PunchListTable({
 
       <div className="overflow-x-auto rounded-xl border bg-card">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <thead className="border-b border-[#D6DDE5] bg-table-head text-left text-xs font-medium text-[#526173]">
             <tr>
               <th scope="col" className="w-10 px-4 py-3">
                 <input

@@ -62,7 +62,7 @@ export const metadata: Metadata = { title: 'Project' }
 function Fact({ icon: Icon, label, value }: { icon: typeof Wallet; label: string; value: string }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-cobalt-border">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-link-border">
         <Icon className="size-4" aria-hidden="true" />
       </span>
       <div className="flex min-w-0 flex-col">
@@ -267,14 +267,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 {project.name}
               </h1>
               <p className="flex items-start gap-2 text-sm text-white/70">
-                <MapPin className="mt-0.5 size-4 shrink-0 text-cobalt-border" aria-hidden="true" />
+                <MapPin className="mt-0.5 size-4 shrink-0 text-link-border" aria-hidden="true" />
                 {formatAddress(project)}
               </p>
             </div>
             {isCompleted ? (
               <div className="flex flex-col gap-2">
                 <span className="flex items-center gap-2 text-sm font-medium">
-                  <CircleCheck className="size-4 text-cobalt-border" aria-hidden="true" />
+                  <CircleCheck className="size-4 text-link-border" aria-hidden="true" />
                   {completionDate ? `Completed ${formatDate(completionDate)}` : 'Completed · date not recorded'}
                 </span>
                 <div className="flex flex-wrap gap-2">
@@ -353,7 +353,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   size="lg"
                   render={<Link href={`/projects/${project.id}/schedule`} />}
                   nativeButton={false}
-                  className="bg-cobalt-fill text-white hover:bg-cobalt-hover focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-deep"
+                  className="bg-link text-white hover:bg-link-hover focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-deep"
                 >
                   <CalendarRange data-icon="inline-start" />
                   Open schedule

@@ -52,7 +52,7 @@ export function QualificationOverview({
         id="qual-overview-heading"
         title="Qualification"
         icon={ClipboardCheck}
-        tone="cobalt"
+        tone="link"
         action={availability === 'ready' && <QualificationBadge summary={summary} />}
       />
 

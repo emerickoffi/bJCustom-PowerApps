@@ -304,7 +304,7 @@ function CostLinesTable({
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <caption className="sr-only">Builder cost lines</caption>
-          <thead className="bg-muted/40 text-left text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+          <thead className="border-b border-[#D6DDE5] bg-table-head text-left text-xs font-medium text-[#526173]">
             <tr className="border-b border-border/70">
               <th scope="col" className="px-6 py-2.5 font-semibold">Category</th>
               <th scope="col" className="px-3 py-2.5 font-semibold">Description</th>
@@ -316,7 +316,7 @@ function CostLinesTable({
           </thead>
           <tbody className="divide-y divide-border/50">
             {lines.map((l) => (
-              <tr key={l.id} className="hover:bg-muted/30">
+              <tr key={l.id} className="hover:bg-link-soft/60">
                 <td className="whitespace-nowrap px-6 py-2.5 text-muted-foreground">{l.category}</td>
                 <td className="px-3 py-2.5 text-foreground">{l.description}</td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">{l.quantity}</td>

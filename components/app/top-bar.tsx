@@ -127,7 +127,7 @@ export function NotificationBell({ items, emptyHref }: { items: HeaderNotificati
       >
         <Bell className="size-[1.125rem]" aria-hidden="true" />
         {count > 0 && (
-          <span className="tabular absolute right-1.5 top-1.5 flex min-w-4 items-center justify-center rounded-full bg-cobalt-fill px-1 text-[0.625rem] font-semibold leading-4 text-white ring-2 ring-background">
+          <span className="tabular absolute right-1.5 top-1.5 flex min-w-4 items-center justify-center rounded-full bg-link px-1 text-[0.625rem] font-semibold leading-4 text-white ring-2 ring-background">
             {count > 9 ? '9+' : count}
           </span>
         )}
@@ -152,7 +152,7 @@ export function NotificationBell({ items, emptyHref }: { items: HeaderNotificati
               <span className="flex items-center gap-2 text-sm font-medium text-foreground">
                 {n.title}
                 {n.actionRequired && (
-                  <span className="rounded-full bg-cobalt-soft px-1.5 py-0.5 text-[0.625rem] font-semibold text-cobalt">
+                  <span className="rounded-full bg-link-soft px-1.5 py-0.5 text-[0.625rem] font-semibold text-link">
                     Action required
                   </span>
                 )}
@@ -192,7 +192,7 @@ export function ProfileMenu({
         aria-label="Account menu"
       >
         <span
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground ring-2 ring-cobalt-border"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground ring-2 ring-link-border"
           aria-hidden="true"
         >
           {initials(name || email)}

@@ -16,7 +16,7 @@ export function ConstructionTotalInfo() {
         openOnHover
         delay={150}
         aria-label="What construction total includes"
-        className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-[#526173] transition-colors hover:text-[#1D4ED8] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1D4ED8]"
+        className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-[#526173] transition-colors hover:text-[#006B78] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#006B78]"
       >
         <Info className="size-3.5" aria-hidden="true" />
       </Popover.Trigger>
@@ -46,7 +46,7 @@ export function EstimatePdfAction({ estimateId, estimateNumber }: { estimateId: 
               href={`/print/estimates/${estimateId}`}
               target="_blank"
               aria-label={label}
-              className="inline-flex size-9 items-center justify-center rounded-md text-[#526173] transition-colors hover:bg-[#EFF6FF] hover:text-[#1D4ED8] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1D4ED8]"
+              className="inline-flex size-9 items-center justify-center rounded-md text-[#526173] transition-colors hover:bg-[#E6F3F4] hover:text-[#006B78] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#006B78]"
             />
           }
         >

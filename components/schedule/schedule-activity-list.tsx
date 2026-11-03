@@ -220,7 +220,7 @@ function ActivityTable({
           <col className="w-32" />
           <col className="w-10" />
         </colgroup>
-        <thead className="border-b border-[#D6DDE5] bg-[#E9EDF2] text-left text-[11px] font-semibold uppercase tracking-wider text-[#526173]">
+        <thead className="border-b border-[#D6DDE5] bg-table-head text-left text-xs font-medium text-[#526173]">
           <tr>
             <th scope="col" className="px-4 py-2.5">Activity</th>
             <th scope="col" className="px-3 py-2.5">Stage</th>

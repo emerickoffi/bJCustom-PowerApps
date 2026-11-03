@@ -106,7 +106,7 @@ export default async function CompareRevisionsPage({
 
       <div className="surface overflow-x-auto p-0">
         <table className="w-full min-w-[36rem] text-sm">
-          <thead className="border-b border-border bg-muted/50 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <thead className="border-b border-[#D6DDE5] bg-table-head text-left text-xs font-medium text-[#526173]">
             <tr>
               <th scope="col" className="px-5 py-3">Line</th>
               {[a, b].map((r) => (

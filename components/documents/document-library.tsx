@@ -261,7 +261,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
       <div className="hidden overflow-hidden rounded-xl border border-[#D6DDE5] bg-card md:block">
         <table className="w-full text-sm">
           <caption className="sr-only">Documents</caption>
-          <thead className="bg-[#F3F4F6] text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <thead className="border-b border-[#D6DDE5] bg-table-head text-left text-xs font-medium text-[#526173]">
             <tr>
               <th scope="col" className="px-4 py-3">Document</th>
               {showProject && <th scope="col" className="px-4 py-3">Project</th>}
@@ -274,7 +274,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
           </thead>
           <tbody className="divide-y divide-[#D6DDE5]">
             {rows.map((doc) => (
-              <tr key={doc.id} className="align-top transition-colors hover:bg-[#F3F4F6]/60">
+              <tr key={doc.id} className="align-top transition-colors hover:bg-link-soft/60">
                 <td className="max-w-md px-4 py-3">{nameCell(doc)}</td>
                 {showProject && <td className="max-w-56 px-4 py-3 text-sm">{projectLink(doc)}</td>}
                 <td className="px-4 py-3 text-muted-foreground">{categoryLabel(doc.category)}</td>

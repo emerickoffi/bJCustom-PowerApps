@@ -49,7 +49,7 @@ function UpdateRow({ update }: { update: ProjectUpdate }) {
   return (
     <>
       <span
-        className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-cobalt-soft text-cobalt ring-4 ring-card"
+        className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-link-soft text-link ring-4 ring-card"
         aria-hidden="true"
       >
         <Bell className="size-3.5" />
@@ -66,7 +66,7 @@ function UpdateRow({ update }: { update: ProjectUpdate }) {
         {update.link ? (
           <Link
             href={update.link}
-            className="text-pretty text-sm leading-relaxed text-foreground hover:text-primary"
+            className="text-pretty text-sm leading-relaxed text-link hover:text-link-hover"
           >
             {update.title}
           </Link>

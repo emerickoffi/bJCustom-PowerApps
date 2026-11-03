@@ -51,7 +51,7 @@ function CompanyCell({ row }: { row: SubcontractorCompany }) {
       <div className="flex min-w-0 flex-col">
         <Link
           href={`/subcontractors/${row.id}`}
-          className="truncate font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:underline"
+          className="truncate font-semibold text-link underline-offset-4 hover:text-link-hover hover:underline focus-visible:underline"
         >
           {row.company_name}
         </Link>

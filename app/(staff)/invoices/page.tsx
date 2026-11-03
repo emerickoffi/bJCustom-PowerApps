@@ -39,17 +39,12 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   return (
     <div className="flex flex-col gap-5 md:gap-6">
       <PageHeader
-        tone="forest"
         icon={Receipt}
         title="Invoices"
         description="Progress draws and invoices for your projects. Payments are recorded manually."
         actions={
           manager ? (
-            <Button
-              render={<Link href="/invoices/new" />}
-              nativeButton={false}
-              className="bg-cobalt-fill text-white hover:bg-cobalt-hover focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#123D2E]"
-            >
+            <Button render={<Link href="/invoices/new" />} nativeButton={false}>
               <Plus data-icon="inline-start" />
               New invoice
             </Button>
@@ -177,7 +172,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
 }
 
 const STAT_TONES = {
-  blue: 'bg-[#E8F0FF] text-[#1D4ED8] ring-[#1D4ED8]/10',
+  blue: 'bg-link-soft text-link ring-link-border',
   amber: 'bg-[#FEF3C7] text-[#92400E] ring-[#92400E]/10',
   green: 'bg-[#DCFCE7] text-[#166534] ring-[#166534]/10',
   danger: 'bg-destructive/10 text-destructive ring-destructive/15',
@@ -231,7 +226,7 @@ function InvoiceTable({ invoices }: { invoices: InvoiceRow[] }) {
       <table className="w-full text-sm">
         <caption className="sr-only">Invoices</caption>
         <thead>
-          <tr className="border-b border-[#D6DDE5] bg-[#F3F4F6] text-left text-xs uppercase tracking-wider text-muted-foreground">
+          <tr className="border-b border-[#D6DDE5] bg-table-head text-left text-xs text-[#526173]">
             <th scope="col" className="px-5 py-3 font-medium">Invoice</th>
             <th scope="col" className="px-4 py-3 font-medium">Project / homeowner</th>
             <th scope="col" className="px-4 py-3 font-medium">Invoice date</th>
@@ -243,9 +238,15 @@ function InvoiceTable({ invoices }: { invoices: InvoiceRow[] }) {
         </thead>
         <tbody>
           {invoices.map((inv) => (
-            <tr key={inv.id} className="border-b border-[#D6DDE5] transition-colors last:border-0 hover:bg-[#F3F4F6]">
+            <tr
+              key={inv.id}
+              className="border-b border-[#D6DDE5] bg-white transition-colors last:border-0 hover:bg-link-soft/60 has-[:focus-visible]:bg-link-soft/60"
+            >
               <td className="px-5 py-3.5">
-                <Link href={`/invoices/${inv.id}`} className="font-medium text-foreground hover:text-primary">
+                <Link
+                  href={`/invoices/${inv.id}`}
+                  className="rounded-sm font-medium text-link hover:text-link-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+                >
                   {inv.invoice_number}
                 </Link>
                 <p className="line-clamp-1 text-xs text-muted-foreground">{inv.title}</p>
@@ -275,11 +276,11 @@ function InvoiceCard({ invoice: inv }: { invoice: InvoiceRow }) {
   return (
     <Link
       href={`/invoices/${inv.id}`}
-      className="flex flex-col gap-3 p-4 transition-colors hover:bg-[#F3F4F6] focus-visible:bg-[#F3F4F6] focus-visible:outline-none md:px-5"
+      className="flex flex-col gap-3 p-4 transition-colors hover:bg-link-soft/60 focus-visible:bg-link-soft/60 focus-visible:shadow-[inset_3px_0_0_var(--link)] focus-visible:outline-none md:px-5"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col">
-          <span className="font-medium text-foreground">{inv.invoice_number}</span>
+          <span className="font-medium text-link">{inv.invoice_number}</span>
           <span className="truncate text-sm text-muted-foreground">{inv.title}</span>
         </div>
         <StatusCell invoice={inv} />
@@ -331,7 +332,7 @@ function EmptyState({
 }) {
   return (
     <div role={role} className="flex flex-col items-center gap-4 px-6 py-8 text-center md:py-12">
-      <span className="flex size-12 items-center justify-center rounded-xl bg-cobalt-soft text-cobalt ring-1 ring-inset ring-cobalt-border">
+      <span className="flex size-12 items-center justify-center rounded-xl bg-link-soft text-link ring-1 ring-inset ring-link-border">
         <Icon className="size-6" aria-hidden="true" />
       </span>
       <div className="flex max-w-md flex-col gap-1.5">

@@ -141,7 +141,7 @@ export default async function EstimatesPage({
           <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[960px] text-sm text-[#17212B]">
             <caption className="sr-only">Estimates</caption>
-            <thead className="border-b border-[#D6DDE5] bg-[#E9EDF2] text-left text-xs font-medium text-[#526173]">
+            <thead className="border-b border-[#D6DDE5] bg-table-head text-left text-xs font-medium text-[#526173]">
               <tr>
                 <th scope="col" className="min-w-60 px-5 py-3 font-medium">Estimate</th>
                 <th scope="col" className="px-3 py-3 font-medium">Client</th>
@@ -162,14 +162,14 @@ export default async function EstimatesPage({
               {estimates.map((e) => (
                 <tr
                   key={e.id}
-                  className="align-top transition-colors hover:bg-[#EFF6FF] has-[:focus-visible]:bg-[#EFF6FF] has-[:focus-visible]:shadow-[inset_3px_0_0_#1D4ED8]"
+                  className="align-top transition-colors hover:bg-[#E6F3F4] has-[:focus-visible]:bg-[#E6F3F4] has-[:focus-visible]:shadow-[inset_3px_0_0_#006B78]"
                 >
                   <td className="px-5 py-3">
                     <div className="flex min-w-0 flex-col gap-1">
                       <Link
                         href={`/estimates/${e.id}`}
                         title={e.name}
-                        className="line-clamp-2 break-words rounded-sm font-medium text-[#1D4ED8] hover:text-[#1E40AF] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D4ED8]"
+                        className="line-clamp-2 break-words rounded-sm font-medium text-[#006B78] hover:text-[#005560] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006B78]"
                       >
                         {e.name}
                       </Link>
@@ -183,7 +183,7 @@ export default async function EstimatesPage({
                     {e.client ? (
                       <Link
                         href={`/clients/${e.client.id}`}
-                        className="break-words rounded-sm hover:text-[#1D4ED8] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D4ED8]"
+                        className="break-words rounded-sm hover:text-[#006B78] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006B78]"
                       >
                         {clientDisplayName(e.client) ?? '—'}
                       </Link>
@@ -196,7 +196,7 @@ export default async function EstimatesPage({
                       <Link
                         href={`/projects/${e.project.id}`}
                         title={e.project.name}
-                        className="line-clamp-2 break-words rounded-sm hover:text-[#1D4ED8] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D4ED8]"
+                        className="line-clamp-2 break-words rounded-sm hover:text-[#006B78] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006B78]"
                       >
                         {e.project.name}
                       </Link>
@@ -221,7 +221,7 @@ export default async function EstimatesPage({
                     <div className="flex items-center justify-end gap-1">
                       <Link
                         href={`/estimates/${e.id}`}
-                        className="inline-flex h-9 items-center gap-1 rounded-md border border-[#BFDBFE] bg-white px-2.5 text-sm font-medium text-[#1D4ED8] transition-colors hover:border-[#93C5FD] hover:bg-[#EFF6FF] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1D4ED8]"
+                        className="inline-flex h-9 items-center gap-1 rounded-md border border-[#B9DDE0] bg-white px-2.5 text-sm font-medium text-[#006B78] transition-colors hover:border-[#93C5FD] hover:bg-[#E6F3F4] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#006B78]"
                       >
                         View
                         <span className="sr-only">{` ${e.estimate_number}`}</span>
@@ -243,7 +243,7 @@ export default async function EstimatesPage({
                   <div className="flex min-w-0 flex-col gap-1">
                     <Link
                       href={`/estimates/${e.id}`}
-                      className="break-words rounded-sm font-medium text-[#1D4ED8] hover:text-[#1E40AF] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D4ED8]"
+                      className="break-words rounded-sm font-medium text-[#006B78] hover:text-[#005560] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006B78]"
                     >
                       {e.name}
                     </Link>
@@ -271,7 +271,7 @@ export default async function EstimatesPage({
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="outline"
-                    className="h-11 border-[#BFDBFE] text-[#1D4ED8] hover:bg-[#EFF6FF] hover:text-[#1D4ED8]"
+                    className="h-11 border-[#B9DDE0] text-[#006B78] hover:bg-[#E6F3F4] hover:text-[#006B78]"
                     render={<Link href={`/estimates/${e.id}`} />} nativeButton={false}>
                     View
                     <span className="sr-only">{` ${e.estimate_number}`}</span>

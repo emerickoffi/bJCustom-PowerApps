@@ -217,7 +217,7 @@ export function ProjectContactsTable({
                 </thead>
                 <tbody className="divide-y divide-border">
                   {visible.map((c) => (
-                    <tr key={c.association_id} className="hover:bg-muted/30">
+                    <tr key={c.association_id} className="hover:bg-link-soft/60">
                       <td className={`${TD} font-medium`}>{c.first_name || <Dash />}</td>
                       <td className={`${TD} font-medium`}>
                         <Link href={`/contacts/people/${c.person_id}`} className="underline-offset-4 hover:text-primary hover:underline">

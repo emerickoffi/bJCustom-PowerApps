@@ -511,7 +511,7 @@ export function EstimateSheet({
                 <col className="w-40" />
               {editable && <col className="w-12" />}
             </colgroup>
-            <thead className="bg-muted/50 text-xs font-medium text-muted-foreground">
+            <thead className="bg-table-head text-xs font-medium text-[#526173]">
               <tr className="border-b">
                 <th scope="col" className="px-2 py-2.5 text-right">
                   <span className="sr-only">Row</span>
