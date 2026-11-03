@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore, type ReactNode } from 'react'
 import { LayoutGrid, Rows3 } from 'lucide-react'
 import { DIRECTORY_VIEW_COOKIE, type DirectoryModule, type DirectoryView } from '@/lib/directory'
 import { cn } from '@/lib/utils'
+import { segmentClass } from '@/lib/interaction-styles'
 
 const DESKTOP_QUERY = '(min-width: 1024px)'
 
@@ -47,8 +48,9 @@ export function DirectoryViewSwitcher({
             aria-label={`${optionLabel} view`}
             onClick={() => onChange(option)}
             className={cn(
-              'inline-flex h-9 min-w-11 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50',
-              active ? 'bg-[#174D38] text-white shadow-xs' : 'text-muted-foreground hover:bg-[#E6F0EB] hover:text-[#103B27]',
+              'inline-flex h-9 min-w-11 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium',
+              segmentClass(active),
+              active && 'shadow-xs',
             )}
           >
             <Icon className="size-4" aria-hidden="true" />

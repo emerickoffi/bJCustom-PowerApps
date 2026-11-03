@@ -74,7 +74,7 @@ export function ScheduleWorkspace({
         !a.planned_start && !a.planned_end && !a.actual_start && !a.actual_end && Number(a.percent_complete) === 0 && a.status !== 'completed',
     )
   const triggerClass =
-    'h-full min-h-11 flex-1 rounded-lg px-3.5 text-[#103B27]/70 hover:text-[#103B27] data-active:bg-[#174D32] data-active:text-white data-active:shadow-sm sm:min-h-0 sm:flex-none'
+    'h-full min-h-11 flex-1 rounded-lg px-3.5 text-foreground hover:bg-interactive-soft hover:text-interactive-strong data-active:bg-interactive data-active:text-white data-active:shadow-sm data-active:hover:bg-interactive-hover sm:min-h-0 sm:flex-none'
 
   return (
     <>

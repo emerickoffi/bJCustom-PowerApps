@@ -21,6 +21,7 @@ import { NativeSelect } from '@/components/shared/form-field'
 import { Input } from '@/components/ui/input'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { segmentClass } from '@/lib/interaction-styles'
 
 const SORT_OPTIONS: { value: DirectorySort; label: string }[] = [
   { value: 'number_desc', label: 'Newest number' },
@@ -113,8 +114,8 @@ function ViewButton({ active, onClick, label, icon: Icon }: { active: boolean; o
       aria-label={label}
       title={label}
       className={cn(
-        'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        active && 'bg-muted text-foreground',
+        'inline-flex size-8 items-center justify-center rounded-md',
+        segmentClass(active),
       )}
     >
       <Icon className="size-4" aria-hidden="true" />
@@ -167,11 +168,11 @@ function ChangeOrderTable({ projectId, projectName, rows }: { projectId: string;
                 <td className="hidden whitespace-nowrap px-3 py-3 text-right text-muted-foreground lg:table-cell">{formatDate(r.updated_at)}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-right lg:px-5">
                   <div className="flex justify-end gap-1">
-                    <Link href={href} className={buttonVariants({ variant: 'ghost', size: 'sm' })} aria-label={`Open ${r.co_number}`}>
+                    <Link href={href} className={buttonVariants({ variant: 'view', size: 'sm' })} aria-label={`Open ${r.co_number}`}>
                       Open
                     </Link>
                     {isEditableStatus(r.status) && (
-                      <Link href={`${href}/edit`} className={buttonVariants({ variant: 'ghost', size: 'sm' })} aria-label={`Edit ${r.co_number}`}>
+                      <Link href={`${href}/edit`} className={buttonVariants({ variant: 'edit', size: 'sm' })} aria-label={`Edit ${r.co_number}`}>
                         Edit
                       </Link>
                     )}

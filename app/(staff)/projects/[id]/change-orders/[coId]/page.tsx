@@ -95,7 +95,7 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
         backLabel="Change orders"
         actions={
           editable && (
-            <Link href={editHref} className={buttonVariants({ variant: 'outline' })}>
+            <Link href={editHref} className={buttonVariants({ variant: 'edit' })}>
               <Pencil className="size-4" aria-hidden="true" />
               Edit change order
             </Link>
@@ -160,7 +160,7 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
             actions={
               editable &&
               lines.length > 0 && (
-                <Link href={`${editHref}#co-cost-heading`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+                <Link href={`${editHref}#co-cost-heading`} className={buttonVariants({ variant: 'edit', size: 'sm' })}>
                   <Pencil className="size-3.5" aria-hidden="true" />
                   Edit lines
                 </Link>

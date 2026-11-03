@@ -12,6 +12,7 @@ import { formatDate, formatPhone } from '@/lib/format'
 import type { AssignablePerson, ProjectCompanyContacts, ProjectContact } from '@/lib/project-contacts-data'
 import { endPersonProjectAction } from '@/app/actions/contacts'
 import { AssignDialog, type Prefill } from '@/components/projects/project-contacts-panel'
+import { segmentClass } from '@/lib/interaction-styles'
 
 type DialogState = { prefill: Prefill; mode: 'existing' | 'new' } | null
 
@@ -176,11 +177,7 @@ export function ProjectContactsTable({
                 type="button"
                 aria-pressed={showHistory === o.v}
                 onClick={() => setShowHistory(o.v)}
-                className={
-                  showHistory === o.v
-                    ? 'flex-1 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground'
-                    : 'flex-1 rounded-md px-3 text-xs font-medium text-muted-foreground hover:text-foreground'
-                }
+                className={`flex-1 rounded-md px-3 text-xs font-medium ${segmentClass(showHistory === o.v)}`}
               >
                 {o.l}
               </button>

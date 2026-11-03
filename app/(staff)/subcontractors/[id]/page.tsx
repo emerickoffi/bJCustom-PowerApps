@@ -142,7 +142,7 @@ export default async function SubcontractorDetailPage({
         actions={
           <>
             <SubcontractorStatusButton companyId={company.id} companyName={company.company_name} status={company.status} />
-            <Button size="lg" render={<Link href={editHref} />} nativeButton={false}>
+            <Button variant="edit" size="lg" render={<Link href={editHref} />} nativeButton={false}>
               <Pencil data-icon="inline-start" />
               Edit company
             </Button>

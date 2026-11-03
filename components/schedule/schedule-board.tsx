@@ -13,6 +13,7 @@ import { isOverdue, todayIso, type ScheduleActivity, type ScheduleDependency } f
 import { formatDate } from '@/lib/format'
 import { stageStyle } from '@/lib/schedule-stage-style'
 import { cn } from '@/lib/utils'
+import { segmentClass } from '@/lib/interaction-styles'
 
 export type BoardGroup = {
   project: { id: string; name: string; statusLabel: string }
@@ -135,13 +136,12 @@ export function ScheduleBoard({
               aria-selected={view === v.value}
               onClick={() => setView(v.value)}
               className={cn(
-                'flex min-h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38] sm:flex-none',
-                view === v.value
-                  ? 'bg-white text-[#17212B] shadow-sm ring-1 ring-[#D6DDE5]'
-                  : 'text-[#526173] hover:bg-white/70 hover:text-[#17212B]',
+                'flex min-h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium sm:flex-none',
+                segmentClass(view === v.value),
+                view === v.value && 'shadow-sm',
               )}
             >
-              <v.icon className={cn('size-4', view === v.value && 'text-[#174D38]')} aria-hidden="true" />
+              <v.icon className="size-4" aria-hidden="true" />
               {v.label}
             </button>
           ))}

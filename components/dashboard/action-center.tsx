@@ -212,16 +212,16 @@ function CategoryFilters({
   if (present.length < 2 && !selected) return null
   const tab = (active: boolean) =>
     cn(
-      '-mb-px inline-flex min-h-11 items-center gap-1.5 border-b-[3px] px-1 text-sm transition-colors focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      '-mb-px inline-flex min-h-11 items-center gap-1.5 border-b-[3px] px-1 text-sm transition-colors focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interactive/50',
       active
-        ? 'border-primary font-semibold text-primary'
-        : 'border-transparent font-medium text-[#526173] hover:border-[#9FB3A7] hover:text-[#17212B]',
+        ? 'border-interactive font-semibold text-interactive-strong'
+        : 'border-transparent font-medium text-muted-foreground hover:border-interactive-border hover:text-interactive-strong',
     )
   const count = (active: boolean, n: number) => (
     <span
       className={cn(
         'rounded-full px-1.5 text-xs font-semibold tabular-nums',
-        active ? 'bg-primary text-primary-foreground' : 'bg-[#EEF1EE] text-[#526173]',
+        active ? 'bg-interactive text-white' : 'bg-[#EEF1EE] text-[#526173]',
       )}
     >
       {n}

@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status-badge'
+import { pillClass } from '@/lib/interaction-styles'
 
 export const metadata: Metadata = { title: 'Invoices' }
 
@@ -96,10 +97,8 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                   href={f.value ? `/invoices?status=${f.value}` : '/invoices'}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    active
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-[#D6DDE5] bg-white text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                    'inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm',
+                    pillClass(active),
                   )}
                 >
                   {f.label}

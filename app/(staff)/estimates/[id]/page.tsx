@@ -106,7 +106,7 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
         actions={
           <>
             {editable && (
-              <Button variant="outline" size="lg" render={<Link href={`/estimates/${id}/edit`} />} nativeButton={false}>
+              <Button variant="edit" size="lg" render={<Link href={`/estimates/${id}/edit`} />} nativeButton={false}>
                 <Pencil data-icon="inline-start" />
                 Edit details
               </Button>

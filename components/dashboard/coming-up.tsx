@@ -9,6 +9,7 @@ import {
   type ComingUpRange,
 } from '@/lib/coming-up'
 import { cn } from '@/lib/utils'
+import { segmentClass } from '@/lib/interaction-styles'
 
 function DateChip({ iso, tentative }: { iso: string; tentative: boolean }) {
   const [y, m, d] = iso.split('-').map(Number)
@@ -38,8 +39,9 @@ function RangeControls({ range, hrefFor }: { range: ComingUpRange; hrefFor: (ran
           scroll={false}
           aria-current={r === range ? 'true' : undefined}
           className={cn(
-            'flex min-h-9 flex-1 items-center justify-center rounded-md px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            r === range ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+            'flex min-h-9 flex-1 items-center justify-center rounded-md px-2 text-xs font-medium',
+            segmentClass(r === range),
+            r === range && 'shadow-sm',
           )}
         >
           {COMING_UP_RANGE_LABELS[r]}

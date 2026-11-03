@@ -11,6 +11,7 @@ import { DocumentFiltersForm, DocumentPagination, browseHref, type BrowseParams 
 import { countArchivedDocuments, listDocumentProjects, listDocuments } from '@/lib/document-queries'
 import { getPeopleNames } from '@/lib/people'
 import { cn } from '@/lib/utils'
+import { underlineTabClass } from '@/lib/interaction-styles'
 
 export const metadata: Metadata = { title: 'Documents' }
 
@@ -23,7 +24,8 @@ function TabLink({ href, active, icon: Icon, children }: { href: string; active:
       aria-current={active ? 'page' : undefined}
       className={cn(
         '-mb-px flex items-center gap-2 border-b-2 px-1 pb-3 text-sm font-medium transition-colors',
-        active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interactive/50',
+        underlineTabClass(active),
       )}
     >
       <Icon className="size-4" aria-hidden="true" />
