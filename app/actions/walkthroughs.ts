@@ -256,9 +256,21 @@ export async function approveRepairAction(projectId: string, issueId: string): P
     .update({ builder_approved_at: new Date().toISOString() })
     .eq('id', issueId)
     .eq('organization_id', session.organizationId)
+    // A repeated click or retry must not overwrite the original approval, log a second event, or reset the homeowner's review.
+    .is('builder_approved_at', null)
     .select('id')
   if (error) return { error: friendlyDbError(error) }
-  if (!data?.length) return { error: 'Issue not found or you do not have access.' }
+  if (!data?.length) {
+    const { data: existing } = await supabase
+      .from('project_issues')
+      .select('builder_approved_at')
+      .eq('id', issueId)
+      .eq('organization_id', session.organizationId)
+      .maybeSingle()
+    if (!existing) return { error: 'Issue not found or you do not have access.' }
+    revalidatePath(`/projects/${projectId}/issues/${issueId}`)
+    return { success: 'This repair was already approved and is waiting for the homeowner.' }
+  }
 
   revalidatePath(`/projects/${projectId}/issues/${issueId}`)
   return { success: 'Repair approved and sent to the homeowner for review.' }
