@@ -82,7 +82,10 @@ export function ComingUp({
   hrefFor,
   scheduleEnabled,
   scopedToMe = false,
+  headerAction,
 }: {
+  /** Shown at the right of the header; hosts the work-scope selector when Action Center is hidden. */
+  headerAction?: React.ReactNode
   events: ComingUpEvent[]
   today: string
   scopedToMe?: boolean
@@ -94,12 +97,13 @@ export function ComingUp({
   const windowLabel = range === 'today' ? 'today' : `in the ${COMING_UP_RANGE_LABELS[range].toLowerCase()}`
   return (
     <section aria-labelledby="coming-up-heading" className="surface flex flex-col">
-      <div className="p-5 md:px-6">
+      <div className="px-5 py-4 md:px-6">
         <DashboardSectionHeader
           id="coming-up-heading"
           title="Coming Up"
           description="Your upcoming schedule"
           icon={CalendarClock}
+          action={headerAction}
         />
       </div>
       <div className="flex flex-1 flex-col gap-3 border-t px-5 pb-5 pt-5 md:px-6">

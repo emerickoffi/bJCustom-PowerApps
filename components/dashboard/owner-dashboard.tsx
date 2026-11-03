@@ -1,5 +1,5 @@
 import { ActionCenter } from '@/components/dashboard/action-center'
-import { AttentionToolbarAction, CommandHeader } from '@/components/dashboard/command-header'
+import { CommandHeader } from '@/components/dashboard/command-header'
 import { ComingUp } from '@/components/dashboard/coming-up'
 import { FinancialKpis } from '@/components/dashboard/financial-kpis'
 import { PipelineOverview } from '@/components/dashboard/pipeline-overview'
@@ -295,6 +295,7 @@ export async function OwnerDashboard({
           href: (category) => dashboardHref({ actions: category, agenda: agendaRange }),
           viewAll: selectedAction ? `/actions?category=${selectedAction}` : '/actions',
         }}
+        headerActions={<WorkScopeControl scope={workScope} />}
       />
     ),
     priority_jobs: <PriorityJobs jobs={jobs} />,
@@ -306,6 +307,7 @@ export async function OwnerDashboard({
         range={agendaRange}
         hrefFor={(agenda) => dashboardHref({ actions: selectedAction, agenda })}
         scheduleEnabled={features.schedule}
+        headerAction={show.attention ? undefined : <WorkScopeControl scope={workScope} />}
       />
     ),
     warranty: <WarrantyRail overview={warranty} />,
@@ -460,9 +462,6 @@ export async function OwnerDashboard({
     </div>
   )
 
-  const showScopeToolbar = show.attention || show.coming_up
-  const attentionAvailable = attention.unavailable.length === 0 || attention.total > 0
-
   const standard = (
     <div className="flex flex-col gap-6">
       <div data-dashboard-section={'welcome' satisfies DashboardSectionId}>
@@ -473,7 +472,7 @@ export async function OwnerDashboard({
           actionTotalIsLowerBound={attention.totalIsLowerBound}
           actionsAvailable={attention.unavailable.length === 0 || attention.total > 0}
           actionsHref={show.attention ? '#action-center-heading' : '/actions'}
-          showAttention={!showScopeToolbar}
+          showAttention={!show.attention}
           weather={
             show.weather ? (
               weatherWidget(true)
@@ -482,52 +481,39 @@ export async function OwnerDashboard({
         />
       </div>
 
-      {kpiCards.size > 0 && (
-        <section
-          aria-label="Key figures"
-          className={kpiGridClass(kpiCards.size)}
-          data-dashboard-section={'kpis' satisfies DashboardSectionId}
-        >
-          <FinancialKpis metrics={financials} scheduleRisk={scheduleRisk} visible={kpiCards} order={kpiOrder} />
-        </section>
-      )}
+      <div className="flex flex-col gap-4">
+        {kpiCards.size > 0 && (
+          <section
+            aria-label="Key figures"
+            className={kpiGridClass(kpiCards.size)}
+            data-dashboard-section={'kpis' satisfies DashboardSectionId}
+          >
+            <FinancialKpis metrics={financials} scheduleRisk={scheduleRisk} visible={kpiCards} order={kpiOrder} />
+          </section>
+        )}
 
-      {showScopeToolbar && (
-        <div className="-my-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Work scope</span>
-            <WorkScopeControl scope={workScope} />
-          </div>
-          {attentionAvailable && (
-            <AttentionToolbarAction
-              total={attention.total}
-              isLowerBound={attention.totalIsLowerBound}
-              href={show.attention ? '#action-center-heading' : '/actions'}
-              scopeLabel={mine ? 'in My work' : 'across all work'}
-            />
+        <div className="flex flex-col gap-6">
+          {above.length > 0 && <div className="flex flex-col gap-6">{above}</div>}
+
+          {(main.length > 0 || side.length > 0) && (
+            <div
+              className={cn(
+                'grid items-start gap-6',
+                main.length > 0 && side.length > 0 && 'lg:grid-cols-[minmax(0,2.15fr)_minmax(0,1fr)]',
+              )}
+            >
+              {main.length > 0 && <div className="flex min-w-0 flex-col gap-6">{main}</div>}
+              {side.length > 0 && (
+                <aside aria-label="Side column" className="flex min-w-0 flex-col gap-6">
+                  {side}
+                </aside>
+              )}
+            </div>
           )}
+
+          {below.length > 0 && <div className="flex flex-col gap-6">{below}</div>}
         </div>
-      )}
-
-      {above.length > 0 && <div className="flex flex-col gap-6">{above}</div>}
-
-      {(main.length > 0 || side.length > 0) && (
-        <div
-          className={cn(
-            'grid items-start gap-6',
-            main.length > 0 && side.length > 0 && 'lg:grid-cols-[minmax(0,2.15fr)_minmax(0,1fr)]',
-          )}
-        >
-          {main.length > 0 && <div className="flex min-w-0 flex-col gap-6">{main}</div>}
-          {side.length > 0 && (
-            <aside aria-label="Side column" className="flex min-w-0 flex-col gap-6">
-              {side}
-            </aside>
-          )}
-        </div>
-      )}
-
-      {below.length > 0 && <div className="flex flex-col gap-6">{below}</div>}
+      </div>
     </div>
   )
 

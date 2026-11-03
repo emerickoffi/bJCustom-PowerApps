@@ -19,7 +19,7 @@ export function WarrantyRail({ overview }: { overview: WarrantyOverview }) {
 
   return (
     <section aria-labelledby="warranty-heading" className="surface flex flex-col">
-      <div className="p-5 md:px-6">
+      <div className="px-5 py-4 md:px-6">
         <DashboardSectionHeader
           id="warranty-heading"
           title="Warranty"
