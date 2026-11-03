@@ -29,7 +29,7 @@ export function WorkScopeControl({ scope }: { scope: WorkScope }) {
     <div className="flex items-center gap-2">
       <div
         role="radiogroup"
-        aria-label="Work shown in Action Center and Coming Up"
+        aria-label="Work scope"
         aria-describedby="work-scope-help"
         aria-busy={pending || undefined}
         className="flex rounded-lg bg-muted p-0.5"
@@ -63,7 +63,7 @@ export function WorkScopeControl({ scope }: { scope: WorkScope }) {
         <span
           id="work-scope-help"
           role="tooltip"
-          className="pointer-events-none invisible absolute right-0 top-full z-20 mt-1 w-64 rounded-md border bg-popover px-3 py-2 text-xs leading-relaxed text-popover-foreground opacity-0 shadow-md transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100 sm:left-0 sm:right-auto"
+          className="pointer-events-none invisible absolute right-0 top-full z-20 mt-1 w-64 rounded-md border bg-popover px-3 py-2 text-xs leading-relaxed text-popover-foreground opacity-0 shadow-md transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
         >
           Applies to Action Center and Coming Up. My work shows only items assigned to you. Unassigned items appear
           under All work.

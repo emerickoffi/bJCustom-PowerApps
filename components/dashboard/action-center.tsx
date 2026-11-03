@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import {
   ArrowRight,
@@ -325,7 +326,10 @@ export function ActionCenter({
   limit,
   page = 1,
   headingLevel = 'h2',
+  headerActions,
 }: {
+  /** Controls shown at the right of the header, e.g. the work-scope selector. */
+  headerActions?: ReactNode
   items: ActionItem[]
   totalIsLowerBound: boolean
   unavailable: ActionModuleIssue[]
@@ -346,25 +350,30 @@ export function ActionCenter({
 
   return (
     <section aria-labelledby="action-center-heading" className="surface flex flex-col">
-      <div className="flex items-center gap-3 rounded-t-[inherit] border-b border-[#D6DDE5] bg-card px-4 py-3 md:px-6">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-link-soft text-link" aria-hidden="true">
-          <ListChecks className="size-[18px]" />
-        </span>
-        <div className="flex min-w-0 flex-col gap-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Heading id="action-center-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-[#17212B]">
-              Action Center
-            </Heading>
-            {items.length > 0 && (
-              <span className="rounded-full border border-link-border bg-link-soft px-2 py-px text-xs font-semibold leading-4 tabular-nums text-link">
-                {`${countLabel} pending`}
-              </span>
-            )}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-t-[inherit] border-b border-[#D6DDE5] bg-card px-4 py-4 md:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-link-soft text-link" aria-hidden="true">
+            <ListChecks className="size-[18px]" />
+          </span>
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <Heading id="action-center-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-[#17212B]">
+                Action Center
+              </Heading>
+              {items.length > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-[#FDBA74] bg-[#FFF1E6] px-2 py-px text-xs font-medium leading-4 text-[#B54708]">
+                  <CircleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span className="font-bold tabular-nums">{countLabel}</span>
+                  {items.length === 1 && !totalIsLowerBound ? 'needs attention' : 'need attention'}
+                </span>
+              )}
+            </div>
+            <p className="text-pretty text-[13px] leading-[18px] text-[#526173]">
+              Everything waiting on you, across your projects.
+            </p>
           </div>
-          <p className="text-pretty text-[13px] leading-[18px] text-[#526173]">
-            Everything waiting on you, across your projects.
-          </p>
         </div>
+        {headerActions && <div className="flex shrink-0 items-center">{headerActions}</div>}
       </div>
 
       <div className="flex flex-col gap-4 rounded-b-[inherit] bg-card px-4 pb-4 pt-3 md:px-6 md:pb-6 md:pt-4">
