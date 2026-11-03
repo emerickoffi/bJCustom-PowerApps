@@ -17,10 +17,7 @@ export type StatTone = 'approval' | 'contract' | 'schedule' | 'receivables'
 
 const WHITE_CARD = 'bg-card hover:border-[#B9C7BE]'
 
-/**
- * Contract Value is the single brand-emphasis card; it re-points the text tokens to light values so the
- * shared markup below stays readable on the solid green. `alert` applies only when the card's data warrants it.
- */
+/** `alert` applies only when the card's data warrants it. */
 const TONE: Record<StatTone, { card: string; icon: string; alert?: string }> = {
   approval: {
     card: WHITE_CARD,
@@ -28,8 +25,8 @@ const TONE: Record<StatTone, { card: string; icon: string; alert?: string }> = {
     alert: 'border-[#E3CB98] shadow-[inset_3px_0_0_#B7862F,var(--shadow-soft)] hover:border-[#C9A35E]',
   },
   contract: {
-    card: 'border-[#174D38] bg-[#174D38] hover:border-[#123D2E] [--foreground:#FFFFFF] [--muted-foreground:#E0ECE4] [--primary:#FFFFFF]',
-    icon: 'bg-white/12 text-white',
+    card: WHITE_CARD,
+    icon: 'bg-[#E6F0EB] text-[#174D38]',
   },
   schedule: {
     card: WHITE_CARD,
