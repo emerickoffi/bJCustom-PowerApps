@@ -155,6 +155,11 @@
   --background: #f5f4ef;
 }
 
+/* Schedule-only page background. Sets the colour, not `--background`, so controls inside its white panels stay white. */
+[data-staff-shell]:has([data-schedule-page]) {
+  background-color: #f3f4f6;
+}
+
 [data-dashboard-theme] {
   --foreground: #18251f;
   --card-foreground: #18251f;
