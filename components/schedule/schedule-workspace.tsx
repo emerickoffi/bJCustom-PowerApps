@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { GanttBaseline } from '@/components/schedule/schedule-gantt'
 import { CalendarClock, CalendarDays, GanttChart, List, Pencil, Plus } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -10,6 +11,10 @@ import { ScheduleStageList } from '@/components/schedule/schedule-stage-list'
 import type { ScheduleActivity, ScheduleDependency } from '@/lib/schedule'
 import { useOpenFromUrl } from '@/components/shared/use-open-from-url'
 import { groupByActivity, type ActivityAssignment, type AssignmentAvailability, type CompanyOption } from '@/lib/assignments'
+
+const SCHEDULE_VIEWS = ['list', 'timeline', 'calendar'] as const
+type ScheduleView = (typeof SCHEDULE_VIEWS)[number]
+const VIEW_KEY = 'schedule:view'
 
 export function ScheduleWorkspace({
   projectId,
@@ -23,7 +28,11 @@ export function ScheduleWorkspace({
   companies = [],
   acceptsNewAssignments = false,
   initialActivityId = null,
+  timeZone,
+  baseline = null,
 }: {
+  timeZone?: string
+  baseline?: GanttBaseline | null
   projectId: string
   activities: ScheduleActivity[]
   dependencies: ScheduleDependency[]
@@ -50,6 +59,20 @@ export function ScheduleWorkspace({
     initialActivityId && activities.some((a) => a.id === initialActivityId) ? initialActivityId : null,
   )
   const [creating, setCreating] = useState(false)
+  const [view, setView] = useState<ScheduleView>('list')
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(VIEW_KEY)
+      if (saved && (SCHEDULE_VIEWS as readonly string[]).includes(saved)) setView(saved as ScheduleView)
+    } catch {}
+  }, [])
+  const changeView = (value: unknown) => {
+    if (!(SCHEDULE_VIEWS as readonly unknown[]).includes(value)) return
+    setView(value as ScheduleView)
+    try {
+      window.localStorage.setItem(VIEW_KEY, value as string)
+    } catch {}
+  }
   const conflicts = useMemo(() => new Set(conflictIds), [conflictIds])
   const names = useMemo(() => new Map(staffOptions.map((s) => [s.value, s.label])), [staffOptions])
   const nameFor = useCallback((id: string | null) => (id ? (names.get(id) ?? 'Former team member') : null), [names])
@@ -106,7 +129,7 @@ export function ScheduleWorkspace({
           )}
         </section>
       )}
-      <Tabs defaultValue="list" className="gap-4">
+      <Tabs value={view} onValueChange={changeView} className="gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <TabsList aria-label="Schedule view" className="h-12 w-full rounded-xl border border-[#E2E8E2] bg-[#F8F7F3] p-1 sm:h-11 sm:w-fit">
             <TabsTrigger value="list" className={triggerClass}>
@@ -115,7 +138,7 @@ export function ScheduleWorkspace({
             </TabsTrigger>
             <TabsTrigger value="timeline" className={triggerClass}>
               <GanttChart />
-              Timeline
+              Gantt
             </TabsTrigger>
             <TabsTrigger value="calendar" className={triggerClass}>
               <CalendarDays />
@@ -138,8 +161,15 @@ export function ScheduleWorkspace({
             canManage={canManage}
           />
         </TabsContent>
-        <TabsContent value="timeline">
-          <ScheduleTimeline {...viewProps} />
+        <TabsContent value="timeline" keepMounted>
+          <ScheduleTimeline
+            {...viewProps}
+            selectedId={selectedId}
+            canManage={canManage}
+            timeZone={timeZone}
+            assignmentsByActivity={assignmentProps.byActivity}
+            baseline={baseline}
+          />
         </TabsContent>
         <TabsContent value="calendar">
           <ScheduleCalendar {...viewProps} />
