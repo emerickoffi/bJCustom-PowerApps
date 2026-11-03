@@ -75,7 +75,6 @@ const ACTION_ICONS: Record<string, LucideIcon> = {
   'Open Warranty': Wrench,
 }
 
-const BRONZE_ICON_CATEGORIES = new Set<ActionCategory>(['approvals', 'documents'])
 
 const DATE_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 const formatDate = (iso: string) => DATE_FORMAT.format(new Date(`${iso.slice(0, 10)}T00:00:00Z`))
@@ -105,10 +104,7 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
   return (
     <li className="flex items-start gap-3 py-4 first:pt-1 last:pb-1">
       <span
-        className={cn(
-          'flex size-9 shrink-0 items-center justify-center rounded-full bg-[#F5EDDF]',
-          BRONZE_ICON_CATEGORIES.has(item.category) ? 'text-[#805B2A]' : 'text-primary',
-        )}
+        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#E6F3F4] text-[#006B78]"
         aria-hidden="true"
       >
         <Icon className="size-[18px]" />
@@ -310,7 +306,7 @@ function EmptyState({
         <Link
           href={viewAllHref}
           scroll={false}
-          className="group inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-[#805B2A] underline-offset-4 hover:text-[#62421D] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="group inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-[#006B78] underline-offset-4 hover:text-[#005560] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           View all pending items
           <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
@@ -351,7 +347,7 @@ export function ActionCenter({
   return (
     <section aria-labelledby="action-center-heading" className="surface flex flex-col">
       <div className="flex items-center gap-3 rounded-t-[inherit] border-b border-[#D6DDE5] bg-card px-4 py-3 md:px-6">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#F5EDDF] text-[#805B2A]" aria-hidden="true">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#E6F3F4] text-[#006B78]" aria-hidden="true">
           <ListChecks className="size-[18px]" />
         </span>
         <div className="flex min-w-0 flex-col gap-1">
