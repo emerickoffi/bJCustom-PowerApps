@@ -4,7 +4,7 @@ import type { HomeownerAction } from '@/lib/next-actions'
 
 export function HomeownerActions({ actions, showProject }: { actions: HomeownerAction[]; showProject: boolean }) {
   return (
-    <section aria-labelledby="homeowner-actions-heading" className="flex flex-col gap-4 rounded-3xl border border-[#E2E8E2] bg-white p-5 sm:p-6">
+    <section aria-labelledby="homeowner-actions-heading" className="flex flex-col gap-4 rounded-3xl border border-[#D6DDE5] bg-white p-5 sm:p-6">
       <div className="flex items-center gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sage text-primary">
           <ListChecks className="size-5" aria-hidden="true" />
@@ -19,17 +19,17 @@ export function HomeownerActions({ actions, showProject }: { actions: HomeownerA
         </div>
       </div>
       {actions.length === 0 ? (
-        <p className="flex items-center gap-2 rounded-xl bg-[#F8F7F3] px-4 py-3 text-sm text-muted-foreground">
+        <p className="flex items-center gap-2 rounded-xl bg-[#F3F4F6] px-4 py-3 text-sm text-muted-foreground">
           <CheckCircle2 className="size-4 shrink-0 text-primary" aria-hidden="true" />
           No pending actions. We&apos;ll list anything that needs you here.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y divide-[#E2E8E2] overflow-hidden rounded-xl border border-[#E2E8E2]">
+        <ul className="flex flex-col divide-y divide-[#D6DDE5] overflow-hidden rounded-xl border border-[#D6DDE5]">
           {actions.map((a) => (
             <li key={a.key}>
               <Link
                 href={a.href}
-                className="flex min-h-14 flex-col gap-2 px-4 py-3 transition-colors hover:bg-[#F8F7F3] focus-visible:bg-[#F8F7F3] focus-visible:outline-none sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                className="flex min-h-14 flex-col gap-2 px-4 py-3 transition-colors hover:bg-[#F3F4F6] focus-visible:bg-[#F3F4F6] focus-visible:outline-none sm:flex-row sm:items-center sm:justify-between sm:gap-4"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <span className="text-sm font-medium text-foreground">{a.title}</span>

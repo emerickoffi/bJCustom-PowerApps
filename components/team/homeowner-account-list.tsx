@@ -64,7 +64,7 @@ export function HomeownerAccountList({
         <h2 id="homeowners-heading" className="font-serif text-lg font-semibold text-foreground">
           Homeowner accounts
         </h2>
-        <span className="text-sm text-[#64756D]">
+        <span className="text-sm text-[#526173]">
           {`${withAccount.length} portal ${withAccount.length === 1 ? 'account' : 'accounts'} · ${active} active · ${rows.length} contacts`}
         </span>
       </div>
@@ -76,7 +76,7 @@ export function HomeownerAccountList({
               key={f.value}
               href={filterHref(f.value, q)}
               aria-current={filter === f.value ? 'page' : undefined}
-              className="rounded-full border border-[#E2E8E2] bg-card px-3 py-1 text-sm text-[#64756D] transition-colors hover:bg-[#F8F7F3] hover:text-[#174D32] aria-[current=page]:border-[#174D32] aria-[current=page]:bg-[#174D32] aria-[current=page]:text-white"
+              className="rounded-full border border-[#D6DDE5] bg-card px-3 py-1 text-sm text-[#526173] transition-colors hover:bg-[#F3F4F6] hover:text-[#174D38] aria-[current=page]:border-[#174D38] aria-[current=page]:bg-[#174D38] aria-[current=page]:text-white"
             >
               {f.label}
             </Link>
@@ -88,14 +88,14 @@ export function HomeownerAccountList({
           <label htmlFor="homeowner-search" className="sr-only">
             Search contacts
           </label>
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#64756D]" aria-hidden="true" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#526173]" aria-hidden="true" />
           <input
             id="homeowner-search"
             name="q"
             type="search"
             defaultValue={q}
             placeholder="Search name, email, or client"
-            className="h-9 w-full rounded-md border border-[#E2E8E2] bg-card pl-9 pr-3 text-sm outline-none placeholder:text-[#64756D]/80 focus-visible:border-[#174D32]/50 focus-visible:ring-2 focus-visible:ring-[#174D32]/20"
+            className="h-9 w-full rounded-md border border-[#D6DDE5] bg-card pl-9 pr-3 text-sm outline-none placeholder:text-[#526173]/80 focus-visible:border-[#174D38]/50 focus-visible:ring-2 focus-visible:ring-[#174D38]/20"
           />
         </form>
       </div>
@@ -107,15 +107,15 @@ export function HomeownerAccountList({
           ))}
         </ul>
       ) : (
-        <p className="rounded-xl border border-dashed border-[#E2E8E2] bg-card p-6 text-sm text-[#64756D]">
+        <p className="rounded-xl border border-dashed border-[#D6DDE5] bg-card p-6 text-sm text-[#526173]">
           {q ? 'No contacts match your search.' : 'No contacts in this view yet.'}
         </p>
       )}
 
       {truncated && (
-        <p className="text-sm text-[#64756D]">Showing the first 200 contacts. Search to narrow the list.</p>
+        <p className="text-sm text-[#526173]">Showing the first 200 contacts. Search to narrow the list.</p>
       )}
-      <p className="text-xs text-[#64756D]">
+      <p className="text-xs text-[#526173]">
         Saved contacts aren&apos;t user accounts. A contact only becomes a homeowner user when an administrator
         provisions portal access from the client record.
       </p>
@@ -154,17 +154,17 @@ function ClientGroup({ group }: { group: ClientGroupData }) {
   return (
     <li
       aria-labelledby={headingId}
-      className="overflow-hidden rounded-xl border border-[#E2E8E2] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]"
+      className="overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E8E2]/80 bg-[#F8F7F3]/70 px-4 py-2.5 sm:px-5">
-        <h3 id={headingId} className="min-w-0 truncate text-sm font-semibold text-[#174D32]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D6DDE5]/80 bg-[#F3F4F6]/70 px-4 py-2.5 sm:px-5">
+        <h3 id={headingId} className="min-w-0 truncate text-sm font-semibold text-[#174D38]">
           {group.clientNumber ? `Client #${group.clientNumber} · ${group.clientName}` : group.clientName}
         </h3>
-        <span className="text-xs text-[#64756D]">
+        <span className="text-xs text-[#526173]">
           {group.rows.length === 1 ? '1 contact' : `${group.rows.length} contacts`}
         </span>
       </div>
-      <ul className="divide-y divide-[#E2E8E2]/80">
+      <ul className="divide-y divide-[#D6DDE5]/80">
         {group.rows.map((row) => (
           <HomeownerItem key={row.key} row={row} />
         ))}
@@ -190,10 +190,10 @@ function RelationshipBadges({ relationship }: { relationship: string }) {
 
 function HomeownerItem({ row }: { row: HomeownerAccountRow }) {
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 transition-colors hover:bg-[#F8F7F3]/70 sm:flex-nowrap sm:px-5">
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 transition-colors hover:bg-[#F3F4F6]/70 sm:flex-nowrap sm:px-5">
       <span
         aria-hidden="true"
-        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#F8F7F3] text-sm font-semibold text-[#174D32] ring-1 ring-inset ring-[#174D32]/12"
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#F3F4F6] text-sm font-semibold text-[#174D38] ring-1 ring-inset ring-[#174D38]/12"
       >
         {initials(row.name)}
       </span>
@@ -203,23 +203,23 @@ function HomeownerItem({ row }: { row: HomeownerAccountRow }) {
           <RelationshipBadges relationship={row.relationship} />
           {row.isLegacyInvite && <SemanticBadge tone="neutral">Invitation access</SemanticBadge>}
         </span>
-        <span className="truncate text-sm text-[#64756D]">{row.email ?? 'No email on file'}</span>
+        <span className="truncate text-sm text-[#526173]">{row.email ?? 'No email on file'}</span>
         {row.permissions.length > 0 && (
-          <span className="truncate text-xs text-[#64756D]">{row.permissions.join(', ')}</span>
+          <span className="truncate text-xs text-[#526173]">{row.permissions.join(', ')}</span>
         )}
       </div>
       <div className="ml-14 flex shrink-0 flex-wrap items-center gap-3 sm:ml-0">
         <SemanticBadge tone={STATUS_TONE[row.status]}>{HOMEOWNER_STATUS_LABELS[row.status]}</SemanticBadge>
         {row.hasAccount && (
-          <span className="flex items-center gap-1 text-sm text-[#64756D]">
-            <FolderKanban className="size-4 text-[#174D32]/70" aria-hidden="true" />
+          <span className="flex items-center gap-1 text-sm text-[#526173]">
+            <FolderKanban className="size-4 text-[#174D38]/70" aria-hidden="true" />
             {row.projectCount === 1 ? '1 project' : `${row.projectCount} projects`}
           </span>
         )}
         <Button
           variant="outline"
           size="sm"
-          className="border-[#D6E0D5] bg-white text-[#174D32] hover:bg-[#F8F7F3] hover:text-[#103B27]"
+          className="border-[#D6E0D5] bg-white text-[#174D38] hover:bg-[#F3F4F6] hover:text-[#103B27]"
           render={<Link href={`/clients/${row.clientId}#portal-access`} />}
           nativeButton={false}
         >

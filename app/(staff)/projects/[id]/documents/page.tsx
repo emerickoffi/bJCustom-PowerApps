@@ -57,12 +57,12 @@ export default async function ProjectDocumentsPage({
   const stats =
     !archived && totalCount !== null ? (
       <ul className="mt-1 flex flex-wrap items-center gap-2" aria-label="Document totals">
-        <li className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-[#174D32] ring-1 ring-inset ring-[#174D32]/10">
+        <li className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-[#174D38] ring-1 ring-inset ring-[#174D38]/10">
           <FileText className="size-3.5" aria-hidden="true" />
           {`${totalCount} document${totalCount === 1 ? '' : 's'}`}
         </li>
         {showSigned && (
-          <li className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-[#174D32] ring-1 ring-inset ring-[#174D32]/10">
+          <li className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-[#174D38] ring-1 ring-inset ring-[#174D38]/10">
             <FileCheck2 className="size-3.5" aria-hidden="true" />
             {`${signedCount} signed`}
           </li>
@@ -99,9 +99,9 @@ export default async function ProjectDocumentsPage({
         )}
 
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="flex flex-col gap-3 rounded-xl border border-[#E2E8E2] bg-[#F8F7F3] p-3 md:p-4">
+          <div className="flex flex-col gap-3 rounded-xl border border-[#D6DDE5] bg-[#F3F4F6] p-3 md:p-4">
             <DocumentFiltersForm params={sp} showVisibility showArchived counts={archived ? null : counts} />
-            <div className="flex justify-end border-t border-[#E2E8E2] pt-3">
+            <div className="flex justify-end border-t border-[#D6DDE5] pt-3">
               <Link
                 href={browseHref(base, {}, archived ? {} : { archived: '1' })}
                 className="flex min-h-9 items-center gap-1.5 rounded-md text-sm text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

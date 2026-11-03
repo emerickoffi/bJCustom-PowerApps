@@ -596,7 +596,7 @@ export function ActivityPanel({ clientId, activity }: { clientId: string; activi
       )}
 
       {formOpen && (
-        <div className="rounded-lg border border-[#E2E8E2] bg-[#F8F7F3] p-4">
+        <div className="rounded-lg border border-[#D6DDE5] bg-[#F3F4F6] p-4">
           <InlineActionForm
             action={addActivityAction.bind(null, clientId)}
             className="grid gap-3 sm:grid-cols-[12rem_1fr]"
@@ -630,7 +630,7 @@ export function ActivityPanel({ clientId, activity }: { clientId: string; activi
             const last = index === activity.length - 1
             return (
               <li key={item.id} className="relative flex gap-3 pb-5 last:pb-0">
-                {!last && <span className="absolute top-9 bottom-1 left-4 w-px bg-[#E2E8E2]" aria-hidden="true" />}
+                {!last && <span className="absolute top-9 bottom-1 left-4 w-px bg-[#D6DDE5]" aria-hidden="true" />}
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sage text-primary ring-1 ring-inset ring-primary/10">
                   <Icon className="size-4" aria-hidden />
                 </span>

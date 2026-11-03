@@ -88,11 +88,11 @@ function ContactColumn({
     <div
       className={cn(
         'flex min-w-0 flex-col rounded-lg border p-4',
-        empty ? 'gap-1.5 border-dashed border-[#D5DED5] bg-transparent' : 'gap-3 border-[#E2E8E2] bg-[#F8F7F3]',
+        empty ? 'gap-1.5 border-dashed border-[#D5DED5] bg-transparent' : 'gap-3 border-[#D6DDE5] bg-[#F3F4F6]',
       )}
     >
-      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#64756D]">
-        <Icon className="size-3.5 text-[#174D32]/70" aria-hidden="true" />
+      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#526173]">
+        <Icon className="size-3.5 text-[#174D38]/70" aria-hidden="true" />
         {label}
       </span>
       {empty ? (
@@ -104,7 +104,7 @@ function ContactColumn({
             <span className="text-sm text-muted-foreground">{relationship}</span>
             {preference && (
               <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MessageCircle className="size-3.5 shrink-0 text-[#174D32]/60" aria-hidden="true" />
+                <MessageCircle className="size-3.5 shrink-0 text-[#174D38]/60" aria-hidden="true" />
                 {preference}
               </span>
             )}
@@ -152,11 +152,11 @@ export function ClientCard({
     : null
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-[#E2E8E2] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)] transition-[box-shadow,border-color] hover:border-[#D5DED5] hover:shadow-[0_4px_14px_rgba(16,59,39,0.07)]">
+    <article className="flex flex-col overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)] transition-[box-shadow,border-color] hover:border-[#D5DED5] hover:shadow-[0_4px_14px_rgba(16,59,39,0.07)]">
       <header className="flex items-center justify-between gap-3 p-4 pb-3 sm:flex-wrap sm:p-5 sm:pb-4">
         <div className="flex min-w-0 items-center gap-3">
           <span
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#EAF0E9] font-serif text-sm font-semibold text-[#174D32] ring-1 ring-inset ring-[#174D32]/12"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#E6F0EB] font-serif text-sm font-semibold text-[#174D38] ring-1 ring-inset ring-[#174D38]/12"
             aria-hidden="true"
           >
             {`${client.first_name.charAt(0)}${client.last_name.charAt(0)}`.toUpperCase()}

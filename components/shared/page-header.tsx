@@ -35,7 +35,7 @@ export function PageHeader({
     <header
       className={cn(
         'flex min-w-0 flex-col gap-3 md:gap-4',
-        sage && 'rounded-xl border border-[#E2E8E2] bg-[#EAF0E9] px-4 py-4 md:px-6 md:py-5',
+        sage && 'rounded-xl border border-border bg-card px-4 py-3.5 md:px-5 md:py-4',
         forest && 'rounded-xl bg-[#123D2E] px-4 py-3.5 md:px-6 md:py-4',
         tone === 'plain' && 'border-b border-border/70 pb-4 md:pb-6',
       )}
@@ -47,12 +47,8 @@ export function PageHeader({
           {!avatar && Icon && (
             <span
               className={cn(
-                'flex size-9 shrink-0 items-center justify-center rounded-xl text-primary ring-1 ring-inset md:size-11',
-                forest
-                  ? 'bg-white/10 text-white ring-white/15'
-                  : sage
-                    ? 'bg-white ring-[#174D32]/12'
-                    : 'bg-sage ring-primary/10',
+                'flex size-9 shrink-0 items-center justify-center rounded-lg text-primary ring-1 ring-inset md:size-10',
+                forest ? 'bg-white/10 text-white ring-white/15' : 'bg-sage ring-primary/10',
               )}
             >
               <Icon className="size-5" aria-hidden="true" />
@@ -188,7 +184,7 @@ export function EmptyState({
   action?: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-input bg-card/70 px-6 py-12 text-center">
+    <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-input bg-card px-6 py-12 text-center">
       <div className="flex size-11 items-center justify-center rounded-xl bg-sage text-primary ring-1 ring-inset ring-primary/10">
         <Icon className="size-5" aria-hidden="true" />
       </div>

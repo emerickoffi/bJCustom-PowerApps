@@ -24,7 +24,7 @@ export function ClientTable({
   canManageContacts: boolean
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-[#E2E8E2] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
+    <div className="overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[56rem] text-sm">
           <caption className="sr-only">Clients</caption>
@@ -40,18 +40,18 @@ export function ClientTable({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E2E8E2]">
+          <tbody className="divide-y divide-[#D6DDE5]">
             {rows.map(({ client, primary, projectCount }) => {
               const href = `/clients/${client.id}`
               const name = `${client.first_name} ${client.last_name}`
               const location = [client.city, client.state].filter(Boolean).join(', ')
               const preference = preferenceLabel(primary?.preferred_communication)
               return (
-                <tr key={client.id} className="transition-colors hover:bg-[#F8F7F3]/70">
+                <tr key={client.id} className="transition-colors hover:bg-[#F3F4F6]/70">
                   <td className="px-4 py-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <span
-                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#EAF0E9] font-serif text-xs font-semibold text-[#174D32] ring-1 ring-inset ring-[#174D32]/12"
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#E6F0EB] font-serif text-xs font-semibold text-[#174D38] ring-1 ring-inset ring-[#174D38]/12"
                         aria-hidden="true"
                       >
                         {`${client.first_name.charAt(0)}${client.last_name.charAt(0)}`.toUpperCase()}

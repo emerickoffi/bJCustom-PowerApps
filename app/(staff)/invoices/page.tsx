@@ -83,7 +83,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
       </dl>
 
       <section aria-labelledby="invoice-directory" className="surface flex min-w-0 flex-col overflow-hidden">
-        <div className="flex flex-col gap-4 border-b border-[#E2E8E2] p-4 md:p-5">
+        <div className="flex flex-col gap-4 border-b border-[#D6DDE5] p-4 md:p-5">
           <div className="flex items-baseline justify-between gap-3">
             <h2 id="invoice-directory" className="font-serif text-lg font-semibold tracking-tight text-foreground">
               Invoice directory
@@ -104,14 +104,14 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                     'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     active
                       ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-[#E2E8E2] bg-white text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                      : 'border-[#D6DDE5] bg-white text-muted-foreground hover:border-primary/40 hover:text-foreground',
                   )}
                 >
                   {f.label}
                   <span
                     className={cn(
                       'rounded-full px-1.5 text-xs tabular-nums',
-                      active ? 'bg-white/20 text-primary-foreground' : 'bg-[#EAF0E9] text-foreground/70',
+                      active ? 'bg-white/20 text-primary-foreground' : 'bg-[#E6F0EB] text-foreground/70',
                     )}
                   >
                     {f.count}
@@ -162,7 +162,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         ) : (
           <>
             <InvoiceTable invoices={invoices} />
-            <ul className="flex flex-col divide-y divide-[#E2E8E2] lg:hidden">
+            <ul className="flex flex-col divide-y divide-[#D6DDE5] lg:hidden">
               {invoices.map((inv) => (
                 <li key={inv.id}>
                   <InvoiceCard invoice={inv} />
@@ -202,16 +202,16 @@ function Stat({
   return (
     <div className={cn('surface flex items-start justify-between gap-4 p-4 md:p-5', className)}>
       <div className="flex min-w-0 flex-col gap-1.5">
-        <dt className="text-xs font-medium uppercase tracking-wider text-[#536159]">{label}</dt>
+        <dt className="text-xs font-medium uppercase tracking-wider text-[#526173]">{label}</dt>
         <dd
           className={cn(
             'truncate font-serif text-3xl font-semibold leading-none tracking-tight tabular-nums',
-            danger ? 'text-destructive' : 'text-[#18251F]',
+            danger ? 'text-destructive' : 'text-[#17212B]',
           )}
         >
           {value}
         </dd>
-        <dd className="text-sm text-[#536159]">{note}</dd>
+        <dd className="text-sm text-[#526173]">{note}</dd>
       </div>
       <span
         className={cn(
@@ -231,7 +231,7 @@ function InvoiceTable({ invoices }: { invoices: InvoiceRow[] }) {
       <table className="w-full text-sm">
         <caption className="sr-only">Invoices</caption>
         <thead>
-          <tr className="border-b border-[#E2E8E2] bg-[#F8F7F3] text-left text-xs uppercase tracking-wider text-muted-foreground">
+          <tr className="border-b border-[#D6DDE5] bg-[#F3F4F6] text-left text-xs uppercase tracking-wider text-muted-foreground">
             <th scope="col" className="px-5 py-3 font-medium">Invoice</th>
             <th scope="col" className="px-4 py-3 font-medium">Project / homeowner</th>
             <th scope="col" className="px-4 py-3 font-medium">Invoice date</th>
@@ -243,7 +243,7 @@ function InvoiceTable({ invoices }: { invoices: InvoiceRow[] }) {
         </thead>
         <tbody>
           {invoices.map((inv) => (
-            <tr key={inv.id} className="border-b border-[#E2E8E2] transition-colors last:border-0 hover:bg-[#F8F7F3]">
+            <tr key={inv.id} className="border-b border-[#D6DDE5] transition-colors last:border-0 hover:bg-[#F3F4F6]">
               <td className="px-5 py-3.5">
                 <Link href={`/invoices/${inv.id}`} className="font-medium text-foreground hover:text-primary">
                   {inv.invoice_number}
@@ -275,7 +275,7 @@ function InvoiceCard({ invoice: inv }: { invoice: InvoiceRow }) {
   return (
     <Link
       href={`/invoices/${inv.id}`}
-      className="flex flex-col gap-3 p-4 transition-colors hover:bg-[#F8F7F3] focus-visible:bg-[#F8F7F3] focus-visible:outline-none md:px-5"
+      className="flex flex-col gap-3 p-4 transition-colors hover:bg-[#F3F4F6] focus-visible:bg-[#F3F4F6] focus-visible:outline-none md:px-5"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col">
@@ -288,7 +288,7 @@ function InvoiceCard({ invoice: inv }: { invoice: InvoiceRow }) {
         <span className="truncate text-foreground">{inv.project?.name ?? '—'}</span>
         <span className="truncate text-xs text-muted-foreground">{invoiceClientName(inv)}</span>
       </div>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-[#F8F7F3] p-3 text-sm sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-[#F3F4F6] p-3 text-sm sm:grid-cols-4">
         <CardField label="Invoice date" value={formatDate(inv.invoice_date)} />
         <CardField label="Due" value={formatDate(inv.due_date)} />
         <CardField label="Total" value={formatCentsExact(inv.total_cents)} />
@@ -335,8 +335,8 @@ function EmptyState({
         <Icon className="size-6" aria-hidden="true" />
       </span>
       <div className="flex max-w-md flex-col gap-1.5">
-        <h3 className="text-balance font-serif text-xl font-semibold tracking-tight text-[#18251F]">{title}</h3>
-        <p className="text-pretty text-sm leading-relaxed text-[#536159]">{body}</p>
+        <h3 className="text-balance font-serif text-xl font-semibold tracking-tight text-[#17212B]">{title}</h3>
+        <p className="text-pretty text-sm leading-relaxed text-[#526173]">{body}</p>
       </div>
       {action}
     </div>

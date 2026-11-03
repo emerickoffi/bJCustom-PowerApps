@@ -88,7 +88,7 @@ export default async function CompanyDocumentsPage({ searchParams }: { searchPar
         actions={uploadAction}
       />
 
-      <nav aria-label="Document libraries" className="flex gap-6 border-b border-[#E2E8E2]">
+      <nav aria-label="Document libraries" className="flex gap-6 border-b border-[#D6DDE5]">
         <TabLink href={base} active={!isCompany} icon={FolderKanban}>
           Project Documents
         </TabLink>

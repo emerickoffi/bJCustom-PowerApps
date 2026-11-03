@@ -31,7 +31,7 @@ export function ProjectNextActions({ items, hiddenCount }: { items: NextAction[]
               <Link
                 href={action.href}
                 className={cn(
-                  'group flex h-full min-h-11 flex-col gap-3 rounded-xl border border-[#E2E8E2] bg-white p-4 transition-colors hover:border-primary/40 hover:bg-[#F8F7F3] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+                  'group flex h-full min-h-11 flex-col gap-3 rounded-xl border border-[#D6DDE5] bg-white p-4 transition-colors hover:border-primary/40 hover:bg-[#F3F4F6] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
                   single && 'sm:flex-row sm:items-center sm:justify-between sm:gap-6',
                 )}
               >

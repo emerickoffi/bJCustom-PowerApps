@@ -87,18 +87,18 @@ export function ClientInformationCard({ info, identity }: { info: ClientInformat
   return (
     <section
       aria-labelledby="client-profile-heading"
-      className="flex flex-col overflow-hidden rounded-xl border border-[#E2E8E2] bg-card shadow-xs"
+      className="flex flex-col overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-xs"
     >
-      <header className="flex flex-col gap-4 border-b border-[#E2E8E2] bg-[#EAF0E9] px-5 py-5 md:flex-row md:items-start md:justify-between md:px-6">
+      <header className="flex flex-col gap-4 border-b border-[#D6DDE5] bg-card px-5 py-5 md:flex-row md:items-start md:justify-between md:px-6">
         <div className="flex min-w-0 items-start gap-4">
           <span
             aria-hidden="true"
-            className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#174D32] font-serif text-base font-semibold text-white md:size-14 md:text-lg"
+            className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#174D38] font-serif text-base font-semibold text-white md:size-14 md:text-lg"
           >
             {identity.initials || <ContactRound className="size-5" aria-hidden />}
           </span>
           <div className="flex min-w-0 flex-col gap-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#174D32]">Client profile</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#174D38]">Client profile</p>
             <h1
               id="client-profile-heading"
               className="text-balance break-words font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-3xl"
@@ -109,11 +109,11 @@ export function ClientInformationCard({ info, identity }: { info: ClientInformat
             <ul className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
               {identity.meta}
               <li className="flex items-center gap-1.5">
-                <FolderKanban className="size-3.5 text-[#174D32]/70" aria-hidden />
+                <FolderKanban className="size-3.5 text-[#174D38]/70" aria-hidden />
                 {projectLabel}
               </li>
               <li className="flex items-center gap-1.5">
-                <CalendarDays className="size-3.5 text-[#174D32]/70" aria-hidden />
+                <CalendarDays className="size-3.5 text-[#174D38]/70" aria-hidden />
                 {`Client since ${info.clientSince}`}
               </li>
             </ul>

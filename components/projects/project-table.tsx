@@ -34,7 +34,7 @@ function dateCell(p: ProjectTableRow) {
 
 export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-[#E2E8E2] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
+    <div className="overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[72rem] text-sm">
           <caption className="sr-only">Projects</caption>
@@ -52,7 +52,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E2E8E2]">
+          <tbody className="divide-y divide-[#D6DDE5]">
             {rows.map((p) => {
               const href = `/projects/${p.id}`
               const showProgress = p.details.hasSchedule && p.status !== 'completed' && p.progress_percent !== null
@@ -60,7 +60,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
               const panel = buildPanel(p)
               const date = dateCell(p)
               return (
-                <tr key={p.id} className="transition-colors hover:bg-[#F8F7F3]/70">
+                <tr key={p.id} className="transition-colors hover:bg-[#F3F4F6]/70">
                   <td className="px-4 py-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="relative aspect-[4/3] w-14 shrink-0 overflow-hidden rounded-md bg-muted">

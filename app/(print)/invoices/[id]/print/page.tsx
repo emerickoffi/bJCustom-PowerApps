@@ -22,7 +22,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
   if (isClient && data.invoice.status === 'draft') notFound()
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 bg-background p-6 sm:p-10 print:max-w-none print:p-0">
+    <main data-print-document className="mx-auto flex max-w-4xl flex-col gap-6 bg-background p-6 sm:p-10 print:max-w-none print:p-0">
       <div className="flex justify-end print:hidden">
         <PrintButton />
       </div>

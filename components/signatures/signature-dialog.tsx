@@ -108,7 +108,7 @@ function PanelBody({ promise, doc, onChanged }: { promise: Promise<PanelResult>;
         <Notice tone="info">Test mode is on. Requests are sent with Dropbox Sign test mode and are not legally binding.</Notice>
       )}
       {data.canManage && data.setup === 'enabled' && v?.isPdf && v.sizeOk && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-[#E2E8E2] bg-[#F8F7F3] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-[#D6DDE5] bg-[#F3F4F6] p-4">
           <p className="text-sm text-muted-foreground">
             {data.hasOpenRequestOnCurrent
               ? `Version ${v.number} already has an open request. Cancel it to send again.`
@@ -140,7 +140,7 @@ function Notice({ tone, children }: { tone: 'error' | 'warning' | 'info'; childr
         'flex items-start gap-2 rounded-lg p-3 text-sm',
         tone === 'error' && 'bg-destructive/5 text-destructive',
         tone === 'warning' && 'bg-champagne-soft text-warning',
-        tone === 'info' && 'bg-[#EAF0E9] text-primary',
+        tone === 'info' && 'bg-[#E6F0EB] text-primary',
       )}
     >
       <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -173,7 +173,7 @@ function RequestCard({ request: r, canManage, onChanged }: { request: SignatureR
     })
 
   return (
-    <li className="flex flex-col gap-3 rounded-xl border border-[#E2E8E2] bg-card p-4">
+    <li className="flex flex-col gap-3 rounded-xl border border-[#D6DDE5] bg-card p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-1">
           <p className="truncate font-medium text-foreground">{r.title}</p>
@@ -197,7 +197,7 @@ function RequestCard({ request: r, canManage, onChanged }: { request: SignatureR
       {r.errorMessage && <Notice tone="error">{r.errorMessage}</Notice>}
       {r.status === 'completed' && r.artifactError && <Notice tone="warning">{r.artifactError}</Notice>}
 
-      <ol className="flex flex-col divide-y divide-[#E2E8E2] rounded-lg border border-[#E2E8E2]">
+      <ol className="flex flex-col divide-y divide-[#D6DDE5] rounded-lg border border-[#D6DDE5]">
         {r.signers.map((s) => (
           <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
             <div className="flex min-w-0 items-center gap-2">
@@ -267,7 +267,7 @@ function RequestCard({ request: r, canManage, onChanged }: { request: SignatureR
       </div>
 
       {showLog && (
-        <ol className="flex flex-col gap-1.5 border-l-2 border-[#E2E8E2] pl-3 text-xs">
+        <ol className="flex flex-col gap-1.5 border-l-2 border-[#D6DDE5] pl-3 text-xs">
           {r.events.map((e) => (
             <li key={e.id} className="flex flex-wrap justify-between gap-2">
               <span className="text-foreground">{eventLabel(e.type)}</span>
@@ -354,7 +354,7 @@ function Composer({ data, doc, onCancel, onSent }: { data: SignaturePanelData; d
               key={o.value}
               className={cn(
                 'flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
-                method === o.value ? 'border-primary bg-[#EAF0E9]' : 'border-[#E2E8E2]',
+                method === o.value ? 'border-primary bg-[#E6F0EB]' : 'border-[#D6DDE5]',
                 o.disabled && 'cursor-not-allowed opacity-60',
               )}
             >
@@ -377,12 +377,12 @@ function Composer({ data, doc, onCancel, onSent }: { data: SignaturePanelData; d
             {g.items.length === 0 ? (
               <p className="text-sm text-muted-foreground">{g.label === 'Homeowners' ? 'This project has no client contacts.' : 'No team members found.'}</p>
             ) : (
-              <ul className="flex flex-col rounded-lg border border-[#E2E8E2]">
+              <ul className="flex flex-col rounded-lg border border-[#D6DDE5]">
                 {g.items.map((c) => {
                   const checked = selected.some((s) => s.key === c.key)
                   const reason = c.reason ?? (blockedForMethod(c.key) ? 'No portal access to this project' : undefined)
                   return (
-                    <li key={c.key} className="border-b border-[#E2E8E2] last:border-b-0">
+                    <li key={c.key} className="border-b border-[#D6DDE5] last:border-b-0">
                       <label className={cn('flex min-h-11 items-start gap-3 px-3 py-2.5 text-sm sm:min-h-0 sm:py-2', c.eligible ? 'cursor-pointer' : 'cursor-not-allowed opacity-60')}>
                         <input type="checkbox" className="mt-1 size-4 shrink-0 accent-primary" checked={checked} disabled={!c.eligible} onChange={() => toggle(c.key)} />
                         <span className="min-w-0 flex-1">
@@ -401,7 +401,7 @@ function Composer({ data, doc, onCancel, onSent }: { data: SignaturePanelData; d
       </fieldset>
 
       {selected.length > 0 && (
-        <div className="flex flex-col gap-2 rounded-lg bg-[#F8F7F3] p-3">
+        <div className="flex flex-col gap-2 rounded-lg bg-[#F3F4F6] p-3">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" className="size-4 accent-primary" checked={ordered} onChange={(e) => setOrdered(e.target.checked)} />
             Signers must sign in this order

@@ -4,7 +4,7 @@ import type { FeatureMap } from '@/lib/feature-registry'
 import type { Access, Cell, MatrixAction, MatrixModule } from '@/lib/permissions-matrix'
 
 export const ACCESS_META: Record<Access, { label: string; icon: typeof Check; className: string }> = {
-  allowed: { label: 'Allowed', icon: Check, className: 'bg-[#EAF0E9] text-[#174D32]' },
+  allowed: { label: 'Allowed', icon: Check, className: 'bg-[#E6F0EB] text-[#174D38]' },
   conditional: { label: 'Conditional', icon: CircleDot, className: 'bg-[#E8F0F8] text-[#285A86]' },
   denied: { label: 'Not allowed', icon: Minus, className: 'bg-[#F4F4F1] text-[#8A948E]' },
   unverified: { label: 'Unverified', icon: CircleHelp, className: 'bg-[#FFF2DA] text-[#96570E]' },

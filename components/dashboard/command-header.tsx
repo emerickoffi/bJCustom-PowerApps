@@ -58,7 +58,7 @@ function AttentionSummary({ total, isLowerBound, href }: { total: number; isLowe
           ? 'All caught up. Go to your action items'
           : `${count} items need your attention. Go to your action items`
       }
-      className="group flex shrink-0 items-center gap-3 self-start rounded-xl border border-[#D8DED8] bg-card px-3.5 py-2.5 transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:self-auto"
+      className="group flex shrink-0 items-center gap-3 self-start rounded-xl border border-[#D6DDE5] bg-card px-3.5 py-2.5 transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:self-auto"
     >
       <span
         className={cn(

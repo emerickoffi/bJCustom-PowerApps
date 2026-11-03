@@ -75,7 +75,7 @@ function VisibilityBadge({ visibility }: { visibility: DocumentRow['visibility']
     <span
       className={cn(
         'inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
-        shared ? 'bg-[#EAF0E9] text-primary ring-primary/15' : 'bg-[#F8F7F3] text-muted-foreground ring-[#E2E8E2]',
+        shared ? 'bg-[#E6F0EB] text-primary ring-primary/15' : 'bg-[#F3F4F6] text-muted-foreground ring-[#D6DDE5]',
       )}
     >
       {shared ? <Eye className="size-3" aria-hidden="true" /> : <EyeOff className="size-3" aria-hidden="true" />}
@@ -126,7 +126,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
     return (
       <DropdownMenu>
         <DropdownMenuTrigger
-          className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[#EAF0E9] hover:text-primary aria-expanded:bg-[#EAF0E9] disabled:opacity-50"
+          className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[#E6F0EB] hover:text-primary aria-expanded:bg-[#E6F0EB] disabled:opacity-50"
           aria-label={`Actions for ${doc.name}`}
           disabled={pending}
         >
@@ -199,7 +199,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
   function nameCell(doc: DocumentRow) {
     return (
       <div className="flex min-w-0 items-start gap-3">
-        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#EAF0E9] text-primary">
+        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#E6F0EB] text-primary">
           <FileIcon contentType={doc.current_version?.content_type} className="size-4" />
         </span>
         <div className="flex min-w-0 flex-col gap-0.5">
@@ -258,10 +258,10 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
 
   return (
     <>
-      <div className="hidden overflow-hidden rounded-xl border border-[#E2E8E2] bg-card md:block">
+      <div className="hidden overflow-hidden rounded-xl border border-[#D6DDE5] bg-card md:block">
         <table className="w-full text-sm">
           <caption className="sr-only">Documents</caption>
-          <thead className="bg-[#F8F7F3] text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <thead className="bg-[#F3F4F6] text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
             <tr>
               <th scope="col" className="px-4 py-3">Document</th>
               {showProject && <th scope="col" className="px-4 py-3">Project</th>}
@@ -272,9 +272,9 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
               <th scope="col" className="w-12 px-4 py-3"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E2E8E2]">
+          <tbody className="divide-y divide-[#D6DDE5]">
             {rows.map((doc) => (
-              <tr key={doc.id} className="align-top transition-colors hover:bg-[#F8F7F3]/60">
+              <tr key={doc.id} className="align-top transition-colors hover:bg-[#F3F4F6]/60">
                 <td className="max-w-md px-4 py-3">{nameCell(doc)}</td>
                 {showProject && <td className="max-w-56 px-4 py-3 text-sm">{projectLink(doc)}</td>}
                 <td className="px-4 py-3 text-muted-foreground">{categoryLabel(doc.category)}</td>
@@ -304,7 +304,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
 
       <ul className="flex flex-col gap-3 md:hidden">
         {rows.map((doc) => (
-          <li key={doc.id} className="rounded-xl border border-[#E2E8E2] bg-card p-4">
+          <li key={doc.id} className="rounded-xl border border-[#D6DDE5] bg-card p-4">
             <div className="flex items-start justify-between gap-2">
               {nameCell(doc)}
               {actionsFor(doc)}
@@ -403,7 +403,7 @@ function PreviewDialog({ state, onRetry, onClose }: { state: PreviewState | null
         </DialogHeader>
         {state && version && (
           <div className="flex min-h-0 flex-1 flex-col gap-3">
-            <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-[#E2E8E2] bg-[#F8F7F3]">
+            <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-[#D6DDE5] bg-[#F3F4F6]">
               <Suspense fallback={<DialogSpinner label="Loading preview" />}>
                 <PreviewBody request={state.request} contentType={version.content_type} name={state.doc.name} onRetry={onRetry} />
               </Suspense>
@@ -477,14 +477,14 @@ function HistoryBody({ request, currentVersion }: { request: Promise<HistoryResu
       </p>
     )
   return (
-    <ol className="flex flex-col divide-y divide-[#E2E8E2] rounded-lg border border-[#E2E8E2]">
+    <ol className="flex flex-col divide-y divide-[#D6DDE5] rounded-lg border border-[#D6DDE5]">
       {res.data.map((v: DocumentVersionEntry) => (
         <li key={v.id} className="flex items-start justify-between gap-3 p-3">
           <div className="flex min-w-0 flex-col gap-0.5">
             <p className="flex items-center gap-2 text-sm font-medium">
               {`Version ${v.versionNumber}`}
               {v.versionNumber === currentVersion && (
-                <span className="rounded-full bg-[#EAF0E9] px-2 py-0.5 text-xs font-medium text-primary">Current</span>
+                <span className="rounded-full bg-[#E6F0EB] px-2 py-0.5 text-xs font-medium text-primary">Current</span>
               )}
             </p>
             <p className="truncate text-xs text-muted-foreground">{`${v.originalFilename} · ${formatBytes(v.sizeBytes)}`}</p>

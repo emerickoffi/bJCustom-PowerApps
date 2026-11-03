@@ -46,7 +46,7 @@ function Avatar({ name, tone = 'sage' }: { name: string; tone?: 'sage' | 'primar
       aria-hidden="true"
       className={cn(
         'flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-        tone === 'primary' ? 'bg-primary text-primary-foreground' : 'bg-[#EAF0E9] text-[#174D32]',
+        tone === 'primary' ? 'bg-primary text-primary-foreground' : 'bg-[#E6F0EB] text-[#174D38]',
       )}
     >
       {initials(name)}
@@ -78,7 +78,7 @@ function PanelLink({ href, icon: Icon, children }: { href: string; icon: typeof 
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-[#EAF0E9]"
+      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-[#E6F0EB]"
     >
       <Icon className="size-3.5" aria-hidden="true" />
       {children}
@@ -87,10 +87,10 @@ function PanelLink({ href, icon: Icon, children }: { href: string; icon: typeof 
 }
 
 const PORTAL_TONE: Record<string, string> = {
-  sage: 'bg-[#EAF0E9] text-[#174D32]',
+  sage: 'bg-[#E6F0EB] text-[#174D38]',
   warning: 'bg-amber-50 text-amber-800',
   danger: 'bg-destructive/10 text-destructive',
-  neutral: 'bg-[#F8F7F3] text-muted-foreground',
+  neutral: 'bg-[#F3F4F6] text-muted-foreground',
 }
 
 function Pill({ className, children }: { className: string; children: React.ReactNode }) {
@@ -166,7 +166,7 @@ export function ProjectClientsPanel({
       }
     >
       {!primaryClientId && (
-        <div className="flex flex-col gap-3 rounded-lg border border-dashed bg-[#F8F7F3] p-4">
+        <div className="flex flex-col gap-3 rounded-lg border border-dashed bg-[#F3F4F6] p-4">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-foreground">Primary client: Unassigned</span>
             <span className="text-xs text-muted-foreground">
@@ -267,16 +267,16 @@ export function ProjectTeamPanel({
 
   return (
     <Panel title="Builder team">
-      <div className="flex items-center gap-3 rounded-lg border border-[#D5E2D3] bg-[#EAF0E9]/60 p-3">
+      <div className="flex items-center gap-3 rounded-lg border border-[#D5E2D3] bg-[#E6F0EB]/60 p-3">
         {managerName ? (
           <Avatar name={managerName} tone="primary" />
         ) : (
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-dashed border-[#174D32]/40 text-[#174D32]">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-dashed border-[#174D38]/40 text-[#174D38]">
             <UserCog className="size-4" aria-hidden="true" />
           </span>
         )}
         <div className="flex min-w-0 flex-1 flex-col">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-[#174D32]">Project manager</span>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-[#174D38]">Project manager</span>
           <span className="truncate font-medium text-foreground">{managerName ?? 'Unassigned'}</span>
         </div>
         {canEdit && (

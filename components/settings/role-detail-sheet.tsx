@@ -41,14 +41,14 @@ function RoleDetailBody({ role, features }: { role: OrgRole; features: FeatureMa
 
   return (
     <>
-      <SheetHeader className="border-b border-[#E2E8E2] bg-[#F8F7F3] pr-12">
+      <SheetHeader className="border-b border-[#D6DDE5] bg-[#F3F4F6] pr-12">
         <SheetTitle className="font-serif text-xl font-semibold text-[#103B27]">{ROLE_LABELS[role]}</SheetTitle>
         <SheetDescription>{detail.summary}</SheetDescription>
       </SheetHeader>
 
       <div className="flex flex-col gap-6 px-4 pb-6">
         <section aria-labelledby="role-scope" className="flex flex-col gap-1.5">
-          <h3 id="role-scope" className="text-xs font-semibold uppercase tracking-wide text-[#64756D]">
+          <h3 id="role-scope" className="text-xs font-semibold uppercase tracking-wide text-[#526173]">
             Record scope
           </h3>
           <p className="text-sm text-foreground">{detail.scope}</p>
@@ -57,15 +57,15 @@ function RoleDetailBody({ role, features }: { role: OrgRole; features: FeatureMa
         {groups.map(({ state, items }) =>
           items.length === 0 ? null : (
             <section key={state} aria-labelledby={`role-${state}`} className="flex flex-col gap-2">
-              <h3 id={`role-${state}`} className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#64756D]">
+              <h3 id={`role-${state}`} className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#526173]">
                 <AccessBadge access={state} />
                 {ACCESS_META[state].label} ({items.length})
               </h3>
               <ul className="flex flex-col gap-2">
                 {items.map((item) => (
-                  <li key={item.key} className="rounded-lg border border-[#E2E8E2] bg-white px-3 py-2">
+                  <li key={item.key} className="rounded-lg border border-[#D6DDE5] bg-white px-3 py-2">
                     <p className="text-sm font-medium text-foreground">{item.label}</p>
-                    {item.why && <p className="mt-0.5 text-xs leading-relaxed text-[#64756D]">{item.why}</p>}
+                    {item.why && <p className="mt-0.5 text-xs leading-relaxed text-[#526173]">{item.why}</p>}
                   </li>
                 ))}
               </ul>
@@ -74,7 +74,7 @@ function RoleDetailBody({ role, features }: { role: OrgRole; features: FeatureMa
         )}
 
         <section aria-labelledby="role-features" className="flex flex-col gap-1.5">
-          <h3 id="role-features" className="text-xs font-semibold uppercase tracking-wide text-[#64756D]">
+          <h3 id="role-features" className="text-xs font-semibold uppercase tracking-wide text-[#526173]">
             Feature restrictions
           </h3>
           <p className="text-sm text-foreground">
@@ -85,7 +85,7 @@ function RoleDetailBody({ role, features }: { role: OrgRole; features: FeatureMa
         </section>
 
         <section aria-labelledby="role-gaps" className="flex flex-col gap-1.5">
-          <h3 id="role-gaps" className="text-xs font-semibold uppercase tracking-wide text-[#64756D]">
+          <h3 id="role-gaps" className="text-xs font-semibold uppercase tracking-wide text-[#526173]">
             Known verification gaps
           </h3>
           {detail.gaps.length ? (

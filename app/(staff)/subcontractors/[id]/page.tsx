@@ -134,7 +134,7 @@ export default async function SubcontractorDetailPage({
         avatar={
           <span
             aria-hidden="true"
-            className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-semibold text-primary ring-1 ring-inset ring-[#174D32]/12 md:size-12 md:text-base"
+            className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-semibold text-primary ring-1 ring-inset ring-[#174D38]/12 md:size-12 md:text-base"
           >
             {companyInitials(company.company_name)}
           </span>

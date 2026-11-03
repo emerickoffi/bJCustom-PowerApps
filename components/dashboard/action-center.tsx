@@ -185,15 +185,15 @@ function ActionIconLink({ item }: { item: ActionItem }) {
       <Link
         href={item.href}
         aria-label={name}
-        className="group/btn flex size-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18543D] focus-visible:ring-offset-2"
+        className="group/btn flex size-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38] focus-visible:ring-offset-2"
       >
-        <span className="flex size-10 items-center justify-center rounded-lg border border-[#C9DCCE] bg-[#E7F0E9] text-[#18543D] transition-colors group-hover/btn:bg-[#D5E6DA] group-hover/btn:text-[#123D2E]">
+        <span className="flex size-10 items-center justify-center rounded-lg border border-[#C9DCCE] bg-[#E7F0E9] text-[#174D38] transition-colors group-hover/btn:bg-[#D5E6DA] group-hover/btn:text-[#123D2E]">
           <Icon className="size-[19px]" strokeWidth={2} aria-hidden="true" />
         </span>
       </Link>
       <span
         aria-hidden="true"
-        className="pointer-events-none invisible absolute right-full top-1/2 z-20 mr-2 w-max max-w-60 -translate-y-1/2 rounded-md bg-[#18251F] px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-focus-within/tip:visible group-focus-within/tip:opacity-100 group-hover/tip:visible group-hover/tip:opacity-100"
+        className="pointer-events-none invisible absolute right-full top-1/2 z-20 mr-2 w-max max-w-60 -translate-y-1/2 rounded-md bg-[#17212B] px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-focus-within/tip:visible group-focus-within/tip:opacity-100 group-hover/tip:visible group-hover/tip:opacity-100"
       >
         {name}
       </span>
@@ -219,13 +219,13 @@ function CategoryFilters({
       '-mb-px inline-flex min-h-11 items-center gap-1.5 border-b-[3px] px-1 text-sm transition-colors focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       active
         ? 'border-primary font-semibold text-primary'
-        : 'border-transparent font-medium text-[#536159] hover:border-[#9FB3A7] hover:text-[#18251F]',
+        : 'border-transparent font-medium text-[#526173] hover:border-[#9FB3A7] hover:text-[#17212B]',
     )
   const count = (active: boolean, n: number) => (
     <span
       className={cn(
         'rounded-full px-1.5 text-xs font-semibold tabular-nums',
-        active ? 'bg-primary text-primary-foreground' : 'bg-[#EEF1EE] text-[#536159]',
+        active ? 'bg-primary text-primary-foreground' : 'bg-[#EEF1EE] text-[#526173]',
       )}
     >
       {n}
@@ -303,8 +303,8 @@ function EmptyState({
         <CircleCheck className="size-[18px]" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col">
-        <p className="text-sm font-semibold text-[#18251F]">{title}</p>
-        <p className="text-pretty text-sm text-[#536159]">{detail}</p>
+        <p className="text-sm font-semibold text-[#17212B]">{title}</p>
+        <p className="text-pretty text-sm text-[#526173]">{detail}</p>
       </div>
       {filteredWithOthers && (
         <Link
@@ -350,13 +350,13 @@ export function ActionCenter({
 
   return (
     <section aria-labelledby="action-center-heading" className="surface flex flex-col">
-      <div className="flex items-center gap-3 rounded-t-[inherit] border-b border-[#D8DED8] bg-card px-4 py-3 md:px-6">
+      <div className="flex items-center gap-3 rounded-t-[inherit] border-b border-[#D6DDE5] bg-card px-4 py-3 md:px-6">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#F5EDDF] text-[#805B2A]" aria-hidden="true">
           <ListChecks className="size-[18px]" />
         </span>
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Heading id="action-center-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-[#18251F]">
+            <Heading id="action-center-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-[#17212B]">
               Action Center
             </Heading>
             {items.length > 0 && (
@@ -365,7 +365,7 @@ export function ActionCenter({
               </span>
             )}
           </div>
-          <p className="text-pretty text-[13px] leading-[18px] text-[#536159]">
+          <p className="text-pretty text-[13px] leading-[18px] text-[#526173]">
             Everything waiting on you, across your projects.
           </p>
         </div>

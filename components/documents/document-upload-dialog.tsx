@@ -231,8 +231,8 @@ export function DocumentUploadDialog({
               if (!busy) pick(e.dataTransfer.files?.[0])
             }}
             className={cn(
-              'flex flex-col items-center gap-3 rounded-xl border border-dashed bg-[#F8F7F3] px-4 py-6 text-center transition-colors',
-              dragging ? 'border-primary bg-[#EAF0E9]' : 'border-[#E2E8E2]',
+              'flex flex-col items-center gap-3 rounded-xl border border-dashed bg-[#F3F4F6] px-4 py-6 text-center transition-colors',
+              dragging ? 'border-primary bg-[#E6F0EB]' : 'border-[#D6DDE5]',
             )}
           >
             <span className="flex size-10 items-center justify-center rounded-xl bg-white text-primary ring-1 ring-inset ring-primary/10">
@@ -418,7 +418,7 @@ export function DocumentUploadDialog({
                 <span>{`${progress}%`}</span>
               </div>
               <div
-                className="h-1.5 overflow-hidden rounded-full bg-[#EAF0E9]"
+                className="h-1.5 overflow-hidden rounded-full bg-[#E6F0EB]"
                 role="progressbar"
                 aria-valuenow={progress}
                 aria-valuemin={0}

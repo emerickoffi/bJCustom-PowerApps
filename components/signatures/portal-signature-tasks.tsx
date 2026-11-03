@@ -14,9 +14,9 @@ export function PortalSignatureTasks({ tasks }: { tasks: MySignatureTask[] }) {
   const done = tasks.filter((t) => !pending.includes(t)).slice(0, 5)
   if (!tasks.length) return null
   return (
-    <section aria-labelledby="sign-heading" className="flex flex-col gap-3 rounded-xl border border-[#E2E8E2] bg-card p-4 sm:p-5">
+    <section aria-labelledby="sign-heading" className="flex flex-col gap-3 rounded-xl border border-[#D6DDE5] bg-card p-4 sm:p-5">
       <div className="flex items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-[#EAF0E9] text-primary">
+        <span className="flex size-8 items-center justify-center rounded-lg bg-[#E6F0EB] text-primary">
           <PenLine className="size-4" aria-hidden="true" />
         </span>
         <div>
@@ -26,7 +26,7 @@ export function PortalSignatureTasks({ tasks }: { tasks: MySignatureTask[] }) {
           </p>
         </div>
       </div>
-      <ul className="flex flex-col divide-y divide-[#E2E8E2]">
+      <ul className="flex flex-col divide-y divide-[#D6DDE5]">
         {[...pending, ...done].map((t) => (
           <TaskRow key={t.signerId} task={t} />
         ))}

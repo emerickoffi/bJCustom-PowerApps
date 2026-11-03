@@ -88,7 +88,7 @@ function DetailField({
 }) {
   return (
     <div className="flex min-w-0 items-start gap-3">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#F8F7F3] text-primary ring-1 ring-inset ring-[#E2E8E2]">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#F3F4F6] text-primary ring-1 ring-inset ring-[#D6DDE5]">
         <Icon className="size-4" aria-hidden="true" />
       </span>
       <div className="flex min-w-0 flex-col gap-0.5 pt-px">
@@ -519,7 +519,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             {(historyRes.data ?? []).length === 0 ? (
               <p className="text-sm text-muted-foreground">No status changes recorded yet.</p>
             ) : (
-              <ol className="relative flex flex-col gap-5 before:absolute before:bottom-4 before:left-[0.4375rem] before:top-4 before:w-px before:bg-[#E2E8E2]">
+              <ol className="relative flex flex-col gap-5 before:absolute before:bottom-4 before:left-[0.4375rem] before:top-4 before:w-px before:bg-[#D6DDE5]">
                 {(historyRes.data ?? []).map((entry, index) => (
                   <li key={entry.id} className="relative flex flex-col gap-1.5 pl-8">
                     <span
@@ -550,7 +550,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                       </time>
                     </div>
                     {entry.note && (
-                      <p className="rounded-lg bg-[#F8F7F3] px-3 py-2 text-sm leading-relaxed text-foreground/80">{entry.note}</p>
+                      <p className="rounded-lg bg-[#F3F4F6] px-3 py-2 text-sm leading-relaxed text-foreground/80">{entry.note}</p>
                     )}
                     <span className="text-xs text-muted-foreground">{`By ${nameFor(entry.changed_by) ?? 'System'}`}</span>
                   </li>
@@ -569,7 +569,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 </h2>
                 <ProjectStatusBadge status={status} />
               </div>
-              <dl className="grid grid-cols-2 gap-3 rounded-lg bg-[#F8F7F3] p-3 text-sm">
+              <dl className="grid grid-cols-2 gap-3 rounded-lg bg-[#F3F4F6] p-3 text-sm">
                 <div className="flex flex-col gap-0.5">
                   <dt className="text-xs text-muted-foreground">Last updated</dt>
                   <dd className="font-medium tabular-nums text-foreground">

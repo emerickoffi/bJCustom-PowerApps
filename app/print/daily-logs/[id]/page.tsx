@@ -39,7 +39,7 @@ export default async function DailyLogPrintPage({ params }: { params: Promise<{ 
   const linked = activities.filter((a) => children.activityIds.includes(a.id))
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-8 bg-background px-6 py-10 print:max-w-none print:px-0 print:py-0">
+    <main data-print-document className="mx-auto flex max-w-3xl flex-col gap-8 bg-background px-6 py-10 print:max-w-none print:px-0 print:py-0">
       <div className="flex justify-end print:hidden">
         <PrintButton />
       </div>
