@@ -258,7 +258,8 @@ export default async function ProjectsPage({
             pageCount={pageCount}
             pageSize={pageSize}
             summary={summary}
-            hrefFor={hrefFor}
+            path="/projects"
+            params={stateParams}
             resultsId="projects-results"
             label="Projects pagination"
           />

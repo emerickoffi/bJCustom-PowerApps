@@ -5,7 +5,13 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { NativeSelect } from '@/components/shared/form-field'
-import { DIRECTORY_PAGE_SIZE, DIRECTORY_PAGE_SIZES, pageItems, type DirectoryPageSize } from '@/lib/directory'
+import {
+  DIRECTORY_PAGE_SIZE,
+  DIRECTORY_PAGE_SIZES,
+  directoryHref,
+  pageItems,
+  type DirectoryPageSize,
+} from '@/lib/directory'
 import { cn } from '@/lib/utils'
 
 const controlBase =
@@ -22,7 +28,8 @@ export function DirectoryPager({
   pageCount,
   pageSize,
   summary,
-  hrefFor,
+  path,
+  params,
   resultsId,
   label,
 }: {
@@ -30,10 +37,12 @@ export function DirectoryPager({
   pageCount: number
   pageSize: DirectoryPageSize
   summary: string
-  hrefFor: (page: number) => string
+  path: string
+  params: Record<string, string | number | null | undefined>
   resultsId: string
   label: string
 }) {
+  const hrefFor = (target: number) => directoryHref(path, { ...params, page: target })
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()

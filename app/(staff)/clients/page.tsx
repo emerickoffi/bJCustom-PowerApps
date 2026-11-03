@@ -256,7 +256,8 @@ export default async function ClientsPage({
             pageCount={pageCount}
             pageSize={pageSize}
             summary={summary}
-            hrefFor={hrefFor}
+            path="/clients"
+            params={stateParams}
             resultsId="clients-results"
             label="Clients pagination"
           />
