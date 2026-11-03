@@ -16,7 +16,7 @@ export function PortfolioTimeline({ rows }: { rows: Row[] }) {
 
   if (dated.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-border bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
+      <p className="rounded-lg border border-dashed border-[#C5CED9] bg-[#F7F9FB] px-4 py-8 text-center text-sm text-[#526173]">
         No planned dates yet. Add planned start and finish dates to activities to see them on the timeline.
       </p>
     )
@@ -44,9 +44,9 @@ export function PortfolioTimeline({ rows }: { rows: Row[] }) {
     <div className="flex flex-col gap-1">
       <div className="flex items-end gap-4">
         <div className="hidden w-48 shrink-0 md:block" />
-        <div className="relative h-6 flex-1 border-b border-border">
+        <div className="relative h-6 flex-1 border-b border-[#D6DDE5]">
           {months.map((m) => (
-            <span key={m.left} className="absolute bottom-1 -translate-x-1/2 text-[11px] text-muted-foreground" style={{ left: `${m.left}%` }}>
+            <span key={m.left} className="absolute bottom-1 -translate-x-1/2 text-[11px] text-[#526173]" style={{ left: `${m.left}%` }}>
               {m.label}
             </span>
           ))}
@@ -54,14 +54,15 @@ export function PortfolioTimeline({ rows }: { rows: Row[] }) {
       </div>
       <ul className="flex flex-col">
         {dated.map((row) => (
-          <li key={row.id} className="flex flex-col gap-1.5 border-b border-border/60 py-3 last:border-0 md:flex-row md:items-center md:gap-4">
+          <li key={row.id} className="flex flex-col gap-1.5 border-b border-[#E4E9EF] py-3 last:border-0 md:flex-row md:items-center md:gap-4">
             <Link
               href={`/projects/${row.id}/schedule`}
-              className="w-48 shrink-0 truncate text-sm font-medium text-foreground hover:text-primary"
+              title={row.name}
+              className="line-clamp-2 w-48 shrink-0 break-words text-sm font-semibold text-[#006B78] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38]"
             >
               {row.name}
             </Link>
-            <div className="relative h-7 flex-1 rounded bg-muted/50">
+            <div className="relative h-7 flex-1 rounded bg-[#EEF2F6]">
               {todayPct !== null && (
                 <span aria-hidden="true" className="absolute inset-y-0 w-px bg-destructive/70" style={{ left: `${todayPct}%` }} />
               )}
@@ -76,7 +77,7 @@ export function PortfolioTimeline({ rows }: { rows: Row[] }) {
                     className={cn(
                       'absolute top-1 h-5 rounded-sm opacity-90',
                       STATUS_BAR_TONE[a.status],
-                      late && 'ring-2 ring-destructive ring-offset-1 ring-offset-card',
+                      late && 'ring-2 ring-destructive ring-offset-1 ring-offset-white',
                     )}
                     style={{ left: `${left}%`, width: `${width}%` }}
                   />
@@ -87,7 +88,7 @@ export function PortfolioTimeline({ rows }: { rows: Row[] }) {
         ))}
       </ul>
       {todayPct !== null && (
-        <p className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+        <p className="flex items-center gap-2 pt-1 text-xs text-[#526173]">
           <span aria-hidden="true" className="inline-block h-3 w-px bg-destructive/70" /> Today
         </p>
       )}

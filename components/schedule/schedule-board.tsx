@@ -125,8 +125,8 @@ export function ScheduleBoard({
 
   return (
     <section aria-label="Schedule activities" className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div role="tablist" aria-label="Schedule view" className="inline-flex w-full rounded-lg border border-border bg-muted/60 p-1 sm:w-auto">
+      <div className="flex flex-col gap-2 rounded-xl border border-[#D6DDE5] bg-white p-2 sm:flex-row sm:items-center sm:justify-between">
+        <div role="tablist" aria-label="Schedule view" className="inline-flex w-full rounded-lg border border-[#D6DDE5] bg-[#E9EDF2] p-1 sm:w-auto">
           {VIEWS.map((v) => (
             <button
               key={v.value}
@@ -135,32 +135,32 @@ export function ScheduleBoard({
               aria-selected={view === v.value}
               onClick={() => setView(v.value)}
               className={cn(
-                'flex min-h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D32] sm:flex-none',
+                'flex min-h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38] sm:flex-none',
                 view === v.value
-                  ? 'bg-white text-[#103B27] shadow-sm ring-1 ring-[#E2E8E2]'
-                  : 'text-muted-foreground hover:bg-white/60 hover:text-[#103B27]',
+                  ? 'bg-white text-[#17212B] shadow-sm ring-1 ring-[#D6DDE5]'
+                  : 'text-[#526173] hover:bg-white/70 hover:text-[#17212B]',
               )}
             >
-              <v.icon className={cn('size-4', view === v.value && 'text-[#174D32]')} aria-hidden="true" />
+              <v.icon className={cn('size-4', view === v.value && 'text-[#174D38]')} aria-hidden="true" />
               {v.label}
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1 px-1 sm:px-0">
           {view === 'stages' && totalActivities > 0 && (
             <>
-              <Button variant="ghost" size="sm" className="min-h-10" disabled={noneCollapsed} onClick={() => setCollapsed(new Set())}>
+              <Button variant="ghost" size="sm" className="min-h-10 text-[#174D38] hover:bg-[#E9EDF2] hover:text-[#174D38]" disabled={noneCollapsed} onClick={() => setCollapsed(new Set())}>
                 <ChevronsUpDown data-icon="inline-start" />
                 Expand all
               </Button>
-              <Button variant="ghost" size="sm" className="min-h-10" disabled={allCollapsed} onClick={() => setCollapsed(new Set(allKeys))}>
+              <Button variant="ghost" size="sm" className="min-h-10 text-[#174D38] hover:bg-[#E9EDF2] hover:text-[#174D38]" disabled={allCollapsed} onClick={() => setCollapsed(new Set(allKeys))}>
                 <ChevronsDownUp data-icon="inline-start" />
                 Collapse all
               </Button>
             </>
           )}
           {totalActivities > 0 && (
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5 px-2 text-xs text-[#526173]">
               <Pencil className="size-3.5" aria-hidden="true" />
               {canManage ? 'Select an activity to edit it' : 'Select an activity to view details'}
             </span>
@@ -197,7 +197,7 @@ export function ScheduleBoard({
             onSelect={open(groups[0].project.id)}
           />
         ) : (
-          <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+          <div className="rounded-xl border border-[#D6DDE5] bg-white p-4 sm:p-5">
             <PortfolioTimeline rows={groups.map((g) => ({ id: g.project.id, name: g.project.name, activities: g.activities }))} />
           </div>
         ))}
@@ -237,19 +237,19 @@ function ProjectSection({
   const overdue = group.activities.filter((a) => isOverdue(a)).length
   const panelId = `project-${group.project.id}`
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <div className="overflow-hidden rounded-xl border border-[#D6DDE5] bg-white">
       <div className="flex items-center gap-2 pr-3">
         <button
           type="button"
           aria-expanded={open}
           aria-controls={panelId}
           onClick={onToggle}
-          className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#F7F9FB] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D38]"
         >
-          <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', !open && '-rotate-90')} aria-hidden="true" />
+          <ChevronDown className={cn('size-4 shrink-0 text-[#526173] transition-transform motion-reduce:transition-none', !open && '-rotate-90')} aria-hidden="true" />
           <span className="flex min-w-0 flex-col">
-            <span className="truncate font-serif text-base font-semibold text-foreground">{group.project.name}</span>
-            <span className="text-xs text-muted-foreground">
+            <span className="font-serif text-base font-semibold text-[#17212B]">{group.project.name}</span>
+            <span className="text-xs text-[#526173]">
               {[
                 group.project.statusLabel,
                 `${done} of ${group.activities.length} complete`,
@@ -267,13 +267,13 @@ function ProjectSection({
         </button>
         <Link
           href={`/projects/${group.project.id}/schedule`}
-          className="hidden shrink-0 rounded-md px-2 py-1 text-xs font-medium text-primary hover:underline sm:inline"
+          className="hidden shrink-0 rounded-md px-2 py-1 text-xs font-medium text-[#006B78] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006B78] sm:inline"
         >
           Open tracker
         </Link>
       </div>
       {open && (
-        <div id={panelId} className="border-t border-border bg-background/40 p-3">
+        <div id={panelId} className="border-t border-[#D6DDE5] bg-[#F3F4F6] p-2 sm:p-3">
           {children}
         </div>
       )}
@@ -310,7 +310,7 @@ function StageList({
         return (
           <div
             key={key}
-            className="overflow-hidden rounded-lg border border-[#E2E8E2] border-l-[3px] bg-white"
+            className="overflow-hidden rounded-lg border border-[#D6DDE5] border-l-[3px] bg-white"
             style={{ borderLeftColor: style.accent }}
           >
             <button
@@ -318,8 +318,7 @@ function StageList({
               aria-expanded={open}
               aria-controls={panelId}
               onClick={() => toggle(key)}
-              className="flex min-h-12 w-full items-center gap-3 px-3 py-2.5 text-left text-[#103B27] transition-[filter] hover:brightness-[0.97] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32] sm:px-4"
-              style={{ backgroundColor: style.background }}
+              className="flex min-h-12 w-full items-center gap-3 bg-[#E9EDF2] px-3 py-2.5 text-left text-[#17212B] transition-colors hover:bg-[#E1E6EC] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D38] sm:px-4"
             >
               <span
                 className={cn(
@@ -337,8 +336,8 @@ function StageList({
               </span>
               <StageIcon className="size-4 shrink-0" style={{ color: style.accent }} aria-hidden="true" />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-                <span className="truncate text-sm font-semibold text-[#103B27]">{phase}</span>
-                <span className="text-xs text-[#103B27]/65">{phaseDates(items)}</span>
+                <span className="text-sm font-semibold text-[#17212B]">{phase}</span>
+                <span className="text-xs text-[#526173]">{phaseDates(items)}</span>
               </span>
               {overdue > 0 && (
                 <span className="hidden shrink-0 rounded-full border border-[#F5C7C5] bg-[#FDE8E7] px-2 py-0.5 text-xs font-medium text-[#BD302B] sm:inline">
@@ -346,23 +345,35 @@ function StageList({
                 </span>
               )}
               <span className="flex shrink-0 items-center gap-2">
-                <span className="hidden h-1 w-12 overflow-hidden rounded-full bg-white/80 ring-1 ring-black/5 sm:block" aria-hidden="true">
+                <span className="hidden h-1 w-12 overflow-hidden rounded-full bg-white ring-1 ring-[#D6DDE5] sm:block" aria-hidden="true">
                   {done > 0 && (
                     <span className="block h-full rounded-full" style={{ width: `${(done / items.length) * 100}%`, backgroundColor: style.accent }} />
                   )}
                 </span>
-                <span className="text-xs font-medium tabular-nums text-[#103B27]/75">
+                <span className="text-xs font-medium tabular-nums text-[#17212B]">
                   {`${done}/${items.length}`}
                   <span className="sr-only">{' activities complete'}</span>
                 </span>
               </span>
               <ChevronDown
-                className={cn('size-4 shrink-0 text-[#103B27]/70 transition-transform motion-reduce:transition-none', !open && '-rotate-90')}
+                className={cn('size-4 shrink-0 text-[#526173] transition-transform motion-reduce:transition-none', !open && '-rotate-90')}
                 aria-hidden="true"
               />
             </button>
             {open && (
-              <ul id={panelId} className="divide-y divide-[#EEF1EE] border-t border-[#E2E8E2] bg-white">
+              <div
+                aria-hidden="true"
+                className="hidden border-t border-[#D6DDE5] bg-[#F5F7F9] px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#526173] md:grid md:grid-cols-[minmax(0,1fr)_9rem_11rem_8rem_7.5rem] md:gap-4"
+              >
+                <span>Activity</span>
+                <span>Assigned</span>
+                <span>Planned</span>
+                <span>Progress</span>
+                <span className="justify-self-end">Status</span>
+              </div>
+            )}
+            {open && (
+              <ul id={panelId} className="divide-y divide-[#E4E9EF] border-t border-[#D6DDE5] bg-white">
                 {items.map((a) => {
                   const late = isOverdue(a, today)
                   return (
@@ -370,24 +381,24 @@ function StageList({
                       <button
                         type="button"
                         onClick={() => onSelect(a)}
-                        className="grid w-full gap-2 px-4 py-2.5 text-left transition-colors hover:bg-[#F8F7F3] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32] md:grid-cols-[minmax(0,1fr)_9rem_11rem_8rem_7.5rem] md:items-center md:gap-4"
+                        className="group grid w-full gap-2 px-4 py-2.5 text-left transition-colors hover:bg-[#F7F9FB] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D38] md:grid-cols-[minmax(0,1fr)_9rem_11rem_8rem_7.5rem] md:items-center md:gap-4"
                       >
-                        <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+                        <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-[#006B78]">
                           {a.activity_type === 'milestone' ? (
                             <Diamond className="size-3.5 shrink-0" style={{ color: style.accent, fill: style.accent }} aria-label="Milestone" />
                           ) : (
                             <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: style.accent }} aria-hidden="true" />
                           )}
-                          <span className="truncate">{a.name}</span>
+                          <span className="min-w-0 break-words underline-offset-2 group-hover:underline">{a.name}</span>
                           {late && (
                             <span className="shrink-0 rounded-full bg-[#FDE8E7] px-1.5 py-px text-[11px] font-medium text-[#BD302B]">Overdue</span>
                           )}
                         </span>
-                        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground md:contents">
-                          <span className={cn('truncate md:text-sm', a.assigned_to ? 'text-foreground/80' : 'text-muted-foreground')}>
+                        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#526173] md:contents">
+                          <span className={cn('truncate md:text-sm', a.assigned_to ? 'text-[#17212B]' : 'italic text-[#526173]')}>
                             {nameFor(a.assigned_to) ?? 'Unassigned'}
                           </span>
-                          <span className={cn('tabular-nums text-foreground/80 md:text-sm', !a.planned_start && !a.planned_end && 'italic text-muted-foreground')}>
+                          <span className={cn('tabular-nums md:text-sm', !a.planned_start && !a.planned_end ? 'italic text-[#526173]' : 'text-[#17212B]')}>
                             {plannedRange(a)}
                           </span>
                         </span>

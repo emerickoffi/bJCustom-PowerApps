@@ -87,7 +87,7 @@ export function ScheduleActivityList({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2 rounded-xl border border-[#E2E8E2] bg-white p-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="flex flex-col gap-2 rounded-xl border border-[#D6DDE5] bg-white p-2 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="relative min-w-0 sm:w-64">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
@@ -129,7 +129,7 @@ export function ScheduleActivityList({
           </Select>
         </div>
         <div className="flex items-center justify-between gap-2 px-1 sm:ml-auto">
-          <p className="text-xs text-muted-foreground tabular-nums" aria-live="polite">
+          <p className="text-xs text-[#526173] tabular-nums" aria-live="polite">
             {filtering ? `${shown} of ${total} activities` : `${total} activities`}
           </p>
           {filtering && (
@@ -142,8 +142,8 @@ export function ScheduleActivityList({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-[#E2E8E2] bg-white px-4 py-10 text-center">
-          <p className="text-sm font-medium text-foreground">No activities match these filters</p>
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-[#C5CED9] bg-white px-4 py-10 text-center">
+          <p className="text-sm font-medium text-[#17212B]">No activities match these filters</p>
           <Button variant="outline" size="sm" onClick={clear}>
             Clear filters
           </Button>
@@ -152,9 +152,9 @@ export function ScheduleActivityList({
         filtered.map((g) => (
           <div key={g.project.id} className="flex flex-col gap-2">
             {mode === 'all' && (
-              <h3 className="flex items-baseline gap-2 px-1 font-serif text-base font-semibold text-[#103B27]">
+              <h3 className="flex items-baseline gap-2 px-1 font-serif text-base font-semibold text-[#17212B]">
                 {g.project.name}
-                <span className="font-sans text-xs font-normal text-muted-foreground">{`${g.activities.length} activities`}</span>
+                <span className="font-sans text-xs font-normal text-[#526173]">{`${g.activities.length} activities`}</span>
               </h3>
             )}
             <ActivityTable activities={g.activities} nameFor={nameFor} onSelect={onSelect(g.project.id)} today={today} canManage={canManage} />
@@ -169,7 +169,7 @@ function StageTag({ phase, className }: { phase: string; className?: string }) {
   const style = stageStyle(phase)
   return (
     <span
-      className={cn('inline-flex max-w-full items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs font-medium text-[#103B27]/80', className)}
+      className={cn('inline-flex max-w-full items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs font-medium text-[#17212B]', className)}
       style={{ backgroundColor: style.background }}
     >
       <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: style.accent }} aria-hidden="true" />
@@ -185,7 +185,7 @@ function ActivityName({ activity, late }: { activity: ScheduleActivity; late: bo
       {activity.activity_type === 'milestone' && (
         <Diamond className="size-3.5 shrink-0" style={{ color: accent, fill: accent }} aria-label="Milestone" />
       )}
-      <span className="truncate text-[0.9375rem] font-semibold text-[#103B27]">{activity.name}</span>
+      <span className="min-w-0 break-words text-[0.9375rem] font-semibold text-[#006B78] underline-offset-2 group-hover:underline">{activity.name}</span>
       {late && (
         <span className="shrink-0 rounded-full bg-[#FDE8E7] px-1.5 py-px text-[11px] font-medium text-[#BD302B]">Overdue</span>
       )}
@@ -208,7 +208,7 @@ function ActivityTable({
 }) {
   const actionLabel = canManage ? 'Edit' : 'View'
   return (
-    <div className="overflow-hidden rounded-xl border border-[#E2E8E2] bg-white">
+    <div className="overflow-hidden rounded-xl border border-[#D6DDE5] bg-white">
       <table className="hidden w-full table-fixed text-sm md:table">
         <colgroup>
           <col />
@@ -220,7 +220,7 @@ function ActivityTable({
           <col className="w-32" />
           <col className="w-10" />
         </colgroup>
-        <thead className="border-b border-[#E2E8E2] bg-[#F8F7F3] text-left text-[11px] font-semibold uppercase tracking-wider text-[#103B27]/60">
+        <thead className="border-b border-[#D6DDE5] bg-[#E9EDF2] text-left text-[11px] font-semibold uppercase tracking-wider text-[#526173]">
           <tr>
             <th scope="col" className="px-4 py-2.5">Activity</th>
             <th scope="col" className="px-3 py-2.5">Stage</th>
@@ -234,7 +234,7 @@ function ActivityTable({
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#EEF1EE]">
+        <tbody className="divide-y divide-[#E4E9EF]">
           {activities.map((a) => {
             const late = isOverdue(a, today)
             const assignee = nameFor(a.assigned_to)
@@ -242,11 +242,11 @@ function ActivityTable({
               <tr
                 key={a.id}
                 onClick={() => onSelect(a)}
-                className="group cursor-pointer transition-colors hover:bg-[#F8F7F3] focus-within:bg-[#F8F7F3] motion-reduce:transition-none"
+                className="group cursor-pointer transition-colors hover:bg-[#F7F9FB] focus-within:bg-[#F7F9FB] motion-reduce:transition-none"
               >
                 <td className="px-4 py-2.5">
                   <ActivityName activity={a} late={late} />
-                  <span className="mt-0.5 block truncate text-xs text-muted-foreground xl:hidden">
+                  <span className="mt-0.5 block truncate text-xs text-[#526173] xl:hidden">
                     {[assignee ?? 'Unassigned', plannedRange(a)].join(' · ')}
                     <span className="lg:hidden">{a.actual_start || a.actual_end ? ` · Actual ${actualRange(a)}` : ''}</span>
                   </span>
@@ -254,18 +254,18 @@ function ActivityTable({
                 <td className="px-3 py-2.5">
                   <StageTag phase={a.phase} />
                 </td>
-                <td className={cn('hidden truncate px-3 py-2.5 xl:table-cell', assignee ? 'text-foreground/75' : 'italic text-muted-foreground')}>
+                <td className={cn('hidden truncate px-3 py-2.5 xl:table-cell', assignee ? 'text-[#17212B]' : 'italic text-[#526173]')}>
                   {assignee ?? 'Unassigned'}
                 </td>
                 <td
                   className={cn(
                     'hidden truncate px-3 py-2.5 tabular-nums lg:table-cell',
-                    !a.planned_start && !a.planned_end ? 'italic text-muted-foreground' : 'text-foreground/75',
+                    !a.planned_start && !a.planned_end ? 'italic text-[#526173]' : 'text-[#17212B]',
                   )}
                 >
                   {plannedRange(a)}
                 </td>
-                <td className="hidden truncate px-3 py-2.5 tabular-nums text-muted-foreground xl:table-cell">{actualRange(a)}</td>
+                <td className="hidden truncate px-3 py-2.5 tabular-nums text-[#526173] xl:table-cell">{actualRange(a)}</td>
                 <td className="px-3 py-2.5">
                   <ProgressBar value={Number(a.percent_complete)} label={`${a.name} progress`} status={a.status} overdue={late} />
                 </td>
@@ -280,7 +280,7 @@ function ActivityTable({
                       onSelect(a)
                     }}
                     aria-label={`${actionLabel} ${a.name}`}
-                    className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-white text-[#174D32] transition-colors hover:border-[#174D32] hover:bg-[#174D32]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D32] motion-reduce:transition-none"
+                    className="inline-flex size-8 items-center justify-center rounded-md border border-[#D6DDE5] bg-white text-[#174D38] transition-colors hover:border-[#174D38] hover:bg-[#F3F4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38] motion-reduce:transition-none"
                   >
                     <Pencil className="size-4" aria-hidden="true" />
                   </button>
@@ -291,7 +291,7 @@ function ActivityTable({
         </tbody>
       </table>
 
-      <ul className="divide-y divide-[#EEF1EE] md:hidden">
+      <ul className="divide-y divide-[#E4E9EF] md:hidden">
         {activities.map((a) => {
           const late = isOverdue(a, today)
           return (
@@ -300,7 +300,7 @@ function ActivityTable({
                 type="button"
                 onClick={() => onSelect(a)}
                 aria-label={`${actionLabel} ${a.name}`}
-                className="flex w-full flex-col gap-2 px-4 py-3 text-left transition-colors hover:bg-[#F8F7F3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32] motion-reduce:transition-none"
+                className="group flex w-full flex-col gap-2 px-4 py-3 text-left transition-colors hover:bg-[#F7F9FB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D38] motion-reduce:transition-none"
               >
                 <span className="flex items-start justify-between gap-3">
                   <span className="flex min-w-0 flex-col gap-1">

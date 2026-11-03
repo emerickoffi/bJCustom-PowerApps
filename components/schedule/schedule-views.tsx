@@ -103,9 +103,9 @@ export function ScheduleTimeline({ activities, dependencies, conflictIds, onSele
   const todayLeft = pct(today)
 
   return (
-    <div className="overflow-x-auto rounded-xl border bg-card">
+    <div className="overflow-x-auto rounded-xl border border-[#D6DDE5] bg-white">
       <div className="min-w-[56rem]">
-        <div className="flex border-b bg-muted/50 text-xs text-muted-foreground">
+        <div className="flex border-b border-[#D6DDE5] bg-[#E9EDF2] text-xs text-[#526173]">
           <div className="w-64 shrink-0 px-4 py-2 font-medium">Activity</div>
           <div className="relative h-8 flex-1">
             {months.map((m) => (
@@ -118,7 +118,7 @@ export function ScheduleTimeline({ activities, dependencies, conflictIds, onSele
         <ul className="relative">
           {groupByPhase(activities).map((group) => (
             <li key={group.phase}>
-              <div className="border-b bg-muted/30 px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="border-b border-[#D6DDE5] bg-[#F7F9FB] px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#526173]">
                 {group.phase}
               </div>
               <ul>
@@ -128,24 +128,24 @@ export function ScheduleTimeline({ activities, dependencies, conflictIds, onSele
                   const late = isOverdue(a, today)
                   const deps = predCount.get(a.id) ?? 0
                   return (
-                    <li key={a.id} className="flex border-b last:border-b-0">
+                    <li key={a.id} className="flex border-b border-[#E4E9EF] last:border-b-0">
                       <button
                         type="button"
                         onClick={() => onSelect(a)}
-                        className="flex w-64 shrink-0 items-center gap-1.5 truncate px-4 py-2 text-left text-sm text-foreground hover:bg-muted/50"
+                        className="flex w-64 shrink-0 items-center gap-1.5 px-4 py-2 text-left text-sm font-medium text-[#17212B] hover:bg-[#F7F9FB] hover:text-[#006B78] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D38]"
                       >
-                        <span className="truncate">{a.name}</span>
+                        <span className="line-clamp-2 min-w-0 break-words" title={a.name}>{a.name}</span>
                         {deps > 0 && (
-                          <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-muted-foreground" title={`${deps} predecessor(s)`}>
+                          <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-[#526173]" title={`${deps} predecessor(s)`}>
                             <Link2 className="size-3" aria-hidden="true" />
                             {deps}
                             <span className="sr-only">predecessors</span>
                           </span>
                         )}
                       </button>
-                      <div className="relative h-10 flex-1">
+                      <div className="relative min-h-10 flex-1">
                         {months.map((m) => (
-                          <span key={m.left} aria-hidden="true" className="absolute inset-y-0 w-px bg-border" style={{ left: `${m.left}%` }} />
+                          <span key={m.left} aria-hidden="true" className="absolute inset-y-0 w-px bg-[#E4E9EF]" style={{ left: `${m.left}%` }} />
                         ))}
                         {s && e && a.activity_type === 'milestone' ? (
                           <button
@@ -190,7 +190,7 @@ export function ScheduleTimeline({ activities, dependencies, conflictIds, onSele
             style={{ left: `calc(16rem + (100% - 16rem) * ${todayLeft / 100})` }}
           />
         </ul>
-        <div className="flex flex-wrap items-center gap-4 border-t px-4 py-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-4 border-t border-[#D6DDE5] bg-[#F7F9FB] px-4 py-2 text-xs text-[#526173]">
           <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded bg-primary" />Completed</span>
           <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded bg-primary/60" />In progress</span>
           <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded bg-destructive" />Delayed</span>
