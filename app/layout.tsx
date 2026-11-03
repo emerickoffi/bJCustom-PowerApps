@@ -53,15 +53,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${sourceSerif.variable} bg-background`}>
-      {process.env.NODE_ENV === 'development' && (
-        <head>
-          {/* React 19.2's dev-only RSC performance track can pass a negative start time to
-              performance.measure for server components (e.g. OwnerDashboard), which throws.
-              Clamp the timestamps so the dev timeline keeps working instead of erroring. */}
-          <script dangerouslySetInnerHTML={{ __html: DEV_PERFORMANCE_MEASURE_GUARD }} />
-        </head>
-      )}
       <body>
+        {/* React 19.2's dev-only RSC performance track can pass a negative start time to
+            performance.measure for server components (e.g. OwnerDashboard), which throws.
+            Clamp the timestamps so the dev timeline keeps working instead of erroring.
+            Rendered in <body> because the v0 preview injects its own scripts into <head>,
+            which shifts head children and causes a hydration mismatch. */}
+        {process.env.NODE_ENV === 'development' && (
+          <script
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{ __html: DEV_PERFORMANCE_MEASURE_GUARD }}
+          />
+        )}
         {children}
         <Toaster position="top-right" />
         {process.env.NODE_ENV === 'production' && <Analytics />}
