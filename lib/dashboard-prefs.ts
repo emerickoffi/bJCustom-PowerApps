@@ -1,6 +1,7 @@
 import 'server-only'
 import { cookies } from 'next/headers'
 import { parseLayoutPreference, type LayoutPreference } from '@/lib/ui-layout'
+import type { WeatherChoice } from '@/lib/weather'
 
 /**
  * Per-user dashboard preferences kept in cookies. Each value is bound to the user id so a shared browser never
@@ -19,9 +20,23 @@ const read = async (name: string, userId: string) => {
   return sep > 0 && raw.slice(0, sep) === userId ? raw.slice(sep + 1) : null
 }
 
-export async function readWeatherLocation(userId: string): Promise<string | null> {
-  return read(WEATHER_LOCATION_COOKIE, userId)
+/**
+ * Stored as `<orgId>:device` or `<orgId>:project:<projectId>`. A bare project id from before organization scoping
+ * is still honored; the caller re-checks it against the current organization's authorized active projects.
+ */
+export async function readWeatherChoice(userId: string, organizationId: string): Promise<WeatherChoice | null> {
+  const raw = await read(WEATHER_LOCATION_COOKIE, userId)
+  if (!raw) return null
+  if (!raw.includes(':')) return { mode: 'project', projectId: raw }
+  const [org, mode, projectId] = raw.split(':')
+  if (org !== organizationId) return null
+  if (mode === 'device') return { mode: 'device' }
+  if (mode === 'project' && projectId) return { mode: 'project', projectId }
+  return null
 }
+
+export const serializeWeatherChoice = (organizationId: string, choice: WeatherChoice) =>
+  choice.mode === 'device' ? `${organizationId}:device` : `${organizationId}:project:${choice.projectId}`
 
 export async function readWorkScope(userId: string): Promise<WorkScope> {
   return (await read(WORK_SCOPE_COOKIE, userId)) === 'mine' ? 'mine' : 'all'

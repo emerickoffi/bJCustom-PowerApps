@@ -2,27 +2,43 @@
 
 import { revalidatePath } from 'next/cache'
 import { isProjectId } from '@/lib/route-job'
-import { LAYOUT_COOKIE, WEATHER_LOCATION_COOKIE, WORK_SCOPE_COOKIE, writePreference } from '@/lib/dashboard-prefs'
+import {
+  LAYOUT_COOKIE,
+  serializeWeatherChoice,
+  WEATHER_LOCATION_COOKIE,
+  WORK_SCOPE_COOKIE,
+  writePreference,
+} from '@/lib/dashboard-prefs'
+import { ACTIVE_PROJECT_STATUSES, type ProjectStatus } from '@/lib/domain'
 import { LAYOUT_PREFERENCES, parseLayoutPreference } from '@/lib/ui-layout'
 import { requireStaff } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 
-export async function setWeatherLocationAction(projectId: string | null): Promise<{ ok: boolean }> {
+/** Saves an explicit weather choice: `'device'` or an authorized, active project id. Never stores coordinates. */
+export async function setWeatherLocationAction(choice: string): Promise<{ ok: boolean }> {
   const session = await requireStaff()
-  if (projectId === null) {
-    await writePreference(WEATHER_LOCATION_COOKIE, session.userId, null)
+  if (choice === 'device') {
+    await writePreference(
+      WEATHER_LOCATION_COOKIE,
+      session.userId,
+      serializeWeatherChoice(session.organizationId, { mode: 'device' }),
+    )
     return { ok: true }
   }
-  if (!isProjectId(projectId)) return { ok: false }
+  if (!isProjectId(choice)) return { ok: false }
   const supabase = await createClient()
   const { data } = await supabase
     .from('projects')
-    .select('id')
+    .select('id, status')
     .eq('organization_id', session.organizationId)
-    .eq('id', projectId)
+    .eq('id', choice)
     .maybeSingle()
-  if (!data) return { ok: false }
-  await writePreference(WEATHER_LOCATION_COOKIE, session.userId, projectId)
+  if (!data || !ACTIVE_PROJECT_STATUSES.includes(data.status as ProjectStatus)) return { ok: false }
+  await writePreference(
+    WEATHER_LOCATION_COOKIE,
+    session.userId,
+    serializeWeatherChoice(session.organizationId, { mode: 'project', projectId: choice }),
+  )
   return { ok: true }
 }
 

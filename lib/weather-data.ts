@@ -44,12 +44,17 @@ const fail = (reason: WeatherUnavailableReason): WeatherResult => ({
   message: WEATHER_MESSAGES[reason],
 })
 
-async function getJson<T>(url: string, revalidate: number, headers: Record<string, string> = NWS_HEADERS): Promise<T> {
+/** `revalidate: null` bypasses the shared data cache (used for device-derived lookups). */
+async function getJson<T>(
+  url: string,
+  revalidate: number | null,
+  headers: Record<string, string> = NWS_HEADERS,
+): Promise<T> {
   let res: Response
   try {
     res = await fetch(url, {
       headers,
-      next: { revalidate },
+      ...(revalidate === null ? { cache: 'no-store' as const } : { next: { revalidate } }),
       signal: AbortSignal.timeout(8000),
     })
   } catch {
@@ -152,8 +157,44 @@ export async function getJobsiteWeather(address: JobsiteAddress, today: string):
   if (!oneLine) return fail('no_address')
 
   try {
-    const { lat, lon } = await geocode(oneLine)
-    const point = await getJson<PointResponse>(`${NWS}/points/${lat},${lon}`, GEO_REVALIDATE)
+    const point = await geocode(oneLine)
+    const fallbackLabel = [address.city, address.state].filter(Boolean).join(', ')
+    return await weatherAtPoint(point, today, { source: 'jobsite', label: fallbackLabel || null, cachePoint: true })
+  } catch (error) {
+    return fail(error instanceof WeatherError ? error.reason : 'unavailable')
+  }
+}
+
+/** Rounded to ~1 km: enough for a forecast gridpoint, never a precise position. */
+const coarse = (n: number) => Math.round(n * 100) / 100
+
+/**
+ * Weather at the user's device position. Coordinates are coarsened, used only for this request, and the
+ * position lookup bypasses the shared cache so it is never stored server-side.
+ */
+export async function getDeviceWeather(lat: number, lon: number, today: string): Promise<WeatherResult> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180)
+    return fail('unresolved')
+  try {
+    return await weatherAtPoint({ lat: coarse(lat), lon: coarse(lon) }, today, {
+      source: 'device',
+      label: null,
+      cachePoint: false,
+    })
+  } catch (error) {
+    const reason = error instanceof WeatherError ? error.reason : 'unavailable'
+    return reason === 'unsupported'
+      ? { state: 'unsupported', message: 'Weather is available for U.S. locations only.' }
+      : fail(reason)
+  }
+}
+
+async function weatherAtPoint(
+  { lat, lon }: { lat: number; lon: number },
+  today: string,
+  opts: { source: 'device' | 'jobsite'; label: string | null; cachePoint: boolean },
+): Promise<WeatherResult> {
+    const point = await getJson<PointResponse>(`${NWS}/points/${lat},${lon}`, opts.cachePoint ? GEO_REVALIDATE : null)
     const [forecast, hourly, observed] = await Promise.all([
       getJson<ForecastResponse>(point.properties.forecast, FORECAST_REVALIDATE),
       getJson<ForecastResponse>(point.properties.forecastHourly, FORECAST_REVALIDATE).catch(() => null),
@@ -175,10 +216,17 @@ export async function getJobsiteWeather(address: JobsiteAddress, today: string):
         : null)
     const updatedAt = forecast.properties.updateTime ?? forecast.properties.generatedAt ?? null
     const rel = point.properties.relativeLocation?.properties
-    const fallbackLabel = [address.city, address.state].filter(Boolean).join(', ')
+    const nearest = [rel?.city, rel?.state].filter(Boolean).join(', ')
+    const locationLabel =
+      opts.source === 'device'
+        ? nearest
+          ? `Near ${nearest}`
+          : 'Your location'
+        : opts.label || nearest || 'Jobsite'
     return {
       state: 'ok',
-      locationLabel: fallbackLabel || [rel?.city, rel?.state].filter(Boolean).join(', ') || 'Jobsite',
+      source: opts.source,
+      locationLabel,
       current,
       rainChanceToday: rainChanceFor(hourly?.properties.periods ?? periods, today) ?? rainChanceFor(periods, today),
       days: buildWeatherDays(periods, today),
@@ -186,7 +234,4 @@ export async function getJobsiteWeather(address: JobsiteAddress, today: string):
       fetchedAt: new Date().toISOString(),
       stale: updatedAt ? Date.now() - Date.parse(updatedAt) > WEATHER_STALE_MS : false,
     }
-  } catch (error) {
-    return fail(error instanceof WeatherError ? error.reason : 'unavailable')
-  }
 }

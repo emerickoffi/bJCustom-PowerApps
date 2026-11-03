@@ -29,6 +29,8 @@ export type WeatherUnavailableReason =
 export type WeatherResult =
   | {
       state: 'ok'
+      /** `device` = the viewer's current position; `jobsite` = a project's jobsite address. */
+      source?: 'device' | 'jobsite'
       locationLabel: string
       current: WeatherCurrent | null
       rainChanceToday: number | null
@@ -49,6 +51,9 @@ export const WEATHER_MESSAGES: Record<WeatherUnavailableReason, string> = {
   unavailable: 'The weather service did not respond. Try again shortly.',
   rate_limited: 'The weather service is busy. Try again in a few minutes.',
 }
+
+/** An explicitly chosen weather location. Absent means first use, which defaults to the device location. */
+export type WeatherChoice = { mode: 'device' } | { mode: 'project'; projectId: string }
 
 /** Forecasts older than this are flagged as stale. */
 export const WEATHER_STALE_MS = 3 * 60 * 60 * 1000

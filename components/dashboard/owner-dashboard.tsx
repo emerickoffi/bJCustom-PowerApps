@@ -35,7 +35,7 @@ import { getProfileNames, PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@
 import { canManage, type requireStaff } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { WeatherStrip } from '@/components/dashboard/weather-strip'
-import { readWeatherLocation, readWorkScope } from '@/lib/dashboard-prefs'
+import { readWeatherChoice, readWorkScope } from '@/lib/dashboard-prefs'
 import { WorkScopeControl } from '@/components/dashboard/work-scope-control'
 import { formatJobsiteAddress, type JobsiteAddress } from '@/lib/weather-data'
 import { LayoutSwitch } from '@/components/app/layout-mode'
@@ -77,7 +77,7 @@ export async function OwnerDashboard({
     return qs ? `/dashboard?${qs}` : '/dashboard'
   }
 
-  const [projectsRes, activityRes, signals, agendaData, warranty, allAttention, visibilitySettings, weatherLocationId, workScope] =
+  const [projectsRes, activityRes, signals, agendaData, warranty, allAttention, visibilitySettings, weatherChoice, workScope] =
     await Promise.all([
       supabase
         .from('projects')
@@ -100,7 +100,7 @@ export async function OwnerDashboard({
       loadWarrantyOverview(orgId, features.warranty),
       getActionItems(orgId, session.userId, { manager: true, features }),
       getDashboardVisibility(orgId),
-      readWeatherLocation(session.userId),
+      readWeatherChoice(session.userId, orgId),
       readWorkScope(session.userId),
     ])
 
@@ -216,14 +216,22 @@ export async function OwnerDashboard({
   const { estimates, contracts, receivables } = financials
   const scheduleRisk = health.scheduleRisk
   const attentionKnown = attention.unavailable.length === 0 || attention.items.length > 0
-  /** Only active jobsites with a complete address can be weather locations; the client mailing address is never used. */
+  /** Authorized active projects; weather uses the structured jobsite address, never the client mailing address. */
   const weatherLocations = rows
-    .filter((r) => ACTIVE_PROJECT_STATUSES.includes(r.status as ProjectStatus) && formatJobsiteAddress(r) !== null)
-    .map((r) => ({ id: r.id, name: r.name }))
+    .filter((r) => ACTIVE_PROJECT_STATUSES.includes(r.status as ProjectStatus))
+    .map((r) => ({ id: r.id, name: r.name, hasAddress: formatJobsiteAddress(r) !== null }))
     .sort((a, b) => a.name.localeCompare(b.name))
+  const weatherWidget = (compact: boolean) => (
+    <WeatherStrip
+      compact={compact}
+      locations={weatherLocations}
+      initialChoice={weatherChoice}
+      canEditAddress={canManage(session.role)}
+    />
+  )
   const show = resolveVisibility(visibilitySettings.settings.visibility, {
     weather: {
-      records: projectsRes.error ? null : weatherLocations.length > 0,
+      records: true,
       attention: null,
     },
     card_approval: {
@@ -430,7 +438,7 @@ export async function OwnerDashboard({
         actionTotalIsLowerBound={attention.totalIsLowerBound}
         actionsAvailable={attention.unavailable.length === 0 || attention.total > 0}
         actionsHref={show.attention ? '#action-center-heading' : '/actions'}
-        weather={show.weather ? <WeatherStrip locations={weatherLocations} initialLocationId={weatherLocationId} /> : null}
+        weather={show.weather ? weatherWidget(false) : null}
       />
       {scopeNote}
       <TabletHome
@@ -468,7 +476,7 @@ export async function OwnerDashboard({
           showAttention={!showScopeToolbar}
           weather={
             show.weather ? (
-              <WeatherStrip compact locations={weatherLocations} initialLocationId={weatherLocationId} />
+              weatherWidget(true)
             ) : null
           }
         />
