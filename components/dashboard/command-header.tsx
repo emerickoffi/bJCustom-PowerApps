@@ -12,7 +12,10 @@ export function CommandHeader({
   actionsHref = '#action-center-heading',
   weather,
   compact = false,
+  showAttention = true,
 }: {
+  /** Standard layout moves the attention summary into the work-scope toolbar when that toolbar is shown. */
+  showAttention?: boolean
   /** Tablet Home: a short carded header so work appears without scrolling. */
   compact?: boolean
   /** Compact jobsite weather shown under the greeting. */
@@ -26,6 +29,37 @@ export function CommandHeader({
   actionsHref?: string
 }) {
   const hello = firstName ? `${greeting()}, ${firstName}.` : `${greeting()}.`
+  const attentionSummary =
+    showAttention && actionsAvailable ? (
+      <AttentionSummary total={actionTotal} isLowerBound={actionTotalIsLowerBound} href={actionsHref} />
+    ) : null
+
+  if (!compact) {
+    return (
+      <header className="flex flex-col gap-4 border-b pb-4 md:flex-row md:items-center md:justify-between md:gap-6">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <CalendarDays className="size-3.5" aria-hidden="true" />
+            <time dateTime={today} title={formatLongDate(today)}>
+              {formatShortDate(today)}
+            </time>
+          </p>
+          <h1 className="text-balance font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-[1.75rem]">
+            {hello}
+          </h1>
+          <p className="text-pretty text-sm text-muted-foreground">
+            {'Here\u2019s what\u2019s happening across your projects today.'}
+          </p>
+        </div>
+        {(weather || attentionSummary) && (
+          <div className="flex min-w-0 flex-col items-start gap-2 md:items-end">
+            {weather}
+            {attentionSummary}
+          </div>
+        )}
+      </header>
+    )
+  }
 
   return (
     <header
@@ -66,7 +100,7 @@ export function CommandHeader({
   )
 }
 
-function AttentionSummary({ total, isLowerBound, href }: { total: number; isLowerBound: boolean; href: string }) {
+export function AttentionSummary({ total, isLowerBound, href }: { total: number; isLowerBound: boolean; href: string }) {
   const caughtUp = total === 0
   const count = `${total}${isLowerBound ? '+' : ''}`
   const label = total === 1 && !isLowerBound ? 'Needs your attention' : 'Need your attention'
