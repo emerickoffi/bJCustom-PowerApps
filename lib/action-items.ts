@@ -306,11 +306,17 @@ function scheduleItems(activities: AttentionActivity[], ctx: ActionContext): Act
       severity: 'critical',
       tier: 1,
       title: a.status === 'delayed' ? `${a.name} is delayed` : `${a.name} is past its planned finish`,
-      description: companies.length > 0 ? `${base} Assigned to ${joinNames(companies)}.` : base,
+      description: [
+        base,
+        a.assigneeName ? `Responsible: ${a.assigneeName}.` : null,
+        companies.length > 0 ? `Assigned to ${joinNames(companies)}.` : null,
+      ]
+        .filter(Boolean)
+        .join(' '),
       dueDate: a.planned_end,
       createdAt: null,
-      responsibleUserId: null,
-      href: `/projects/${a.project_id}/schedule`,
+      responsibleUserId: a.assigned_to ?? null,
+      href: `/projects/${a.project_id}/schedule?activity=${a.id}`,
       actionLabel: 'View Schedule',
       source: companies.length > 0 ? 'Assigned work' : 'Schedule',
       resolutionCondition: overdue ? 'Activity completed, skipped or rescheduled' : 'Activity no longer marked delayed',

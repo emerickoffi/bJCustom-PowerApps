@@ -1,6 +1,7 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { todayIso } from '@/lib/schedule'
+import { getProfileNames } from '@/lib/queries'
 import {
   informationalNotifications,
   type AttentionActivity,
@@ -123,7 +124,7 @@ export async function getActionItems(
       features.schedule
         ? supabase
             .from('schedule_activities')
-            .select('id, project_id, name, status, planned_end, projects(name)')
+            .select('id, project_id, name, status, planned_end, assigned_to, projects(name)')
             .eq('organization_id', orgId)
             .not('status', 'in', '(completed,skipped)')
             .or(`status.eq.delayed,planned_end.lt.${today}`)
@@ -338,15 +339,21 @@ export async function getActionItems(
     project_id: n.project_id,
     projectName: projectName(n.projects as ProjectRef),
   }))
-  const activities: AttentionActivity[] = activityRows.map((a) => ({
-    id: a.id,
-    project_id: a.project_id,
-    name: a.name,
-    status: a.status,
-    planned_end: a.planned_end,
-    projectName: projectName(a.projects as ProjectRef),
-    companies: companiesByActivity.get(a.id),
-  }))
+  const assigneeNames = await getProfileNames(activityRows.map((a) => (a as { assigned_to?: string | null }).assigned_to))
+  const activities: AttentionActivity[] = activityRows.map((a) => {
+    const assignedTo = (a as { assigned_to?: string | null }).assigned_to ?? null
+    return {
+      id: a.id,
+      project_id: a.project_id,
+      name: a.name,
+      status: a.status,
+      planned_end: a.planned_end,
+      projectName: projectName(a.projects as ProjectRef),
+      companies: companiesByActivity.get(a.id),
+      assigned_to: assignedTo,
+      assigneeName: assignedTo ? (assigneeNames.get(assignedTo) ?? null) : null,
+    }
+  })
   const logDelays: AttentionDailyLogDelay[] = logRows.map((l) => ({
     id: l.id,
     project_id: l.project_id,

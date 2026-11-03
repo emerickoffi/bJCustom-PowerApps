@@ -20,6 +20,7 @@ import {
   ALWAYS_EXPLANATION,
   AREA_LABELS,
   DASHBOARD_VISIBILITY_ITEMS,
+  HEADER_ITEM_IDS,
   LAYOUT_AREAS,
   SHOW_WHEN_LABELS,
   areaOf,
@@ -113,6 +114,30 @@ export function DashboardVisibilityForm({
         {announcement}
       </p>
 
+      <section aria-labelledby="group-header" className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <h2 id="group-header" className="font-serif text-lg font-semibold text-foreground">
+            Greeting row
+          </h2>
+          <p className="text-sm text-muted-foreground">Compact details shown beside the dashboard greeting.</p>
+        </div>
+        <ul className="divide-y rounded-xl border bg-card">
+          {HEADER_ITEM_IDS.map((id) => {
+            const item = ITEM_BY_ID.get(id)
+            if (!item) return null
+            return (
+              <HeaderRow
+                key={id}
+                item={item}
+                value={draft.visibility[id]}
+                disabled={pending}
+                onChange={(patch) => updateVisibility(id, patch)}
+              />
+            )
+          })}
+        </ul>
+      </section>
+
       {GROUPS.map((group, groupIndex) => (
         <section key={group.title} aria-labelledby={`group-${groupIndex}`} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
@@ -190,6 +215,77 @@ export function DashboardVisibilityForm({
 
 const selectClass =
   'h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
+
+function HeaderRow({
+  item,
+  value,
+  disabled,
+  onChange,
+}: {
+  item: VisibilityItem
+  value: ItemVisibility
+  disabled: boolean
+  onChange: (patch: Partial<ItemVisibility>) => void
+}) {
+  const switchId = `visibility-${item.id}`
+  const selectId = `visibility-${item.id}-when`
+  const explanation = value.showWhen === 'records' ? item.records : ALWAYS_EXPLANATION
+  return (
+    <li className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:p-5">
+      <div className="flex min-w-0 items-start gap-3">
+        <button
+          id={switchId}
+          type="button"
+          role="switch"
+          aria-checked={value.enabled}
+          disabled={disabled}
+          onClick={() => onChange({ enabled: !value.enabled })}
+          className={cn(
+            'relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+            value.enabled ? 'bg-primary' : 'bg-muted-foreground/30',
+          )}
+        >
+          <span className="sr-only">{`Show ${item.label} on the dashboard`}</span>
+          <span
+            aria-hidden="true"
+            className={cn(
+              'inline-block size-5 rounded-full bg-background shadow transition-transform',
+              value.enabled ? 'translate-x-5' : 'translate-x-0.5',
+            )}
+          />
+        </button>
+        <div className="flex min-w-0 flex-col gap-1">
+          <label htmlFor={switchId} className="font-medium text-foreground">
+            {item.label}
+          </label>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {value.enabled
+              ? `${explanation} Each person picks their own weather location.`
+              : 'Hidden from the dashboard for everyone in your company.'}
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-col gap-1 sm:w-64">
+        <label htmlFor={selectId} className="text-xs font-medium text-muted-foreground">
+          Show when
+        </label>
+        <select
+          id={selectId}
+          value={value.showWhen}
+          disabled={disabled || !value.enabled}
+          onChange={(e) => onChange({ showWhen: e.target.value as ShowWhen })}
+          className={selectClass}
+        >
+          {(['always', 'records'] as const).map((o) => (
+            <option key={o} value={o}>
+              {SHOW_WHEN_LABELS[o]}
+            </option>
+          ))}
+        </select>
+      </div>
+    </li>
+  )
+}
 
 function VisibilityRow({
   item,

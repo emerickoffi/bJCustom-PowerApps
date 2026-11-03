@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { CalendarDays, CircleAlert, CircleCheck } from 'lucide-react'
 import { formatLongDate, formatShortDate, greeting } from '@/lib/greeting'
 import { cn } from '@/lib/utils'
@@ -9,7 +10,10 @@ export function CommandHeader({
   actionTotalIsLowerBound,
   actionsAvailable,
   actionsHref = '#action-center-heading',
+  weather,
 }: {
+  /** Compact jobsite weather shown under the greeting. */
+  weather?: ReactNode
   firstName: string | null
   today: string
   actionTotal: number
@@ -35,6 +39,7 @@ export function CommandHeader({
         <p className="text-pretty text-sm text-muted-foreground">
           {'Here\u2019s what\u2019s happening across your projects today.'}
         </p>
+        {weather && <div className="mt-1.5 self-start">{weather}</div>}
       </div>
 
       {actionsAvailable && (

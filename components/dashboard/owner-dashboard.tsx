@@ -34,8 +34,17 @@ import { rankPriorityJobs, summarizeJob } from '@/lib/priority-jobs'
 import { getProfileNames, PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
 import { canManage, type requireStaff } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
+import { WeatherStrip } from '@/components/dashboard/weather-strip'
+import { readWeatherLocation, readWorkScope } from '@/lib/dashboard-prefs'
+import { WorkScopeControl } from '@/components/dashboard/work-scope-control'
+import { formatJobsiteAddress, type JobsiteAddress } from '@/lib/weather-data'
 
-type ProjectRow = PortfolioRow & { name: string; progress_percent: number | null; proposed_start_date: string | null }
+type ProjectRow = PortfolioRow &
+  JobsiteAddress & {
+    name: string
+    progress_percent: number | null
+    proposed_start_date: string | null
+  }
 
 /** Owner / administrator Command Center. Every figure comes from the Phase 1 and Phase 2 services. */
 const PRIORITY_JOBS_ANCHOR = 'priority-jobs-anchor'
@@ -61,24 +70,39 @@ export async function OwnerDashboard({
     return qs ? `/dashboard?${qs}` : '/dashboard'
   }
 
-  const [projectsRes, activityRes, signals, agendaData, warranty, attention, visibilitySettings] = await Promise.all([
-    supabase
-      .from('projects')
-      .select('id, name, status, progress_percent, updated_at, proposed_start_date')
-      .eq('organization_id', orgId)
-      .is('archived_at', null),
-    supabase
-      .from('client_activity')
-      .select('id, activity_type, summary, created_at, client_id, clients(first_name, last_name)', { count: 'exact' })
-      .eq('organization_id', orgId)
-      .order('created_at', { ascending: false })
-      .limit(8),
-    loadPortfolioSignals(orgId, session.userId, features.schedule),
-    loadAgenda(orgId, features.schedule, COMING_UP_DAYS),
-    loadWarrantyOverview(orgId, features.warranty),
-    getActionItems(orgId, session.userId, { manager: true, features }),
-    getDashboardVisibility(orgId),
-  ])
+  const [projectsRes, activityRes, signals, agendaData, warranty, allAttention, visibilitySettings, weatherLocationId, workScope] =
+    await Promise.all([
+      supabase
+        .from('projects')
+        .select(
+          'id, name, status, progress_percent, updated_at, proposed_start_date, address_line1, city, state, postal_code, country',
+        )
+        .eq('organization_id', orgId)
+        .is('archived_at', null),
+      supabase
+        .from('client_activity')
+        .select(
+          'id, activity_type, summary, created_at, client_id, created_by, project_id, clients(first_name, last_name), projects(name)',
+          { count: 'exact' },
+        )
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(8),
+      loadPortfolioSignals(orgId, session.userId, features.schedule),
+      loadAgenda(orgId, features.schedule, COMING_UP_DAYS),
+      loadWarrantyOverview(orgId, features.warranty),
+      getActionItems(orgId, session.userId, { manager: true, features }),
+      getDashboardVisibility(orgId),
+      readWeatherLocation(session.userId),
+      readWorkScope(session.userId),
+    ])
+
+  /** My work keeps only items explicitly assigned to the signed-in user; the header count follows the same scope. */
+  const mine = workScope === 'mine'
+  const scopedItems = mine ? allAttention.items.filter((i) => i.responsibleUserId === session.userId) : allAttention.items
+  const attention = mine
+    ? { ...allAttention, items: scopedItems, total: scopedItems.length, totalIsLowerBound: false }
+    : allAttention
 
   const rows = (projectsRes.data ?? []) as ProjectRow[]
   const activeIds = rows.filter((r) => ACTIVE_PROJECT_STATUSES.includes(r.status as ProjectStatus)).map((r) => r.id)
@@ -153,8 +177,17 @@ export async function OwnerDashboard({
 
   const activityTotal = activityRes.error ? null : (activityRes.count ?? null)
 
-  const assigneeNames = await getProfileNames(agendaData.activities.map((a) => a.assigned_to ?? null))
-  const comingUp = buildComingUp({
+  type ActivityRow = { created_by: string | null }
+  const activityRows = (activityRes.data ?? []) as unknown as ActivityRow[]
+  const [assigneeNames, actorNames] = await Promise.all([
+    getProfileNames(agendaData.activities.map((a) => a.assigned_to ?? null)),
+    getProfileNames(activityRows.map((a) => a.created_by)),
+  ])
+  const activityItems = activityRows.map((a) => ({
+    ...a,
+    actorName: a.created_by ? (actorNames.get(a.created_by) ?? 'Former team member') : 'System',
+  }))
+  const allComingUp = buildComingUp({
     today: agendaData.today,
     days: COMING_UP_RANGE_DAYS[agendaRange],
     activities: agendaData.activities,
@@ -162,11 +195,21 @@ export async function OwnerDashboard({
     warranties: warranty.state === 'available' ? warranty.value.rows : [],
     assigneeNames,
   })
+  const comingUp = mine ? allComingUp.filter((e) => e.responsibleUserId === session.userId) : allComingUp
 
   const { estimates, contracts, receivables } = financials
   const scheduleRisk = health.scheduleRisk
   const attentionKnown = attention.unavailable.length === 0 || attention.items.length > 0
+  /** Only active jobsites with a complete address can be weather locations; the client mailing address is never used. */
+  const weatherLocations = rows
+    .filter((r) => ACTIVE_PROJECT_STATUSES.includes(r.status as ProjectStatus) && formatJobsiteAddress(r) !== null)
+    .map((r) => ({ id: r.id, name: r.name }))
+    .sort((a, b) => a.name.localeCompare(b.name))
   const show = resolveVisibility(visibilitySettings.settings.visibility, {
+    weather: {
+      records: projectsRes.error ? null : weatherLocations.length > 0,
+      attention: null,
+    },
     card_approval: {
       records: estimates.state === 'available' ? estimates.value.awaitingApproval.count > 0 : null,
       attention: null,
@@ -189,13 +232,12 @@ export async function OwnerDashboard({
     },
     priority_jobs: {
       records: projectsRes.error ? null : jobs.length > 0,
-      attention: projectsRes.error
-        ? null
-        : jobs.some((j) => j.health === 'at_risk' || j.health === 'needs_attention'),
+      attention: projectsRes.error ? null : jobs.some((j) => j.health === 'at_risk' || j.health === 'needs_attention'),
     },
     coming_up: { records: comingUp.length > 0, attention: null },
     warranty: {
-      records: warranty.state === 'available' ? warranty.value.rows.length > 0 : warranty.state === 'disabled' ? false : null,
+      records:
+        warranty.state === 'available' ? warranty.value.rows.length > 0 : warranty.state === 'disabled' ? false : null,
       attention:
         warranty.state === 'available'
           ? warranty.value.rows.some((w) => w.openClaims > 0)
@@ -207,7 +249,10 @@ export async function OwnerDashboard({
       records: activityRes.error ? null : (activityRes.data?.length ?? 0) + attention.updates.length > 0,
       attention: null,
     },
-    pipeline: { records: projectsRes.error ? null : rows.length > 0, attention: null },
+    pipeline: {
+      records: projectsRes.error ? null : rows.length > 0,
+      attention: null,
+    },
   })
 
   const { layout } = visibilitySettings.settings
@@ -232,6 +277,8 @@ export async function OwnerDashboard({
     coming_up: (
       <ComingUp
         events={comingUp}
+        today={agendaData.today}
+        scopedToMe={mine}
         range={agendaRange}
         hrefFor={(agenda) => dashboardHref({ actions: selectedAction, agenda })}
         scheduleEnabled={features.schedule}
@@ -240,10 +287,10 @@ export async function OwnerDashboard({
     warranty: <WarrantyRail overview={warranty} />,
     recent_activity: (
       <RecentActivity
-        items={(activityRes.data ?? []) as unknown as Parameters<typeof RecentActivity>[0]['items']}
+        items={activityItems as unknown as Parameters<typeof RecentActivity>[0]['items']}
         updates={attention.updates}
         defaultOpen
-        visibleLimit={2}
+        visibleLimit={3}
         total={activityTotal === null ? undefined : activityTotal + attention.updatesTotal}
         totalIsLowerBound={activityTotal === null || attention.updatesTotalIsLowerBound}
       />
@@ -279,6 +326,9 @@ export async function OwnerDashboard({
           actionTotalIsLowerBound={attention.totalIsLowerBound}
           actionsAvailable={attention.unavailable.length === 0 || attention.total > 0}
           actionsHref={show.attention ? '#action-center-heading' : '/actions'}
+          weather={
+            show.weather ? <WeatherStrip locations={weatherLocations} initialLocationId={weatherLocationId} /> : null
+          }
         />
       </div>
 
@@ -290,6 +340,12 @@ export async function OwnerDashboard({
         >
           <FinancialKpis metrics={financials} scheduleRisk={scheduleRisk} visible={kpiCards} order={kpiOrder} />
         </section>
+      )}
+
+      {(show.attention || show.coming_up) && (
+        <div className="flex justify-end">
+          <WorkScopeControl scope={workScope} />
+        </div>
       )}
 
       {above.length > 0 && <div className="flex flex-col gap-6">{above}</div>}
