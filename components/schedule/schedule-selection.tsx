@@ -34,7 +34,7 @@ export function ScheduleBody({ children }: { children: React.ReactNode }) {
     <div
       role="status"
       aria-live="polite"
-      className="flex min-h-64 items-center justify-center gap-2 rounded-xl border border-border bg-card p-8 text-sm text-muted-foreground"
+      className="flex min-h-64 items-center justify-center gap-2 rounded-xl border border-[#D6DDE5] bg-white p-8 text-sm text-[#526173]"
     >
       <Loader2 className="size-4 animate-spin" aria-hidden="true" />
       Loading schedule…
