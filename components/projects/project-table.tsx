@@ -17,7 +17,8 @@ export type ProjectTableRow = CompactProjectCardData & {
   managerName: string | null
 }
 
-const TH = `${DIRECTORY_TH_TEXT} px-4 text-left align-middle`
+const TH = `${DIRECTORY_TH_TEXT} px-4 text-left align-middle tablet:px-3`
+const TD = 'px-4 py-3 tablet:px-3'
 
 const PANEL_TEXT = {
   neutral: 'text-foreground',
@@ -36,12 +37,12 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[72rem] text-sm">
+        <table className="w-full min-w-[72rem] text-sm tablet:min-w-0">
           <caption className="sr-only">Projects</caption>
           <thead className={DIRECTORY_THEAD_ROW}>
             <tr>
               <th scope="col" className={TH}>Project</th>
-              <th scope="col" className={TH}>Location</th>
+              <th scope="col" className={`${TH} tablet:hidden`}>Location</th>
               <th scope="col" className={TH}>Status</th>
               <th scope="col" className={TH}>Progress</th>
               <th scope="col" className={TH}>Project manager</th>
@@ -61,9 +62,9 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
               const date = dateCell(p)
               return (
                 <tr key={p.id} className="transition-colors hover:bg-link-soft/60">
-                  <td className="px-4 py-3">
+                  <td className={TD}>
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="relative aspect-[4/3] w-14 shrink-0 overflow-hidden rounded-md bg-muted">
+                      <div className="relative aspect-[4/3] w-14 shrink-0 tablet:w-12 overflow-hidden rounded-md bg-muted">
                         {p.photoUrl ? (
                           <CoverImage
                             src={p.photoUrl}
@@ -81,14 +82,15 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                         </Link>
                         <span className="font-mono text-xs text-muted-foreground">{p.project_number}</span>
                         <ProjectTypeLabel type={p.project_type} />
+                        <span className="hidden truncate text-xs text-muted-foreground tablet:block">{`${p.city}, ${p.state}`}</span>
                       </div>
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{`${p.city}, ${p.state}`}</td>
-                  <td className="px-4 py-3">
+                  <td className={`${TD} whitespace-nowrap text-muted-foreground tablet:hidden`}>{`${p.city}, ${p.state}`}</td>
+                  <td className={TD}>
                     <ProjectStatusBadge status={p.status} />
                   </td>
-                  <td className="w-40 px-4 py-3">
+                  <td className={`${TD} w-40 tablet:w-36`}>
                     {progress !== null ? (
                       <div className="flex items-center gap-2">
                         <ProgressBar value={progress} label={`${p.name} construction progress`} size="sm" className="flex-1" />
@@ -100,28 +102,28 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                       </span>
                     )}
                   </td>
-                  <td className={cn('px-4 py-3', p.managerName ? 'text-foreground' : 'text-muted-foreground')}>
+                  <td className={cn(TD, p.managerName ? 'text-foreground' : 'text-muted-foreground')}>
                     {p.managerName ?? 'Unassigned'}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                  <td className={`${TD} whitespace-nowrap`}>
                     <div className="flex flex-col">
                       <span className="text-xs text-muted-foreground">{date.label}</span>
                       <span className="text-foreground">{date.value}</span>
                     </div>
                   </td>
-                  <td className="max-w-64 px-4 py-3">
+                  <td className={`${TD} max-w-64 tablet:max-w-56`}>
                     <div className="flex min-w-0 flex-col">
                       {panel.href ? (
-                        <Link href={panel.href} className={cn('line-clamp-2 font-medium hover:underline', PANEL_TEXT[panel.tone])}>
+                        <Link href={panel.href} title={panel.title} className={cn('line-clamp-2 font-medium hover:underline', PANEL_TEXT[panel.tone])}>
                           {panel.title}
                         </Link>
                       ) : (
-                        <span className={cn('line-clamp-2 font-medium', PANEL_TEXT[panel.tone])}>{panel.title}</span>
+                        <span title={panel.title} className={cn('line-clamp-2 font-medium', PANEL_TEXT[panel.tone])}>{panel.title}</span>
                       )}
-                      {panel.meta && <span className="line-clamp-1 text-xs text-muted-foreground">{panel.meta}</span>}
+                      {panel.meta && <span title={panel.meta} className="line-clamp-1 text-xs text-muted-foreground">{panel.meta}</span>}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className={`${TD} text-right`}>
                     <Button variant="view" size="sm" render={<Link href={href} aria-label={`View project ${p.name}`} />} nativeButton={false}>
                       View
                       <ArrowRight data-icon="inline-end" />
