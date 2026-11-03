@@ -50,7 +50,7 @@ function StageDot({ status }: { status: ProjectStatus }) {
   )
 }
 
-function HealthCell({ job }: { job: PriorityJob }) {
+export function HealthCell({ job }: { job: PriorityJob }) {
   const key = job.health ?? (job.status === 'completed' ? 'closed' : 'not_assessed')
   return <HealthBadge healthKey={key} reasons={job.health ? job.healthReasons : undefined} />
 }
@@ -95,7 +95,7 @@ function OpenProjectLink({ job }: { job: PriorityJob }) {
 }
 
 /** Stage name plus a thin bar of activities complete within the current stage only. */
-function CurrentStage({ job }: { job: PriorityJob }) {
+export function CurrentStage({ job }: { job: PriorityJob }) {
   const data = job.stageActivities
   const counts = data && (data.state === 'next' || data.state === 'blocked' || data.state === 'complete') ? data : null
   const pct = counts ? Math.round((counts.completed / counts.total) * 100) : 0
@@ -127,7 +127,7 @@ function CurrentStage({ job }: { job: PriorityJob }) {
 }
 
 /** Next actionable activity for the current stage. Sits above the row overlay link so it navigates independently. */
-function NextActivity({ job }: { job: PriorityJob }) {
+export function NextActivity({ job }: { job: PriorityJob }) {
   const data = job.stageActivities
   const muted = (text: string) => <span className="text-xs text-muted-foreground">{text}</span>
   if (job.closeoutReason)

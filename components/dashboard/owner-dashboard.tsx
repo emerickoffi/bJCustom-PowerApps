@@ -38,6 +38,12 @@ import { WeatherStrip } from '@/components/dashboard/weather-strip'
 import { readWeatherLocation, readWorkScope } from '@/lib/dashboard-prefs'
 import { WorkScopeControl } from '@/components/dashboard/work-scope-control'
 import { formatJobsiteAddress, type JobsiteAddress } from '@/lib/weather-data'
+import { LayoutSwitch } from '@/components/app/layout-mode'
+import { TabletHome } from '@/components/dashboard/tablet-home'
+import { TabletJobFocus } from '@/components/dashboard/tablet-job-focus'
+import { TabletMyDay } from '@/components/dashboard/tablet-my-day'
+import { getProjectCoverPhotos } from '@/lib/project-photos'
+import { parseTabletTab, tabletSections, type TabletTab } from '@/lib/tablet-home'
 
 type ProjectRow = PortfolioRow &
   JobsiteAddress & {
@@ -56,7 +62,7 @@ export async function OwnerDashboard({
 }: {
   session: Awaited<ReturnType<typeof requireStaff>>
   features: Awaited<ReturnType<typeof getOrgFeatures>>
-  query: { actions?: string; agenda?: string }
+  query: { actions?: string; agenda?: string; project?: string; tab?: string }
 }) {
   const supabase = await createClient()
   const orgId = session.organizationId
@@ -132,21 +138,28 @@ export async function OwnerDashboard({
     (r) => r.status !== 'cancelled' && (r.status !== 'completed' || closeoutReasons.has(r.id)),
   )
   const priorityIds = rankPriorityJobs(priorityEligible, signals, health.byId)
-  const { data: summaryData } = priorityIds.length
-    ? await supabase.from('projects').select(PROJECT_SUMMARY_COLUMNS).eq('organization_id', orgId).in('id', priorityIds)
+  /** Tablet project scope. Only an id from this organization's open projects is honoured; never a default pick. */
+  const selectedRow = query.project ? (rows.find((r) => r.id === query.project) ?? null) : null
+  const summaryIds =
+    selectedRow && !priorityIds.includes(selectedRow.id) ? [...priorityIds, selectedRow.id] : priorityIds
+  const { data: summaryData } = summaryIds.length
+    ? await supabase.from('projects').select(PROJECT_SUMMARY_COLUMNS).eq('organization_id', orgId).in('id', summaryIds)
     : { data: [] }
   const summaries = new Map(((summaryData ?? []) as unknown as ProjectSummary[]).map((p) => [p.id, p]))
   const ordered = priorityIds.flatMap((id) => summaries.get(id) ?? [])
-  const [details, managers] = await Promise.all([
-    getDashboardCardDetails(orgId, ordered, features),
-    getProfileNames(ordered.map((p) => p.project_manager_id)),
+  const withSelected = summaryIds.flatMap((id) => summaries.get(id) ?? [])
+  const tabletJobIds = [...priorityIds.slice(0, 4), ...(selectedRow ? [selectedRow.id] : [])]
+  const [details, managers, covers] = await Promise.all([
+    getDashboardCardDetails(orgId, withSelected, features),
+    getProfileNames(withSelected.map((p) => p.project_manager_id)),
+    getProjectCoverPhotos(tabletJobIds),
   ])
 
   const budgets =
     financials.contracts.state === 'available'
       ? new Map(financials.contracts.value.projects.map((b) => [b.projectId, b]))
       : null
-  const jobs: PriorityJob[] = ordered.map((p) => {
+  const toJob = (p: ProjectSummary): PriorityJob => {
     const d = details.get(p.id)
     const h = health.byId.get(p.id) ?? null
     const budget = budgets?.get(p.id)
@@ -173,7 +186,9 @@ export async function OwnerDashboard({
         health: h,
       }),
     }
-  })
+  }
+  const jobs: PriorityJob[] = ordered.map(toJob)
+  const selectedSummary = selectedRow ? summaries.get(selectedRow.id) : undefined
 
   const activityTotal = activityRes.error ? null : (activityRes.count ?? null)
 
@@ -316,7 +331,120 @@ export async function OwnerDashboard({
   const side = area('side')
   const below = area('below')
 
-  return (
+  const greeting = (
+    <CommandHeader
+      firstName={session.fullName?.split(' ')[0] ?? null}
+      today={agendaData.today}
+      actionTotal={attention.total}
+      actionTotalIsLowerBound={attention.totalIsLowerBound}
+      actionsAvailable={attention.unavailable.length === 0 || attention.total > 0}
+      actionsHref={show.attention ? '#action-center-heading' : '/actions'}
+      weather={show.weather ? <WeatherStrip locations={weatherLocations} initialLocationId={weatherLocationId} /> : null}
+    />
+  )
+
+  /** Same scoped data as Standard, narrowed to the selected project when one is chosen. */
+  const inProject = <T extends { projectId: string | null }>(list: T[]) =>
+    selectedRow ? list.filter((x) => x.projectId === selectedRow.id) : list
+  const tabletAttention = inProject(attention.items)
+  const isShown = (id: VisibilityItemId) => Boolean(show[id])
+  const tabletSection = (id: VisibilityItemId): ReactNode => {
+    if (id === 'attention')
+      return (
+        <ActionCenter
+          items={tabletAttention}
+          totalIsLowerBound={!selectedRow && attention.totalIsLowerBound}
+          unavailable={attention.unavailable}
+          selected={selectedAction}
+          limit={3}
+          links={{
+            href: (category) => {
+              const search = new URLSearchParams()
+              search.set('actions', category ?? '')
+              if (selectedRow) search.set('project', selectedRow.id)
+              return category ? `/dashboard?${search}` : selectedRow ? `/dashboard?project=${selectedRow.id}` : '/dashboard'
+            },
+            viewAll: selectedAction ? `/actions?category=${selectedAction}` : '/actions',
+          }}
+        />
+      )
+    if (id === 'coming_up')
+      return (
+        <TabletMyDay
+          events={inProject(comingUp)}
+          today={agendaData.today}
+          scopedToMe={mine}
+          scheduleEnabled={features.schedule}
+          agendaHref="/schedule"
+        />
+      )
+    if (id === 'priority_jobs')
+      return (
+        <TabletJobFocus
+          jobs={jobs}
+          covers={covers}
+          selected={selectedRow ? { name: selectedRow.name, job: selectedSummary ? toJob(selectedSummary) : null } : null}
+        />
+      )
+    return sections[id] ?? null
+  }
+  const tabletPanel = (tab: TabletTab, lead?: ReactNode, emptyText?: string) => {
+    const ids = tabletSections(layout, tab, isShown)
+    const body = ids.map((id) => (
+      <div key={id} className="min-w-0" data-dashboard-section={id}>
+        {tabletSection(id)}
+      </div>
+    ))
+    return (
+      <div className="flex flex-col gap-4">
+        {lead}
+        {body.length > 0 ? (
+          <div className={cn('grid items-start gap-4', body.length > 1 && 'min-[900px]:grid-cols-2')}>{body}</div>
+        ) : (
+          !lead && emptyText && <p className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">{emptyText}</p>
+        )}
+      </div>
+    )
+  }
+  const scopeNote = selectedRow ? (
+    <p className="text-sm text-muted-foreground">
+      {'Showing '}
+      <span className="font-medium text-foreground">{selectedRow.name}</span>
+      {'. Choose All projects in the project selector to see everything.'}
+    </p>
+  ) : null
+
+  const tablet = (
+    <div className="flex flex-col gap-4">
+      {greeting}
+      {scopeNote}
+      <TabletHome
+        initialTab={parseTabletTab(query.tab)}
+        panels={{
+          today: tabletPanel(
+            'today',
+            (show.attention || show.coming_up) && (
+              <div className="flex justify-end">
+                <WorkScopeControl scope={workScope} />
+              </div>
+            ),
+          ),
+          jobs: tabletPanel('jobs', undefined, 'Priority jobs are hidden in dashboard settings.'),
+          overview: tabletPanel(
+            'overview',
+            kpiCards.size > 0 && (
+              <section aria-label="Key figures" className={kpiGridClass(kpiCards.size)}>
+                <FinancialKpis metrics={financials} scheduleRisk={scheduleRisk} visible={kpiCards} order={kpiOrder} />
+              </section>
+            ),
+            'No overview sections are enabled in dashboard settings.',
+          ),
+        }}
+      />
+    </div>
+  )
+
+  const standard = (
     <div className="flex flex-col gap-6">
       <div data-dashboard-section={'welcome' satisfies DashboardSectionId}>
         <CommandHeader
@@ -369,4 +497,6 @@ export async function OwnerDashboard({
       {below.length > 0 && <div className="flex flex-col gap-6">{below}</div>}
     </div>
   )
+
+  return <LayoutSwitch standard={standard} tablet={tablet} />
 }

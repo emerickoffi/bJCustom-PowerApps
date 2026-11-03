@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Bell, ChevronRight, LogOut, UserRound } from 'lucide-react'
+import { useTransition } from 'react'
+import { Bell, ChevronRight, LayoutTemplate, LogOut, UserRound } from 'lucide-react'
 import { SearchInput } from '@/components/shared/search-input'
 import {
   DropdownMenu,
@@ -10,9 +11,14 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useLayoutPreference } from '@/components/app/layout-mode'
+import { setLayoutPreferenceAction } from '@/app/actions/dashboard-preferences'
+import { LAYOUT_LABELS, LAYOUT_PREFERENCES, parseLayoutPreference } from '@/lib/ui-layout'
 import { cn } from '@/lib/utils'
 import { initials } from '@/lib/format'
 import { openNotificationAction } from '@/app/actions/warranty'
@@ -174,6 +180,37 @@ export function NotificationBell({ items, emptyHref }: { items: HeaderNotificati
   )
 }
 
+/** Applies the choice instantly on this device, then saves it for this user and workspace. */
+function LayoutMenuGroup() {
+  const { preference, setPreference } = useLayoutPreference()
+  const [, startTransition] = useTransition()
+  const choose = (value: string) => {
+    const next = parseLayoutPreference(value)
+    if (next === preference) return
+    const previous = preference
+    setPreference(next)
+    startTransition(async () => {
+      const result = await setLayoutPreferenceAction(next).catch(() => ({ ok: false }))
+      if (!result.ok) setPreference(previous)
+    })
+  }
+  return (
+    <DropdownMenuGroup>
+      <DropdownMenuLabel className="flex items-center gap-2 px-2.5 pb-1 pt-2 text-xs font-medium text-muted-foreground">
+        <LayoutTemplate className="size-3.5" aria-hidden="true" />
+        Layout
+      </DropdownMenuLabel>
+      <DropdownMenuRadioGroup value={preference} onValueChange={choose}>
+        {LAYOUT_PREFERENCES.map((value) => (
+          <DropdownMenuRadioItem key={value} value={value} closeOnClick={false} className="min-h-10 px-2.5 py-2">
+            {LAYOUT_LABELS[value]}
+          </DropdownMenuRadioItem>
+        ))}
+      </DropdownMenuRadioGroup>
+    </DropdownMenuGroup>
+  )
+}
+
 export function ProfileMenu({
   name,
   email,
@@ -214,6 +251,8 @@ export function ProfileMenu({
           <UserRound className="size-4" aria-hidden="true" />
           Profile
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <LayoutMenuGroup />
         <DropdownMenuSeparator />
         <form action="/auth/sign-out" method="post">
           <button

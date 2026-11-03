@@ -33,7 +33,7 @@ import {
   type NavItem,
 } from '@/lib/navigation'
 
-const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+export const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
   'my-work': ListChecks,
   projects: FolderKanban,
