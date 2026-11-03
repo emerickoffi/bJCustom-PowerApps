@@ -3,11 +3,11 @@ import { ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AnimatedNumber, type AnimatedNumberFormat } from '@/components/dashboard/animated-number'
 
-type Accent = 'primary' | 'champagne' | 'warning' | 'danger' | 'neutral'
+type Accent = 'primary' | 'cobalt' | 'warning' | 'danger' | 'neutral'
 
 const ACCENT: Record<Accent, string> = {
   primary: 'bg-sage text-primary',
-  champagne: 'bg-champagne-soft text-champagne-foreground',
+  cobalt: 'bg-cobalt-soft text-cobalt',
   warning: 'bg-champagne-soft text-warning',
   danger: 'bg-destructive/8 text-destructive',
   neutral: 'bg-muted text-muted-foreground',
@@ -21,8 +21,8 @@ const WHITE_CARD = 'bg-card hover:border-[#B9C7BE]'
 const TONE: Record<StatTone, { card: string; icon: string; alert?: string }> = {
   approval: {
     card: WHITE_CARD,
-    icon: 'bg-[#F7EDD7] text-[#8A5D12]',
-    alert: 'border-[#E3CB98] shadow-[inset_3px_0_0_#B7862F,var(--shadow-soft)] hover:border-[#C9A35E]',
+    icon: 'bg-cobalt-soft text-cobalt',
+    alert: 'border-cobalt-border shadow-[inset_3px_0_0_var(--cobalt-fill),var(--shadow-soft)] hover:border-cobalt/40',
   },
   contract: {
     card: WHITE_CARD,
@@ -68,7 +68,7 @@ export function StatCard({
 }) {
   const toned = tone ? TONE[tone] : undefined
   const statusDot = toned ? STATUS_DOT[accent] : undefined
-  const alertCard = toned?.alert && accent === 'champagne' ? toned.alert : undefined
+  const alertCard = toned?.alert && accent === 'cobalt' ? toned.alert : undefined
   const toneIcon = toned && (statusDot ? ACCENT[accent] : toned.icon)
 
   return (

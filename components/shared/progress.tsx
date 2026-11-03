@@ -91,7 +91,7 @@ export function ProgressRing({
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={c * (1 - v / 100)}
-          className={cn('transition-[stroke-dashoffset] duration-700 ease-out', tone === 'light' ? 'stroke-champagne' : 'stroke-primary')}
+          className={cn('transition-[stroke-dashoffset] duration-700 ease-out', tone === 'light' ? 'stroke-cobalt-border' : 'stroke-primary')}
         />
       </svg>
       <span className="absolute flex flex-col items-center leading-none">

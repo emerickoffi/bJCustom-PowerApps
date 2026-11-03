@@ -127,8 +127,8 @@ export async function TeamDashboard({
         <div className="blueprint absolute inset-0 opacity-60" aria-hidden="true" />
         <div className="relative flex flex-col gap-8 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between lg:p-10">
           <div className="flex max-w-xl flex-col gap-4">
-            <div className="flex items-center gap-2.5 text-sm font-medium text-champagne">
-              <span className="h-px w-6 bg-champagne" aria-hidden="true" />
+            <div className="flex items-center gap-2.5 text-sm font-medium text-cobalt-border">
+              <span className="h-px w-6 bg-cobalt-border" aria-hidden="true" />
               {session.brand.displayName}
             </div>
             <h1 id="welcome-heading" className="text-balance font-serif text-3xl font-semibold leading-tight md:text-[2.6rem]">
@@ -145,7 +145,7 @@ export async function TeamDashboard({
                   size="lg"
                   render={<Link href="/projects/new" />}
                   nativeButton={false}
-                  className="bg-champagne text-white hover:bg-champagne/90"
+                  className="bg-cobalt-fill text-white hover:bg-cobalt-hover focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-deep"
                 >
                   <Plus data-icon="inline-start" />
                   New project
@@ -190,7 +190,7 @@ export async function TeamDashboard({
           value={attention.total}
           href="/actions"
           icon={BellRing}
-          accent={attention.total > 0 ? 'champagne' : undefined}
+          accent={attention.total > 0 ? 'cobalt' : undefined}
           hint={attention.totalIsLowerBound ? 'Open in the Action Center (at least)' : 'Open in the Action Center'}
         />
         <StatCard
