@@ -189,6 +189,19 @@ export const AREA_LABELS: Record<LayoutArea, string> = {
 const DEFAULT_LAYOUT: DashboardLayout = {
   summary: ['card_approval', 'card_contract', 'card_schedule', 'card_receivables'],
   above: [],
+  main: ['attention', 'priority_jobs', 'pipeline'],
+  side: ['coming_up', 'warranty', 'recent_activity'],
+  below: [],
+}
+
+/**
+ * The previous default, which put Pipeline full-width below both columns. Settings saved while it was the default
+ * stored it verbatim alongside visibility changes, so an exact match is treated as "not arranged" and follows the
+ * current default. Any other arrangement is a deliberate choice and is kept.
+ */
+const LEGACY_DEFAULT_LAYOUT: DashboardLayout = {
+  summary: ['card_approval', 'card_contract', 'card_schedule', 'card_receivables'],
+  above: [],
   main: ['attention', 'priority_jobs'],
   side: ['coming_up', 'warranty', 'recent_activity'],
   below: ['pipeline'],
@@ -206,7 +219,7 @@ export const ALLOWED_AREAS: Record<VisibilityItemId, readonly LayoutArea[]> = {
   coming_up: ['main', 'side'],
   warranty: ['main', 'side'],
   recent_activity: ['main', 'side'],
-  pipeline: ['above', 'below'],
+  pipeline: ['above', 'main', 'below'],
 }
 
 /** Items that take a layout position; header items are toggled but never placed. */
@@ -264,7 +277,11 @@ export function parseLayout(raw: unknown): DashboardLayout {
     result[area].splice(insertAt, 0, id)
     seen.add(id)
   }
-  return result
+  return sameLayout(result, LEGACY_DEFAULT_LAYOUT) ? defaultLayout() : result
+}
+
+function sameLayout(a: DashboardLayout, b: DashboardLayout): boolean {
+  return LAYOUT_AREAS.every((area) => a[area].join(',') === b[area].join(','))
 }
 
 /**
@@ -328,7 +345,7 @@ export function stepItem(layout: DashboardLayout, id: VisibilityItemId, directio
 }
 
 export function isDefaultLayout(layout: DashboardLayout): boolean {
-  return LAYOUT_AREAS.every((a) => layout[a].join(',') === DEFAULT_LAYOUT[a].join(','))
+  return sameLayout(layout, DEFAULT_LAYOUT)
 }
 
 export function defaultSettings(): DashboardSettings {

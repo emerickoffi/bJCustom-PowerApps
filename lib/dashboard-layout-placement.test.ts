@@ -46,7 +46,7 @@ test('placing an item shifts others and keeps every item exactly once', () => {
   const l = placeItem(defaultLayout(), 'card_receivables', 'summary', 1)
   assert.deepEqual(l.summary, ['card_receivables', 'card_approval', 'card_contract', 'card_schedule'])
   const moved = placeItem(defaultLayout(), 'coming_up', 'main', 1)
-  assert.deepEqual(moved.main, ['coming_up', 'attention', 'priority_jobs'])
+  assert.deepEqual(moved.main, ['coming_up', 'attention', 'priority_jobs', 'pipeline'])
   assert.deepEqual(moved.side, ['warranty', 'recent_activity'])
   assert.equal(allIds(moved).length, new Set(allIds(moved)).size)
 })
@@ -54,14 +54,36 @@ test('placing an item shifts others and keeps every item exactly once', () => {
 test('incompatible placements are refused locally and rejected on save', () => {
   const base = defaultLayout()
   assert.equal(placeItem(base, 'attention', 'side', 1), base)
-  assert.equal(placeItem(base, 'pipeline', 'main', 1), base)
+  assert.equal(placeItem(base, 'pipeline', 'side', 1), base)
   const bad = { ...defaultLayout(), main: ['priority_jobs'], side: ['attention', 'coming_up', 'warranty', 'recent_activity'] }
   assert.ok('error' in validateLayout(bad))
   const dup = { ...defaultLayout(), side: ['coming_up', 'coming_up', 'warranty', 'recent_activity'] }
   assert.ok('error' in validateLayout(dup))
-  const missing = { ...defaultLayout(), below: [] }
+  const missing = { ...defaultLayout(), main: ['attention', 'priority_jobs'] }
   assert.ok('error' in validateLayout(missing))
   assert.ok('layout' in validateLayout(placeItem(base, 'pipeline', 'above', 1)))
+})
+
+test('default places Pipeline directly below Priority Jobs in the main column', () => {
+  const l = defaultLayout()
+  assert.deepEqual(l.main, ['attention', 'priority_jobs', 'pipeline'])
+  assert.deepEqual(l.below, [])
+})
+
+test('a stored copy of the previous default follows the new default; custom arrangements are kept', () => {
+  const legacy = {
+    summary: ['card_approval', 'card_contract', 'card_schedule', 'card_receivables'],
+    above: [],
+    main: ['attention', 'priority_jobs'],
+    side: ['coming_up', 'warranty', 'recent_activity'],
+    below: ['pipeline'],
+  }
+  assert.ok(isDefaultLayout(parseLayout(legacy)))
+  const custom = { ...legacy, main: ['priority_jobs', 'attention'] }
+  const kept = parseLayout(custom)
+  assert.deepEqual(kept.main, ['priority_jobs', 'attention'])
+  assert.deepEqual(kept.below, ['pipeline'])
+  assert.deepEqual(parseLayout({ ...legacy, below: [], above: ['pipeline'] }).above, ['pipeline'])
 })
 
 test('step moves within an area and stops at the ends', () => {
