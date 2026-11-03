@@ -1,5 +1,5 @@
 import { ActionCenter } from '@/components/dashboard/action-center'
-import { AttentionSummary, CommandHeader } from '@/components/dashboard/command-header'
+import { AttentionToolbarAction, CommandHeader } from '@/components/dashboard/command-header'
 import { ComingUp } from '@/components/dashboard/coming-up'
 import { FinancialKpis } from '@/components/dashboard/financial-kpis'
 import { PipelineOverview } from '@/components/dashboard/pipeline-overview'
@@ -485,16 +485,17 @@ export async function OwnerDashboard({
       )}
 
       {showScopeToolbar && (
-        <div className="-my-2 flex flex-wrap items-center justify-between gap-3">
+        <div className="-my-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Work scope</span>
             <WorkScopeControl scope={workScope} />
           </div>
           {attentionAvailable && (
-            <AttentionSummary
+            <AttentionToolbarAction
               total={attention.total}
               isLowerBound={attention.totalIsLowerBound}
               href={show.attention ? '#action-center-heading' : '/actions'}
+              scopeLabel={mine ? 'in My work' : 'across all work'}
             />
           )}
         </div>

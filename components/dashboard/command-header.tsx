@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { CalendarDays, CircleAlert, CircleCheck } from 'lucide-react'
+import { ArrowRight, CalendarDays, CircleAlert, CircleCheck } from 'lucide-react'
 import { formatLongDate, formatShortDate, greeting } from '@/lib/greeting'
 import { cn } from '@/lib/utils'
 
@@ -97,6 +97,55 @@ export function CommandHeader({
         <AttentionSummary total={actionTotal} isLowerBound={actionTotalIsLowerBound} href={actionsHref} />
       )}
     </header>
+  )
+}
+
+/** Compact one-line attention action for the standard dashboard's work-scope toolbar. */
+export function AttentionToolbarAction({
+  total,
+  isLowerBound,
+  href,
+  scopeLabel,
+}: {
+  total: number
+  isLowerBound: boolean
+  href: string
+  /** Names the work scope the count reflects, e.g. "in My work" or "across all work". */
+  scopeLabel: string
+}) {
+  const caughtUp = total === 0
+  const count = `${total}${isLowerBound ? '+' : ''}`
+  const label = total === 1 && !isLowerBound ? 'item needs attention' : 'items need attention'
+
+  if (caughtUp) {
+    return (
+      <a
+        href={href}
+        aria-label={`All caught up ${scopeLabel}. Go to your action items`}
+        className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium text-primary transition-colors hover:bg-sage/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <CircleCheck className="size-4 shrink-0" aria-hidden="true" />
+        <span className="whitespace-nowrap">All caught up</span>
+      </a>
+    )
+  }
+
+  return (
+    <a
+      href={href}
+      aria-label={`${count} ${label} ${scopeLabel}. Go to your action items`}
+      className="group flex min-h-11 items-center gap-2 rounded-lg border border-[#FDBA74] bg-[#FFF1E6] py-1.5 pl-2 pr-3 text-sm text-[#B54708] transition-colors hover:bg-[#FFEDD5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C2410C] focus-visible:ring-offset-2"
+    >
+      <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
+      <span className="flex min-w-7 items-center justify-center rounded-md bg-[#C2410C] px-1.5 py-0.5 text-xs font-bold tabular-nums text-white">
+        {count}
+      </span>
+      <span className="whitespace-nowrap font-medium">{label}</span>
+      <ArrowRight
+        className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+        aria-hidden="true"
+      />
+    </a>
   )
 }
 
