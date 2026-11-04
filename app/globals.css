@@ -128,7 +128,8 @@
   /* #17212b on #ffa500 is 9.3:1. */
   --notification: #ffa500;
   --notification-foreground: #17212b;
-  --accent-blue: #2563eb;
+  /* General theme blue. The pipeline Lead stage keeps #2563eb via lib/stage-colors.ts. */
+  --accent-blue: #2171b5;
   --accent-blue-soft: #eaf2ff;
   --secondary: #e9edf2;
   --secondary-foreground: #17212b;
@@ -154,12 +155,12 @@
   --success: #1f7a4a;
   --warning: #8f5207;
   --warning-foreground: #8f5207;
-  --info: #2563eb;
+  --info: #2171b5;
   --border: #d6dde5;
   --input: #c5ced9;
   --ring: #007f95;
   --chart-1: #007f95;
-  --chart-2: #2563eb;
+  --chart-2: #2171b5;
   --chart-3: #a8dadf;
   --chart-4: #f58a3c;
   --chart-5: #526173;

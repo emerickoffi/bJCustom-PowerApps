@@ -18,7 +18,7 @@ function PipelineHeading() {
   return (
     <div className="flex min-w-0 items-center gap-3">
       <span
-        className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#EFF6FF] text-[#2563EB]"
+        className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#EFF6FF] text-accent-blue"
         aria-hidden="true"
       >
         <GitBranch className="size-[18px]" />
