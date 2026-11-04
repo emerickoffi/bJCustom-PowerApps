@@ -140,7 +140,7 @@ function Notice({ tone, children }: { tone: 'error' | 'warning' | 'info'; childr
         'flex items-start gap-2 rounded-lg p-3 text-sm',
         tone === 'error' && 'bg-destructive/5 text-destructive',
         tone === 'warning' && 'bg-champagne-soft text-warning',
-        tone === 'info' && 'bg-[#E6F0EB] text-primary',
+        tone === 'info' && 'bg-interactive-soft text-primary',
       )}
     >
       <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -354,7 +354,7 @@ function Composer({ data, doc, onCancel, onSent }: { data: SignaturePanelData; d
               key={o.value}
               className={cn(
                 'flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
-                method === o.value ? 'border-primary bg-[#E6F0EB]' : 'border-[#D6DDE5]',
+                method === o.value ? 'border-primary bg-interactive-soft' : 'border-[#D6DDE5]',
                 o.disabled && 'cursor-not-allowed opacity-60',
               )}
             >

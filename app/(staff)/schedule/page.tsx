@@ -215,7 +215,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     .filter((x) => x.total > 0 && x.open > 0)
 
   const metrics = [
-    { label: 'Total activities', value: activities.length, icon: ListChecks, iconTone: 'bg-[#E6F0EB] text-[#174D38]', hint: notScheduled ? `${notScheduled} not scheduled` : 'All scheduled' },
+    { label: 'Total activities', value: activities.length, icon: ListChecks, iconTone: 'bg-interactive-soft text-primary', hint: notScheduled ? `${notScheduled} not scheduled` : 'All scheduled' },
     { label: 'In progress', value: inProgress.length, icon: CalendarRange, iconTone: 'bg-[#E6F0FF] text-[#1D5FBD]', hint: inProgress.length ? null : 'None underway' },
     { label: 'Overdue', value: overdue.length, icon: AlertTriangle, iconTone: 'bg-[#FDE8E7] text-[#BD302B]', hint: 'Past planned finish', alert: overdue.length > 0 },
     { label: 'Upcoming', value: upcoming.length, icon: CalendarClock, iconTone: 'bg-link-soft text-link', hint: `Next ${UPCOMING_DAYS} days` },

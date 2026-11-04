@@ -149,11 +149,11 @@ export function ScheduleBoard({
         <div className="flex flex-wrap items-center gap-1 px-1 sm:px-0">
           {view === 'stages' && totalActivities > 0 && (
             <>
-              <Button variant="ghost" size="sm" className="min-h-10 text-[#174D38] hover:bg-[#E9EDF2] hover:text-[#174D38]" disabled={noneCollapsed} onClick={() => setCollapsed(new Set())}>
+              <Button variant="ghost" size="sm" className="min-h-10 text-primary hover:bg-[#E9EDF2] hover:text-primary" disabled={noneCollapsed} onClick={() => setCollapsed(new Set())}>
                 <ChevronsUpDown data-icon="inline-start" />
                 Expand all
               </Button>
-              <Button variant="ghost" size="sm" className="min-h-10 text-[#174D38] hover:bg-[#E9EDF2] hover:text-[#174D38]" disabled={allCollapsed} onClick={() => setCollapsed(new Set(allKeys))}>
+              <Button variant="ghost" size="sm" className="min-h-10 text-primary hover:bg-[#E9EDF2] hover:text-primary" disabled={allCollapsed} onClick={() => setCollapsed(new Set(allKeys))}>
                 <ChevronsDownUp data-icon="inline-start" />
                 Collapse all
               </Button>
@@ -244,7 +244,7 @@ function ProjectSection({
           aria-expanded={open}
           aria-controls={panelId}
           onClick={onToggle}
-          className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#F7F9FB] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D38]"
+          className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#F7F9FB] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
         >
           <ChevronDown className={cn('size-4 shrink-0 text-[#526173] transition-transform motion-reduce:transition-none', !open && '-rotate-90')} aria-hidden="true" />
           <span className="flex min-w-0 flex-col">
@@ -318,7 +318,7 @@ function StageList({
               aria-expanded={open}
               aria-controls={panelId}
               onClick={() => toggle(key)}
-              className="flex min-h-12 w-full items-center gap-3 bg-[#E9EDF2] px-3 py-2.5 text-left text-[#17212B] transition-colors hover:bg-[#E1E6EC] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D38] sm:px-4"
+              className="flex min-h-12 w-full items-center gap-3 bg-[#E9EDF2] px-3 py-2.5 text-left text-[#17212B] transition-colors hover:bg-[#E1E6EC] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:px-4"
             >
               <span
                 className={cn(
@@ -381,7 +381,7 @@ function StageList({
                       <button
                         type="button"
                         onClick={() => onSelect(a)}
-                        className="group grid w-full gap-2 px-4 py-2.5 text-left transition-colors hover:bg-[#F7F9FB] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D38] md:grid-cols-[minmax(0,1fr)_9rem_11rem_8rem_7.5rem] md:items-center md:gap-4"
+                        className="group grid w-full gap-2 px-4 py-2.5 text-left transition-colors hover:bg-[#F7F9FB] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary md:grid-cols-[minmax(0,1fr)_9rem_11rem_8rem_7.5rem] md:items-center md:gap-4"
                       >
                         <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-[#006B78]">
                           {a.activity_type === 'milestone' ? (

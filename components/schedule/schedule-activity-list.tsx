@@ -280,7 +280,7 @@ function ActivityTable({
                       onSelect(a)
                     }}
                     aria-label={`${actionLabel} ${a.name}`}
-                    className="inline-flex size-8 items-center justify-center rounded-md border border-[#D6DDE5] bg-white text-[#174D38] transition-colors hover:border-[#174D38] hover:bg-[#F3F4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38] motion-reduce:transition-none"
+                    className="inline-flex size-8 items-center justify-center rounded-md border border-[#D6DDE5] bg-white text-primary transition-colors hover:border-primary hover:bg-[#F3F4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
                   >
                     <Pencil className="size-4" aria-hidden="true" />
                   </button>
@@ -300,7 +300,7 @@ function ActivityTable({
                 type="button"
                 onClick={() => onSelect(a)}
                 aria-label={`${actionLabel} ${a.name}`}
-                className="group flex w-full flex-col gap-2 px-4 py-3 text-left transition-colors hover:bg-[#F7F9FB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D38] motion-reduce:transition-none"
+                className="group flex w-full flex-col gap-2 px-4 py-3 text-left transition-colors hover:bg-[#F7F9FB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary motion-reduce:transition-none"
               >
                 <span className="flex items-start justify-between gap-3">
                   <span className="flex min-w-0 flex-col gap-1">

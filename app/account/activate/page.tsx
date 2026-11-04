@@ -14,7 +14,7 @@ export default async function ActivatePage() {
   if (!session.activationRequired) redirect(session.role === 'client' ? '/portal' : landingPathForRole(session.role))
 
   return (
-    <BrandStyle brand={session.brand}>
+    <BrandStyle brand={session.brand} applyToTheme={false}>
       <main className="flex min-h-svh items-center justify-center bg-background px-4 py-12">
         <div className="flex w-full max-w-md flex-col gap-6 rounded-xl border bg-card p-6 sm:p-8">
           <div className="w-40">

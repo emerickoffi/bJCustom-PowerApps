@@ -107,7 +107,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                   <span
                     className={cn(
                       'rounded-full px-1.5 text-xs tabular-nums',
-                      active ? 'bg-white/20 text-primary-foreground' : 'bg-[#E6F0EB] text-foreground/70',
+                      active ? 'bg-white/20 text-primary-foreground' : 'bg-interactive-soft text-foreground/70',
                     )}
                   >
                     {f.count}

@@ -117,14 +117,14 @@ export function ActivityHistoryDrawer({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<Button variant="outline" size="sm" className="h-9 border-[#E2E8E2] text-[#174D32]" />}>
+      <SheetTrigger render={<Button variant="outline" size="sm" className="h-9 border-border text-primary" />}>
         View Full History
       </SheetTrigger>
       <SheetContent className="w-full gap-0 bg-[#F8F7F3] p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-2xl">
-        <SheetHeader className="gap-1 border-b border-[#E2E8E2] bg-white p-4 pr-12">
-          <SheetTitle className="font-serif text-xl font-semibold text-[#103B27]">Activity History</SheetTitle>
+        <SheetHeader className="gap-1 border-b border-border bg-white p-4 pr-12">
+          <SheetTitle className="font-serif text-xl font-semibold text-brand-deep">Activity History</SheetTitle>
           <SheetDescription className="flex flex-wrap items-center gap-x-2 text-sm">
-            <span className="font-medium text-[#103B27]">{project.name}</span>
+            <span className="font-medium text-brand-deep">{project.name}</span>
             {project.project_number && <span className="font-mono text-xs">{project.project_number}</span>}
             <span aria-live="polite">
               {total === undefined ? '' : `· ${total.toLocaleString('en-US')} ${filtered ? 'matching' : ''} ${total === 1 ? 'event' : 'events'}`}
@@ -133,7 +133,7 @@ export function ActivityHistoryDrawer({
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <div role="search" className="flex flex-col gap-3 border-b border-[#E2E8E2] bg-white p-4">
+          <div role="search" className="flex flex-col gap-3 border-b border-border bg-white p-4">
             <div className="relative">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Label htmlFor="history-search" className="sr-only">
@@ -151,7 +151,7 @@ export function ActivityHistoryDrawer({
             </div>
             <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="history-type" className="text-xs text-[#103B27]/70">
+                <Label htmlFor="history-type" className="text-xs text-brand-deep/70">
                   Event type
                 </Label>
                 <Select value={filters.type ?? ALL} onValueChange={(v) => update({ type: !v || v === ALL ? null : (v as HistoryCategory) })}>
@@ -169,7 +169,7 @@ export function ActivityHistoryDrawer({
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="history-actor" className="text-xs text-[#103B27]/70">
+                <Label htmlFor="history-actor" className="text-xs text-brand-deep/70">
                   Changed by
                 </Label>
                 <Select value={filters.actor ?? ALL} onValueChange={(v) => update({ actor: !v || v === ALL ? null : v })}>
@@ -192,7 +192,7 @@ export function ActivityHistoryDrawer({
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="history-from" className="text-xs text-[#103B27]/70">
+                <Label htmlFor="history-from" className="text-xs text-brand-deep/70">
                   From
                 </Label>
                 <Input
@@ -205,7 +205,7 @@ export function ActivityHistoryDrawer({
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="history-to" className="text-xs text-[#103B27]/70">
+                <Label htmlFor="history-to" className="text-xs text-brand-deep/70">
                   To
                 </Label>
                 <Input
@@ -224,7 +224,7 @@ export function ActivityHistoryDrawer({
               </p>
             )}
             {(filtered || searchDraft) && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 self-start text-[#174D32]">
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 self-start text-primary">
                 <X aria-hidden="true" />
                 Clear filters
               </Button>
@@ -232,12 +232,12 @@ export function ActivityHistoryDrawer({
           </div>
 
           {canExport && (
-            <div className="flex flex-col gap-3 border-b border-[#E2E8E2] bg-[#EAF0E9] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-b border-border bg-interactive-soft p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 flex-col gap-2">
                 {filtered ? (
                   <fieldset className="flex flex-col gap-1.5">
-                    <legend className="mb-1.5 text-xs font-medium text-[#103B27]/70">Export scope</legend>
-                    <div role="radiogroup" className="inline-flex w-full rounded-lg border border-[#E2E8E2] bg-white p-0.5 sm:w-auto">
+                    <legend className="mb-1.5 text-xs font-medium text-brand-deep/70">Export scope</legend>
+                    <div role="radiogroup" className="inline-flex w-full rounded-lg border border-border bg-white p-0.5 sm:w-auto">
                       {(['filtered', 'all'] as const).map((s) => (
                         <button
                           key={s}
@@ -247,7 +247,7 @@ export function ActivityHistoryDrawer({
                           onClick={() => setScope(s)}
                           className={cn(
                             'min-h-9 flex-1 rounded-md px-3 text-sm font-medium transition-colors sm:flex-none',
-                            scope === s ? 'bg-[#174D32] text-white' : 'text-[#103B27]/70 hover:text-[#103B27]',
+                            scope === s ? 'bg-primary text-white' : 'text-brand-deep/70 hover:text-brand-deep',
                           )}
                         >
                           {s === 'filtered' ? 'Current filters' : 'All history'}
@@ -256,17 +256,17 @@ export function ActivityHistoryDrawer({
                     </div>
                   </fieldset>
                 ) : (
-                  <p className="text-sm text-[#103B27]">
+                  <p className="text-sm text-brand-deep">
                     <span className="font-medium">Export scope:</span> All history for this project
                   </p>
                 )}
-                <p className="text-xs text-[#103B27]/70">
+                <p className="text-xs text-brand-deep/70">
                   {exportScope === 'filtered'
                     ? `Includes every event matching the filters${total !== undefined ? ` (${total.toLocaleString('en-US')})` : ''}, not just this page.`
                     : 'Includes every recorded event for this project.'}
                 </p>
               </div>
-              <Button onClick={exportHistory} disabled={exporting || Boolean(dateError)} className="h-10 shrink-0 bg-[#174D32] text-white hover:bg-[#103B27]">
+              <Button onClick={exportHistory} disabled={exporting || Boolean(dateError)} className="h-10 shrink-0 bg-primary text-white hover:bg-brand-deep">
                 {exporting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <FileSpreadsheet aria-hidden="true" />}
                 {exporting ? 'Preparing workbook…' : 'Export to Excel'}
               </Button>
@@ -275,8 +275,8 @@ export function ActivityHistoryDrawer({
 
           <div className="flex flex-1 flex-col gap-3 p-4" aria-busy={isLoading || isValidating}>
             {error ? (
-              <div role="alert" className="flex flex-col items-start gap-3 rounded-xl border border-[#E2E8E2] bg-white p-5">
-                <p className="text-sm text-[#103B27]">{error.message}</p>
+              <div role="alert" className="flex flex-col items-start gap-3 rounded-xl border border-border bg-white p-5">
+                <p className="text-sm text-brand-deep">{error.message}</p>
                 <Button variant="outline" size="sm" onClick={() => mutate()} className="h-9">
                   Try again
                 </Button>
@@ -287,8 +287,8 @@ export function ActivityHistoryDrawer({
                 Loading history…
               </div>
             ) : data.events.length === 0 ? (
-              <div className="flex flex-col items-start gap-1 rounded-xl border border-dashed border-[#E2E8E2] bg-white p-6">
-                <p className="text-sm font-medium text-[#103B27]">{filtered ? 'No events match these filters' : 'No activity recorded yet'}</p>
+              <div className="flex flex-col items-start gap-1 rounded-xl border border-dashed border-border bg-white p-6">
+                <p className="text-sm font-medium text-brand-deep">{filtered ? 'No events match these filters' : 'No activity recorded yet'}</p>
                 <p className="text-sm text-muted-foreground">
                   {filtered ? 'Try a different search or a wider date range.' : 'Schedule changes will appear here as they happen.'}
                 </p>
@@ -304,7 +304,7 @@ export function ActivityHistoryDrawer({
         </div>
 
         {data && data.total > 0 && (
-          <nav aria-label="History pages" className="flex items-center justify-between gap-2 border-t border-[#E2E8E2] bg-white p-3">
+          <nav aria-label="History pages" className="flex items-center justify-between gap-2 border-t border-border bg-white p-3">
             <Button variant="outline" size="sm" className="h-10 px-3" disabled={page <= 1 || isValidating} onClick={() => setPage((p) => Math.max(1, p - 1))}>
               <ChevronLeft aria-hidden="true" />
               Previous

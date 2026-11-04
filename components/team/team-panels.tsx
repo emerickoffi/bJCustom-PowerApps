@@ -87,7 +87,7 @@ function MemberItem({ member: m }: { member: MemberRow }) {
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 transition-colors hover:bg-[#F3F4F6]/70 sm:flex-nowrap sm:px-5">
       <span
         aria-hidden="true"
-        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#E6F0EB] text-sm font-semibold text-[#174D38] ring-1 ring-inset ring-[#174D38]/12"
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-interactive-soft text-sm font-semibold text-primary ring-1 ring-inset ring-primary/12"
       >
         {initials(m.name ?? m.email)}
       </span>

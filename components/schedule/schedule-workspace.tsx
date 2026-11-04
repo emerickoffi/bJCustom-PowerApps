@@ -104,17 +104,17 @@ export function ScheduleWorkspace({
       {notStarted && (
         <section
           aria-labelledby="schedule-not-started"
-          className="flex flex-col gap-3 rounded-xl border border-[#E2E8E2] bg-[#EAF0E9] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+          className="flex flex-col gap-3 rounded-xl border border-border bg-interactive-soft p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
         >
           <div className="flex items-start gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-[#174D32]" aria-hidden="true">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-primary" aria-hidden="true">
               <CalendarClock className="size-4" />
             </span>
             <div className="flex flex-col gap-0.5">
-              <h2 id="schedule-not-started" className="font-serif text-base font-semibold text-[#103B27]">
+              <h2 id="schedule-not-started" className="font-serif text-base font-semibold text-brand-deep">
                 Scheduling hasn&apos;t started yet
               </h2>
-              <p className="text-sm text-[#103B27]/70">
+              <p className="text-sm text-brand-deep/70">
                 {canManage
                   ? 'The activities are in place but none has dates yet. Open an activity to set its planned dates, or add activities this home needs.'
                   : 'The activities are in place, but a project manager hasn’t set planned dates yet.'}
@@ -131,7 +131,7 @@ export function ScheduleWorkspace({
       )}
       <Tabs value={view} onValueChange={changeView} className="gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <TabsList aria-label="Schedule view" className="h-12 w-full rounded-xl border border-[#E2E8E2] bg-[#F8F7F3] p-1 sm:h-11 sm:w-fit">
+          <TabsList aria-label="Schedule view" className="h-12 w-full rounded-xl border border-border bg-[#F8F7F3] p-1 sm:h-11 sm:w-fit">
             <TabsTrigger value="list" className={triggerClass}>
               <List />
               List

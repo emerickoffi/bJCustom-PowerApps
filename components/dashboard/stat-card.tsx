@@ -26,7 +26,7 @@ const TONE: Record<StatTone, { card: string; icon: string; alert?: string }> = {
   },
   contract: {
     card: WHITE_CARD,
-    icon: 'bg-[#E6F0EB] text-[#174D38]',
+    icon: 'bg-interactive-soft text-primary',
   },
   schedule: {
     card: WHITE_CARD,

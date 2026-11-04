@@ -31,7 +31,7 @@ export function EventIcon({ event }: { event: PresentedEvent }) {
       aria-hidden="true"
       className={cn(
         'mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg',
-        key === 'deleted' ? 'bg-[#FDE8E7] text-[#BD302B]' : 'bg-[#EAF0E9] text-[#174D32]',
+        key === 'deleted' ? 'bg-[#FDE8E7] text-[#BD302B]' : 'bg-interactive-soft text-primary',
       )}
     >
       <Icon className="size-3.5" />
@@ -52,7 +52,7 @@ export function CompactHistoryItem({ event }: { event: PresentedEvent }) {
       <EventIcon event={event} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-          <span className="min-w-0 truncate text-sm font-medium text-[#103B27]">{eventHeadline(event)}</span>
+          <span className="min-w-0 truncate text-sm font-medium text-brand-deep">{eventHeadline(event)}</span>
           <time dateTime={event.createdAt} className="shrink-0 text-xs tabular-nums text-muted-foreground">
             {`${event.dateLabel} · ${event.timeLabel}`}
           </time>
@@ -69,15 +69,15 @@ export function DetailedHistoryItem({ event }: { event: PresentedEvent }) {
   const valueChanges = event.changes.filter((c) => !c.textOnly)
   const textChanges = event.changes.filter((c) => c.textOnly)
   return (
-    <li className="flex gap-3 rounded-xl border border-[#E2E8E2] bg-white p-4">
+    <li className="flex gap-3 rounded-xl border border-border bg-white p-4">
       <EventIcon event={event} />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="flex min-w-0 flex-col gap-1">
-            <span className="break-words text-sm font-semibold text-[#103B27]">{eventHeadline(event)}</span>
+            <span className="break-words text-sm font-semibold text-brand-deep">{eventHeadline(event)}</span>
             <div className="flex flex-wrap gap-1">
               {event.categories.map((c) => (
-                <span key={c.key} className="rounded-md bg-[#EAF0E9] px-1.5 py-0.5 text-[11px] font-medium text-[#174D32]">
+                <span key={c.key} className="rounded-md bg-interactive-soft px-1.5 py-0.5 text-[11px] font-medium text-primary">
                   {c.label}
                 </span>
               ))}
@@ -90,11 +90,11 @@ export function DetailedHistoryItem({ event }: { event: PresentedEvent }) {
         </div>
 
         {valueChanges.length > 0 && (
-          <dl className="flex flex-col divide-y divide-[#E2E8E2] rounded-lg border border-[#E2E8E2] bg-[#F8F7F3] text-sm">
+          <dl className="flex flex-col divide-y divide-border rounded-lg border border-border bg-[#F8F7F3] text-sm">
             {valueChanges.map((c) => (
               <div key={c.field} className="grid gap-1 px-3 py-2 sm:grid-cols-[8rem_1fr] sm:gap-3">
-                <dt className="text-xs font-medium text-[#103B27]/70">{c.label}</dt>
-                <dd className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 break-words text-[#103B27]">
+                <dt className="text-xs font-medium text-brand-deep/70">{c.label}</dt>
+                <dd className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 break-words text-brand-deep">
                   <span className="text-muted-foreground">
                     <span className="sr-only">Previous value: </span>
                     {c.from}

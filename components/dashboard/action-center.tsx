@@ -182,9 +182,9 @@ function ActionIconLink({ item }: { item: ActionItem }) {
       <Link
         href={item.href}
         aria-label={name}
-        className="group/btn flex size-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38] focus-visible:ring-offset-2"
+        className="group/btn flex size-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       >
-        <span className="flex size-10 items-center justify-center rounded-lg border border-[#C9DCCE] bg-[#E7F0E9] text-[#174D38] transition-colors group-hover/btn:bg-[#D5E6DA] group-hover/btn:text-[#123D2E]">
+        <span className="flex size-10 items-center justify-center rounded-lg border border-interactive-border bg-interactive-soft text-primary transition-colors group-hover/btn:bg-interactive-soft-hover group-hover/btn:text-brand-deep">
           <Icon className="size-[19px]" strokeWidth={2} aria-hidden="true" />
         </span>
       </Link>
@@ -222,7 +222,7 @@ function CategoryFilters({
     <span
       className={cn(
         'rounded-full px-1.5 text-xs font-semibold tabular-nums',
-        active ? 'bg-interactive text-white' : 'bg-[#EEF1EE] text-[#526173]',
+        active ? 'bg-interactive text-white' : 'bg-secondary text-[#526173]',
       )}
     >
       {n}
@@ -296,7 +296,7 @@ function EmptyState({
         : 'Items appear here when a live record needs action.'
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-5" role="status">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#EEF1EE] text-primary" aria-hidden="true">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-primary" aria-hidden="true">
         <CircleCheck className="size-[18px]" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col">

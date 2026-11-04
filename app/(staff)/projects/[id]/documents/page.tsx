@@ -57,12 +57,12 @@ export default async function ProjectDocumentsPage({
   const stats =
     !archived && totalCount !== null ? (
       <ul className="mt-1 flex flex-wrap items-center gap-2" aria-label="Document totals">
-        <li className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-[#174D38] ring-1 ring-inset ring-[#174D38]/10">
+        <li className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-primary/10">
           <FileText className="size-3.5" aria-hidden="true" />
           {`${totalCount} document${totalCount === 1 ? '' : 's'}`}
         </li>
         {showSigned && (
-          <li className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-[#174D38] ring-1 ring-inset ring-[#174D38]/10">
+          <li className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-primary/10">
             <FileCheck2 className="size-3.5" aria-hidden="true" />
             {`${signedCount} signed`}
           </li>

@@ -50,12 +50,12 @@ export function ClientProjectsDisclosure({
                 <li key={project.id}>
                   <Link
                     href={`/projects/${project.id}`}
-                    className="group flex min-h-12 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[#E6F0EB]/60 focus-visible:bg-[#E6F0EB]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D38]/40 sm:px-5"
+                    className="group flex min-h-12 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-interactive-soft/60 focus-visible:bg-interactive-soft/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 sm:px-5"
                   >
-                    <House className="size-4 shrink-0 text-[#174D38]/60" aria-hidden="true" />
+                    <House className="size-4 shrink-0 text-primary/60" aria-hidden="true" />
                     <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                       <span className="flex min-w-0 flex-col">
-                        <span className="truncate text-sm font-medium text-foreground group-hover:text-[#174D38]">
+                        <span className="truncate text-sm font-medium text-foreground group-hover:text-primary">
                           {project.name}
                         </span>
                         {project.project_number && (
@@ -65,7 +65,7 @@ export function ClientProjectsDisclosure({
                       <ProjectStatusBadge status={project.status} className="self-start sm:self-auto" />
                     </span>
                     <ChevronRight
-                      className="size-4 shrink-0 text-[#526173] transition-transform group-hover:translate-x-0.5 group-hover:text-[#174D38]"
+                      className="size-4 shrink-0 text-[#526173] transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
                       aria-hidden="true"
                     />
                   </Link>
@@ -88,9 +88,9 @@ export function ClientProjectsDisclosure({
             aria-expanded={open}
             aria-controls={listId}
             onClick={() => setOpen((v) => !v)}
-            className="-ml-2 flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm text-[#526173] transition-colors hover:bg-[#E6F0EB] hover:text-[#174D38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38]/40 sm:min-h-8"
+            className="-ml-2 flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm text-[#526173] transition-colors hover:bg-interactive-soft hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:min-h-8"
           >
-            <FolderKanban className="size-4 text-[#174D38]/70" aria-hidden="true" />
+            <FolderKanban className="size-4 text-primary/70" aria-hidden="true" />
             {label}
             <ChevronDown
               className={cn('size-4 transition-transform motion-reduce:transition-none', open && 'rotate-180')}
@@ -99,7 +99,7 @@ export function ClientProjectsDisclosure({
           </button>
         ) : (
           <span className="flex items-center gap-1.5 text-sm text-[#526173]">
-            <FolderKanban className="size-4 text-[#174D38]/70" aria-hidden="true" />
+            <FolderKanban className="size-4 text-primary/70" aria-hidden="true" />
             No projects yet
           </span>
         )}

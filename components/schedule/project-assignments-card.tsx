@@ -22,11 +22,11 @@ export function ProjectAssignmentsCard({
   })
 
   return (
-    <section aria-labelledby="assignments-heading" className="flex flex-col gap-4 rounded-xl border border-[#E2E8E2] bg-white p-5">
+    <section aria-labelledby="assignments-heading" className="flex flex-col gap-4 rounded-xl border border-border bg-white p-5">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h2 id="assignments-heading" className="flex items-center gap-2 font-serif text-lg font-semibold text-[#103B27]">
-            <HardHat className="size-4 text-[#174D32]" aria-hidden="true" />
+          <h2 id="assignments-heading" className="flex items-center gap-2 font-serif text-lg font-semibold text-brand-deep">
+            <HardHat className="size-4 text-primary" aria-hidden="true" />
             Subcontractor assignments
           </h2>
           <p className="text-sm text-muted-foreground">Open an activity to assign, reassign, or revoke work.</p>
@@ -54,9 +54,9 @@ export function ProjectAssignmentsCard({
           {ordered.map((a) => {
             const act = byId.get(a.schedule_activity_id)
             return (
-              <li key={a.id} className="flex min-w-0 flex-col gap-1 rounded-lg border border-[#E2E8E2] bg-[#F8F7F3] p-3">
+              <li key={a.id} className="flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-[#F8F7F3] p-3">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="truncate text-sm font-medium text-[#103B27]">{a.company_name}</span>
+                  <span className="truncate text-sm font-medium text-brand-deep">{a.company_name}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">{a.company_trade}</span>
                 </div>
                 <span className="truncate text-sm text-foreground/80">{act?.name ?? 'Removed activity'}</span>

@@ -22,7 +22,7 @@ export default async function RolesPermissionsPage() {
         actions={
           <Button
             variant="outline"
-            className="border-[#D6E0D5] bg-white text-[#174D38] hover:bg-[#F3F4F6] hover:text-[#103B27]"
+            className="border-[#D6E0D5] bg-white text-primary hover:bg-[#F3F4F6] hover:text-brand-deep"
             render={<Link href="/settings" />}
             nativeButton={false}
           >

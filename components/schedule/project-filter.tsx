@@ -27,7 +27,7 @@ export function ProjectFilter({
           onChange={(e) => {
             if (e.target.value) select(e.target.value)
           }}
-          className="h-11 w-full min-w-0 appearance-none rounded-lg border border-[#D6DDE5] bg-white pl-3 pr-9 text-sm font-medium text-[#17212B] shadow-xs hover:border-[#B9C3CF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38] disabled:opacity-60 sm:w-72"
+          className="h-11 w-full min-w-0 appearance-none rounded-lg border border-[#D6DDE5] bg-white pl-3 pr-9 text-sm font-medium text-[#17212B] shadow-xs hover:border-[#B9C3CF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 sm:w-72"
         >
           {value === '' && (
             <option value="" disabled>
