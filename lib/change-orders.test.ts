@@ -89,6 +89,9 @@ test('schedule days formatting', () => {
   assert.equal(formatScheduleDays(null), '—')
   assert.equal(formatScheduleDays(3), '+3d')
   assert.equal(formatScheduleDays(-1, 'long'), '-1 day')
+  assert.equal(formatScheduleDays(null, 'long'), 'Not set')
+  assert.equal(formatScheduleDays(0, 'long'), 'No schedule impact')
+  assert.equal(formatScheduleDays(0), '0d')
 })
 
 test('detail path encodes both ids', () => {

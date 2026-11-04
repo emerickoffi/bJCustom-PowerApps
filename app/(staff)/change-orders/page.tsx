@@ -7,6 +7,7 @@ import { formatMoney } from '@/lib/financials'
 import { isChangeOrderStatus, summarizeChangeOrders } from '@/lib/change-orders'
 import { EmptyState, PageHeader, Surface } from '@/components/shared/page-header'
 import { OrgChangeOrderDirectory, type OrgChangeOrderRow } from '@/components/change-orders/org-change-order-directory'
+import { ChooseProjectDialog } from '@/components/change-orders/choose-project-dialog'
 
 export const metadata: Metadata = { title: 'Change orders' }
 
@@ -19,7 +20,7 @@ type RawRow = {
   co_number: string
   title: string
   status: string
-  price_adjustment_cents: number | string
+  price_adjustment_cents: number | string | null
   cost_adjustment_cents: number | string
   schedule_impact_days: number | null
   sent_to_homeowner_at: string | null
@@ -33,7 +34,7 @@ export default async function OrgChangeOrdersPage() {
   const supabase = await createClient()
 
   // RLS already limits rows to managers who can see each project's internal records; the org filter keeps workspaces isolated.
-  const [{ data: rows, error }, { data: projects }] = await Promise.all([
+  const [{ data: rows, error }, { data: projects, error: projectsError }] = await Promise.all([
     supabase
       .from('change_orders')
       .select(
@@ -55,7 +56,9 @@ export default async function OrgChangeOrdersPage() {
         ...r,
         status: r.status,
         number: Number(r.number),
-        price_adjustment_cents: Number(r.price_adjustment_cents),
+        // KPIs keep treating a missing amount as 0 (as before); the list shows it as not recorded instead of $0.00.
+        price_adjustment_cents: Number(r.price_adjustment_cents ?? 0),
+        price_recorded: r.price_adjustment_cents !== null && Number.isFinite(Number(r.price_adjustment_cents)),
         cost_adjustment_cents: Number(r.cost_adjustment_cents),
         project_name: project.name,
         project_number: project.project_number,
@@ -66,6 +69,7 @@ export default async function OrgChangeOrdersPage() {
   const projectOptions = [...new Map(list.map((r) => [r.project_id, { id: r.project_id, name: r.project_name, project_number: r.project_number }])).values()].sort(
     (a, b) => a.name.localeCompare(b.name),
   )
+  const pickerProjects = (projects ?? []).map((p) => ({ id: p.id as string, name: p.name as string, project_number: (p.project_number as string | null) ?? null }))
   const awaitingCount = list.filter((r) => r.status === 'awaiting_homeowner').length
 
   return (
@@ -84,7 +88,14 @@ export default async function OrgChangeOrdersPage() {
         <EmptyState
           icon={FileDiff}
           title="No change orders yet"
-          description="Change orders are created from a project's Change orders tab. They will appear here once a project has one."
+          description={
+            projectsError
+              ? "Change orders are created from a project's Change orders tab. Projects could not be loaded right now, so try again shortly."
+              : pickerProjects.length === 0
+                ? "Change orders are created inside a project, and there are no projects you can access yet. Create or get access to a project first."
+                : "Change orders are created from a project's Change orders tab. Choose a project to start one."
+          }
+          action={!projectsError && pickerProjects.length > 0 ? <ChooseProjectDialog projects={pickerProjects} /> : undefined}
         />
       ) : (
         <>

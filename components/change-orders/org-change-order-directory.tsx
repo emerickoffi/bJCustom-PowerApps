@@ -17,12 +17,15 @@ import {
 import { ChangeOrderStatusBadge } from '@/components/change-orders/change-order-status-badge'
 import { NativeSelect } from '@/components/shared/form-field'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export type OrgChangeOrderRow = DirectoryRow & {
   project_id: string
   project_name: string
   project_number: string | null
+  /** False when the stored amount is missing, so the list never presents it as $0.00. */
+  price_recorded: boolean
   sent_to_homeowner_at: string | null
   decision_at: string | null
 }
@@ -53,6 +56,13 @@ export function OrgChangeOrderDirectory({ rows, projects }: { rows: OrgChangeOrd
     )
     return filterAndSortChangeOrders(scoped, '', status, 'updated_desc')
   }, [rows, q, status, project])
+
+  const clearFilters = () => {
+    setQ('')
+    setStatus('all')
+    setProject('all')
+    document.getElementById('org-co-search')?.focus()
+  }
 
   return (
     <section aria-labelledby="org-co-heading" className="flex flex-col gap-3">
@@ -106,7 +116,15 @@ export function OrgChangeOrderDirectory({ rows, projects }: { rows: OrgChangeOrd
       </p>
 
       {visible.length === 0 ? (
-        <div className="surface p-6 text-center text-sm text-muted-foreground">No change orders match these filters.</div>
+        <div className="surface flex flex-col items-center gap-3 p-6 text-center">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium text-foreground">No matching change orders</p>
+            <p className="text-sm text-muted-foreground">Try a different search, status or project.</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        </div>
       ) : (
         <>
           <ul className="flex flex-col gap-3 md:hidden">
@@ -132,6 +150,18 @@ function ProjectLabel({ row: r }: { row: OrgChangeOrderRow }) {
   )
 }
 
+function PriceAdjustment({ row: r }: { row: OrgChangeOrderRow }) {
+  if (!r.price_recorded) {
+    return (
+      <span className="text-muted-foreground">
+        <span aria-hidden="true">—</span>
+        <span className="sr-only">Not recorded</span>
+      </span>
+    )
+  }
+  return <span className={cn(r.price_adjustment_cents < 0 && 'text-primary')}>{formatMoney(r.price_adjustment_cents, { signed: true })}</span>
+}
+
 function NextAction({ row: r }: { row: OrgChangeOrderRow }) {
   const action = nextChangeOrderAction(r.status)
   if (!action) return <span className="text-muted-foreground">—</span>
@@ -148,7 +178,7 @@ function OrgChangeOrderTable({ rows }: { rows: OrgChangeOrderRow[] }) {
             <th scope="col" className="px-4 py-3 lg:px-5">Change order</th>
             <th scope="col" className="px-3 py-3">Project</th>
             <th scope="col" className="px-3 py-3">Status</th>
-            <th scope="col" className="px-3 py-3 text-right">Homeowner price</th>
+            <th scope="col" className="px-3 py-3 text-right">Price adjustment</th>
             <th scope="col" className="hidden px-3 py-3 lg:table-cell">Next action</th>
             <th scope="col" className="hidden px-3 py-3 text-right xl:table-cell">Date</th>
             <th scope="col" className="px-4 py-3 text-right lg:px-5">
@@ -175,7 +205,7 @@ function OrgChangeOrderTable({ rows }: { rows: OrgChangeOrderRow[] }) {
                   <ChangeOrderStatusBadge status={r.status} />
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 text-right font-medium tabular-nums">
-                  <span className={cn(r.price_adjustment_cents < 0 && 'text-primary')}>{formatMoney(r.price_adjustment_cents, { signed: true })}</span>
+                  <PriceAdjustment row={r} />
                 </td>
                 <td className="hidden px-3 py-3 lg:table-cell">
                   <NextAction row={r} />
@@ -223,8 +253,10 @@ function OrgChangeOrderCard({ row: r }: { row: OrgChangeOrderRow }) {
       </div>
       <dl className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3 text-xs">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <dt className="text-muted-foreground">Homeowner price</dt>
-          <dd className="font-semibold tabular-nums text-foreground">{formatMoney(r.price_adjustment_cents, { signed: true })}</dd>
+          <dt className="text-muted-foreground">Price adjustment</dt>
+          <dd className="font-semibold tabular-nums text-foreground">
+            <PriceAdjustment row={r} />
+          </dd>
         </div>
         <div className="flex min-w-0 flex-col gap-0.5">
           <dt className="text-muted-foreground">{date.label}</dt>
