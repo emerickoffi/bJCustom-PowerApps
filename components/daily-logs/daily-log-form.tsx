@@ -1,12 +1,12 @@
 'use client'
 
-import { forwardRef, useActionState, useCallback, useRef, useState } from 'react'
+import { forwardRef, useCallback, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { AlertTriangle, CalendarDays, Camera, CloudSun, HardHat, ListChecks, Plus, Trash2, Truck } from 'lucide-react'
 import { saveDailyLogAction } from '@/app/actions/daily-logs'
-import { initialActionState } from '@/lib/action-state'
-import { DAILY_LOG_CREW_LIMIT } from '@/lib/daily-logs'
+import { DAILY_LOG_CREW_LIMIT, dailyLogPath } from '@/lib/daily-logs'
+import { SaveBanners, SaveStatus, useResilientSave, type ResilientSave } from '@/components/shared/resilient-save'
 import { FormActions, FormSection, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -54,24 +54,74 @@ type ActivityOption = { id: string; name: string; phase: string | null }
 
 const blankCrew = { trade: '', crew_size: '', hours_worked: '', notes: '', subcontractor_company_id: '' }
 
-export function DailyLogForm({
-  projectId,
-  defaults,
-  activities,
-  companies = [],
-  maxDate,
-  cancelHref,
-}: {
+type FormProps = {
   projectId: string
   defaults: DailyLogFormDefaults
   activities: ActivityOption[]
   companies?: CompanyOption[]
   maxDate: string
   cancelHref: string
-}) {
+}
+
+const SCALAR_FIELDS = [
+  'log_date',
+  'temperature_f',
+  'weather_conditions',
+  'weather_impact',
+  'site_conditions',
+  'work_performed',
+  'progress_notes',
+  'work_planned_next',
+  'materials_delivered',
+  'equipment_used',
+  'delivery_notes',
+  'delay_description',
+  'delay_reason',
+  'delay_impact',
+  'corrective_actions',
+  'safety_observations',
+] as const
+
+/** Rebuilds form defaults from entries kept on this device, including repeated crew rows and activities. */
+function defaultsFromEntries(base: DailyLogFormDefaults, entries: [string, string][]): DailyLogFormDefaults {
+  const all = (k: string) => entries.filter(([key]) => key === k).map(([, v]) => v)
+  const first = (k: string) => entries.find(([key]) => key === k)?.[1]
+  const trades = all('crew_trade')
+  const sizes = all('crew_size')
+  const hours = all('crew_hours')
+  const notes = all('crew_notes')
+  const companyIds = all('crew_company')
+  const next = { ...base, activityIds: all('activity_ids') } as DailyLogFormDefaults
+  for (const f of SCALAR_FIELDS) next[f] = first(f) ?? ''
+  next.crews = trades.map((trade, i) => {
+    const companyId = companyIds[i] ?? ''
+    const saved = base.crews.find((c) => c.subcontractor_company_id === companyId && companyId)
+    return { trade, crew_size: sizes[i] ?? '', hours_worked: hours[i] ?? '', notes: notes[i] ?? '', subcontractor_company_id: companyId, company_name: saved?.company_name }
+  })
+  return next
+}
+
+export function DailyLogForm(props: FormProps) {
+  const save = useResilientSave({
+    kind: 'daily_log',
+    formType: 'daily_log',
+    projectId: props.projectId,
+    recordId: props.defaults.id ?? null,
+    baseRevision: props.defaults.version ? String(props.defaults.version) : null,
+    action: saveDailyLogAction,
+  })
+  const defaults = save.restored ? defaultsFromEntries(props.defaults, save.restored.entries) : props.defaults
+  return (
+    <div className="flex flex-col gap-4">
+      <SaveBanners save={save} latestHref={props.defaults.id ? dailyLogPath(props.projectId, props.defaults.id) : undefined} />
+      <DailyLogFormBody key={save.restoreKey} {...props} defaults={defaults} save={save} />
+    </div>
+  )
+}
+
+function DailyLogFormBody({ projectId, defaults, activities, companies = [], maxDate, cancelHref, save }: FormProps & { save: ResilientSave }) {
   const showCompany = companies.length > 0 || defaults.crews.some((c) => c.subcontractor_company_id)
-  const [state, action, pending] = useActionState(saveDailyLogAction, initialActionState)
-  const formRef = useRef<HTMLFormElement>(null)
+  const { state, formAction: action, pending, formRef } = save
   const photosSubmitRef = useRef<HTMLButtonElement>(null)
   const photosInlineRef = useRef<HTMLDivElement>(null)
   // Submits through the existing "Save and add photos" button so the same validation and
@@ -252,7 +302,15 @@ export function DailyLogForm({
         </div>
       </FormSection>
 
-      <FormActions message={<FormMessage state={state} />} note="Saved logs stay as drafts until you finalize them.">
+      <FormActions
+        message={
+          <div className="flex flex-col gap-2">
+            <SaveStatus save={save} />
+            <FormMessage state={state} />
+          </div>
+        }
+        note="Saved logs stay as drafts until you finalize them."
+      >
         <Link href={cancelHref} className={buttonVariants({ variant: 'ghost', size: 'lg' })}>
           Cancel
         </Link>

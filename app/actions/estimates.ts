@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireManager } from '@/lib/session'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { DECISION_METHODS, ESTIMATE_CATEGORIES } from '@/lib/estimates'
+import { guardSaveSession, readSaveRequest, runTrackedSave } from '@/lib/save-requests-server'
 
 const uuid = z.uuid()
 
@@ -96,29 +97,50 @@ function revalidateEstimate(id: string, projectId?: string) {
 }
 
 export async function createEstimateAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const session = await requireManager()
+  const req = readSaveRequest(formData)
   const values = formValues(formData)
+  const paused = await guardSaveSession(req)
+  if (paused) return { ...paused, values }
+  const session = await requireManager()
   const project = createSchema.safeParse(values)
   const parsed = estimateSchema.safeParse(values)
   if (!project.success) return { ...fromZodError(project.error), values }
   if (!parsed.success) return { ...fromZodError(parsed.error), values }
 
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('estimates')
-    .insert({
-      ...toEstimateRow(parsed.data),
-      project_id: project.data.project_id,
-      organization_id: session.organizationId,
-      created_by: session.userId,
-      updated_by: session.userId,
-    })
-    .select('id')
-    .single()
-  if (error) return { error: friendlyDbError(error), values }
+  const { id, error, conflict } = await runTrackedSave({
+    supabase,
+    req,
+    kind: 'estimate',
+    tracked: (requestId) =>
+      supabase.rpc('save_estimate_tracked', {
+        p_request: requestId,
+        p_hash: req.hash,
+        p_project: project.data.project_id,
+        p_id: null,
+        p_expected_updated_at: null,
+        p_fields: toEstimateRow(parsed.data),
+      }),
+    untracked: async () => {
+      const r = await supabase
+        .from('estimates')
+        .insert({
+          ...toEstimateRow(parsed.data),
+          project_id: project.data.project_id,
+          organization_id: session.organizationId,
+          created_by: session.userId,
+          updated_by: session.userId,
+        })
+        .select('id')
+        .single()
+      return { data: r.data?.id ?? null, error: r.error }
+    },
+  })
+  if (error || !id) return { error: friendlyDbError(error), conflict, values }
 
-  revalidateEstimate(data.id, project.data.project_id)
-  redirect(`/estimates/${data.id}`)
+  revalidateEstimate(id, project.data.project_id)
+  if (req.resilient) return { success: 'Estimate saved.', savedId: id, redirectTo: `/estimates/${id}` }
+  redirect(`/estimates/${id}`)
 }
 
 export async function updateEstimateAction(
@@ -126,23 +148,46 @@ export async function updateEstimateAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const req = readSaveRequest(formData)
+  const values = formValues(formData)
+  const paused = await guardSaveSession(req)
+  if (paused) return { ...paused, values }
   const session = await requireManager()
   if (!uuid.safeParse(estimateId).success) return { error: 'Invalid estimate.' }
-  const values = formValues(formData)
   const parsed = estimateSchema.safeParse(values)
   if (!parsed.success) return { ...fromZodError(parsed.error), values }
 
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('estimates')
-    .update({ ...toEstimateRow(parsed.data), updated_by: session.userId })
-    .eq('id', estimateId)
-    .eq('organization_id', session.organizationId)
-    .select('project_id')
-    .single()
-  if (error) return { error: friendlyDbError(error), values }
+  const expected = z.iso.datetime({ offset: true }).safeParse(formData.get('expected_updated_at'))
+  const { id, error, conflict } = await runTrackedSave({
+    supabase,
+    req,
+    kind: 'estimate',
+    tracked: (requestId) =>
+      supabase.rpc('save_estimate_tracked', {
+        p_request: requestId,
+        p_hash: req.hash,
+        p_project: null,
+        p_id: estimateId,
+        p_expected_updated_at: expected.success ? expected.data : null,
+        p_fields: toEstimateRow(parsed.data),
+      }),
+    untracked: async () => {
+      const r = await supabase
+        .from('estimates')
+        .update({ ...toEstimateRow(parsed.data), updated_by: session.userId })
+        .eq('id', estimateId)
+        .eq('organization_id', session.organizationId)
+        .select('id')
+        .single()
+      return { data: r.data?.id ?? null, error: r.error }
+    },
+  })
+  if (error || !id) return { error: friendlyDbError(error), conflict, values }
 
-  revalidateEstimate(estimateId, data.project_id)
+  const { data: row } = await supabase.from('estimates').select('project_id').eq('id', estimateId).maybeSingle()
+  revalidateEstimate(estimateId, row?.project_id)
+  if (req.resilient) return { success: 'Estimate saved.', savedId: estimateId, redirectTo: `/estimates/${estimateId}` }
   redirect(`/estimates/${estimateId}`)
 }
 

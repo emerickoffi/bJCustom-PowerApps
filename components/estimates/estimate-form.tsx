@@ -1,10 +1,11 @@
 'use client'
 
 import { House as HouseIcon, FileText as FileTextIcon, Percent as PercentIcon } from 'lucide-react'
-import { useActionState, useState } from 'react'
+import { useState } from 'react'
 import { FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
-import { initialActionState, type ActionState } from '@/lib/action-state'
+import { type ActionState } from '@/lib/action-state'
+import { SaveBanners, SaveStatus, useResilientSave } from '@/components/shared/resilient-save'
 import { SmartFormLayout, useSmartForm } from '@/components/shared/smart-form'
 
 export type EstimateProjectOption = {
@@ -14,6 +15,9 @@ export type EstimateProjectOption = {
 }
 
 export type EstimateFormDefaults = {
+  id?: string
+  /** Server timestamp when the form loaded; used to detect edits made elsewhere. */
+  updated_at?: string
   project_id?: string
   name?: string
   description?: string | null
@@ -41,20 +45,40 @@ export function EstimateForm({
   cancelHref: string
   submitLabel: string
 }) {
-  const [state, formAction] = useActionState(action, initialActionState)
+  const save = useResilientSave({
+    kind: 'estimate',
+    formType: 'estimate',
+    projectId: defaults.project_id ?? null,
+    recordId: defaults.id ?? null,
+    baseRevision: defaults.updated_at ?? null,
+    action,
+  })
+  const { state, formAction } = save
   const fe = state.fieldErrors ?? {}
-  const v = state.values ?? {}
+  const v: Record<string, string> = state.values ?? (save.restored ? Object.fromEntries(save.restored.entries) : {})
   const [projectId, setProjectId] = useState(v.project_id ?? defaults.project_id ?? '')
   const selected = projects?.find((p) => p.id === projectId)
-  const formKey = state.values ? JSON.stringify(state.values) : 'initial'
+  const formKey = `${save.restoreKey}:${state.values ? JSON.stringify(state.values) : 'initial'}`
   const { inOverlay: flat, dirty, formProps } = useSmartForm(state, formKey)
+  const setFormRef = (node: HTMLFormElement | null) => {
+    formProps.ref.current = node
+    save.formRef.current = node
+  }
 
   return (
-    <form key={formKey} action={formAction} {...formProps}>
+    <div className="flex flex-col gap-4">
+    <SaveBanners save={save} latestHref={defaults.id ? `/estimates/${defaults.id}` : undefined} />
+    <form key={formKey} action={formAction} {...formProps} ref={setFormRef}>
+      {defaults.id && defaults.updated_at && <input type="hidden" name="expected_updated_at" value={defaults.updated_at} />}
       <SmartFormLayout
         dirty={dirty}
         cancelHref={cancelHref}
-        message={<FormMessage state={state} />}
+        message={
+          <div className="flex flex-col gap-2">
+            <SaveStatus save={save} />
+            <FormMessage state={state} />
+          </div>
+        }
         submit={<SubmitButton pendingLabel="Saving…">{submitLabel}</SubmitButton>}
       >
       <FormSection
@@ -192,5 +216,6 @@ export function EstimateForm({
 
       </SmartFormLayout>
     </form>
+    </div>
   )
 }

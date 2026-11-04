@@ -1,12 +1,12 @@
 'use client'
 
-import { useActionState, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Copy, Plus, Trash2 } from 'lucide-react'
 import { saveChangeOrderAction } from '@/app/actions/change-orders'
-import { initialActionState } from '@/lib/action-state'
 import { ESTIMATE_CATEGORIES } from '@/lib/estimates'
-import { formatScheduleDays, parseLines, sumLineCosts, type LineInput } from '@/lib/change-orders'
+import { changeOrderPath, formatScheduleDays, parseLines, sumLineCosts, type LineInput } from '@/lib/change-orders'
+import { SaveBanners, SaveStatus, useResilientSave, type ResilientSave } from '@/components/shared/resilient-save'
 import { formatMoney, parseSignedDollarsToCents } from '@/lib/financials'
 import { FormActions, NativeSelect, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
@@ -19,6 +19,8 @@ import { ChangeOrderStatusBadge } from '@/components/change-orders/change-order-
 
 export type ChangeOrderFormDefaults = {
   id?: string
+  /** Server timestamp when the form loaded; used to detect edits made elsewhere. */
+  updated_at?: string
   title: string
   description: string
   reason: string
@@ -40,18 +42,48 @@ function rowCost(row: LineInput): number | null {
   return Object.keys(errors).length || !lines[0] ? null : lines[0].cost_cents
 }
 
-export function ChangeOrderForm({
-  projectId,
-  defaults,
-  cancelHref,
-  status,
-}: {
+type FormProps = {
   projectId: string
   defaults: ChangeOrderFormDefaults
   cancelHref: string
   status?: ChangeOrderStatus
-}) {
-  const [state, action] = useActionState(saveChangeOrderAction, initialActionState)
+}
+
+const TEXT_FIELDS = ['title', 'description', 'reason', 'requested_by', 'schedule_impact_days', 'price_adjustment'] as const
+
+function defaultsFromEntries(base: ChangeOrderFormDefaults, entries: [string, string][]): ChangeOrderFormDefaults {
+  const first = (k: string) => entries.find(([key]) => key === k)?.[1]
+  const next = { ...base }
+  for (const f of TEXT_FIELDS) next[f] = first(f) ?? ''
+  try {
+    const lines = JSON.parse(first('lines_json') ?? '[]')
+    if (Array.isArray(lines)) next.lines = lines as LineInput[]
+  } catch {
+    // Keep the loaded lines when the saved copy is unreadable.
+  }
+  return next
+}
+
+export function ChangeOrderForm(props: FormProps) {
+  const save = useResilientSave({
+    kind: 'change_order',
+    formType: 'change_order',
+    projectId: props.projectId,
+    recordId: props.defaults.id ?? null,
+    baseRevision: props.defaults.updated_at ?? null,
+    action: saveChangeOrderAction,
+  })
+  const defaults = save.restored ? defaultsFromEntries(props.defaults, save.restored.entries) : props.defaults
+  return (
+    <div className="flex flex-col gap-4">
+      <SaveBanners save={save} latestHref={props.defaults.id ? changeOrderPath(props.projectId, props.defaults.id) : undefined} />
+      <ChangeOrderFormBody key={save.restoreKey} {...props} defaults={defaults} save={save} />
+    </div>
+  )
+}
+
+function ChangeOrderFormBody({ projectId, defaults, cancelHref, status, save }: FormProps & { save: ResilientSave }) {
+  const { state, formAction: action, formRef } = save
   const [rows, setRows] = useState<Row[]>(() => (defaults.lines.length ? defaults.lines : [blankLine()]).map((l, i) => ({ ...l, key: i })))
   const [nextKey, setNextKey] = useState(rows.length)
   const [focusKey, setFocusKey] = useState<number | null>(null)
@@ -102,9 +134,10 @@ export function ChangeOrderForm({
   )
 
   return (
-    <form action={action} className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <form ref={formRef} action={action} className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <input type="hidden" name="project_id" value={projectId} />
       {defaults.id && <input type="hidden" name="id" value={defaults.id} />}
+      {defaults.id && defaults.updated_at && <input type="hidden" name="expected_updated_at" value={defaults.updated_at} />}
       <input type="hidden" name="lines_json" value={JSON.stringify(rows.map(({ key: _key, ...l }) => l))} />
 
       <div className="flex min-w-0 flex-col gap-6">
@@ -264,7 +297,14 @@ export function ChangeOrderForm({
           <div className="mt-3">{summary}</div>
         </details>
 
-        <FormActions message={<FormMessage state={state} />}>
+        <FormActions
+          message={
+            <div className="flex flex-col gap-2">
+              <SaveStatus save={save} />
+              <FormMessage state={state} />
+            </div>
+          }
+        >
           <Link href={cancelHref} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
             Cancel
           </Link>

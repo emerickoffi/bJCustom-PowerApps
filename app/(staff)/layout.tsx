@@ -22,6 +22,7 @@ import { readLayoutPreference } from '@/lib/dashboard-prefs'
 import { AssistantProvider } from '@/components/assistant/assistant-context'
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher'
 import { FloatingCameraProvider } from '@/components/camera/floating-camera'
+import { DraftScopeProvider } from '@/components/shared/draft-scope'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import {
   HeaderSearch,
@@ -106,6 +107,7 @@ export default async function StaffLayout({ children, modal }: { children: React
 
   return (
     <BrandStyle brand={session.brand}>
+      <DraftScopeProvider userId={session.userId} orgId={session.organizationId}>
       <AssistantProvider>
       <QuickActionsProvider>
       <FloatingCameraProvider placement={showAssistant ? 'above-assistant' : 'corner'}>
@@ -174,6 +176,7 @@ export default async function StaffLayout({ children, modal }: { children: React
       </FloatingCameraProvider>
       </QuickActionsProvider>
       </AssistantProvider>
+      </DraftScopeProvider>
     </BrandStyle>
   )
 }

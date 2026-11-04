@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
+import { guardSaveSession, readSaveRequest, runTrackedSave } from '@/lib/save-requests-server'
 import { requireDailyLogProject, getCrewCompanyOptions, getOrgToday, getScheduleActivityOptions } from '@/lib/daily-logs-data'
 import {
   DAILY_LOG_PHOTO_MAX_BYTES,
@@ -32,6 +33,9 @@ export async function saveDailyLogAction(_prev: ActionState, formData: FormData)
     version: formData.get('version') || undefined,
   })
   if (!ids.success) return { error: 'This form is out of date. Reload the page and try again.' }
+  const req = readSaveRequest(formData)
+  const paused = await guardSaveSession(req)
+  if (paused) return { ...paused, values: formValues(formData) }
   const { session, project } = await requireDailyLogProject(ids.data.project_id)
   if (project.archived_at) return { error: 'This project is archived; daily logs are read-only.' }
 
@@ -53,22 +57,31 @@ export async function saveDailyLogAction(_prev: ActionState, formData: FormData)
   if (!parsed.ok) return { error: parsed.error, fieldErrors: parsed.fieldErrors, values: formValues(formData) }
   if (ids.data.id && !ids.data.version) return { error: 'This form is out of date. Reload the page and try again.' }
 
-  const { data: logId, error } = await supabase.rpc('save_daily_log', {
+  const args = {
     p_project: project.id,
     p_id: ids.data.id,
     p_expected_version: ids.data.version ?? 1,
     p_header: parsed.header,
     p_crews: parsed.crews,
     p_activity_ids: parsed.activityIds,
+  }
+  const { id: logId, error, conflict } = await runTrackedSave({
+    supabase,
+    req,
+    kind: 'daily_log',
+    tracked: (requestId) => supabase.rpc('save_daily_log_tracked', { p_request: requestId, p_hash: req.hash, ...args }),
+    untracked: () => supabase.rpc('save_daily_log', args),
   })
   if (error || !logId) {
     const message = error?.code === '23505' ? 'A daily log already exists for this date. Open it from the log history instead.' : friendlyDbError(error)
-    return { error: message, values: formValues(formData) }
+    return { error: message, conflict, values: formValues(formData) }
   }
 
   revalidatePath(dailyLogsPath(project.id))
   const photoAnchor = formData.get('intent') === 'photos' ? '#daily-log-photos' : ''
-  redirect(`${dailyLogPath(project.id, logId as string)}?saved=1${photoAnchor}`)
+  const href = `${dailyLogPath(project.id, logId)}?saved=1${photoAnchor}`
+  if (req.resilient) return { success: 'Daily log saved.', savedId: logId, redirectTo: href }
+  redirect(href)
 }
 
 export async function finalizeDailyLogAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -125,6 +138,19 @@ export async function registerDailyLogPhotoAction(input: z.input<typeof photoSch
     caption: p.caption,
   })
   if (error) {
+    // A retried registration after a lost response: the path is already linked to this log, so it succeeded.
+    if (error.code === '23505') {
+      const { data: existing } = await supabase
+        .from('daily_log_photos')
+        .select('id')
+        .eq('daily_log_id', p.log_id)
+        .eq('storage_path', p.storage_path)
+        .maybeSingle()
+      if (existing) {
+        revalidatePath(dailyLogPath(project.id, p.log_id))
+        return { success: 'Photo added.' }
+      }
+    }
     // Never leave an orphaned object behind when the database rejects the record.
     await supabase.storage.from('project-media').remove([p.storage_path])
     return { error: friendlyDbError(error) }

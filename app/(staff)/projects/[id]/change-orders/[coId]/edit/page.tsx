@@ -43,6 +43,7 @@ export default async function EditChangeOrderPage({ params }: { params: Promise<
         status={co.status}
         defaults={{
           id: co.id,
+          updated_at: co.updated_at,
           title: co.title,
           description: co.description ?? '',
           reason: co.reason ?? '',
