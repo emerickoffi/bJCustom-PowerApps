@@ -54,8 +54,10 @@ export const DECISION_METHOD_LABELS: Record<(typeof DECISION_METHODS)[number], s
 
 export const ESTIMATE_UNITS = ['ea', 'lot', 'sq ft', 'ln ft', 'cu yd', 'hr', 'day', 'allow'] as const
 
+export const EDITABLE_ESTIMATE_STATUSES: EstimateStatus[] = ['draft', 'internal_review']
+
 export function isEditableStatus(status: EstimateStatus) {
-  return status === 'draft' || status === 'internal_review'
+  return EDITABLE_ESTIMATE_STATUSES.includes(status)
 }
 
 export type EstimateTotals = {
