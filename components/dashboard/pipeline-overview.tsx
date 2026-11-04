@@ -1,3 +1,4 @@
+import { GitBranch } from 'lucide-react'
 import { ALL_PROJECT_STATUSES, PROJECT_PIPELINE, type ProjectStatus } from '@/lib/domain'
 import { cn } from '@/lib/utils'
 import { PipelineStageChips } from '@/components/dashboard/pipeline-stage-chips'
@@ -24,9 +25,17 @@ export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectSta
   return (
     <section aria-labelledby="pipeline-heading" className="surface flex flex-col gap-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <h2 id="pipeline-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
-          Project Pipeline
-        </h2>
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#E6F5F6] text-[#007F8B]"
+            aria-hidden="true"
+          >
+            <GitBranch className="size-[18px]" />
+          </span>
+          <h2 id="pipeline-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+            Project Pipeline
+          </h2>
+        </div>
         <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
           <Metric label="Total" value={total} />
           <Metric label="In pipeline" value={inPipeline} emphasis />
