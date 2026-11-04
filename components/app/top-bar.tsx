@@ -133,7 +133,7 @@ export function NotificationBell({ items, emptyHref }: { items: HeaderNotificati
       >
         <Bell className="size-[1.125rem]" aria-hidden="true" />
         {count > 0 && (
-          <span className="tabular absolute right-1.5 top-1.5 flex min-w-4 items-center justify-center rounded-full bg-notification px-1 text-[0.625rem] font-semibold leading-4 text-white ring-2 ring-background">
+          <span className="tabular absolute right-1.5 top-1.5 flex min-w-4 items-center justify-center rounded-full bg-notification px-1 text-[0.625rem] font-semibold leading-4 text-notification-foreground ring-2 ring-background">
             {count > 9 ? '9+' : count}
           </span>
         )}
