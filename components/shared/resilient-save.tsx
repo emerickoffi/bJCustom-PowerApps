@@ -311,7 +311,7 @@ export function useResilientSave(opts: {
     })
   }
 
-  const [state, formAction] = useActionState(submit, initialActionState)
+  const [state, formAction, pending] = useActionState(submit, initialActionState)
 
   const restore = () => {
     if (!recovery) return
@@ -332,6 +332,7 @@ export function useResilientSave(opts: {
   return {
     state,
     formAction,
+    pending,
     formRef,
     device,
     server,
