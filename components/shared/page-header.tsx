@@ -99,11 +99,14 @@ export function PageHeader({
   )
 }
 
-export function BackLink({ href, label }: { href: string; label?: string }) {
+export function BackLink({ href, label, className }: { href: string; label?: string; className?: string }) {
   return (
     <Link
       href={href}
-      className="group flex w-fit items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        'group flex w-fit items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        className,
+      )}
     >
       <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
       {label ?? 'Back'}
