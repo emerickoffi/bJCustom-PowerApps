@@ -52,6 +52,7 @@ export default async function InvoicePage({
 
       <InvoiceActions
         invoiceId={invoice.id}
+        returnHref={back.href}
         status={invoice.status}
         published={invoice.portal_published}
         hasLines={lines.length > 0}

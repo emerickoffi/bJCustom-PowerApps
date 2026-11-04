@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { deleteDraftInvoice, issueInvoice, setInvoicePublished, voidInvoice } from '@/app/actions/invoices'
 import type { InvoiceStatus } from '@/lib/invoices'
+import { invoicePrintHref } from '@/lib/invoice-return'
 
 export function InvoiceActions({
   invoiceId,
@@ -14,12 +15,14 @@ export function InvoiceActions({
   published,
   hasLines,
   canManage,
+  returnHref,
 }: {
   invoiceId: string
   status: InvoiceStatus
   published: boolean
   hasLines: boolean
   canManage: boolean
+  returnHref?: string
 }) {
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null)
@@ -40,7 +43,7 @@ export function InvoiceActions({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" render={<Link href={`/invoices/${invoiceId}/print`} target="_blank" />} nativeButton={false}>
+        <Button variant="outline" render={<Link href={invoicePrintHref(invoiceId, returnHref)} target="_blank" />} nativeButton={false}>
           <Printer data-icon="inline-start" />
           Print / PDF
         </Button>
