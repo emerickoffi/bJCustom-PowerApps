@@ -28,6 +28,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CardSectionIcon } from '@/components/shared/card-section-header'
 import { cn } from '@/lib/utils'
 import {
   ACTION_CATEGORIES,
@@ -345,6 +346,8 @@ export function ActionCenter({
   return (
     <section aria-labelledby="action-center-heading" className="surface flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-t-[inherit] border-b border-[#D6DDE5] bg-white px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+        <CardSectionIcon icon={ClipboardList} tone="teal" size="lg" />
         <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
           <Heading id="action-center-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-[#17212B]">
             Action Center
@@ -355,6 +358,7 @@ export function ActionCenter({
               {items.length === 1 && !totalIsLowerBound ? 'needs attention' : 'need attention'}
             </span>
           )}
+        </div>
         </div>
         {headerActions && <div className="ml-auto flex shrink-0 items-center">{headerActions}</div>}
       </div>
