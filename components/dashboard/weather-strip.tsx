@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Snowflake,
   Sun,
+  TriangleAlert,
   Wind,
   type LucideIcon,
 } from 'lucide-react'
@@ -213,15 +214,15 @@ export function WeatherStrip({
 
   const busy = isValidating || geo.status === 'locating'
   const selector = (
-    <label className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+    <label className="flex h-10 min-w-0 cursor-pointer items-center gap-1.5 rounded-md border border-[#80C5CC] bg-[#E6F5F6] pl-2.5 text-xs font-medium text-[#006773] transition-colors hover:bg-[#CCECEF] has-[select:focus-visible]:ring-2 has-[select:focus-visible]:ring-[#006773] has-[select:focus-visible]:ring-offset-1">
       <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
       <span className="sr-only">Weather location (does not change the project or work filters)</span>
       <select
         value={choice.mode === 'device' ? 'device' : choice.projectId}
         onChange={(e) => choose(e.target.value)}
         className={cn(
-          'h-10 truncate rounded-md border border-input bg-background px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          compact ? 'max-w-[14rem] font-medium' : 'max-w-[12rem]',
+          'h-full min-w-0 cursor-pointer truncate rounded-r-md bg-transparent pr-2 text-xs font-medium text-[#006773] outline-none',
+          compact ? 'max-w-[14rem]' : 'max-w-[12rem]',
         )}
       >
         <option value="device">My location</option>
@@ -244,7 +245,7 @@ export function WeatherStrip({
       onClick={refresh}
       disabled={busy}
       aria-label={choice.mode === 'device' ? 'Refresh location and weather' : 'Refresh weather'}
-      className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+      className="flex size-10 shrink-0 items-center justify-center rounded-md text-[#006773] transition-colors hover:bg-[#E6F5F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006773] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
     >
       <RefreshCw className={cn('size-4', busy && 'animate-spin motion-reduce:animate-none')} aria-hidden="true" />
     </button>
@@ -380,7 +381,7 @@ export function WeatherStrip({
           aria-label={`Weather for ${data.locationLabel}: ${current ? deg(current.temperatureF) : 'temperature unavailable'}, ${condition}${stale ? ', may be out of date' : ''}. Open details and 3-day forecast`}
         >
           <Icon className={cn('size-5 shrink-0', ICON_TONE[kind])} aria-hidden="true" />
-          <span className="font-semibold tabular-nums text-foreground">{current ? deg(current.temperatureF) : '\u2014'}</span>
+          <span className="font-bold tabular-nums text-[#17212B]">{current ? deg(current.temperatureF) : '\u2014'}</span>
           <span className="max-w-[10rem] truncate text-foreground">{condition}</span>
           <span className="max-w-[12rem] truncate text-xs text-muted-foreground">{data.locationLabel}</span>
           {!compact && (
@@ -391,7 +392,12 @@ export function WeatherStrip({
               <span className="font-medium tabular-nums text-foreground">{wind}</span>
             </span>
           )}
-          {stale && <span className="text-xs text-muted-foreground">(may be out of date)</span>}
+          {stale && (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-[#8A4B08]">
+              <TriangleAlert className="size-3.5 shrink-0 text-[#B45309]" aria-hidden="true" />
+              May be out of date
+            </span>
+          )}
         </DialogTrigger>
         <ForecastDialog data={data} now={{ condition, rain, wind, observed: observedLabel }} />
       </Dialog>
