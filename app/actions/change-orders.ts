@@ -73,9 +73,12 @@ function revalidate(projectId: string, id?: string) {
 }
 
 export async function saveChangeOrderAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const req = readSaveRequest(formData)
+  const values = formValues(formData)
+  const paused = await guardSaveSession(req)
+  if (paused) return { ...paused, values }
   const session = await requireManager()
   await requireFeature(session.organizationId, 'change_orders')
-  const values = formValues(formData)
   const parsed = headerSchema.safeParse(values)
   if (!parsed.success) return { ...fromZodError(parsed.error), values }
 
@@ -86,7 +89,7 @@ export async function saveChangeOrderAction(_prev: ActionState, formData: FormDa
 
   const d = parsed.data
   const supabase = await createClient()
-  const { data: id, error } = await supabase.rpc('save_change_order', {
+  const args = {
     p_project: d.project_id,
     p_id: d.id,
     p_header: {
@@ -98,11 +101,27 @@ export async function saveChangeOrderAction(_prev: ActionState, formData: FormDa
       price_adjustment_cents: d.price_adjustment,
     },
     p_lines: lines.map(({ category, description, quantity, unit, unit_cost_cents }) => ({ category, description, quantity, unit, unit_cost_cents })),
+  }
+  const expected = z.iso.datetime({ offset: true }).safeParse(formData.get('expected_updated_at'))
+  const { id, error, conflict } = await runTrackedSave({
+    supabase,
+    req,
+    kind: 'change_order',
+    tracked: (requestId) =>
+      supabase.rpc('save_change_order_tracked', {
+        p_request: requestId,
+        p_hash: req.hash,
+        p_expected_updated_at: d.id && expected.success ? expected.data : null,
+        ...args,
+      }),
+    untracked: () => supabase.rpc('save_change_order', args),
   })
-  if (error || !id) return { error: friendlyDbError(error), values }
+  if (error || !id) return { error: friendlyDbError(error), conflict, values }
 
-  revalidate(d.project_id, id as string)
-  redirect(changeOrderPath(d.project_id, id as string))
+  revalidate(d.project_id, id)
+  const href = changeOrderPath(d.project_id, id)
+  if (req.resilient) return { success: 'Change order saved.', savedId: id, redirectTo: href }
+  redirect(href)
 }
 
 const transitionSchema = z.object({

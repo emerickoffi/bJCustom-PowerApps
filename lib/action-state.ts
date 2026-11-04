@@ -11,6 +11,12 @@ export type ActionState = {
   warning?: string
   /** An existing record that blocked creation, so the form can offer to open it instead of making a duplicate. */
   duplicate?: { id: string; name: string; href: string; kind: 'company' | 'subcontractor'; inactive?: boolean }
+  /** Interruption-safe saves return the destination instead of redirecting, so the client can confirm first. */
+  redirectTo?: string
+  /** Someone else changed the record since it was loaded; nothing was written. */
+  conflict?: boolean
+  /** The session expired or belongs to another user; nothing was written. */
+  authRequired?: boolean
 }
 
 /** Hidden field that asks a form action to return its result instead of redirecting. */
