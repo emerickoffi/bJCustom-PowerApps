@@ -67,7 +67,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8A948E]" aria-hidden="true" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <label htmlFor="permission-search" className="sr-only">
             Search permissions by module or action
           </label>
@@ -100,7 +100,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
           <button
             type="button"
             onClick={toggleAll}
-            className="rounded-full px-3 py-1 text-xs font-medium text-[#174D38] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D38]"
+            className="rounded-full px-3 py-1 text-xs font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             {allCollapsed ? 'Expand all' : 'Collapse all'}
           </button>
@@ -133,7 +133,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                   <button
                     type="button"
                     onClick={() => setDetailRole(role)}
-                    className="rounded-md px-2 py-1 text-[#174D38] underline decoration-[#174D38]/30 underline-offset-4 hover:decoration-[#174D38] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D38]"
+                    className="rounded-md px-2 py-1 text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   >
                     {ROLE_LABELS[role]}
                     <span className="sr-only">: view role details</span>
@@ -170,14 +170,14 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                           aria-expanded={!isCollapsed}
                           aria-controls={groupId}
                           onClick={() => toggleModule(mod.id)}
-                          className="flex w-fit items-center gap-2 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D38]"
+                          className="flex w-fit items-center gap-2 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                         >
                           <ChevronDown
                             className={`size-4 text-[#526173] transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
                             aria-hidden="true"
                           />
                           <span className="font-serif text-base font-semibold text-foreground">{mod.module}</span>
-                          <span className="text-xs font-normal text-[#8A948E]">
+                          <span className="text-xs font-normal text-muted-foreground">
                             {actions.length} {actions.length === 1 ? 'action' : 'actions'}
                           </span>
                         </button>
@@ -187,7 +187,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                               Turned off for your company
                             </span>
                           )}
-                          <code className="text-[#8A948E]">{mod.guard}</code>
+                          <code className="text-muted-foreground">{mod.guard}</code>
                           <span className="text-[#526173]">{mod.database}</span>
                         </span>
                       </div>
@@ -223,8 +223,8 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                                   aria-label={`${ROLE_LABELS[role]}, ${row.action}: ${meta.label}. ${explanation}`}
                                   title={`${meta.label}: ${explanation}`}
                                   onClick={() => setSelected(isOpen ? null : { rowKey, role })}
-                                  className={`inline-flex rounded-full p-0.5 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#174D38] ${
-                                    isOpen ? 'ring-2 ring-[#174D38]/40' : 'hover:ring-2 hover:ring-[#D6DDE5]'
+                                  className={`inline-flex rounded-full p-0.5 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary ${
+                                    isOpen ? 'ring-2 ring-primary/40' : 'hover:ring-2 hover:ring-[#D6DDE5]'
                                   }`}
                                 >
                                   <AccessBadge access={cell.state} />
@@ -242,7 +242,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                                   <p className="text-sm font-medium text-foreground">
                                     {ROLE_LABELS[open.role]} · {ACCESS_META[openCell.state].label}
                                   </p>
-                                  {openCell.why && <p className="text-sm text-[#103B27]">{openCell.why}</p>}
+                                  {openCell.why && <p className="text-sm text-brand-deep">{openCell.why}</p>}
                                   <p className="text-xs text-[#526173]">{ACCESS_DEFINITIONS[openCell.state]}</p>
                                 </div>
                               </div>

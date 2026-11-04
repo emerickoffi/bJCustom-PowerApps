@@ -15,7 +15,6 @@ import {
   FileSearch,
   FileText,
   Files,
-  ListChecks,
   ListFilter,
   MapPin,
   NotebookText,
@@ -29,6 +28,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CardSectionIcon } from '@/components/shared/card-section-header'
 import { cn } from '@/lib/utils'
 import {
   ACTION_CATEGORIES,
@@ -103,24 +103,24 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
       : null
   const meta = [item.projectName, ACTION_CATEGORY_LABELS[item.category]].filter(Boolean) as string[]
   return (
-    <li className="flex items-start gap-3 py-4 first:pt-1 last:pb-1">
+    <li className="flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-[#F2FAFB]">
       <span
-        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-link-soft text-link"
+        className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-[#FFF1E6] text-[#B54708]"
         aria-hidden="true"
       >
-        <Icon className="size-[18px]" />
+        <Icon className="size-4" strokeWidth={2} />
       </span>
-      <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="text-pretty text-[15px] font-semibold leading-snug text-foreground">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <p className="text-pretty text-sm font-semibold leading-snug text-[#17212B]">
             <Link
               href={item.href}
-              className="rounded-sm underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded-sm underline-offset-4 hover:text-[#007F95] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007F95]"
             >
               {item.title}
             </Link>
           </p>
-          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-[#526173]">
             {urgency && (
               <span className="inline-flex items-center gap-1 font-medium text-destructive">
                 <CircleAlert className="size-3.5" aria-hidden="true" />
@@ -131,7 +131,7 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
               </span>
             )}
             {meta.map((m, i) => (
-              <span key={m} className={cn(i === 0 && item.projectName && 'font-medium text-foreground/80')}>
+              <span key={m} className={cn(i === 0 && item.projectName && 'font-medium text-[#17212B]/80')}>
                 {i > 0 && (
                   <span aria-hidden="true" className="mr-1.5">
                     ·
@@ -140,25 +140,13 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
                 {m}
               </span>
             ))}
-            {date && (
-              <span>
-                <span aria-hidden="true" className="mr-1.5">
-                  ·
-                </span>
-                <time dateTime={date.iso} className={cn(urgency === 'Overdue' && 'font-medium text-destructive')}>
-                  {date.label}
-                </time>
-              </span>
-            )}
           </p>
           {item.description && (
-            <p className="line-clamp-2 text-pretty text-xs leading-relaxed text-muted-foreground sm:line-clamp-1">
-              {item.description}
-            </p>
+            <p className="line-clamp-2 text-pretty text-xs leading-relaxed text-[#526173]">{item.description}</p>
           )}
           {item.details && (
-            <details className="group/details text-xs text-muted-foreground">
-              <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+            <details className="group/details text-xs text-[#526173]">
+              <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-sm font-medium text-[#007F95] hover:text-[#006B7E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007F95] [&::-webkit-details-marker]:hidden">
                 <ChevronDown className="size-3.5 transition-transform group-open/details:rotate-180" aria-hidden="true" />
                 Details
               </summary>
@@ -166,35 +154,42 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
             </details>
           )}
         </div>
-        <ActionIconLink item={item} />
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 sm:shrink-0 sm:flex-nowrap sm:justify-end">
+          {date && (
+            <time
+              dateTime={date.iso}
+              className={cn(
+                'whitespace-nowrap text-xs tabular-nums text-[#526173] sm:w-32 sm:text-right',
+                urgency === 'Overdue' && 'font-medium text-[#B54708]',
+              )}
+            >
+              {date.label}
+            </time>
+          )}
+          <ActionButton item={item} />
+        </div>
       </div>
     </li>
   )
 }
 
 /** Compact review button; it only opens the record, never approves or completes it. */
-function ActionIconLink({ item }: { item: ActionItem }) {
+function ActionButton({ item }: { item: ActionItem }) {
   const Icon = ACTION_ICONS[item.actionLabel] ?? ArrowRight
   const name = item.actionName ?? `${item.actionLabel}: ${item.title}`
   return (
-    // -mt-3 centres the 44px target on the title's first line so every button sits in the same column and row position.
-    <span className="group/tip relative -mt-3 shrink-0">
-      <Link
-        href={item.href}
-        aria-label={name}
-        className="group/btn flex size-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38] focus-visible:ring-offset-2"
-      >
-        <span className="flex size-10 items-center justify-center rounded-lg border border-[#C9DCCE] bg-[#E7F0E9] text-[#174D38] transition-colors group-hover/btn:bg-[#D5E6DA] group-hover/btn:text-[#123D2E]">
-          <Icon className="size-[19px]" strokeWidth={2} aria-hidden="true" />
-        </span>
-      </Link>
-      <span
-        aria-hidden="true"
-        className="pointer-events-none invisible absolute right-full top-1/2 z-20 mr-2 w-max max-w-60 -translate-y-1/2 rounded-md bg-[#17212B] px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-focus-within/tip:visible group-focus-within/tip:opacity-100 group-hover/tip:visible group-hover/tip:opacity-100"
-      >
-        {name}
+    // The link is a 44px touch target; the visible teal button inside stays compact.
+    <Link
+      href={item.href}
+      aria-label={name}
+      title={name}
+      className="group/btn -my-1.5 ml-auto flex min-h-11 shrink-0 items-center rounded-md focus-visible:outline-none sm:ml-0 [&:focus-visible>span]:ring-2 [&:focus-visible>span]:ring-[#007F95] [&:focus-visible>span]:ring-offset-2"
+    >
+      <span className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md bg-[#007F95] px-3 text-xs font-semibold text-white shadow-xs transition-colors group-hover/btn:bg-[#006B7E]">
+        <Icon className="size-3.5" strokeWidth={2.25} aria-hidden="true" />
+        {item.actionLabel}
       </span>
-    </span>
+    </Link>
   )
 }
 
@@ -222,7 +217,7 @@ function CategoryFilters({
     <span
       className={cn(
         'rounded-full px-1.5 text-xs font-semibold tabular-nums',
-        active ? 'bg-interactive text-white' : 'bg-[#EEF1EE] text-[#526173]',
+        active ? 'bg-interactive text-white' : 'bg-secondary text-[#526173]',
       )}
     >
       {n}
@@ -296,7 +291,7 @@ function EmptyState({
         : 'Items appear here when a live record needs action.'
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-5" role="status">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#EEF1EE] text-primary" aria-hidden="true">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-primary" aria-hidden="true">
         <CircleCheck className="size-[18px]" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col">
@@ -350,33 +345,25 @@ export function ActionCenter({
 
   return (
     <section aria-labelledby="action-center-heading" className="surface flex flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-t-[inherit] border-b border-[#D6DDE5] bg-card px-4 py-4 md:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-t-[inherit] border-b border-[#D6DDE5] bg-white px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-link-soft text-link" aria-hidden="true">
-            <ListChecks className="size-[18px]" />
-          </span>
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <Heading id="action-center-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-[#17212B]">
-                Action Center
-              </Heading>
-              {items.length > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-[#FDBA74] bg-[#FFF1E6] px-2 py-px text-xs font-medium leading-4 text-[#B54708]">
-                  <CircleAlert className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span className="font-bold tabular-nums">{countLabel}</span>
-                  {items.length === 1 && !totalIsLowerBound ? 'needs attention' : 'need attention'}
-                </span>
-              )}
-            </div>
-            <p className="text-pretty text-[13px] leading-[18px] text-[#526173]">
-              Everything waiting on you, across your projects.
-            </p>
-          </div>
+        <CardSectionIcon icon={ClipboardList} tone="teal" size="lg" />
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+          <Heading id="action-center-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-[#17212B]">
+            Action Center
+          </Heading>
+          {items.length > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-notification px-2 py-0.5 text-xs font-medium leading-4 text-notification-foreground">
+              <span className="font-bold tabular-nums">{countLabel}</span>
+              {items.length === 1 && !totalIsLowerBound ? 'needs attention' : 'need attention'}
+            </span>
+          )}
         </div>
-        {headerActions && <div className="flex shrink-0 items-center">{headerActions}</div>}
+        </div>
+        {headerActions && <div className="ml-auto flex shrink-0 items-center">{headerActions}</div>}
       </div>
 
-      <div className="flex flex-col gap-4 rounded-b-[inherit] bg-card px-4 pb-4 pt-3 md:px-6 md:pb-6 md:pt-4">
+      <div className="flex flex-col gap-3 rounded-b-[inherit] bg-white px-4 pb-4 pt-2">
       <CategoryFilters items={items} selected={selected} links={links} />
 
       {visible.length === 0 ? (
@@ -387,7 +374,7 @@ export function ActionCenter({
           viewAllHref={links.href(null)}
         />
       ) : (
-        <ul className="flex flex-col divide-y">
+        <ul className="-mx-4 flex flex-col divide-y divide-[#D6DDE5]">
           {visible.map((item) => (
             <ActionRow key={item.id} item={item} today={today} />
           ))}

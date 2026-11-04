@@ -42,7 +42,7 @@ function RoleDetailBody({ role, features }: { role: OrgRole; features: FeatureMa
   return (
     <>
       <SheetHeader className="border-b border-[#D6DDE5] bg-[#F3F4F6] pr-12">
-        <SheetTitle className="font-serif text-xl font-semibold text-[#103B27]">{ROLE_LABELS[role]}</SheetTitle>
+        <SheetTitle className="font-serif text-xl font-semibold text-brand-deep">{ROLE_LABELS[role]}</SheetTitle>
         <SheetDescription>{detail.summary}</SheetDescription>
       </SheetHeader>
 

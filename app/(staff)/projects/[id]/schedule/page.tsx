@@ -50,11 +50,11 @@ function KpiCard({
   return (
     <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-[#D6DDE5] bg-white p-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium uppercase tracking-wider text-[#103B27]/60">{label}</span>
+        <span className="text-xs font-medium uppercase tracking-wider text-brand-deep/60">{label}</span>
         <span
           className={cn(
             'flex size-7 items-center justify-center rounded-lg',
-            tone === 'alert' ? 'bg-[#FDE8E7] text-[#BD302B]' : 'bg-[#E6F0EB] text-[#174D38]',
+            tone === 'alert' ? 'bg-[#FDE8E7] text-[#BD302B]' : 'bg-interactive-soft text-primary',
           )}
           aria-hidden="true"
         >
@@ -71,7 +71,7 @@ function KpiValue({ muted = false, children }: { muted?: boolean; children: Reac
     <span
       className={cn(
         'font-serif text-2xl font-semibold leading-tight tabular-nums',
-        muted ? 'text-[#103B27]/45' : 'text-[#103B27]',
+        muted ? 'text-brand-deep/45' : 'text-brand-deep',
       )}
     >
       {children}
@@ -157,7 +157,7 @@ export default async function SchedulePage({
         icon={CalendarDaysIcon}
         eyebrow={
           <span className="flex min-w-0 flex-wrap items-center gap-x-2 normal-case tracking-normal">
-            <span className="truncate font-medium text-[#103B27]">{project.name}</span>
+            <span className="truncate font-medium text-brand-deep">{project.name}</span>
             {project.project_number && <span className="font-mono">{project.project_number}</span>}
           </span>
         }
@@ -219,7 +219,7 @@ export default async function SchedulePage({
             <KpiCard icon={ListChecks} label="Activities complete">
               <KpiValue>
                 {completed}
-                <span className="text-lg font-medium text-[#103B27]/45">{` / ${active.length}`}</span>
+                <span className="text-lg font-medium text-brand-deep/45">{` / ${active.length}`}</span>
               </KpiValue>
               <KpiNote>{active.length === activities.length ? 'All scheduled activities' : 'Skipped activities excluded'}</KpiNote>
             </KpiCard>

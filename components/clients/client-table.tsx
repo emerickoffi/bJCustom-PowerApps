@@ -51,7 +51,7 @@ export function ClientTable({
                   <td className="px-4 py-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <span
-                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#E6F0EB] font-serif text-xs font-semibold text-[#174D38] ring-1 ring-inset ring-[#174D38]/12"
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-interactive-soft font-serif text-xs font-semibold text-primary ring-1 ring-inset ring-primary/12"
                         aria-hidden="true"
                       >
                         {`${client.first_name.charAt(0)}${client.last_name.charAt(0)}`.toUpperCase()}

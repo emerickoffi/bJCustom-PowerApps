@@ -232,7 +232,7 @@ export function DocumentUploadDialog({
             }}
             className={cn(
               'flex flex-col items-center gap-3 rounded-xl border border-dashed bg-[#F3F4F6] px-4 py-6 text-center transition-colors',
-              dragging ? 'border-primary bg-[#E6F0EB]' : 'border-[#D6DDE5]',
+              dragging ? 'border-primary bg-interactive-soft' : 'border-[#D6DDE5]',
             )}
           >
             <span className="flex size-10 items-center justify-center rounded-xl bg-white text-primary ring-1 ring-inset ring-primary/10">
@@ -418,7 +418,7 @@ export function DocumentUploadDialog({
                 <span>{`${progress}%`}</span>
               </div>
               <div
-                className="h-1.5 overflow-hidden rounded-full bg-[#E6F0EB]"
+                className="h-1.5 overflow-hidden rounded-full bg-interactive-soft"
                 role="progressbar"
                 aria-valuenow={progress}
                 aria-valuemin={0}

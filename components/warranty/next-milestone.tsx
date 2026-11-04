@@ -35,7 +35,7 @@ function countdown(days: number): { label: string; tone: string } {
   const label = `${days} ${days === 1 ? 'day' : 'days'} remaining`
   if (days <= 7) return { label, tone: 'bg-[#FBE7C6] text-[#7A440A]' }
   if (days <= 30) return { label, tone: 'bg-[#FDF3E1] text-[#96570E]' }
-  return { label, tone: 'bg-[#E6F0EB] text-[#174D38]' }
+  return { label, tone: 'bg-interactive-soft text-primary' }
 }
 
 export function NextMilestone({ milestone }: { milestone: NextMilestoneData | null }) {
@@ -49,7 +49,7 @@ export function NextMilestone({ milestone }: { milestone: NextMilestoneData | nu
   }
 
   const reached = Boolean(milestone.reached_at)
-  const status = reached ? { label: 'Reached', tone: 'bg-[#E6F0EB] text-[#174D38]' } : countdown(calendarDaysUntil(milestone.due_on))
+  const status = reached ? { label: 'Reached', tone: 'bg-interactive-soft text-primary' } : countdown(calendarDaysUntil(milestone.due_on))
   const StatusIcon = reached ? CheckCircle2 : Clock
 
   return (

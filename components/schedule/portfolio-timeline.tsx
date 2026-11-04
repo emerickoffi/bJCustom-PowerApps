@@ -58,7 +58,7 @@ export function PortfolioTimeline({ rows }: { rows: Row[] }) {
             <Link
               href={`/projects/${row.id}/schedule`}
               title={row.name}
-              className="line-clamp-2 w-48 shrink-0 break-words text-sm font-semibold text-[#006B78] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38]"
+              className="line-clamp-2 w-48 shrink-0 break-words text-sm font-semibold text-[#006B78] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               {row.name}
             </Link>

@@ -135,7 +135,7 @@ export default async function SubcontractorsPage({
         title="Subcontractors"
         titleAddon={
           !error && summary.total > 0 ? (
-            <span className="rounded-full bg-white px-2.5 py-0.5 text-sm font-medium tabular-nums text-muted-foreground ring-1 ring-inset ring-[#174D38]/12">
+            <span className="rounded-full bg-white px-2.5 py-0.5 text-sm font-medium tabular-nums text-muted-foreground ring-1 ring-inset ring-primary/12">
               <span className="sr-only">Total: </span>
               {summary.total}
             </span>

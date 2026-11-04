@@ -92,7 +92,7 @@ function ContactColumn({
       )}
     >
       <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#526173]">
-        <Icon className="size-3.5 text-[#174D38]/70" aria-hidden="true" />
+        <Icon className="size-3.5 text-primary/70" aria-hidden="true" />
         {label}
       </span>
       {empty ? (
@@ -104,7 +104,7 @@ function ContactColumn({
             <span className="text-sm text-muted-foreground">{relationship}</span>
             {preference && (
               <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MessageCircle className="size-3.5 shrink-0 text-[#174D38]/60" aria-hidden="true" />
+                <MessageCircle className="size-3.5 shrink-0 text-primary/60" aria-hidden="true" />
                 {preference}
               </span>
             )}
@@ -156,7 +156,7 @@ export function ClientCard({
       <header className="flex items-center justify-between gap-3 p-4 pb-3 sm:flex-wrap sm:p-5 sm:pb-4">
         <div className="flex min-w-0 items-center gap-3">
           <span
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#E6F0EB] font-serif text-sm font-semibold text-[#174D38] ring-1 ring-inset ring-[#174D38]/12"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-interactive-soft font-serif text-sm font-semibold text-primary ring-1 ring-inset ring-primary/12"
             aria-hidden="true"
           >
             {`${client.first_name.charAt(0)}${client.last_name.charAt(0)}`.toUpperCase()}

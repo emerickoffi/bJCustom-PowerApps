@@ -96,7 +96,7 @@ export function HomeownerAccountList({
             type="search"
             defaultValue={q}
             placeholder="Search name, email, or client"
-            className="h-9 w-full rounded-md border border-[#D6DDE5] bg-card pl-9 pr-3 text-sm outline-none placeholder:text-[#526173]/80 focus-visible:border-[#174D38]/50 focus-visible:ring-2 focus-visible:ring-[#174D38]/20"
+            className="h-9 w-full rounded-md border border-[#D6DDE5] bg-card pl-9 pr-3 text-sm outline-none placeholder:text-[#526173]/80 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20"
           />
         </form>
       </div>
@@ -158,7 +158,7 @@ function ClientGroup({ group }: { group: ClientGroupData }) {
       className="overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D6DDE5]/80 bg-[#F3F4F6]/70 px-4 py-2.5 sm:px-5">
-        <h3 id={headingId} className="min-w-0 truncate text-sm font-semibold text-[#174D38]">
+        <h3 id={headingId} className="min-w-0 truncate text-sm font-semibold text-primary">
           {group.clientNumber ? `Client #${group.clientNumber} · ${group.clientName}` : group.clientName}
         </h3>
         <span className="text-xs text-[#526173]">
@@ -194,7 +194,7 @@ function HomeownerItem({ row }: { row: HomeownerAccountRow }) {
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 transition-colors hover:bg-[#F3F4F6]/70 sm:flex-nowrap sm:px-5">
       <span
         aria-hidden="true"
-        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#F3F4F6] text-sm font-semibold text-[#174D38] ring-1 ring-inset ring-[#174D38]/12"
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#F3F4F6] text-sm font-semibold text-primary ring-1 ring-inset ring-primary/12"
       >
         {initials(row.name)}
       </span>
@@ -213,14 +213,14 @@ function HomeownerItem({ row }: { row: HomeownerAccountRow }) {
         <SemanticBadge tone={STATUS_TONE[row.status]}>{HOMEOWNER_STATUS_LABELS[row.status]}</SemanticBadge>
         {row.hasAccount && (
           <span className="flex items-center gap-1 text-sm text-[#526173]">
-            <FolderKanban className="size-4 text-[#174D38]/70" aria-hidden="true" />
+            <FolderKanban className="size-4 text-primary/70" aria-hidden="true" />
             {row.projectCount === 1 ? '1 project' : `${row.projectCount} projects`}
           </span>
         )}
         <Button
           variant="outline"
           size="sm"
-          className="border-[#D6E0D5] bg-white text-[#174D38] hover:bg-[#F3F4F6] hover:text-[#103B27]"
+          className="border-[#D6E0D5] bg-white text-primary hover:bg-[#F3F4F6] hover:text-brand-deep"
           render={<Link href={`/clients/${row.clientId}#portal-access`} />}
           nativeButton={false}
         >

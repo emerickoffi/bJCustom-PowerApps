@@ -72,7 +72,7 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
         <button
           type="button"
           onClick={() => setCollapsed(allOpen ? new Set(stages.map((s) => s.key)) : new Set())}
-          className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-[#174D32] transition-colors hover:bg-[#EAF0E9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D32] sm:min-h-8"
+          className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-primary transition-colors hover:bg-interactive-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-8"
         >
           {allOpen ? 'Collapse all' : 'Expand all'}
         </button>
@@ -90,7 +90,7 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
               key={stage.key}
               className={cn(
                 'overflow-hidden rounded-xl border bg-white transition-shadow',
-                isCurrent ? 'border-[#174D32]/35 shadow-[0_1px_0_0_#174D32_inset,0_4px_14px_-10px_rgb(16_59_39/0.45)]' : 'border-[#E2E8E2]',
+                isCurrent ? 'border-primary/35 shadow-[0_1px_0_0_var(--primary)_inset,0_4px_14px_-10px_rgb(16_59_39/0.45)]' : 'border-border',
                 'tablet:border-l-[3px] tablet:border-l-(--stage-accent)',
               )}
               style={{ '--stage-accent': style.accent } as CSSProperties}
@@ -101,7 +101,7 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
                   onClick={() => toggle(stage.key)}
                   aria-expanded={open}
                   aria-controls={panelId}
-                  className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left tablet:gap-4 tablet:py-3.5 transition-colors hover:bg-[#F8F7F3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#174D32] sm:px-5"
+                  className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left tablet:gap-4 tablet:py-3.5 transition-colors hover:bg-[#F8F7F3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:px-5"
                 >
                   <span
                     className="flex size-9 shrink-0 items-center justify-center rounded-lg"
@@ -112,12 +112,12 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="font-mono text-xs font-medium tabular-nums text-[#103B27]/65">
+                      <span className="font-mono text-xs font-medium tabular-nums text-brand-deep/65">
                         {String(stage.number).padStart(2, '0')}
                       </span>
-                      <span className="font-serif text-base font-semibold text-[#103B27]">{stage.phase}</span>
+                      <span className="font-serif text-base font-semibold text-brand-deep">{stage.phase}</span>
                       {isCurrent && (
-                        <span className="rounded-full bg-[#174D32] px-2 py-0.5 text-[11px] font-medium text-white">Current stage</span>
+                        <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-white">Current stage</span>
                       )}
                       {stage.complete && (
                         <span className="rounded-full bg-[#E2F3E9] px-2 py-0.5 text-[11px] font-medium text-[#187542]">Complete</span>
@@ -134,10 +134,10 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
                   </span>
                   {stage.counted > 0 && (
                     <span className="hidden w-28 shrink-0 flex-col items-end gap-1 tablet:flex" aria-hidden="true">
-                      <span className="text-xs font-semibold tabular-nums text-[#103B27]">
+                      <span className="text-xs font-semibold tabular-nums text-brand-deep">
                         {`${Math.round((stage.done / stage.counted) * 100)}%`}
                       </span>
-                      <span className="h-1.5 w-full overflow-hidden rounded-full bg-[#EEF1EE]">
+                      <span className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                         <span
                           className="block h-full rounded-full"
                           style={{ width: `${(stage.done / stage.counted) * 100}%`, backgroundColor: style.accent }}
@@ -146,17 +146,17 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
                     </span>
                   )}
                   <ChevronDown
-                    className={cn('size-5 shrink-0 text-[#103B27]/60 transition-transform motion-reduce:transition-none', open && 'rotate-180')}
+                    className={cn('size-5 shrink-0 text-brand-deep/60 transition-transform motion-reduce:transition-none', open && 'rotate-180')}
                     aria-hidden="true"
                   />
                 </button>
               </h3>
 
               {open && (
-                <ul id={panelId} className="divide-y divide-[#EEF1EE] border-t border-[#EEF1EE]">
+                <ul id={panelId} className="divide-y divide-secondary border-t border-secondary">
                   <li
                     aria-hidden="true"
-                    className="hidden grid-cols-[minmax(0,1fr)_9rem_11rem_8.5rem_5.5rem] gap-x-3 bg-[#F8F9F7] px-5 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#103B27]/65 tablet:md:grid"
+                    className="hidden grid-cols-[minmax(0,1fr)_9rem_11rem_8.5rem_5.5rem] gap-x-3 bg-[#F8F9F7] px-5 py-2 text-[11px] font-semibold uppercase tracking-wide text-brand-deep/65 tablet:md:grid"
                   >
                     <span>Activity</span>
                     <span>Assigned</span>
@@ -182,12 +182,12 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
                           <button
                             type="button"
                             onClick={() => onSelect(a)}
-                            className="flex min-w-0 items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D32]"
+                            className="flex min-w-0 items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                           >
                             {milestone && (
                               <Diamond className="size-3.5 shrink-0" style={{ color: style.accent, fill: style.accent }} aria-label="Milestone" />
                             )}
-                            <span className={cn('truncate text-sm text-[#103B27] hover:underline', milestone ? 'font-semibold' : 'font-medium')}>
+                            <span className={cn('truncate text-sm text-brand-deep hover:underline', milestone ? 'font-semibold' : 'font-medium')}>
                               {a.name}
                             </span>
                             {!a.is_published && <span className="shrink-0 text-xs text-muted-foreground">Internal</span>}
@@ -230,7 +230,7 @@ export function ScheduleStageList({ activities, conflictIds, nameFor, onSelect, 
                           type="button"
                           onClick={() => onSelect(a)}
                           aria-label={`${actionLabel} ${a.name}`}
-                          className="row-start-1 col-start-2 inline-flex size-11 items-center justify-center gap-1.5 self-start rounded-lg border border-[#E2E8E2] bg-white text-sm font-medium text-[#174D32] transition-colors hover:border-[#174D32] hover:bg-[#EAF0E9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D32] md:col-start-auto md:row-start-auto md:h-9 md:w-auto md:self-center md:px-3"
+                          className="row-start-1 col-start-2 inline-flex size-11 items-center justify-center gap-1.5 self-start rounded-lg border border-border bg-white text-sm font-medium text-primary transition-colors hover:border-primary hover:bg-interactive-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:col-start-auto md:row-start-auto md:h-9 md:w-auto md:self-center md:px-3"
                         >
                           <ActionIcon className="size-4" aria-hidden="true" />
                           <span className="hidden md:inline">{actionLabel}</span>

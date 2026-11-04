@@ -18,7 +18,7 @@ export function UserMenu({
     <div className="flex flex-col gap-2 border-t pt-4">
       <div className="flex items-center gap-3 px-1">
         <div
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-blue text-xs font-semibold text-white"
           aria-hidden="true"
         >
           {initials(name || email)}

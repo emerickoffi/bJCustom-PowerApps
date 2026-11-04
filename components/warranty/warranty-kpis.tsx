@@ -14,7 +14,7 @@ export type WarrantyKpi = {
 const ICONS = { homes: Home, claims: ClipboardList, expiring: Hourglass, overdue: AlertTriangle } as const
 
 const TONE: Record<WarrantyKpi['tone'], string> = {
-  neutral: 'text-primary bg-[#E6F0EB]',
+  neutral: 'text-primary bg-interactive-soft',
   pending: 'text-[#96570E] bg-[#FFF2DA]',
   danger: 'text-[#BD302B] bg-[#FDE8E7]',
 }

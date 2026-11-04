@@ -119,7 +119,7 @@ function CategoryIcon({ category, active }: { category: string; active: boolean 
     <span
       className={cn(
         'flex size-7 shrink-0 items-center justify-center rounded-md',
-        active ? 'bg-white text-primary' : 'bg-[#E6F0EB] text-[#174D38]',
+        active ? 'bg-white text-primary' : 'bg-interactive-soft text-primary',
       )}
       aria-hidden="true"
     >
@@ -154,7 +154,7 @@ export function CategoryNav({
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                  active ? 'bg-[#E6F0EB] font-medium text-primary' : 'text-muted-foreground hover:bg-[#F3F4F6] hover:text-foreground',
+                  active ? 'bg-interactive-soft font-medium text-primary' : 'text-muted-foreground hover:bg-[#F3F4F6] hover:text-foreground',
                 )}
               >
                 <span className="flex min-w-0 items-center gap-2.5">

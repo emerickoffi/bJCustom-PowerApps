@@ -32,7 +32,7 @@ function CompanyAvatar({ name, status }: { name: string; status: SubcontractorSt
       aria-hidden="true"
       className={cn(
         'flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-semibold ring-1 ring-inset',
-        status === 'active' ? 'bg-[#E6F0EB] text-primary ring-primary/10' : 'bg-muted text-muted-foreground ring-border',
+        status === 'active' ? 'bg-interactive-soft text-primary ring-primary/10' : 'bg-muted text-muted-foreground ring-border',
       )}
     >
       {companyInitials(name)}

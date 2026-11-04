@@ -63,7 +63,7 @@ export function Sidebar({
               href={homeHref}
               aria-label={homeLabel}
               className={cn(
-                'block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#174D38] focus-visible:ring-offset-2',
+                'block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
                 collapsed ? 'w-14' : 'w-44',
               )}
             >

@@ -8,15 +8,15 @@ export type StageColor = { bg: string; fg: string; badgeClass: string }
  * Tailwind classes are written out literally so the scanner picks them up.
  */
 export const STAGE_COLORS: Record<ProjectStatus, StageColor> = {
-  lead: { bg: '#F1F5F9', fg: '#475569', badgeClass: 'bg-[#F1F5F9] text-[#475569]' },
-  consultation: { bg: '#F3E8FF', fg: '#7E22CE', badgeClass: 'bg-[#F3E8FF] text-[#7E22CE]' },
-  planning: { bg: '#DBEAFE', fg: '#1D4ED8', badgeClass: 'bg-[#DBEAFE] text-[#1D4ED8]' },
+  lead: { bg: '#DBEAFE', fg: '#2563EB', badgeClass: 'bg-[#DBEAFE] text-[#1D4ED8]' },
+  consultation: { bg: '#FFEDD5', fg: '#F58A3C', badgeClass: 'bg-[#FFEDD5] text-[#9A3412]' },
+  planning: { bg: '#EFF6FF', fg: '#3B82F6', badgeClass: 'bg-[#EFF6FF] text-[#1E40AF]' },
   estimating: { bg: '#E0E7FF', fg: '#4338CA', badgeClass: 'bg-[#E0E7FF] text-[#4338CA]' },
-  awaiting_approval: { bg: '#FEF3C7', fg: '#92400E', badgeClass: 'bg-[#FEF3C7] text-[#92400E]' },
-  preconstruction: { bg: '#CCFBF1', fg: '#0F766E', badgeClass: 'bg-[#CCFBF1] text-[#0F766E]' },
-  under_construction: { bg: '#E0F2FE', fg: '#075985', badgeClass: 'bg-[#E0F2FE] text-[#075985]' },
+  awaiting_approval: { bg: '#FFF1E6', fg: '#C2410C', badgeClass: 'bg-[#FFF1E6] text-[#C2410C]' },
+  preconstruction: { bg: '#E0F4F7', fg: '#007F95', badgeClass: 'bg-[#E0F4F7] text-[#00687A]' },
+  under_construction: { bg: '#E0F2FE', fg: '#0284C7', badgeClass: 'bg-[#E0F2FE] text-[#075985]' },
   final_inspection: { bg: '#EDE9FE', fg: '#6D28D9', badgeClass: 'bg-[#EDE9FE] text-[#6D28D9]' },
-  punch_list: { bg: '#F3E8DC', fg: '#805B2A', badgeClass: 'bg-[#F3E8DC] text-[#805B2A]' },
+  punch_list: { bg: '#FFEDD5', fg: '#EA580C', badgeClass: 'bg-[#FFEDD5] text-[#C2410C]' },
   substantially_complete: { bg: '#D1FAE5', fg: '#047857', badgeClass: 'bg-[#D1FAE5] text-[#047857]' },
   completed: { bg: '#DCFCE7', fg: '#166534', badgeClass: 'bg-[#DCFCE7] text-[#166534]' },
   on_hold: { bg: '#FEE2E2', fg: '#B91C1C', badgeClass: 'bg-[#FEE2E2] text-[#B91C1C]' },

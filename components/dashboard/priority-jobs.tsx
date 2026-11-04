@@ -1,15 +1,10 @@
 import Link from 'next/link'
-import {
-  AlertCircle,
-  ArrowRight,
-  CalendarDays,
-  ChevronRight,
-  House,
-} from 'lucide-react'
+import { AlertCircle, ArrowRight, CalendarDays, House } from 'lucide-react'
 import { DashboardSectionHeader } from '@/components/dashboard/dashboard-section-header'
 import { HealthBadge } from '@/components/dashboard/health-badge'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { formatDate } from '@/lib/format'
+import { dueDateLabel, nextStepDue } from '@/lib/next-step-due'
 import { ACTIVITY_TYPE_LABELS, type ActivityType } from '@/lib/schedule'
 import { HEALTH_LABELS, type HealthLevel } from '@/lib/project-health'
 import type { JobSummary } from '@/lib/priority-jobs'
@@ -32,6 +27,8 @@ export type PriorityJob = {
   stageActivities: StageActivities | null
   /** Completed jobs remain listed only with a verified open action item; this is its title. */
   closeoutReason?: string | null
+  /** That same action item's own deadline (YYYY-MM-DD), when it carries one. */
+  closeoutDueOn?: string | null
   /** Whether the Schedule module is on, so a "Set up schedule" link leads somewhere real. */
   canSetUpSchedule?: boolean
   summary: JobSummary
@@ -63,33 +60,38 @@ function stageLabel(status: ProjectStatus): string {
   return PROJECT_STATUS_LABELS[status] ?? status
 }
 
+function activityHref(jobId: string, activityId: string) {
+  return `/projects/${jobId}/schedule?activity=${encodeURIComponent(activityId)}`
+}
+
 function JobIdentity({ job }: { job: PriorityJob }) {
   const meta = [job.projectNumber, job.managerName && `PM ${job.managerName}`].filter(Boolean).join(' · ')
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
       <Link
         href={`/projects/${job.id}`}
-        title={job.name}
         className={cn(
-          'line-clamp-2 break-words text-sm font-semibold leading-snug text-foreground underline-offset-2 hover:text-primary hover:underline',
+          'break-words text-sm font-semibold leading-snug text-foreground underline-offset-2 hover:text-[#006B7E] hover:underline',
           focusRing,
         )}
       >
         {job.name}
       </Link>
-      <span className="truncate text-xs text-muted-foreground">{meta || 'No job ID or PM'}</span>
+      <span className="break-words text-xs text-muted-foreground">{meta || 'No job ID or PM'}</span>
     </div>
   )
 }
 
-function OpenProjectLink({ job }: { job: PriorityJob }) {
+/** Same destination the row chevron used: the project overview. */
+function ViewProjectLink({ job }: { job: PriorityJob }) {
   return (
     <Link
       href={`/projects/${job.id}`}
-      aria-label={`Open project ${job.name}`}
-      className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      aria-label={`View project ${job.name}`}
+      className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border border-[#007F95]/35 bg-card px-3 text-xs font-semibold text-[#007F95] transition-colors hover:border-[#006B7E]/50 hover:bg-[#E5F5F7] hover:text-[#006B7E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <ChevronRight className="size-[18px]" aria-hidden="true" />
+      View
+      <ArrowRight className="size-3.5" aria-hidden="true" />
     </Link>
   )
 }
@@ -126,14 +128,18 @@ export function CurrentStage({ job }: { job: PriorityJob }) {
   )
 }
 
-/** Next actionable activity for the current stage. Sits above the row overlay link so it navigates independently. */
-export function NextActivity({ job }: { job: PriorityJob }) {
+/**
+ * Next actionable activity for the current stage. `full` (tablet Job Focus) includes the activity's date line;
+ * `table` (dashboard Priority Jobs) leaves dates to the Due column and lets long titles wrap.
+ */
+export function NextActivity({ job, variant = 'full' }: { job: PriorityJob; variant?: 'full' | 'table' }) {
   const data = job.stageActivities
+  const inTable = variant === 'table'
   const muted = (text: string) => <span className="text-xs text-muted-foreground">{text}</span>
   if (job.closeoutReason)
     return (
       <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="truncate text-sm text-foreground" title={job.closeoutReason}>
+        <span className={cn('text-sm text-foreground', inTable ? 'break-words' : 'truncate')} title={job.closeoutReason}>
           {job.closeoutReason}
         </span>
         {muted('Open closeout action')}
@@ -159,14 +165,15 @@ export function NextActivity({ job }: { job: PriorityJob }) {
 
   const { activity } = data
   const typeLabel = activity.type && activity.type !== 'task' ? ACTIVITY_TYPE_LABELS[activity.type as ActivityType] : null
-  const activityHref = `/projects/${job.id}/schedule?activity=${encodeURIComponent(activity.id)}`
+  const href = activityHref(job.id, activity.id)
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
       <Link
-        href={activityHref}
-        title={activity.name}
+        href={href}
+        title={inTable ? undefined : activity.name}
         className={cn(
-          'relative z-10 line-clamp-2 break-words text-sm text-foreground underline-offset-2 hover:text-primary hover:underline',
+          'relative z-10 break-words text-sm text-foreground underline-offset-2 hover:text-primary hover:underline',
+          !inTable && 'line-clamp-2',
           focusRing,
         )}
       >
@@ -175,7 +182,7 @@ export function NextActivity({ job }: { job: PriorityJob }) {
       </Link>
       {data.state === 'blocked' ? (
         <span className="text-xs font-medium text-warning">Waiting on a predecessor</span>
-      ) : activity.dueOn ? (
+      ) : inTable ? null : activity.dueOn ? (
         activity.overdue ? (
           <span className="tabular inline-flex items-center gap-1 text-xs font-medium text-destructive">
             <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
@@ -192,7 +199,7 @@ export function NextActivity({ job }: { job: PriorityJob }) {
           {muted('No due date')}
           {job.canSetUpSchedule && (
             <Link
-              href={activityHref}
+              href={href}
               aria-label={`Set date for ${activity.name}`}
               className={cn('relative z-10 text-xs font-medium text-primary underline-offset-2 hover:underline', focusRing)}
             >
@@ -205,7 +212,57 @@ export function NextActivity({ job }: { job: PriorityJob }) {
   )
 }
 
-export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
+/** Date of the exact record shown in Next step. Overdue styling comes only from that record's existing overdue flag. */
+function DueCell({ job, today }: { job: PriorityJob; today: string }) {
+  const due = nextStepDue(job)
+  if (due.kind === 'none')
+    return (
+      <span className="text-sm text-muted-foreground">
+        <span aria-hidden="true">—</span>
+        <span className="sr-only">No next step</span>
+      </span>
+    )
+  if (due.kind === 'unscheduled') {
+    const activityName = job.stageActivities && 'activity' in job.stageActivities ? job.stageActivities.activity.name : null
+    return (
+      <div className="flex flex-col items-start gap-0.5">
+        <span className="text-xs text-muted-foreground">Not scheduled</span>
+        {due.activityId && activityName && job.canSetUpSchedule && (
+          <Link
+            href={activityHref(job.id, due.activityId)}
+            aria-label={`Set date for ${activityName}`}
+            className={cn('text-xs font-medium text-[#007F95] underline-offset-2 hover:text-[#006B7E] hover:underline', focusRing)}
+          >
+            Set date
+          </Link>
+        )}
+      </div>
+    )
+  }
+  const { text, isToday } = dueDateLabel(due.dueOn, today)
+  const fullDate = formatDate(due.dueOn.slice(0, 10))
+  if (due.overdue)
+    return (
+      <span className="tabular inline-flex items-center gap-1 text-sm font-medium text-destructive">
+        <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
+        <span>
+          {text}
+          <span className="block text-xs font-medium">Overdue</span>
+        </span>
+      </span>
+    )
+  return (
+    <time
+      dateTime={due.dueOn.slice(0, 10)}
+      title={isToday ? fullDate : undefined}
+      className={cn('tabular text-sm', isToday ? 'font-semibold text-[#B54708]' : 'text-foreground')}
+    >
+      {text}
+    </time>
+  )
+}
+
+export function PriorityJobs({ jobs, today, unavailable = false }: { jobs: PriorityJob[]; today: string; unavailable?: boolean }) {
   return (
     <section aria-labelledby="priority-jobs-heading" className="surface flex flex-col">
       <DashboardSectionHeader
@@ -225,54 +282,60 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
           </Link>
         }
       />
-      <div className="flex flex-col gap-4 rounded-b-[inherit] bg-card px-4 pb-4 pt-3 md:px-6 md:pb-6 md:pt-4">
-      {jobs.length === 0 ? (
+      <div className="flex flex-col rounded-b-[inherit] bg-card px-3 pb-3 pt-3 md:px-4 md:pb-4">
+      {unavailable ? (
+        <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">Priority jobs could not be loaded.</p>
+      ) : jobs.length === 0 ? (
         <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">No projects yet.</p>
       ) : (
         <>
           {/* Container query: the table needs the card itself to be wide, regardless of viewport. */}
           <div className="@container">
-          <table className="hidden w-full table-fixed text-left text-sm @2xl:table">
+          <table className="hidden w-full table-fixed border-separate border-spacing-0 text-left text-sm @2xl:table">
             <thead>
-              <tr className="border-b text-xs text-muted-foreground">
-                <th scope="col" className="w-[33%] pb-2 pl-2 pr-4 font-medium">Project</th>
-                <th scope="col" className="w-[20%] pb-2 pr-4 font-medium">Stage</th>
-                <th scope="col" className="pb-2 pr-4 font-medium">Next step</th>
-                <th scope="col" className="w-[17%] pb-2 pr-2 font-medium">Health</th>
-                <th scope="col" className="w-12 pb-2">
-                  <span className="sr-only">Open project</span>
+              <tr className="text-xs text-muted-foreground">
+                <th scope="col" className="w-[27%] rounded-l-md bg-muted px-3 py-2 font-medium">Project</th>
+                <th scope="col" className="w-[17%] bg-muted px-3 py-2 font-medium">Stage</th>
+                <th scope="col" className="bg-muted px-3 py-2 font-medium">Next step</th>
+                <th scope="col" className="w-[12%] bg-muted px-3 py-2 font-medium">Due</th>
+                <th scope="col" className="w-[15%] bg-muted px-3 py-2 font-medium">Health</th>
+                <th scope="col" className="w-[5.5rem] rounded-r-md bg-muted px-3 py-2 text-right font-medium">
+                  Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody>
               {jobs.map((job) => (
-                <tr key={job.id} className="align-top transition-colors hover:bg-link-soft/60">
-                  <td className="py-3.5 pl-2 pr-4">
+                <tr key={job.id} className="group/row align-top transition-colors hover:bg-[#E5F5F7]">
+                  <td className="border-b border-[#D6DDE5] px-3 py-2.5 group-last/row:border-b-0">
                     <JobIdentity job={job} />
                   </td>
-                  <td className="py-3.5 pr-4">
+                  <td className="border-b border-[#D6DDE5] px-3 py-2.5 group-last/row:border-b-0">
                     <CurrentStage job={job} />
                   </td>
-                  <td className="py-3.5 pr-4">
-                    <NextActivity job={job} />
+                  <td className="border-b border-[#D6DDE5] px-3 py-2.5 group-last/row:border-b-0">
+                    <NextActivity job={job} variant="table" />
                   </td>
-                  <td className="py-3.5 pr-2">
+                  <td className="border-b border-[#D6DDE5] px-3 py-2.5 group-last/row:border-b-0">
+                    <DueCell job={job} today={today} />
+                  </td>
+                  <td className="border-b border-[#D6DDE5] px-3 py-2.5 group-last/row:border-b-0">
                     <HealthCell job={job} />
                   </td>
-                  <td className="py-2 pr-1 align-middle">
-                    <OpenProjectLink job={job} />
+                  <td className="border-b border-[#D6DDE5] px-3 py-2 text-right align-middle group-last/row:border-b-0">
+                    <ViewProjectLink job={job} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
 
-          <ul className="flex flex-col divide-y divide-border/60 @2xl:hidden">
+          <ul className="flex flex-col divide-y divide-[#D6DDE5] @2xl:hidden">
             {jobs.map((job) => (
-              <li key={job.id} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
-                <div className="flex items-start justify-between gap-2">
+              <li key={job.id} className="flex flex-col gap-3 px-1 py-3.5 first:pt-1 last:pb-1">
+                <div className="flex items-start justify-between gap-3">
                   <JobIdentity job={job} />
-                  <OpenProjectLink job={job} />
+                  <ViewProjectLink job={job} />
                 </div>
                 <dl className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-3 gap-y-2.5">
                   <dt className="pt-0.5 text-xs text-muted-foreground">Stage</dt>
@@ -281,7 +344,11 @@ export function PriorityJobs({ jobs }: { jobs: PriorityJob[] }) {
                   </dd>
                   <dt className="pt-0.5 text-xs text-muted-foreground">Next step</dt>
                   <dd className="min-w-0">
-                    <NextActivity job={job} />
+                    <NextActivity job={job} variant="table" />
+                  </dd>
+                  <dt className="pt-0.5 text-xs text-muted-foreground">Due</dt>
+                  <dd className="min-w-0">
+                    <DueCell job={job} today={today} />
                   </dd>
                   <dt className="pt-0.5 text-xs text-muted-foreground">Health</dt>
                   <dd className="min-w-0">

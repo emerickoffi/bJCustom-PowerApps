@@ -16,7 +16,7 @@ export function PortalSignatureTasks({ tasks }: { tasks: MySignatureTask[] }) {
   return (
     <section aria-labelledby="sign-heading" className="flex flex-col gap-3 rounded-xl border border-[#D6DDE5] bg-card p-4 sm:p-5">
       <div className="flex items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-[#E6F0EB] text-primary">
+        <span className="flex size-8 items-center justify-center rounded-lg bg-interactive-soft text-primary">
           <PenLine className="size-4" aria-hidden="true" />
         </span>
         <div>

@@ -106,7 +106,7 @@ export default async function StaffLayout({ children, modal }: { children: React
   }))
 
   return (
-    <BrandStyle brand={session.brand}>
+    <BrandStyle brand={session.brand} applyToTheme={false}>
       <DraftScopeProvider userId={session.userId} orgId={session.organizationId}>
       <AssistantProvider>
       <QuickActionsProvider>

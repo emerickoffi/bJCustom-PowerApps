@@ -75,7 +75,7 @@ function VisibilityBadge({ visibility }: { visibility: DocumentRow['visibility']
     <span
       className={cn(
         'inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
-        shared ? 'bg-[#E6F0EB] text-primary ring-primary/15' : 'bg-[#F3F4F6] text-muted-foreground ring-[#D6DDE5]',
+        shared ? 'bg-interactive-soft text-primary ring-primary/15' : 'bg-[#F3F4F6] text-muted-foreground ring-[#D6DDE5]',
       )}
     >
       {shared ? <Eye className="size-3" aria-hidden="true" /> : <EyeOff className="size-3" aria-hidden="true" />}
@@ -126,7 +126,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
     return (
       <DropdownMenu>
         <DropdownMenuTrigger
-          className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[#E6F0EB] hover:text-primary aria-expanded:bg-[#E6F0EB] disabled:opacity-50"
+          className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-interactive-soft hover:text-primary aria-expanded:bg-interactive-soft disabled:opacity-50"
           aria-label={`Actions for ${doc.name}`}
           disabled={pending}
         >
@@ -199,7 +199,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
   function nameCell(doc: DocumentRow) {
     return (
       <div className="flex min-w-0 items-start gap-3">
-        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#E6F0EB] text-primary">
+        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-interactive-soft text-primary">
           <FileIcon contentType={doc.current_version?.content_type} className="size-4" />
         </span>
         <div className="flex min-w-0 flex-col gap-0.5">
@@ -484,7 +484,7 @@ function HistoryBody({ request, currentVersion }: { request: Promise<HistoryResu
             <p className="flex items-center gap-2 text-sm font-medium">
               {`Version ${v.versionNumber}`}
               {v.versionNumber === currentVersion && (
-                <span className="rounded-full bg-[#E6F0EB] px-2 py-0.5 text-xs font-medium text-primary">Current</span>
+                <span className="rounded-full bg-interactive-soft px-2 py-0.5 text-xs font-medium text-primary">Current</span>
               )}
             </p>
             <p className="truncate text-xs text-muted-foreground">{`${v.originalFilename} · ${formatBytes(v.sizeBytes)}`}</p>

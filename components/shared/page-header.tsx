@@ -29,14 +29,15 @@ export function PageHeader({
   actions,
   tone = 'sage',
 }: PageHeaderProps) {
-  const sage = tone === 'sage'
-  const forest = tone === 'forest'
+  // The dark 'forest' banner was a legacy decorative treatment; it now renders as the standard white card.
+  const sage = tone === 'sage' || tone === 'forest'
+  const forest = false
   return (
     <header
       className={cn(
         'flex min-w-0 flex-col gap-3 md:gap-4',
         sage && 'rounded-xl border border-border bg-card px-4 py-3.5 md:px-5 md:py-4',
-        forest && 'rounded-xl bg-[#123D2E] px-4 py-3.5 md:px-6 md:py-4',
+        forest && 'rounded-xl bg-brand-deep px-4 py-3.5 md:px-6 md:py-4',
         tone === 'plain' && 'border-b border-border/70 pb-4 md:pb-6',
       )}
     >

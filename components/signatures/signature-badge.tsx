@@ -6,7 +6,7 @@ const TONES: Record<SignatureStatus, { className: string; Icon: typeof Clock }> 
   draft: { className: 'bg-muted text-muted-foreground ring-border', Icon: Clock },
   awaiting_signatures: { className: 'bg-champagne-soft text-warning ring-warning/20', Icon: PenLine },
   partially_signed: { className: 'bg-champagne-soft text-warning ring-warning/20', Icon: PenLine },
-  completed: { className: 'bg-[#E6F0EB] text-success ring-success/20', Icon: CheckCircle2 },
+  completed: { className: 'bg-interactive-soft text-success ring-success/20', Icon: CheckCircle2 },
   declined: { className: 'bg-destructive/5 text-destructive ring-destructive/20', Icon: XCircle },
   cancelled: { className: 'bg-muted text-muted-foreground ring-border', Icon: XCircle },
   expired: { className: 'bg-muted text-muted-foreground ring-border', Icon: Clock },

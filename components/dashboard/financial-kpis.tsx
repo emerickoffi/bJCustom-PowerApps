@@ -1,6 +1,6 @@
-import { Fragment, type ReactNode } from 'react'
-import { CalendarClock, FileSignature, Landmark, Receipt } from 'lucide-react'
-import { StatCard } from '@/components/dashboard/stat-card'
+import { Fragment, type ComponentProps, type ReactNode } from 'react'
+import { ClipboardCheck, Coins, FileText, TriangleAlert } from 'lucide-react'
+import { KpiCard } from '@/components/dashboard/stat-card'
 import { formatCents } from '@/lib/format'
 import type { FinancialMetrics } from '@/lib/financial-metrics-data'
 import type { ScheduleRiskSummary } from '@/lib/dashboard-workspace-data'
@@ -8,7 +8,14 @@ import type { ScheduleRiskSummary } from '@/lib/dashboard-workspace-data'
 const UNAVAILABLE = '—'
 const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`
 
-/** Manager-only KPI row. Values come from verified server summaries; unknown data renders a dash, never a fabricated $0. */
+type CardContent = Pick<ComponentProps<typeof KpiCard>, 'value' | 'countTo' | 'note' | 'details' | 'emphasis'> & {
+  href?: string
+}
+
+/** Unknown data renders a dash plus its reason, never a fabricated $0. */
+const unavailable = (reason: string): CardContent => ({ value: UNAVAILABLE, note: reason, emphasis: 'muted' })
+
+/** Manager-only KPI row. Values come from verified server summaries. */
 export type KpiCardId = 'card_approval' | 'card_contract' | 'card_schedule' | 'card_receivables'
 
 export function FinancialKpis({
@@ -26,80 +33,100 @@ export function FinancialKpis({
 }) {
   const { estimates, contracts, receivables } = metrics
 
-  const approval =
+  const approval: CardContent =
     estimates.state === 'available'
       ? (() => {
           const { amountCents, count, items } = estimates.value.awaitingApproval
           return {
             value: `${count} pending`,
-            subValue: `Proposed value: ${formatCents(amountCents)}`,
-            hint: count
-              ? count === 1
-                ? `${items[0].estimateNumber} signed and awaiting your decision`
-                : `${plural(count, 'signed estimate')} awaiting your decision`
-              : 'No signed estimates awaiting a decision',
+            details: [
+              count
+                ? count === 1
+                  ? `${items[0].estimateNumber} signed and awaiting your decision`
+                  : `${plural(count, 'signed estimate')} awaiting your decision`
+                : 'No signed estimates awaiting a decision',
+              `Proposed value: ${formatCents(amountCents)}`,
+            ],
             href: count === 1 ? `/estimates/${items[0].id}` : '/actions?category=approvals',
-            accent: count ? ('link' as const) : undefined,
+            emphasis: count ? 'pending' : undefined,
           }
         })()
-      : { value: UNAVAILABLE, hint: estimates.reason, href: '/actions?category=approvals', accent: 'neutral' as const }
+      : unavailable(estimates.reason)
 
-  const contract =
+  const contract: CardContent =
     contracts.state === 'available'
       ? {
           value: formatCents(contracts.value.contractCents),
-          countTo: { value: contracts.value.contractCents, format: 'cents' as const },
-          hint: [
+          countTo: { value: contracts.value.contractCents, format: 'cents' },
+          note: contracts.value.needsReviewCount ? `${contracts.value.needsReviewCount} need review` : undefined,
+          details: [
             contracts.value.establishedCount
-              ? `From ${plural(contracts.value.establishedCount, 'active job')} with an approved estimate (incl. approved change orders)`
-              : 'No active jobs with an approved estimate yet',
-            contracts.value.needsReviewCount ? `${contracts.value.needsReviewCount} need review` : null,
-          ]
-            .filter(Boolean)
-            .join(' · '),
-          accent: undefined,
+              ? `From ${plural(contracts.value.establishedCount, 'active job')} with an approved estimate, including approved change orders.`
+              : 'No active jobs with an approved estimate yet.',
+          ],
         }
-      : { value: UNAVAILABLE, hint: contracts.reason, accent: 'neutral' as const }
+      : unavailable(contracts.reason)
 
-  const schedule =
+  const schedule: CardContent =
     scheduleRisk.state === 'available'
-      ? {
-          value: scheduleRisk.value.atRisk,
-          countTo: { value: scheduleRisk.value.atRisk, format: 'count' as const },
-          hint: scheduleRisk.value.headline
-            ? scheduleRisk.value.atRisk > 1
-              ? `${scheduleRisk.value.headline} (+${scheduleRisk.value.atRisk - 1} more)`
-              : scheduleRisk.value.headline
-            : scheduleRisk.value.evaluated === 0
-              ? scheduleRisk.value.total
-                ? `Not assessed: ${plural(scheduleRisk.value.total, 'active job')} without dated schedules`
-                : 'No active jobs to assess'
-              : `No verified risks · ${scheduleRisk.value.evaluated} of ${plural(scheduleRisk.value.total, 'active job')} assessed (dated schedules only)`,
-          href: scheduleRisk.value.projectId ? `/projects/${scheduleRisk.value.projectId}/schedule` : '/actions?category=schedule',
-          accent: scheduleRisk.value.critical ? ('danger' as const) : scheduleRisk.value.atRisk ? ('warning' as const) : undefined,
-        }
-      : { value: UNAVAILABLE, hint: scheduleRisk.reason, href: '/schedule', accent: 'neutral' as const }
+      ? (() => {
+          const { atRisk, critical, headline, evaluated, total, projectId } = scheduleRisk.value
+          const partial = evaluated > 0 && evaluated < total
+          return {
+            value: atRisk,
+            countTo: { value: atRisk, format: 'count' },
+            note:
+              evaluated === 0
+                ? total
+                  ? `Not assessed: no dated schedules`
+                  : 'No active jobs to assess'
+                : partial
+                  ? `${evaluated} of ${total} jobs assessed`
+                  : undefined,
+            details: [
+              headline
+                ? atRisk > 1
+                  ? `${headline} (+${atRisk - 1} more)`
+                  : headline
+                : evaluated === 0
+                  ? total
+                    ? `Not assessed: ${plural(total, 'active job')} without dated schedules.`
+                    : 'No active jobs to assess.'
+                  : 'No verified risks.',
+              `${evaluated} of ${plural(total, 'active job')} assessed. Only jobs with dated schedules are evaluated.`,
+            ],
+            href: projectId ? `/projects/${projectId}/schedule` : '/actions?category=schedule',
+            emphasis: critical ? 'danger' : atRisk ? 'attention' : undefined,
+          }
+        })()
+      : { ...unavailable(scheduleRisk.reason), href: '/schedule' }
 
-  const ar =
+  const ar: CardContent =
     receivables.state === 'available'
       ? {
           value: formatCents(receivables.value.outstandingCents),
-          countTo: { value: receivables.value.outstandingCents, format: 'cents' as const },
-          hint: receivables.value.outstandingCount
-            ? `${plural(receivables.value.outstandingCount, 'open invoice')}${
-                receivables.value.overdueCount ? ` · ${formatCents(receivables.value.overdueCents)} overdue` : ' · none overdue'
-              }`
-            : 'No issued invoices outstanding',
+          countTo: { value: receivables.value.outstandingCents, format: 'cents' },
+          note: receivables.value.overdueCount ? `${formatCents(receivables.value.overdueCents)} overdue` : undefined,
+          details: [
+            receivables.value.outstandingCount
+              ? `${plural(receivables.value.outstandingCount, 'open invoice')}${
+                  receivables.value.overdueCount
+                    ? `, ${plural(receivables.value.overdueCount, 'overdue invoice')} totaling ${formatCents(receivables.value.overdueCents)}`
+                    : ', none overdue'
+                }.`
+              : 'No issued invoices outstanding.',
+          ],
           href: receivables.value.overdueCount ? '/invoices?status=overdue' : '/invoices',
-          accent: receivables.value.overdueCount ? ('warning' as const) : undefined,
         }
-      : { value: UNAVAILABLE, hint: receivables.reason, href: '/invoices', accent: 'neutral' as const }
+      : { ...unavailable(receivables.reason), href: '/invoices' }
 
   const cards: Record<KpiCardId, ReactNode> = {
-    card_approval: <StatCard label="Awaiting Your Approval" icon={FileSignature} tone="approval" {...approval} />,
-    card_contract: <StatCard label="Contract Value" icon={Landmark} href="/estimates?status=approved" tone="contract" {...contract} />,
-    card_schedule: <StatCard label="Schedule Risk" icon={CalendarClock} tone="schedule" {...schedule} />,
-    card_receivables: <StatCard label="Receivables" icon={Receipt} tone="receivables" {...ar} />,
+    card_approval: (
+      <KpiCard label="Awaiting Your Approval" icon={ClipboardCheck} tone="approval" {...approval} href={approval.href ?? '/actions?category=approvals'} />
+    ),
+    card_contract: <KpiCard label="Contract Value" icon={FileText} tone="contract" {...contract} href="/estimates?status=approved" />,
+    card_schedule: <KpiCard label="Schedule Risk" icon={TriangleAlert} tone="schedule" {...schedule} href={schedule.href ?? '/schedule'} />,
+    card_receivables: <KpiCard label="Receivables" icon={Coins} tone="receivables" {...ar} href={ar.href ?? '/invoices'} />,
   }
   const sequence = order ?? (Object.keys(cards) as KpiCardId[])
   return (
