@@ -14,7 +14,31 @@ function Metric({ label, value, emphasis }: { label: string; value: number; emph
   )
 }
 
-export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectStatus, number>> }) {
+function PipelineHeading() {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <span
+        className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#E6F5F6] text-[#007F8B]"
+        aria-hidden="true"
+      >
+        <GitBranch className="size-[18px]" />
+      </span>
+      <h2 id="pipeline-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+        Project Pipeline
+      </h2>
+    </div>
+  )
+}
+
+/** `counts` is null when the project query failed; that is reported, never shown as zero. */
+export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectStatus, number>> | null }) {
+  if (!counts)
+    return (
+      <section aria-labelledby="pipeline-heading" className="surface flex flex-col gap-3 p-5">
+        <PipelineHeading />
+        <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">Project counts could not be loaded.</p>
+      </section>
+    )
   const countOf = (s: ProjectStatus) => counts[s] ?? 0
   const total = ALL_PROJECT_STATUSES.reduce((sum, s) => sum + countOf(s), 0)
   const completed = countOf('completed')
@@ -25,17 +49,7 @@ export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectSta
   return (
     <section aria-labelledby="pipeline-heading" className="surface flex flex-col gap-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span
-            className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#E6F5F6] text-[#007F8B]"
-            aria-hidden="true"
-          >
-            <GitBranch className="size-[18px]" />
-          </span>
-          <h2 id="pipeline-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
-            Project Pipeline
-          </h2>
-        </div>
+        <PipelineHeading />
         <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
           <Metric label="Total" value={total} />
           <Metric label="In pipeline" value={inPipeline} emphasis />

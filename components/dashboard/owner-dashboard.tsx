@@ -132,8 +132,13 @@ export async function OwnerDashboard({
 
   /** Completed jobs stay listed only while a verified open action item is still attached to them. */
   const closeoutReasons = new Map<string, string>()
+  /** The same item's own deadline. The project-schedule item's date is a proposed start, not a deadline, so it is omitted. */
+  const closeoutDueOn = new Map<string, string | null>()
   for (const item of attention.items) {
-    if (item.projectId && !closeoutReasons.has(item.projectId)) closeoutReasons.set(item.projectId, item.title)
+    if (item.projectId && !closeoutReasons.has(item.projectId)) {
+      closeoutReasons.set(item.projectId, item.title)
+      closeoutDueOn.set(item.projectId, item.id.startsWith('project-schedule:') ? null : item.dueDate)
+    }
   }
   const priorityEligible = rows.filter(
     (r) => r.status !== 'cancelled' && (r.status !== 'completed' || closeoutReasons.has(r.id)),
@@ -143,9 +148,9 @@ export async function OwnerDashboard({
   const selectedRow = query.project ? (rows.find((r) => r.id === query.project) ?? null) : null
   const summaryIds =
     selectedRow && !priorityIds.includes(selectedRow.id) ? [...priorityIds, selectedRow.id] : priorityIds
-  const { data: summaryData } = summaryIds.length
+  const { data: summaryData, error: summaryError } = summaryIds.length
     ? await supabase.from('projects').select(PROJECT_SUMMARY_COLUMNS).eq('organization_id', orgId).in('id', summaryIds)
-    : { data: [] }
+    : { data: [], error: null }
   const summaries = new Map(((summaryData ?? []) as unknown as ProjectSummary[]).map((p) => [p.id, p]))
   const ordered = priorityIds.flatMap((id) => summaries.get(id) ?? [])
   const withSelected = summaryIds.flatMap((id) => summaries.get(id) ?? [])
@@ -175,6 +180,7 @@ export async function OwnerDashboard({
       healthReasons: h?.reasons,
       stageActivities: d?.stageActivities ?? null,
       closeoutReason: p.status === 'completed' ? (closeoutReasons.get(p.id) ?? null) : null,
+      closeoutDueOn: p.status === 'completed' ? (closeoutDueOn.get(p.id) ?? null) : null,
       canSetUpSchedule: features.schedule && canManage(session.role),
       summary: summarizeJob({
         status: p.status as ProjectStatus,
@@ -298,7 +304,9 @@ export async function OwnerDashboard({
         headerActions={<WorkScopeControl scope={workScope} />}
       />
     ),
-    priority_jobs: <PriorityJobs jobs={jobs} />,
+    priority_jobs: (
+      <PriorityJobs jobs={jobs} today={agendaData.today} unavailable={!!projectsRes.error || !!summaryError} />
+    ),
     coming_up: (
       <ComingUp
         events={comingUp}
@@ -321,7 +329,7 @@ export async function OwnerDashboard({
         totalIsLowerBound={activityTotal === null || attention.updatesTotalIsLowerBound}
       />
     ),
-    pipeline: <PipelineOverview counts={counts} />,
+    pipeline: <PipelineOverview counts={projectsRes.error ? null : counts} />,
   }
   /** Visible sections of an area, in saved order. Hidden items never reserve space. */
   const area = (key: LayoutArea) =>
