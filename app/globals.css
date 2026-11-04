@@ -54,6 +54,7 @@
   --color-attention: var(--attention);
   --color-attention-soft: var(--attention-soft);
   --color-attention-foreground: var(--attention-foreground);
+  --color-notification: var(--notification);
   --color-accent-blue: var(--accent-blue);
   --color-accent-blue-soft: var(--accent-blue-soft);
   --color-brand-deep: var(--brand-deep);
@@ -123,6 +124,7 @@
   --attention: #f58a3c;
   --attention-soft: #fff1e6;
   --attention-foreground: #b54708;
+  --notification: #c2410c;
   --accent-blue: #2563eb;
   --accent-blue-soft: #eaf2ff;
   --secondary: #e9edf2;
