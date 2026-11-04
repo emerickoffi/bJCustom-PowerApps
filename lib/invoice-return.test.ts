@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { invoiceDetailHref, invoiceReturnTarget } from './invoice-return.ts'
+import { invoiceDetailHref, invoicePrintHref, invoiceReturnTarget } from './invoice-return.ts'
 
 const PID = '3f1c2a7e-1b2c-4d5e-8f90-123456789abc'
 
@@ -34,4 +34,9 @@ test('detail href round-trips the origin', () => {
   const from = new URL(href, 'http://local').searchParams.get('from') ?? undefined
   assert.equal(invoiceReturnTarget(from).href, '/invoices?status=paid')
   assert.equal(invoiceDetailHref('abc'), '/invoices/abc')
+})
+
+test('invoicePrintHref carries the validated return target', () => {
+  assert.equal(invoicePrintHref('abc'), '/invoices/abc/print')
+  assert.equal(invoicePrintHref('abc', '/invoices?status=paid'), '/invoices/abc/print?from=%2Finvoices%3Fstatus%3Dpaid')
 })

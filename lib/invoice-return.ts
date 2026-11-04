@@ -36,6 +36,10 @@ export function invoiceReturnTarget(from: string | string[] | undefined): Invoic
   return fallback
 }
 
+export function invoicePrintHref(invoiceId: string, from?: string) {
+  return from ? `/invoices/${invoiceId}/print?from=${encodeURIComponent(from)}` : `/invoices/${invoiceId}/print`
+}
+
 export function invoiceDetailHref(invoiceId: string, from?: string) {
   return from ? `/invoices/${invoiceId}?from=${encodeURIComponent(from)}` : `/invoices/${invoiceId}`
 }
