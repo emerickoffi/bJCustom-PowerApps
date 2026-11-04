@@ -6,7 +6,7 @@ import { Copy, Plus, Trash2 } from 'lucide-react'
 import { saveChangeOrderAction } from '@/app/actions/change-orders'
 import { initialActionState } from '@/lib/action-state'
 import { ESTIMATE_CATEGORIES } from '@/lib/estimates'
-import { parseLines, sumLineCosts, type LineInput } from '@/lib/change-orders'
+import { formatScheduleDays, parseLines, sumLineCosts, type LineInput } from '@/lib/change-orders'
 import { formatMoney, parseSignedDollarsToCents } from '@/lib/financials'
 import { FormActions, NativeSelect, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
@@ -119,13 +119,17 @@ export function ChangeOrderForm({
             <TextAreaField name="description" label="Description" defaultValue={v?.description ?? defaults.description} error={fe.description} className="sm:col-span-2" maxLength={4000} />
             <TextField
               name="price_adjustment"
-              label="Homeowner price change ($)"
+              label="Price adjustment ($)"
               inputMode="decimal"
               placeholder="0.00"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               error={fe.price_adjustment}
-              hint={priceCents === null ? 'Enter a dollar amount like 2500 or -750' : 'Set separately from builder cost. Use a minus sign for credits.'}
+              hint={
+                priceCents === null
+                  ? 'Enter a dollar amount like 2500 or -750'
+                  : 'Positive amount adds to the homeowner price. Negative amount gives a credit. Set separately from builder cost.'
+              }
             />
             <TextField
               name="schedule_impact_days"
@@ -134,7 +138,7 @@ export function ChangeOrderForm({
               value={schedule}
               onChange={(e) => setSchedule(e.target.value)}
               error={fe.schedule_impact_days}
-              hint="Leave blank if unknown. Negative if it saves time."
+              hint="Leave blank if unknown. Enter 0 for no impact, negative if it saves time."
             />
           </div>
         </ChangeOrderSection>
@@ -284,8 +288,8 @@ function ChangeOrderSummary({ priceCents, costCents, lineCount, schedule }: { pr
   const days = schedule.trim() === '' ? null : Number(schedule)
   return (
     <dl className="flex flex-col gap-3 text-sm">
-      <SummaryRow label="Homeowner price change" value={priceCents === null ? '—' : formatMoney(priceCents, { signed: true })} strong />
-      <SummaryRow label="Schedule impact" value={days === null || !Number.isInteger(days) ? 'Not set' : `${days > 0 ? '+' : ''}${days} ${Math.abs(days) === 1 ? 'day' : 'days'}`} />
+      <SummaryRow label="Price adjustment" value={priceCents === null ? '—' : formatMoney(priceCents, { signed: true })} strong />
+      <SummaryRow label="Schedule impact" value={days === null || !Number.isInteger(days) ? 'Not set' : formatScheduleDays(days, 'long')} />
       <div className="border-t border-border/60 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Internal only</div>
       <SummaryRow label={`Builder cost (${lineCount} line${lineCount === 1 ? '' : 's'})`} value={formatMoney(costCents, { signed: true })} />
       <SummaryRow label="Margin on change" value={margin === null ? '—' : formatMoney(margin, { signed: true })} tone={margin !== null && margin < 0 ? 'danger' : undefined} />

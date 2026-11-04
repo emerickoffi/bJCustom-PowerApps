@@ -85,6 +85,7 @@ export function summarizeChangeOrders(rows: ChangeOrderSummaryRow[]) {
 
 export function formatScheduleDays(days: number | null, style: 'short' | 'long' = 'short') {
   if (days === null) return style === 'short' ? '—' : 'Not set'
+  if (days === 0 && style === 'long') return 'No schedule impact'
   const sign = days > 0 ? '+' : ''
   if (style === 'short') return `${sign}${days}d`
   return `${sign}${days} ${Math.abs(days) === 1 ? 'day' : 'days'}`
