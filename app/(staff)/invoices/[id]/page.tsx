@@ -7,15 +7,23 @@ import { getInvoice, getInvoiceEvents } from '@/lib/invoice-queries'
 import { INVOICE_EVENT_LABELS, balanceCents } from '@/lib/invoices'
 import { formatCentsExact } from '@/lib/estimates'
 import { formatDate } from '@/lib/format'
-import { PageHeader } from '@/components/shared/page-header'
+import { invoiceReturnTarget } from '@/lib/invoice-return'
+import { BackLink, PageHeader } from '@/components/shared/page-header'
 import { InvoiceDocument } from '@/components/invoices/invoice-document'
 import { InvoiceActions } from '@/components/invoices/invoice-actions'
 import { InvoicePayments } from '@/components/invoices/invoice-payments'
 
 export const metadata: Metadata = { title: 'Invoice' }
 
-export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function InvoicePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ from?: string | string[] }>
+}) {
   const { id } = await params
+  const back = invoiceReturnTarget((await searchParams).from)
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
   const session = await requireStaff()
   const data = await getInvoice(id, session.organizationId)
@@ -26,6 +34,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="flex flex-col gap-8">
+      <nav aria-label="Breadcrumb" className="-mb-6 print:hidden">
+        <BackLink href={back.href} label={back.label} className="min-h-11 px-1 -mx-1 text-link hover:text-link-hover" />
+      </nav>
       <PageHeader
         icon={Receipt}
         eyebrow={invoice.project?.name}
@@ -37,8 +48,6 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               ? 'Shared in the homeowner portal.'
               : 'Issued, but not shared in the homeowner portal.'
         }
-        backHref="/invoices"
-        backLabel="All invoices"
       />
 
       <InvoiceActions

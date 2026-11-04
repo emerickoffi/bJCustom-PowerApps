@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status-badge'
 import { pillClass } from '@/lib/interaction-styles'
+import { invoiceDetailHref } from '@/lib/invoice-return'
 
 export const metadata: Metadata = { title: 'Invoices' }
 
@@ -30,6 +31,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const overdueCents = overdue.reduce((sum, i) => sum + balanceCents(i), 0)
   const collected = all.filter((i) => i.status !== 'voided').reduce((sum, i) => sum + i.paid_cents, 0)
   const { canWrite: manager } = await getInvoiceAccess(session)
+  const listHref = statusFilter ? `/invoices?status=${statusFilter}` : '/invoices'
 
   const filters = [
     { value: undefined, label: 'All' },
@@ -155,11 +157,11 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
           />
         ) : (
           <>
-            <InvoiceTable invoices={invoices} />
+            <InvoiceTable invoices={invoices} from={listHref} />
             <ul className="flex flex-col divide-y divide-[#D6DDE5] lg:hidden">
               {invoices.map((inv) => (
                 <li key={inv.id}>
-                  <InvoiceCard invoice={inv} />
+                  <InvoiceCard invoice={inv} from={listHref} />
                 </li>
               ))}
             </ul>
@@ -219,7 +221,7 @@ function Stat({
   )
 }
 
-function InvoiceTable({ invoices }: { invoices: InvoiceRow[] }) {
+function InvoiceTable({ invoices, from }: { invoices: InvoiceRow[]; from: string }) {
   return (
     <div className="hidden overflow-x-auto lg:block">
       <table className="w-full text-sm">
@@ -243,7 +245,7 @@ function InvoiceTable({ invoices }: { invoices: InvoiceRow[] }) {
             >
               <td className="px-5 py-3.5">
                 <Link
-                  href={`/invoices/${inv.id}`}
+                  href={invoiceDetailHref(inv.id, from)}
                   className="rounded-sm font-medium text-link hover:text-link-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
                 >
                   {inv.invoice_number}
@@ -271,10 +273,10 @@ function InvoiceTable({ invoices }: { invoices: InvoiceRow[] }) {
   )
 }
 
-function InvoiceCard({ invoice: inv }: { invoice: InvoiceRow }) {
+function InvoiceCard({ invoice: inv, from }: { invoice: InvoiceRow; from: string }) {
   return (
     <Link
-      href={`/invoices/${inv.id}`}
+      href={invoiceDetailHref(inv.id, from)}
       className="flex flex-col gap-3 p-4 transition-colors hover:bg-link-soft/60 focus-visible:bg-link-soft/60 focus-visible:shadow-[inset_3px_0_0_var(--link)] focus-visible:outline-none md:px-5"
     >
       <div className="flex items-start justify-between gap-3">

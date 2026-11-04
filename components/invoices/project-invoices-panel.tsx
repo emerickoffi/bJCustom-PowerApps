@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/server'
 import { formatCents, formatDate } from '@/lib/format'
 import { balanceCents, isOverdue, type InvoiceStatus } from '@/lib/invoices'
+import { invoiceDetailHref } from '@/lib/invoice-return'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status-badge'
 
 type ProjectInvoice = {
@@ -66,7 +67,7 @@ export async function ProjectInvoicesPanel({ projectId, canManage }: { projectId
           {invoices.map((invoice) => (
             <li key={invoice.id}>
               <Link
-                href={`/invoices/${invoice.id}`}
+                href={invoiceDetailHref(invoice.id, `/projects/${projectId}`)}
                 className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
               >
                 <span className="flex flex-col">
