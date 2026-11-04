@@ -48,7 +48,7 @@ export function FinancialKpis({
               `Proposed value: ${formatCents(amountCents)}`,
             ],
             href: count === 1 ? `/estimates/${items[0].id}` : '/actions?category=approvals',
-            emphasis: count ? 'attention' : undefined,
+            emphasis: count ? 'pending' : undefined,
           }
         })()
       : unavailable(estimates.reason)

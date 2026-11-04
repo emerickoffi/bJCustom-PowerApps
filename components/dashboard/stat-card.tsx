@@ -17,15 +17,16 @@ const ACCENT: Record<Accent, string> = {
 export type StatTone = 'approval' | 'contract' | 'schedule' | 'receivables'
 
 const TONE_ICON: Record<StatTone, string> = {
-  approval: 'bg-attention-soft text-attention-foreground',
+  approval: 'bg-attention-soft text-notification',
   contract: 'bg-info/10 text-info',
-  schedule: 'bg-attention-soft text-attention-foreground',
+  schedule: 'bg-attention-soft text-notification',
   receivables: 'bg-link-soft text-link',
 }
 
-export type KpiEmphasis = 'attention' | 'danger' | 'muted'
+export type KpiEmphasis = 'pending' | 'attention' | 'danger' | 'muted'
 
 const VALUE_COLOR: Record<KpiEmphasis, string> = {
+  pending: 'text-notification',
   attention: 'text-attention-foreground',
   danger: 'text-destructive',
   muted: 'text-muted-foreground',

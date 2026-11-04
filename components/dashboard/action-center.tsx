@@ -353,7 +353,7 @@ export function ActionCenter({
             Action Center
           </Heading>
           {items.length > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#C2410C] px-2 py-0.5 text-xs font-medium leading-4 text-white">
+            <span className="inline-flex items-center gap-1 rounded-full bg-notification px-2 py-0.5 text-xs font-medium leading-4 text-notification-foreground">
               <span className="font-bold tabular-nums">{countLabel}</span>
               {items.length === 1 && !totalIsLowerBound ? 'needs attention' : 'need attention'}
             </span>
