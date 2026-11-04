@@ -11,6 +11,11 @@ import { formatCents, formatDate } from '@/lib/format'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { NativeSelect } from '@/components/shared/form-field'
 import { EstimateStatusBadge } from '@/components/estimates/estimate-status-badge'
+import { EstimateTitleCell, EstimateTitleGridProvider } from '@/components/estimates/estimate-title-grid'
+import { titleEditEligibility } from '@/lib/estimate-title'
+
+const TITLE_LINK_CLASS =
+  'line-clamp-2 break-words rounded-sm font-medium text-[#006B78] hover:text-[#005560] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006B78]'
 
 export const metadata: Metadata = { title: 'Estimates' }
 
@@ -49,6 +54,22 @@ export default async function EstimatesPage({
     .reduce((sum, e) => sum + e.construction_total_cents, 0)
   const openCount = estimates.filter((e) => e.status === 'draft' || e.status === 'internal_review').length
   const awaitingCount = estimates.filter((e) => e.status === 'submitted').length
+  // listEstimates returns only the latest revision per family.
+  const eligibility = new Map(
+    estimates.map((e) => [e.id, titleEditEligibility({ canManage: manager, status: e.status, isLatest: true })]),
+  )
+  const editableCount = [...eligibility.values()].filter((x) => x.editable).length
+  const titleProps = (e: (typeof estimates)[number]) => {
+    const el = eligibility.get(e.id)
+    return {
+      estimateId: e.id,
+      estimateNumber: e.estimate_number,
+      name: e.name,
+      updatedAt: e.updated_at,
+      editable: !!el?.editable,
+      lockedReason: manager && el && !el.editable ? el.reason : undefined,
+    }
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -137,6 +158,7 @@ export default async function EstimatesPage({
           }
         />
       ) : (
+        <EstimateTitleGridProvider organizationId={session.organizationId} editableCount={editableCount}>
         <div className="surface overflow-hidden p-0">
           <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[960px] text-sm text-[#17212B]">
@@ -165,19 +187,17 @@ export default async function EstimatesPage({
                   className="align-top transition-colors hover:bg-[#E6F3F4] has-[:focus-visible]:bg-[#E6F3F4] has-[:focus-visible]:shadow-[inset_3px_0_0_#006B78]"
                 >
                   <td className="px-5 py-3">
-                    <div className="flex min-w-0 flex-col gap-1">
-                      <Link
-                        href={`/estimates/${e.id}`}
-                        title={e.name}
-                        className="line-clamp-2 break-words rounded-sm font-medium text-[#006B78] hover:text-[#005560] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006B78]"
-                      >
-                        {e.name}
-                      </Link>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="whitespace-nowrap font-mono text-xs text-[#526173]">{e.estimate_number}</span>
-                        {e.is_demo && <DemoBadge />}
-                      </div>
-                    </div>
+                    <EstimateTitleCell
+                      layout="table"
+                      {...titleProps(e)}
+                      linkClassName={TITLE_LINK_CLASS}
+                      meta={
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="whitespace-nowrap font-mono text-xs text-[#526173]">{e.estimate_number}</span>
+                          {e.is_demo && <DemoBadge />}
+                        </div>
+                      }
+                    />
                   </td>
                   <td className="px-3 py-3 text-[#526173]">
                     {e.client ? (
@@ -240,20 +260,21 @@ export default async function EstimatesPage({
             {estimates.map((e) => (
               <li key={e.id} className="flex flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <Link
-                      href={`/estimates/${e.id}`}
-                      className="break-words rounded-sm font-medium text-[#006B78] hover:text-[#005560] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006B78]"
-                    >
-                      {e.name}
-                    </Link>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-mono text-xs text-[#526173]">
-                        {`${e.estimate_number} · Rev ${e.revision}`}
-                        {(revisionCount.get(e.family_id) ?? 1) > 1 && ` of ${revisionCount.get(e.family_id)}`}
-                      </span>
-                      {e.is_demo && <DemoBadge />}
-                    </div>
+                  <div className="min-w-0 flex-1">
+                    <EstimateTitleCell
+                      layout="card"
+                      {...titleProps(e)}
+                      linkClassName="break-words rounded-sm font-medium text-[#006B78] hover:text-[#005560] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006B78]"
+                      meta={
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-mono text-xs text-[#526173]">
+                            {`${e.estimate_number} · Rev ${e.revision}`}
+                            {(revisionCount.get(e.family_id) ?? 1) > 1 && ` of ${revisionCount.get(e.family_id)}`}
+                          </span>
+                          {e.is_demo && <DemoBadge />}
+                        </div>
+                      }
+                    />
                   </div>
                   <div className="flex shrink-0 flex-col items-end">
                     <span className="font-semibold tabular-nums text-[#17212B]">{formatCents(e.construction_total_cents)}</span>
@@ -291,6 +312,7 @@ export default async function EstimatesPage({
             ))}
           </ul>
         </div>
+        </EstimateTitleGridProvider>
       )}
     </div>
   )

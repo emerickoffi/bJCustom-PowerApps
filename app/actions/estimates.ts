@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireManager } from '@/lib/session'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { DECISION_METHODS, ESTIMATE_CATEGORIES } from '@/lib/estimates'
+import { estimateNameSchema } from '@/lib/estimate-title'
 import { guardSaveSession, readSaveRequest, runTrackedSave } from '@/lib/save-requests-server'
 
 const uuid = z.uuid()
@@ -68,7 +69,7 @@ const percent = z
 
 const estimateSchema = z
   .object({
-    name: z.string().trim().min(2, 'Enter an estimate name').max(160),
+    name: estimateNameSchema,
     description: optionalText(4000),
     estimate_date: isoDate,
     expiration_date: optionalDate,
