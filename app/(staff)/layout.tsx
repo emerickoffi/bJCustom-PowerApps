@@ -166,7 +166,7 @@ export default async function StaffLayout({ children, modal }: { children: React
               </div>
             </div>
           </header>
-          <main className="mx-auto w-full max-w-[90rem] flex-1 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8 lg:pt-10 xl:px-10 tablet:pb-[calc(11rem+env(safe-area-inset-bottom))] tablet:pt-6">
+          <main className="mx-auto w-full min-w-0 max-w-[90rem] flex-1 px-4 has-[[data-page-width=full]]:max-w-none pb-[calc(9rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8 lg:pt-10 xl:px-10 tablet:pb-[calc(11rem+env(safe-area-inset-bottom))] tablet:pt-6">
             {children}
           </main>
         </div>

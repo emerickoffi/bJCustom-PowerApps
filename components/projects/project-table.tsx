@@ -36,12 +36,12 @@ function dateCell(p: ProjectTableRow) {
 export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[72rem] text-sm tablet:min-w-0">
+      <div className="relative overflow-x-auto">
+        <table className="w-full min-w-[60rem] text-sm tablet:min-w-0">
           <caption className="sr-only">Projects</caption>
           <thead className={DIRECTORY_THEAD_ROW}>
             <tr>
-              <th scope="col" className={TH}>Project</th>
+              <th scope="col" className={`${TH} min-w-56 tablet:min-w-0`}>Project</th>
               <th scope="col" className={`${TH} tablet:hidden`}>Location</th>
               <th scope="col" className={TH}>Status</th>
               <th scope="col" className={TH}>Progress</th>
@@ -86,11 +86,11 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                       </div>
                     </div>
                   </td>
-                  <td className={`${TD} whitespace-nowrap text-muted-foreground tablet:hidden`}>{`${p.city}, ${p.state}`}</td>
+                  <td className={`${TD} text-muted-foreground tablet:hidden`}>{`${p.city}, ${p.state}`}</td>
                   <td className={TD}>
                     <ProjectStatusBadge status={p.status} />
                   </td>
-                  <td className={`${TD} w-40 tablet:w-36`}>
+                  <td className={`${TD} w-36 tablet:w-36`}>
                     {progress !== null ? (
                       <div className="flex items-center gap-2">
                         <ProgressBar value={progress} label={`${p.name} construction progress`} size="sm" className="flex-1" />
