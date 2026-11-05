@@ -21,7 +21,7 @@ function DateChip({ iso, tentative }: { iso: string; tentative: boolean }) {
       dateTime={iso}
       className={cn(
         'flex size-11 shrink-0 flex-col items-center justify-center rounded-lg',
-        tentative ? 'border border-dashed border-primary/40 bg-transparent text-primary' : 'bg-accent-blue/90 text-white',
+        tentative ? 'border border-dashed border-primary/40 bg-transparent text-primary' : 'bg-[rgba(33,113,181,0.12)] text-[#2171B5]',
       )}
     >
       <span className="text-[0.6rem] font-semibold uppercase tracking-wide leading-none">{month}</span>
