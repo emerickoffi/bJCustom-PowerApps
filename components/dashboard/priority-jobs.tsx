@@ -94,7 +94,7 @@ function ViewProjectLink({ job }: { job: PriorityJob }) {
     <Link
       href={`/projects/${job.id}`}
       aria-label={`View project ${job.name}`}
-      className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border border-[#007F95]/35 bg-card px-3 text-xs font-semibold text-[#007F95] transition-colors hover:border-[#006B7E]/50 hover:bg-[#E5F5F7] hover:text-[#006B7E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border border-[#007F95]/35 bg-card px-3 text-xs font-semibold text-[#007F95] transition-colors duration-150 hover:border-[#2171B5] hover:bg-[#2171B5] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       View
       <ArrowRight className="size-3.5" aria-hidden="true" />

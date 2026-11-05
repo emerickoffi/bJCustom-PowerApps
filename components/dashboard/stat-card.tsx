@@ -71,7 +71,7 @@ export function KpiCard({
         </Link>
         <span
           className={cn(
-            'tabular break-words text-[26px] font-bold leading-[1.1] tracking-tight',
+            'tabular break-words text-[28px] font-extrabold leading-[1.1] tracking-tight',
             emphasis ? VALUE_COLOR[emphasis] : 'text-foreground',
           )}
         >

@@ -121,7 +121,7 @@ export function ActivityFitList({
       >
         <ol
           ref={listRef}
-          className="relative flex flex-col gap-5 before:absolute before:bottom-[var(--rail-bottom,0.75rem)] before:left-3.5 before:top-3 before:w-px before:bg-border"
+          className="relative flex flex-col gap-6 before:absolute before:bottom-[var(--rail-bottom,0.75rem)] before:left-3.5 before:top-3 before:w-px before:bg-border"
           style={fit && !expanded ? ({ '--rail-bottom': `${fit.railBottom}px` } as React.CSSProperties) : undefined}
         >
           {entries.map((entry, index) => {
