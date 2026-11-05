@@ -1,14 +1,14 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { AlertTriangle, ChevronRight, FileSpreadsheet, Plus } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Coins, FileSpreadsheet } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader, Surface } from '@/components/shared/page-header'
-import { Button } from '@/components/ui/button'
 import { SubcontractsNav } from '@/components/subcontract-quotes/subcontracts-nav'
-import { CurrencyPanel } from '@/components/subcontract-quotes/currency-panel'
+import { NewQuoteRequestDrawer } from '@/components/subcontract-quotes/new-request-drawer'
+import { emptyRequestDraft, loadRequestFormOptions } from '@/lib/subcontract-quotes-data'
 import { RequestStatusBadge } from '@/components/subcontract-quotes/status-badges'
 import { QUOTES_SETUP_MESSAGE, formatDeadline, isQuoteSetupError, type RequestStatus } from '@/lib/subcontract-quotes'
 
@@ -38,7 +38,7 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
   ])
   if (!project || !canViewInternal) notFound()
 
-  const [{ data, error }, { data: currencyRow }] = await Promise.all([
+  const [{ data, error }, { data: currencyRow }, options] = await Promise.all([
     supabase
       .from('subcontract_quote_requests')
       .select(
@@ -49,6 +49,7 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
       .order('updated_at', { ascending: false })
       .limit(200),
     supabase.from('projects').select('currency').eq('id', id).maybeSingle(),
+    loadRequestFormOptions(supabase, session.organizationId, id),
   ])
   const setupMissing = isQuoteSetupError(error)
   const rows = (data ?? []) as unknown as Row[]
@@ -62,13 +63,15 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
         description={`Request, compare, and track subcontractor pricing for ${project.name}.`}
         actions={
           setupMissing ? null : (
-            <Link
-              href={`/projects/${id}/subcontractor-work/quotes/new`}
-              className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              New quote request
-            </Link>
+            <NewQuoteRequestDrawer
+              projectId={id}
+              projectName={project.name}
+              currency={currency}
+              initial={emptyRequestDraft()}
+              companies={options.companies}
+              documents={options.documents}
+              activities={options.activities}
+            />
           )
         }
       />
@@ -83,7 +86,15 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
         <p role="alert" className="text-sm text-destructive">Quote requests could not be loaded. Refresh to try again.</p>
       ) : (
         <>
-          {!currency ? <CurrencyPanel projectId={id} /> : null}
+          {!currency ? (
+            <p className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-muted-foreground">
+              <Coins className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+              <span>
+                <span className="font-medium text-foreground">Project currency not confirmed.</span> Requests can be saved as drafts, but
+                can&apos;t be sent until you confirm it in New quote request.
+              </span>
+            </p>
+          ) : null}
           <Surface aria-labelledby="quote-requests-heading">
             <h2 id="quote-requests-heading" className="font-serif text-lg font-semibold text-foreground">
               Requests <span className="font-sans text-sm font-normal text-muted-foreground">({rows.length})</span>

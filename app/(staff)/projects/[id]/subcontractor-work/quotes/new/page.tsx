@@ -6,8 +6,7 @@ import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader, Surface } from '@/components/shared/page-header'
 import { RequestForm } from '@/components/subcontract-quotes/request-form'
-import { loadRequestFormOptions } from '@/lib/subcontract-quotes-data'
-import { APP_TIME_ZONE } from '@/lib/format'
+import { emptyRequestDraft, loadRequestFormOptions } from '@/lib/subcontract-quotes-data'
 
 export const metadata: Metadata = { title: 'New quote request' }
 
@@ -35,19 +34,7 @@ export default async function NewQuoteRequestPage({ params }: { params: Promise<
           companies={options.companies}
           documents={options.documents}
           activities={options.activities}
-          initial={{
-            title: '',
-            trade: '',
-            scope: '',
-            document_ids: [],
-            company_ids: [],
-            deadline_local: '',
-            deadline_timezone: APP_TIME_ZONE,
-            cost_category: '',
-            schedule_activity_id: '',
-            work_window_start: '',
-            work_window_end: '',
-          }}
+          initial={emptyRequestDraft()}
         />
       </Surface>
     </div>
