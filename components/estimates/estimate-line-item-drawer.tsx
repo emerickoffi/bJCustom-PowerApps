@@ -33,6 +33,8 @@ function draftErrors(draft: Draft): DraftErrors {
 }
 
 const sameDraft = (a: Draft, b: Draft) => JSON.stringify({ ...a, key: '' }) === JSON.stringify({ ...b, key: '' })
+/** Ignores the retained category, so a reset form with only its carried-over category is not a new entry. */
+const sameItem = (a: Draft, b: Draft) => sameDraft({ ...a, category: '' }, { ...b, category: '' })
 
 /**
  * Right-side form for one line item. Edits stay local until Save, so estimate totals only change on commit.
@@ -55,7 +57,7 @@ export function EstimateLineItemDrawer({
   const [draft, setDraft] = useState(initial)
   const [attempted, setAttempted] = useState(Boolean(target.showErrors))
   const [error, setError] = useState<string | null>(null)
-  const [added, setAdded] = useState<string | null>(null)
+  const [added, setAdded] = useState<{ count: number; last: string }>({ count: 0, last: '' })
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const submitting = useRef(false)
   const formRef = useRef<HTMLFormElement>(null)
@@ -63,19 +65,21 @@ export function EstimateLineItemDrawer({
 
   const errors = draftErrors(draft)
   const math = rowMath({ ...draft, category: draft.category || ESTIMATE_CATEGORIES[0] })
-  const dirty = !sameDraft(draft, initial)
+  const afterAdd = !isEdit && added.count > 0
+  // After "Save & add another", only item-specific edits count; before that, any change (including category) does.
+  const hasEntry = afterAdd ? !sameItem(draft, initial) : !sameDraft(draft, initial)
+  const idle = afterAdd && !hasEntry
   const id = (f: Field) => `${uid}-${f}`
   const shown = (f: Field) => (attempted ? errors[f as keyof DraftErrors] : undefined)
 
   const set = (f: keyof Draft, value: string | boolean) => {
     setDraft((d) => ({ ...d, [f]: value }))
-    setAdded(null)
     setError(null)
   }
 
   function requestClose() {
     if (submitting.current) return
-    if (dirty) setConfirmDiscard(true)
+    if (hasEntry) setConfirmDiscard(true)
     else onClose()
   }
 
@@ -84,7 +88,7 @@ export function EstimateLineItemDrawer({
   }
 
   function submit(addAnother: boolean) {
-    if (submitting.current || locked) return
+    if (submitting.current || locked || idle) return
     submitting.current = true
     try {
       const first = FIELD_ORDER.find((f) => errors[f as keyof DraftErrors])
@@ -104,7 +108,7 @@ export function EstimateLineItemDrawer({
         setInitial(next)
         setDraft(next)
         setAttempted(false)
-        setAdded(row.description.trim())
+        setAdded((a) => ({ count: a.count + 1, last: row.description.trim() }))
         focusField('description')
       }
     } finally {
@@ -308,32 +312,46 @@ export function EstimateLineItemDrawer({
               {error ??
                 (locked
                   ? 'Saving the draft. Item actions are paused.'
-                  : added
-                    ? `Added "${added}" to the draft (not saved yet). Enter the next item.`
+                  : idle
+                    ? `Added "${added.last}" to the draft${added.count > 1 ? ` (${added.count} items this session)` : ''}. Enter another item, or choose Done.`
                     : attempted && Object.keys(errors).length
                       ? 'Fix the highlighted fields to continue.'
                       : '')}
             </p>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" onClick={requestClose} className="h-10">
-                Cancel
-              </Button>
-              <Button type="button" variant="outline" onClick={() => submit(true)} disabled={locked} className="h-10">
-                Save &amp; add another
-              </Button>
-              <Button type="submit" disabled={locked} className="h-10">
-                Save item
-              </Button>
-            </div>
+            {idle ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button type="button" onClick={onClose} className="h-10 sm:min-w-28">
+                  Done
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" onClick={requestClose} className="h-10">
+                  Cancel
+                </Button>
+                {!isEdit && (
+                  <Button type="button" variant="outline" onClick={() => submit(true)} disabled={locked} className="h-10">
+                    Save &amp; add another
+                  </Button>
+                )}
+                <Button type="submit" disabled={locked} className="h-10">
+                  {isEdit ? 'Save changes' : 'Save & close'}
+                </Button>
+              </div>
+            )}
           </div>
         </form>
 
         <Dialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
           <DialogContent showCloseButton={false}>
             <DialogHeader>
-              <DialogTitle>Discard changes?</DialogTitle>
+              <DialogTitle>{isEdit ? 'Discard changes?' : 'Discard current item?'}</DialogTitle>
               <DialogDescription>
-                {isEdit ? 'Your edits to this line item will be lost.' : 'This line item has not been added to the draft.'}
+                {isEdit
+                  ? 'Your edits to this line item will be lost.'
+                  : afterAdd
+                    ? `The item you're entering has not been added. The ${added.count === 1 ? 'item' : `${added.count} items`} you already added stay in the draft.`
+                    : 'This line item has not been added to the draft.'}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -348,7 +366,7 @@ export function EstimateLineItemDrawer({
                   onClose()
                 }}
               >
-                Discard
+                {isEdit ? 'Discard changes' : 'Discard current item'}
               </Button>
             </DialogFooter>
           </DialogContent>
