@@ -58,8 +58,8 @@ function UpdateRow({ update }: { update: ProjectUpdate }) {
       >
         <Bell className="size-3.5" />
       </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
-        <div className="flex flex-wrap items-center justify-between gap-x-2 text-xs">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs">
           <span className="font-medium text-primary">
             {update.projectName ?? "Project update"}
           </span>
@@ -117,8 +117,8 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       >
         <Icon className="size-3.5" />
       </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
-        <div className="flex flex-wrap items-center justify-between gap-x-2 text-xs">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs">
           <span className="min-w-0 truncate">
             {item.actorName && (
               <span className="font-semibold text-foreground">{`${item.actorName} · `}</span>
