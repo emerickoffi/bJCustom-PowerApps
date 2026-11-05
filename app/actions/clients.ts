@@ -37,15 +37,26 @@ type SaveClientResult =
   | { ok: true; id: string; client: ParsedClient; contactsFailed: boolean }
   | { ok: false; state: ActionState }
 
-export async function createClientAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+/**
+ * `project_choice` decides what happens after the client saves:
+ * - `later` (default): open the new client.
+ * - `existing`: link to the chosen unassigned project, never replacing another homeowner.
+ * - `new`: return the saved client instead of redirecting, so the same drawer continues to project setup.
+ */
+export async function createClientAction(_prev: InlineClientState, formData: FormData): Promise<InlineClientState> {
   const values = formValues(formData)
   const auth = await getClientCreator()
   if ('error' in auth) return { error: auth.error, values }
 
+  const choice = values.project_choice === 'existing' || values.project_choice === 'new' ? values.project_choice : 'later'
+
   // Optional project link. Checked before the client is created so a bad choice saves nothing,
   // then rechecked atomically by the assignment itself in case the project was taken meanwhile.
-  const rawProjectId = values.assign_project_id?.trim()
+  const rawProjectId = choice === 'existing' || !values.project_choice ? values.assign_project_id?.trim() : undefined
   const projectId = rawProjectId && rawProjectId !== 'none' ? rawProjectId : null
+  if (choice === 'existing' && !projectId) {
+    return { error: 'Please correct the highlighted fields.', fieldErrors: { assign_project_id: 'Select a project' }, values }
+  }
   if (projectId) {
     const supabase = await createClient()
     const projectError = uuid.safeParse(projectId).success
@@ -60,6 +71,7 @@ export async function createClientAction(_prev: ActionState, formData: FormData)
   if (!result.ok) return result.state
 
   revalidatePath('/clients')
+  if (choice === 'new') return savedClientState(result)
   if (projectId) {
     const link = await assignPrimaryClient(await createClient(), {
       ...auth.creator,
@@ -129,15 +141,22 @@ export async function createClientInlineAction(_prev: InlineClientState, formDat
   const result = await saveNewClient(auth.creator, values)
   if (!result.ok) return result.state
 
+  revalidatePath('/clients')
+  return savedClientState(result)
+}
+
+async function savedClientState(result: Extract<SaveClientResult, { ok: true }>): Promise<InlineClientState> {
   const { data: saved } = await (await createClient())
     .from('clients')
     .select('client_number')
     .eq('id', result.id)
     .maybeSingle()
   const c = result.client
-  revalidatePath('/clients')
   return {
     success: `${c.first_name} ${c.last_name} was added as a client.`,
+    warning: result.contactsFailed
+      ? 'The additional contacts could not be saved. Add them later from the client page.'
+      : undefined,
     savedId: result.id,
     client: {
       id: result.id,

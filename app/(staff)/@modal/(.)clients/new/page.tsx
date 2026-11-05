@@ -2,18 +2,20 @@ import { requireManager } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { getUnassignedProjectOptions } from '@/lib/project-client-assignment'
+import { loadNewProjectFormData } from '@/lib/project-form-data'
 import { createClientAction } from '@/app/actions/clients'
 import { ClientForm } from '@/components/clients/client-form'
 import { RouteFormDrawer } from '@/components/shared/route-form-drawer'
 
 export default async function NewClientDrawer() {
   const session = await requireManager()
-  const [features, projectOptions] = session.organizationId
+  const [features, projectOptions, projectData] = session.organizationId
     ? await Promise.all([
         getOrgFeatures(session.organizationId),
         getUnassignedProjectOptions(await createClient(), session.organizationId),
+        loadNewProjectFormData(session.organizationId),
       ])
-    : [null, undefined]
+    : [null, undefined, null]
   return (
     <RouteFormDrawer
       kind="client"
@@ -27,6 +29,9 @@ export default async function NewClientDrawer() {
         cancelHref="/clients"
         additionalContacts={Boolean(features?.additional_contacts)}
         projectOptions={projectOptions}
+        projectSetup={
+          projectData && session.organizationId ? { orgId: session.organizationId, ...projectData } : undefined
+        }
       />
     </RouteFormDrawer>
   )

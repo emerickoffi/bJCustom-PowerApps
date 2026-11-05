@@ -200,15 +200,19 @@ export default async function ClientDetailPage({
     <div className="flex flex-col gap-8">
       <BackLink href="/clients" label="Clients" />
 
-      {notice === 'created' && manager && (
+      {(notice === 'created' || notice === 'project_later') && manager && (
         <div
           role="status"
           className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
         >
           <div className="flex flex-col gap-0.5">
-            <p className="text-sm font-medium text-foreground">Client created</p>
+            <p className="text-sm font-medium text-foreground">
+              {notice === 'project_later' ? 'Client saved, no project created' : 'Client created'}
+            </p>
             <p className="text-sm text-muted-foreground">
-              Next, create a project for this client. Their name and mailing address will be filled in for you.
+              {notice === 'project_later'
+                ? 'Project setup was canceled, but the client is saved. You can add a project for them any time.'
+                : 'Next, create a project for this client. Their name and mailing address will be filled in for you.'}
             </p>
           </div>
           <Button className="shrink-0" render={<Link href={`/projects/new?client=${client.id}`} />} nativeButton={false}>
