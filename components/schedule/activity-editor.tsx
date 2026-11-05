@@ -24,7 +24,9 @@ import {
   ACTIVITY_TYPE_LABELS,
   type ScheduleActivity,
   type ScheduleDependency,
+  type SchedulePhase,
 } from '@/lib/schedule'
+import { PhasePicker } from '@/components/schedule/phase-picker'
 import { formatDate } from '@/lib/format'
 import { ActivityAssignments } from '@/components/schedule/activity-assignments'
 import type { ActivityAssignment, AssignmentAvailability, CompanyOption } from '@/lib/assignments'
@@ -201,12 +203,39 @@ function ProgressForm({
   )
 }
 
-function PlanFields({ activity, values, errors }: { activity?: ScheduleActivity; values?: Record<string, string>; errors: Record<string, string> }) {
+function PlanFields({
+  projectId,
+  phases,
+  initialPhaseId,
+  activity,
+  values,
+  errors,
+}: {
+  projectId: string
+  phases: SchedulePhase[]
+  initialPhaseId?: string
+  activity?: ScheduleActivity
+  values?: Record<string, string>
+  errors: Record<string, string>
+}) {
+  const fieldId = activity ? `phase-${activity.id}` : 'phase-new'
   return (
     <>
       <TextField name="name" label="Activity name" required maxLength={160} defaultValue={values?.name ?? activity?.name ?? ''} error={errors.name} />
+      <div className="flex flex-col gap-2">
+        <label htmlFor={fieldId} className="text-sm font-medium text-foreground">
+          Phase <span className="text-destructive" aria-hidden="true">*</span>
+          <span className="sr-only">(required)</span>
+        </label>
+        <PhasePicker
+          id={fieldId}
+          projectId={projectId}
+          phases={phases}
+          defaultValue={values?.phase_id ?? activity?.phase_id ?? initialPhaseId ?? ''}
+          error={errors.phase_id}
+        />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextField name="phase" label="Phase" required maxLength={80} defaultValue={values?.phase ?? activity?.phase ?? ''} error={errors.phase} />
         <SelectField
           name="activity_type"
           label="Type"
@@ -239,15 +268,6 @@ function PlanFields({ activity, values, errors }: { activity?: ScheduleActivity;
           error={errors.weight}
           hint="Share of overall project completion."
         />
-        <TextField
-          name="sort_order"
-          label="Order"
-          type="number"
-          min={0}
-          step={1}
-          defaultValue={values?.sort_order ?? String(activity?.sort_order ?? 1000)}
-          error={errors.sort_order}
-        />
       </div>
       <label className="flex items-start gap-3 rounded-lg border p-3 text-sm">
         <input
@@ -265,7 +285,17 @@ function PlanFields({ activity, values, errors }: { activity?: ScheduleActivity;
   )
 }
 
-function PlanForm({ projectId, activity, onSaved }: { projectId: string; activity: ScheduleActivity; onSaved: SavedNotice }) {
+function PlanForm({
+  projectId,
+  phases,
+  activity,
+  onSaved,
+}: {
+  projectId: string
+  phases: SchedulePhase[]
+  activity: ScheduleActivity
+  onSaved: SavedNotice
+}) {
   const [state, formAction] = useActionState(async (prev: ActionState, formData: FormData) => {
     const result = await updateActivityPlanAction(projectId, activity.id, prev, formData)
     if (result.success) onSaved(result.success)
@@ -273,7 +303,7 @@ function PlanForm({ projectId, activity, onSaved }: { projectId: string; activit
   }, initialActionState)
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <PlanFields activity={activity} values={state.values} errors={state.fieldErrors ?? {}} />
+      <PlanFields projectId={projectId} phases={phases} activity={activity} values={state.values} errors={state.fieldErrors ?? {}} />
       <FormMessage state={state.success ? initialActionState : state} />
       <SubmitButton pendingLabel="Saving..." variant="outline" className="w-full">
         Save Plan
@@ -352,6 +382,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export function ActivityEditor({
   projectId,
+  phases,
   activity,
   activities,
   dependencies,
@@ -361,6 +392,7 @@ export function ActivityEditor({
   onClose,
 }: {
   projectId: string
+  phases: SchedulePhase[]
   activity: ScheduleActivity | null
   activities: ScheduleActivity[]
   dependencies: ScheduleDependency[]
@@ -415,6 +447,7 @@ export function ActivityEditor({
                     <PlanForm
                       key={activity.updated_at}
                       projectId={projectId}
+                      phases={phases}
                       activity={activity}
                       onSaved={(message) => setNotice({ activityId: activity.id, section: 'plan', message })}
                     />
@@ -448,20 +481,42 @@ export function ActivityEditor({
   )
 }
 
-export function NewActivitySheet({ projectId, open, onClose }: { projectId: string; open: boolean; onClose: () => void }) {
+export function NewActivitySheet({
+  projectId,
+  phases,
+  initialPhaseId,
+  open,
+  onClose,
+}: {
+  projectId: string
+  phases: SchedulePhase[]
+  /** Set when opened from a phase's “Add activity”; undefined when opened from the global button. */
+  initialPhaseId?: string
+  open: boolean
+  onClose: () => void
+}) {
   const [state, formAction] = useActionState(createActivityAction.bind(null, projectId), initialActionState)
   useEffect(() => {
     if (state.success) onClose()
   }, [state, onClose])
+  const phaseName = phases.find((p) => p.id === initialPhaseId)?.name
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="w-full overflow-y-auto data-[side=right]:sm:max-w-xl">
         <SheetHeader className="border-b">
           <SheetTitle className="font-serif text-xl">New activity</SheetTitle>
-          <SheetDescription>Add a task, milestone, inspection, or meeting to this schedule.</SheetDescription>
+          <SheetDescription>
+            {phaseName ? `Adding to ${phaseName}. You can pick a different phase below.` : 'Add a task, milestone, inspection, or meeting to this schedule.'}
+          </SheetDescription>
         </SheetHeader>
-        <form action={formAction} className="flex flex-col gap-4 px-4 pb-8">
-          <PlanFields values={state.values} errors={state.fieldErrors ?? {}} />
+        <form key={initialPhaseId ?? 'global'} action={formAction} className="flex flex-col gap-4 px-4 pb-8">
+          <PlanFields
+            projectId={projectId}
+            phases={phases}
+            initialPhaseId={initialPhaseId}
+            values={state.values}
+            errors={state.fieldErrors ?? {}}
+          />
           <FormMessage state={state} />
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">

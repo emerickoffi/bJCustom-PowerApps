@@ -25,6 +25,7 @@ export type ScheduleActivity = {
   template_key: string | null
   name: string
   phase: string
+  phase_id: string
   activity_type: ActivityType
   sort_order: number
   planned_start: string | null
@@ -62,8 +63,11 @@ export const OPTIONAL_ACTIVITIES = [
 
 export type OptionalActivityKey = (typeof OPTIONAL_ACTIVITIES)[number]['key']
 
+/** A project-specific phase. Names and order belong to this project only. */
+export type SchedulePhase = { id: string; name: string; sort_order: number }
+
 export const ACTIVITY_COLUMNS =
-  'id, template_key, name, phase, activity_type, sort_order, planned_start, planned_end, actual_start, actual_end, assigned_to, percent_complete, status, weight, delay_reason, internal_notes, public_note, is_published, updated_at'
+  'id, template_key, name, phase, phase_id, activity_type, sort_order, planned_start, planned_end, actual_start, actual_end, assigned_to, percent_complete, status, weight, delay_reason, internal_notes, public_note, is_published, updated_at'
 
 export function todayIso(): string {
   const d = new Date()
