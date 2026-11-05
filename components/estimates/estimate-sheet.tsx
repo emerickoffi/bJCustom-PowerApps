@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronDown, ChevronRight, Lock, Plus, Redo2, Save, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { NativeSelect } from '@/components/shared/form-field'
 import { EstimateSummary } from '@/components/estimates/estimate-summary'
 import { SheetRowView, type RowCommand } from '@/components/estimates/estimate-sheet-row'
@@ -91,6 +92,9 @@ export function EstimateSheet({
   const [awaitingSync, setAwaitingSync] = useState(false)
   const [syncedStamp, setSyncedStamp] = useState(updatedAt)
   const [saving, startSaving] = useTransition()
+  const [pendingRemoval, setPendingRemoval] = useState<SheetRow | null>(null)
+  const [emptiedCategories, setEmptiedCategories] = useState<Set<EstimateCategory>>(new Set())
+  const removalFocus = useRef<HTMLElement | null>(null)
 
   const rows = history.present
   const dirty = editable && serialize(rows) !== baseline
@@ -135,8 +139,10 @@ export function EstimateSheet({
       list.push(row)
       byCat.set(row.category, list)
     }
-    return [...byCat.entries()]
-  }, [rows])
+    // A category whose last row was removed stays visible (empty) so an "Add line item" action remains.
+    for (const cat of emptiedCategories) if (!byCat.has(cat)) byCat.set(cat, [])
+    return [...byCat.entries()].sort(([a], [b]) => categoryIndex(a) - categoryIndex(b))
+  }, [rows, emptiedCategories])
 
   const errorsByKey = useMemo(() => {
     const map = new Map<string, RowErrors>()
@@ -191,6 +197,30 @@ export function EstimateSheet({
     [commit, focusCell],
   )
 
+  /** Element to focus once `key` is gone: next row in its category, else previous, else the category's add button. */
+  const focusTargetAfterRemoval = useCallback(
+    (row: SheetRow): HTMLElement | null => {
+      const siblings = ordered(rows).filter((r) => r.category === row.category)
+      const i = siblings.findIndex((r) => r.key === row.key)
+      const neighbor = siblings[i + 1] ?? siblings[i - 1]
+      const table = tableRef.current
+      if (!table) return null
+      if (neighbor) return table.querySelector<HTMLElement>(`[data-remove-row="${CSS.escape(neighbor.key)}"]`)
+      return table.querySelector<HTMLElement>(`[data-add-line="${CSS.escape(row.category)}"]`)
+    },
+    [rows],
+  )
+
+  const removeRow = useCallback(
+    (row: SheetRow) => {
+      commit((list) => list.filter((r) => r.key !== row.key))
+      if (!rows.some((r) => r.key !== row.key && r.category === row.category)) {
+        setEmptiedCategories((s) => (s.has(row.category) ? s : new Set(s).add(row.category)))
+      }
+    },
+    [commit, rows],
+  )
+
   const onCommand = useCallback(
     (key: string, command: RowCommand) => {
       const row = rows.find((r) => r.key === key)
@@ -226,13 +256,17 @@ export function EstimateSheet({
         case 'toggle-allowance':
           return onToggleAllowance(key)
         case 'delete': {
+          if (locked) return
           const hasContent = row.id !== null || !isBlankNewRow(row)
-          if (hasContent && !window.confirm(`Delete "${row.description || 'this line item'}"? You can undo until you save.`)) return
-          return commit((list) => list.filter((r) => r.key !== key))
+          if (hasContent) return setPendingRemoval(row)
+          const target = focusTargetAfterRemoval(row)
+          removeRow(row)
+          requestAnimationFrame(() => target?.focus())
+          return
         }
       }
     },
-    [rows, addRow, commit, focusCell, onToggleAllowance],
+    [rows, locked, addRow, commit, focusCell, onToggleAllowance, removeRow, focusTargetAfterRemoval],
   )
 
   const visibleRows = useMemo(
@@ -425,8 +459,8 @@ export function EstimateSheet({
       : saveError
         ? 'Not saved'
         : dirty
-          ? 'Unsaved changes'
-          : 'All changes saved'
+          ? 'Unsaved line items'
+          : 'Line items saved'
 
   return (
     <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -462,9 +496,10 @@ export function EstimateSheet({
                 <Button type="button" variant="outline" size="icon" onClick={redo} disabled={!history.future.length || locked} aria-label="Redo">
                   <Redo2 aria-hidden="true" />
                 </Button>
-                <Button type="button" onClick={save} disabled={!dirty || locked}>
+                <Button type="button" onClick={save} disabled={!dirty || locked} title="Saves cost items only. Pricing settings and notes have their own Save settings button.">
                   <Save data-icon="inline-start" />
                   {saving ? 'Saving...' : 'Save draft'}
+                  <span className="sr-only"> (cost items only)</span>
                 </Button>
               </div>
             ) : (
@@ -509,7 +544,7 @@ export function EstimateSheet({
               <col className="w-36" />
                 <col className="w-16" />
                 <col className="w-40" />
-              {editable && <col className="w-12" />}
+              {editable && <col className="w-[5.5rem]" />}
             </colgroup>
             <thead className="bg-table-head text-xs font-medium text-[#526173]">
               <tr className="border-b">
@@ -532,8 +567,11 @@ export function EstimateSheet({
                 </th>
                 <th scope="col" className="px-2 py-2.5">Notes</th>
                 {editable && (
-                  <th scope="col" className="px-2 py-2.5">
-                    <span className="sr-only">Actions</span>
+                  <th
+                    scope="col"
+                    className="sticky right-0 z-[2] border-l border-border/60 bg-table-head px-2 py-2.5 text-center shadow-[-6px_0_8px_-6px_rgb(0_0_0/0.12)]"
+                  >
+                    Actions
                   </th>
                 )}
               </tr>
@@ -542,7 +580,38 @@ export function EstimateSheet({
               <tbody>
                 <tr>
                   <td colSpan={editable ? 12 : 11} className="px-6 py-12 text-center text-sm text-muted-foreground">
-                    {editable ? 'No line items yet. Pick a category below to add the first one.' : 'This estimate has no line items.'}
+                    {editable ? (
+                      <div className="mx-auto flex max-w-md flex-col items-center gap-3">
+                        <span className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <Plus className="size-5" aria-hidden="true" />
+                        </span>
+                        <div className="flex flex-col gap-1">
+                          <p className="text-base font-semibold text-foreground">Add your first cost item</p>
+                          <p>Choose a category, then enter the work, quantity, and costs.</p>
+                        </div>
+                        <label className="flex w-full flex-col items-center gap-1.5 sm:w-auto">
+                          <span className="sr-only">Choose a category for the first cost item</span>
+                          <NativeSelect
+                            value=""
+                            disabled={locked}
+                            onChange={(e) => e.target.value && addRow(e.target.value as EstimateCategory)}
+                            className="h-10 w-full border-primary bg-primary text-primary-foreground sm:w-64"
+                          >
+                            <option value="">Choose a category to start</option>
+                            {unusedCategories.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </NativeSelect>
+                        </label>
+                        <p className="text-xs">
+                          Costs are entered here. Creating the estimate only saved its setup, and you can save this draft with no cost items.
+                        </p>
+                      </div>
+                    ) : (
+                      'This estimate has no line items.'
+                    )}
                   </td>
                 </tr>
               </tbody>
@@ -570,13 +639,27 @@ export function EstimateSheet({
                       </td>
                       <td colSpan={editable ? 3 : 2} className="px-2 py-1.5 text-right">
                         {editable && (
-                          <Button type="button" variant="ghost" size="sm" onClick={() => addRow(cat, list[list.length - 1]?.key)} disabled={locked}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            data-add-line={cat}
+                            onClick={() => addRow(cat, list[list.length - 1]?.key)}
+                            disabled={locked}
+                          >
                             <Plus data-icon="inline-start" />
-                            Add line
+                            Add line item
                           </Button>
                         )}
                       </td>
                     </tr>
+                    {!isCollapsed && list.length === 0 && (
+                      <tr className="border-b border-border/60">
+                        <td colSpan={editable ? 12 : 11} className="px-4 py-4 text-sm text-muted-foreground">
+                          {'No line items in this category. Use "Add line item" to add one.'}
+                        </td>
+                      </tr>
+                    )}
                     {!isCollapsed &&
                       list.map((row) => {
                         return (
@@ -602,7 +685,7 @@ export function EstimateSheet({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t p-4 md:px-5">
-          {editable ? (
+          {editable && groups.length > 0 ? (
             <label className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Add category</span>
               <NativeSelect
@@ -626,6 +709,49 @@ export function EstimateSheet({
             {'Line total = Qty × (Material + Labor + Other). Unit cost = Material + Labor + Other.'}
           </p>
         </div>
+        <Dialog
+          open={pendingRemoval !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingRemoval(null)
+          }}
+        >
+          <DialogContent
+            showCloseButton={false}
+            finalFocus={() => {
+              const target = removalFocus.current
+              removalFocus.current = null
+              return target ?? true
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Remove line item?</DialogTitle>
+              <DialogDescription>
+                {pendingRemoval
+                  ? `"${pendingRemoval.description.trim() || 'Untitled line item'}" in ${pendingRemoval.category}${
+                      rowMath(pendingRemoval).valid ? ` (${formatCentsExact(rowMath(pendingRemoval).totalCents)})` : ''
+                    } will be removed. You can undo this until you save.`
+                  : null}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setPendingRemoval(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  if (!pendingRemoval || locked) return setPendingRemoval(null)
+                  removalFocus.current = focusTargetAfterRemoval(pendingRemoval)
+                  removeRow(pendingRemoval)
+                  setPendingRemoval(null)
+                }}
+              >
+                Remove line item
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </section>
 
       <div className="2xl:sticky 2xl:top-4 2xl:self-start">

@@ -42,7 +42,7 @@ export default async function NewEstimateDrawer({ searchParams }: { searchParams
         <EstimateForm
           action={createEstimateAction}
           projects={projects}
-          defaults={{ project_id: preselected, estimate_date: new Date().toISOString().slice(0, 10) }}
+          defaults={{ estimate_date: new Date().toISOString().slice(0, 10) }}
           cancelHref={preselected ? `/projects/${preselected}` : '/estimates'}
           submitLabel="Create estimate"
         />

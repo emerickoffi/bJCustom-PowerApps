@@ -40,7 +40,9 @@ export function EstimateSettingsPanel({
         <h2 id="estimate-settings-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
           Pricing settings &amp; notes
         </h2>
-        <p className="text-sm text-muted-foreground">Review these before you finalize the estimate. Land cost stays separate from construction totals.</p>
+        <p className="text-sm text-muted-foreground">
+          Review these before you finalize the estimate. Land cost stays separate from construction totals. Save settings saves only these fields, not cost items.
+        </p>
       </header>
       <form key={formKey} action={formAction} {...formProps}>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -55,7 +57,9 @@ export function EstimateSettingsPanel({
         </div>
         <div className="flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-end">
           <div className="flex-1">{state.error && <FormMessage state={state} />}</div>
-          {dirty && <p className="text-xs text-muted-foreground">Unsaved changes</p>}
+          <p role="status" aria-live="polite" className={dirty ? 'text-xs font-medium text-warning' : 'text-xs text-muted-foreground'}>
+            {dirty ? 'Unsaved settings and notes' : 'Settings and notes saved'}
+          </p>
           <SubmitButton pendingLabel="Saving…">Save settings</SubmitButton>
         </div>
       </form>
