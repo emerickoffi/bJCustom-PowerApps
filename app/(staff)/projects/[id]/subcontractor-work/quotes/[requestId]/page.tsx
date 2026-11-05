@@ -4,7 +4,10 @@ import { notFound } from 'next/navigation'
 import { AlertTriangle, ArrowLeft, FileSpreadsheet } from 'lucide-react'
 import { z } from 'zod'
 import { requireManager } from '@/lib/session'
-import { requireFeature } from '@/lib/features'
+import { getOrgFeatures, requireFeature } from '@/lib/features'
+import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
+import { qualificationSnapshot } from '@/lib/subcontract-quote-analysis-data'
+import { analysisResultSchema, outdatedReasons, type AiReviewState, type InputSnapshot } from '@/lib/ai/quote-analysis'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { PageHeader, Surface } from '@/components/shared/page-header'
@@ -198,7 +201,7 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
   const companyName = new Map(invitations.map((i) => [i.id, i.company?.company_name ?? 'Company']))
   const invitedIds = new Set(invitations.map((i) => i.subcontractor_company_id))
 
-  const [awardRes, notesRes, draftsRes, qual] = await Promise.all([
+  const [awardRes, notesRes, draftsRes, qual, analysisRes, features] = await Promise.all([
     supabase
       .from('subcontract_quote_awards')
       .select('id, invitation_id, revision_id, scope_version, currency, amount_cents, tax_treatment, tax_amount_cents, acknowledged_warnings, decided_at, commitment_id')
@@ -207,6 +210,14 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
     supabase.from('subcontract_quote_review_notes').select('id, invitation_id, revision_id, body, created_at').eq('request_id', requestId).order('created_at', { ascending: false }).limit(200),
     supabase.rpc('quote_request_draft_flags', { p_request: requestId }),
     loadQualificationSummaries(supabase, session.organizationId, invitations.map((i) => i.subcontractor_company_id)),
+    supabase
+      .from('subcontract_quote_ai_analyses')
+      .select('id, created_at, invitation_ids, input_snapshot, result')
+      .eq('request_id', requestId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    getOrgFeatures(session.organizationId),
   ])
   const decisionsReady = !awardRes.error && !notesRes.error
   const award = (awardRes.data ?? null) as Award | null
@@ -262,6 +273,39 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
     return [{ invitationId: i.id, compare, candidate }]
   })
   const candidateFor = new Map(entries.map((e) => [e.invitationId, e.candidate]))
+
+  const savedRow = analysisRes.data as { id: string; created_at: string; invitation_ids: string[]; input_snapshot: InputSnapshot; result: unknown } | null
+  const savedResult = savedRow ? analysisResultSchema.safeParse(savedRow.result) : null
+  let saved: AiReviewState['saved'] = null
+  if (savedRow && savedResult?.success) {
+    const currentQuotes = savedRow.invitation_ids.map((invId) => {
+      const i = invitations.find((x) => x.id === invId)
+      const latest = revisions.find((r) => r.invitation_id === invId)
+      if (!i || !latest || i.status === 'declined') return null
+      return {
+        invitation_id: invId,
+        company: i.company?.company_name ?? 'Company',
+        revision_id: latest.id,
+        row_version: latest.row_version,
+        attachment_ids: attachments.filter((a) => a.revision_id === latest.id).map((a) => a.id).sort(),
+        qualification: qualificationSnapshot(qual.byCompany[i.subcontractor_company_id]),
+      }
+    })
+    const currentSnapshot: InputSnapshot | null = currentQuotes.every(Boolean)
+      ? { scope_version: request.current_scope_version, quotes: currentQuotes as InputSnapshot['quotes'] }
+      : null
+    saved = {
+      analysis: { id: savedRow.id, createdAt: savedRow.created_at, invitationIds: savedRow.invitation_ids, result: savedResult.data },
+      outdated: outdatedReasons(savedRow.input_snapshot, currentSnapshot),
+    }
+  }
+  const revisionOpen = request.status === 'open' || request.status === 'closed'
+  const aiReview: AiReviewState = {
+    availability: !features.ai_assistant ? 'disabled' : getAssistantProviderConfig().configured ? 'ready' : 'unconfigured',
+    migrationReady: !analysisRes.error,
+    saved,
+    revisionTargets: revisionOpen && !award ? entries.map((e) => e.invitationId) : [],
+  }
   const awardedInvitation = award ? invitations.find((i) => i.id === award.invitation_id) : undefined
   const awardedRevision = award ? revisions.find((r) => r.id === award.revision_id) : undefined
 
@@ -351,7 +395,14 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
           <h2 id="compare-heading" className="font-serif text-lg font-semibold text-foreground">
             Compare quotes
           </h2>
-          <QuoteComparison entries={entries.map((e) => e.compare)} currency={request.currency} currentScope={request.current_scope_version} />
+          <QuoteComparison
+            entries={entries.map((e) => e.compare)}
+            currency={request.currency}
+            currentScope={request.current_scope_version}
+            projectId={id}
+            requestId={request.id}
+            ai={aiReview}
+          />
         </Surface>
       ) : null}
 
