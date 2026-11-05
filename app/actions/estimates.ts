@@ -140,8 +140,15 @@ export async function createEstimateAction(_prev: ActionState, formData: FormDat
   if (error || !id) return { error: friendlyDbError(error), conflict, values }
 
   revalidateEstimate(id, project.data.project_id)
-  if (req.resilient) return { success: 'Estimate saved.', savedId: id, redirectTo: `/estimates/${id}` }
-  redirect(`/estimates/${id}`)
+  const isDraft = formData.get('intent') === 'draft'
+  const destination = isDraft ? draftReturnPath(formData.get('return_to')) : `/estimates/${id}`
+  if (req.resilient) return { success: isDraft ? 'Draft saved.' : 'Estimate saved.', savedId: id, redirectTo: destination }
+  redirect(destination)
+}
+
+/** "Save draft" returns to the list or project the user came from; only known in-app paths are allowed. */
+function draftReturnPath(raw: FormDataEntryValue | null): string {
+  return typeof raw === 'string' && /^\/(estimates|projects\/[0-9a-f-]{36})$/i.test(raw) ? raw : '/estimates'
 }
 
 export async function updateEstimateAction(

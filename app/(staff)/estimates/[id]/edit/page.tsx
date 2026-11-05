@@ -30,6 +30,7 @@ export default async function EditEstimatePage({ params }: { params: Promise<{ i
       <EstimateForm
         action={updateEstimateAction.bind(null, id)}
         estimateNumber={`${estimate.estimate_number} (Rev ${estimate.revision})`}
+        fixedProject={{ label: estimate.project?.name ?? 'Project', clientName: clientDisplayName(estimate.client) ?? null }}
         defaults={{
           id: estimate.id,
           updated_at: estimate.updated_at,
