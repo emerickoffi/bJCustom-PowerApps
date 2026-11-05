@@ -145,13 +145,15 @@ export default async function StaffLayout({ children, modal }: { children: React
                 />
               </div>
               <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
-                <JobSwitcher
-                  organizationId={session.organizationId}
-                  filterRoutes={projectFilterRoutes}
-                  tabletFilterRoutes={TABLET_FILTER_ROUTES}
-                />
+                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2 md:mr-2 lg:mr-3">
+                  <JobSwitcher
+                    organizationId={session.organizationId}
+                    filterRoutes={projectFilterRoutes}
+                    tabletFilterRoutes={TABLET_FILTER_ROUTES}
+                  />
+                  <HeaderSearch />
+                </div>
                 <QuickCreateMenu globalActions={globalQuickActions} jobScope={null} />
-                <HeaderSearch />
                 <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />
                 <NotificationBell items={notifications} emptyHref="/dashboard" />
                 <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
