@@ -25,6 +25,7 @@ import {
   isOverdue,
   type ScheduleActivity,
   type ScheduleDependency,
+  type SchedulePhase,
 } from '@/lib/schedule'
 import { formatAddress, formatDate } from '@/lib/format'
 import { RECENT_HISTORY_LIMIT, presentEvent } from '@/lib/activity-history'
@@ -105,7 +106,7 @@ export default async function SchedulePage({
 
   const manager = canManage(session.role)
   const features = await getOrgFeatures(session.organizationId)
-  const [activitiesRes, depsRes, recentHistory, timeZone, baselinesRes, staff, assignmentData] = await Promise.all([
+  const [activitiesRes, depsRes, recentHistory, timeZone, baselinesRes, staff, assignmentData, phasesRes] = await Promise.all([
     supabase.from('schedule_activities').select(ACTIVITY_COLUMNS).eq('project_id', id).order('sort_order').order('created_at'),
     supabase.from('schedule_dependencies').select('id, predecessor_id, successor_id').eq('project_id', id),
     fetchRecentHistory(supabase, id, RECENT_HISTORY_LIMIT),
@@ -117,10 +118,12 @@ export default async function SchedulePage({
       .order('version', { ascending: false }),
     getStaffMembers(session.organizationId, ['org_admin', 'project_manager', 'builder_staff']),
     loadProjectAssignments(supabase, session.organizationId, id, features, manager, project.status),
+    supabase.from('schedule_phases').select('id, name, sort_order').eq('project_id', id).order('sort_order').order('created_at'),
   ])
 
   const activities = (activitiesRes.data ?? []) as ScheduleActivity[]
   const dependencies = (depsRes.data ?? []) as ScheduleDependency[]
+  const phases = (phasesRes.data ?? []) as SchedulePhase[]
   const baselines = baselinesRes.data ?? []
   const staffOptions = staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))
   const nameFor = (uid: string | null) => {
@@ -269,6 +272,7 @@ export default async function SchedulePage({
           <ScheduleWorkspace
             projectId={project.id}
             activities={activities}
+            phases={phases}
             dependencies={dependencies}
             conflictIds={conflictIds}
             staffOptions={staffOptions}
