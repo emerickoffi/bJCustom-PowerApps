@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronRight, Lock, Plus, Redo2, Save, Undo2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Lock, Plus, Redo2, Save, Trash2, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -56,8 +56,16 @@ function ordered(rows: SheetRow[]) {
 
 const serialize = (rows: SheetRow[]) => JSON.stringify(ordered(rows).filter((r) => !isBlankNewRow(r)).map(toPayload))
 
-type History = { past: SheetRow[][]; present: SheetRow[]; future: SheetRow[][]; lastKey: string | null }
+/** Empty categories are UI-only (categories come from a fixed catalog), but live in history so undo restores them. */
+type Snapshot = { rows: SheetRow[]; emptyCategories: EstimateCategory[] }
+type History = { past: Snapshot[]; present: Snapshot; future: Snapshot[]; lastKey: string | null }
 const HISTORY_LIMIT = 100
+
+type PendingRemoval =
+  | { kind: 'row'; row: SheetRow }
+  | { kind: 'category'; category: EstimateCategory; count: number; subtotalCents: number }
+
+const hasContent = (row: SheetRow) => row.id !== null || !isBlankNewRow(row)
 
 export function EstimateSheet({
   estimateId,
@@ -81,7 +89,7 @@ export function EstimateSheet({
 
   const [history, setHistory] = useState<History>(() => ({
     past: [],
-    present: initialRows(items),
+    present: { rows: initialRows(items), emptyCategories: [] },
     future: [],
     lastKey: null,
   }))
@@ -92,11 +100,11 @@ export function EstimateSheet({
   const [awaitingSync, setAwaitingSync] = useState(false)
   const [syncedStamp, setSyncedStamp] = useState(updatedAt)
   const [saving, startSaving] = useTransition()
-  const [pendingRemoval, setPendingRemoval] = useState<SheetRow | null>(null)
-  const [emptiedCategories, setEmptiedCategories] = useState<Set<EstimateCategory>>(new Set())
+  const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null)
   const removalFocus = useRef<HTMLElement | null>(null)
 
-  const rows = history.present
+  const rows = history.present.rows
+  const emptyCategories = history.present.emptyCategories
   const dirty = editable && serialize(rows) !== baseline
   const locked = saving || awaitingSync
 
@@ -106,13 +114,13 @@ export function EstimateSheet({
     expectedStamp.current = updatedAt
     if (awaitingSync || !dirty) {
       const fresh = initialRows(items)
-      setHistory({ past: [], present: fresh, future: [], lastKey: null })
+      setHistory({ past: [], present: { rows: fresh, emptyCategories: [] }, future: [], lastKey: null })
       setBaseline(serialize(fresh))
       setAwaitingSync(false)
     }
   }
 
-  const commit = useCallback((update: (rows: SheetRow[]) => SheetRow[], coalesceKey: string | null = null) => {
+  const commitSnapshot = useCallback((update: (s: Snapshot) => Snapshot, coalesceKey: string | null = null) => {
     setHistory((h) => {
       const next = update(h.present)
       if (next === h.present) return h
@@ -120,6 +128,15 @@ export function EstimateSheet({
       return { past: [...h.past, h.present].slice(-HISTORY_LIMIT), present: next, future: [], lastKey: coalesceKey }
     })
   }, [])
+
+  const commit = useCallback(
+    (update: (rows: SheetRow[]) => SheetRow[], coalesceKey: string | null = null) =>
+      commitSnapshot((s) => {
+        const next = update(s.rows)
+        return next === s.rows ? s : { ...s, rows: next }
+      }, coalesceKey),
+    [commitSnapshot],
+  )
 
   const undo = useCallback(() => {
     setHistory((h) =>
@@ -139,10 +156,10 @@ export function EstimateSheet({
       list.push(row)
       byCat.set(row.category, list)
     }
-    // A category whose last row was removed stays visible (empty) so an "Add line item" action remains.
-    for (const cat of emptiedCategories) if (!byCat.has(cat)) byCat.set(cat, [])
+    // A category whose last row was removed stays visible (compact, empty) until the user removes it.
+    for (const cat of emptyCategories) if (!byCat.has(cat)) byCat.set(cat, [])
     return [...byCat.entries()].sort(([a], [b]) => categoryIndex(a) - categoryIndex(b))
-  }, [rows, emptiedCategories])
+  }, [rows, emptyCategories])
 
   const errorsByKey = useMemo(() => {
     const map = new Map<string, RowErrors>()
@@ -211,14 +228,58 @@ export function EstimateSheet({
     [rows],
   )
 
+  /** Removes exactly the row with this stable key; if it was the category's last row, the category becomes empty. */
   const removeRow = useCallback(
-    (row: SheetRow) => {
-      commit((list) => list.filter((r) => r.key !== row.key))
-      if (!rows.some((r) => r.key !== row.key && r.category === row.category)) {
-        setEmptiedCategories((s) => (s.has(row.category) ? s : new Set(s).add(row.category)))
-      }
+    (row: SheetRow) =>
+      commitSnapshot((s) => {
+        const next = s.rows.filter((r) => r.key !== row.key)
+        if (next.length === s.rows.length) return s
+        const nowEmpty = !next.some((r) => r.category === row.category) && !s.emptyCategories.includes(row.category)
+        return { rows: next, emptyCategories: nowEmpty ? [...s.emptyCategories, row.category] : s.emptyCategories }
+      }),
+    [commitSnapshot],
+  )
+
+  /** Drops every row in the category from this estimate. The shared category catalog is untouched. */
+  const removeCategory = useCallback(
+    (category: EstimateCategory) =>
+      commitSnapshot((s) => ({
+        rows: s.rows.filter((r) => r.category !== category),
+        emptyCategories: s.emptyCategories.filter((c) => c !== category),
+      })),
+    [commitSnapshot],
+  )
+
+  /** After a category disappears, focus the next category's header control, else the add-category control. */
+  const focusTargetAfterCategoryRemoval = useCallback(
+    (category: EstimateCategory): HTMLElement | null => {
+      const cats = groups.map(([c]) => c)
+      const i = cats.indexOf(category)
+      const neighbor = cats[i + 1] ?? cats[i - 1]
+      const table = tableRef.current
+      if (neighbor && table) return table.querySelector<HTMLElement>(`[data-add-line="${CSS.escape(neighbor)}"]`)
+      return null
     },
-    [commit, rows],
+    [groups],
+  )
+
+  const requestCategoryRemoval = useCallback(
+    (category: EstimateCategory) => {
+      if (locked) return
+      const list = rows.filter((r) => r.category === category)
+      if (list.some(hasContent)) {
+        return setPendingRemoval({
+          kind: 'category',
+          category,
+          count: list.length,
+          subtotalCents: list.reduce((sum, r) => sum + rowMath(r).totalCents, 0),
+        })
+      }
+      const target = focusTargetAfterCategoryRemoval(category)
+      removeCategory(category)
+      requestAnimationFrame(() => (target ?? document.querySelector<HTMLElement>('[data-sheet-add-category]'))?.focus())
+    },
+    [locked, rows, removeCategory, focusTargetAfterCategoryRemoval],
   )
 
   const onCommand = useCallback(
@@ -257,8 +318,7 @@ export function EstimateSheet({
           return onToggleAllowance(key)
         case 'delete': {
           if (locked) return
-          const hasContent = row.id !== null || !isBlankNewRow(row)
-          if (hasContent) return setPendingRemoval(row)
+          if (hasContent(row)) return setPendingRemoval({ kind: 'row', row })
           const target = focusTargetAfterRemoval(row)
           removeRow(row)
           requestAnimationFrame(() => target?.focus())
@@ -450,6 +510,8 @@ export function EstimateSheet({
 
   const unusedCategories = ESTIMATE_CATEGORIES.filter((c) => !groups.some(([g]) => g === c))
   const rowCount = rows.filter((r) => !isBlankNewRow(r)).length
+  const emptyCount = groups.filter(([, list]) => list.length === 0).length
+  const populatedCount = groups.length - emptyCount
   const rowNumbers = new Map(groups.flatMap(([, list]) => list).map((r, i) => [r.key, i + 1]))
 
   const statusText = saving
@@ -472,7 +534,8 @@ export function EstimateSheet({
                 Line items
               </h2>
               <p className="text-sm text-muted-foreground">
-                {`${rowCount} ${rowCount === 1 ? 'item' : 'items'} in ${groups.length} ${groups.length === 1 ? 'category' : 'categories'}`}
+                {`${rowCount} ${rowCount === 1 ? 'item' : 'items'} in ${populatedCount} ${populatedCount === 1 ? 'category' : 'categories'}`}
+                {emptyCount > 0 && ` (+${emptyCount} empty)`}
                 {' · '}
                 <span className="font-semibold text-foreground tabular-nums">{formatCentsExact(totals.construction_total_cents)}</span>
                 {' construction total'}
@@ -592,6 +655,7 @@ export function EstimateSheet({
                         <label className="flex w-full flex-col items-center gap-1.5 sm:w-auto">
                           <span className="sr-only">Choose a category for the first cost item</span>
                           <NativeSelect
+                            data-sheet-add-category=""
                             value=""
                             disabled={locked}
                             onChange={(e) => e.target.value && addRow(e.target.value as EstimateCategory)}
@@ -617,49 +681,68 @@ export function EstimateSheet({
               </tbody>
             ) : (
               groups.map(([cat, list]) => {
-                const isCollapsed = collapsed.has(cat)
+                const isEmpty = list.length === 0
+                const isCollapsed = !isEmpty && collapsed.has(cat)
                 const subtotal = list.reduce((sum, r) => sum + rowMath(r).totalCents, 0)
                 return (
                   <tbody key={cat}>
                     <tr className="border-b bg-sage/40">
-                      <th scope="rowgroup" colSpan={8} className="px-2 py-1.5 text-left">
-                        <button
-                          type="button"
-                          onClick={() => toggleGroup(cat)}
-                          aria-expanded={!isCollapsed}
-                          className="inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-sm font-semibold text-foreground hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                        >
-                          {isCollapsed ? <ChevronRight className="size-4" aria-hidden="true" /> : <ChevronDown className="size-4" aria-hidden="true" />}
-                          {cat}
-                          <span className="font-normal text-muted-foreground">{`(${list.length})`}</span>
-                        </button>
+                      <th scope="rowgroup" colSpan={11} className="p-0 text-left font-normal">
+                        {/* Sticky inside the scrolling table so the category name and its controls stay in view horizontally. */}
+                        <div className="sticky left-0 z-[1] flex w-max max-w-full flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1.5">
+                          {isEmpty ? (
+                            <span className="px-1 py-1 text-sm font-semibold text-foreground">{cat}</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => toggleGroup(cat)}
+                              aria-expanded={!isCollapsed}
+                              className="inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-sm font-semibold text-foreground hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                            >
+                              {isCollapsed ? <ChevronRight className="size-4" aria-hidden="true" /> : <ChevronDown className="size-4" aria-hidden="true" />}
+                              {cat}
+                              <span className="font-normal text-muted-foreground">{`(${list.length})`}</span>
+                            </button>
+                          )}
+                          {isEmpty ? (
+                            <span className="text-sm text-muted-foreground">No items</span>
+                          ) : (
+                            <span className="text-sm font-semibold tabular-nums text-foreground">
+                              <span className="sr-only">Subtotal </span>
+                              {formatCentsExact(subtotal)}
+                            </span>
+                          )}
+                          {editable && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              data-add-line={cat}
+                              onClick={() => addRow(cat, list[list.length - 1]?.key)}
+                              disabled={locked}
+                            >
+                              <Plus data-icon="inline-start" />
+                              Add line item
+                              <span className="sr-only">{` to ${cat}`}</span>
+                            </Button>
+                          )}
+                        </div>
                       </th>
-                      <td className="px-2 py-1.5 text-right text-sm font-semibold tabular-nums text-foreground">
-                        {formatCentsExact(subtotal)}
-                      </td>
-                      <td colSpan={editable ? 3 : 2} className="px-2 py-1.5 text-right">
-                        {editable && (
-                          <Button
+                      {editable && (
+                        <td className="sticky right-0 z-[2] border-l border-border/60 bg-[color-mix(in_oklab,var(--sage)_40%,var(--card))] px-1 py-1.5 text-center shadow-[-6px_0_8px_-6px_rgb(0_0_0/0.12)]">
+                          <button
                             type="button"
-                            variant="ghost"
-                            size="sm"
-                            data-add-line={cat}
-                            onClick={() => addRow(cat, list[list.length - 1]?.key)}
                             disabled={locked}
+                            onClick={() => requestCategoryRemoval(cat)}
+                            title="Remove category"
+                            aria-label={`Remove category, ${cat}`}
+                            className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
                           >
-                            <Plus data-icon="inline-start" />
-                            Add line item
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                    {!isCollapsed && list.length === 0 && (
-                      <tr className="border-b border-border/60">
-                        <td colSpan={editable ? 12 : 11} className="px-4 py-4 text-sm text-muted-foreground">
-                          {'No line items in this category. Use "Add line item" to add one.'}
+                            <Trash2 className="size-4" aria-hidden="true" />
+                          </button>
                         </td>
-                      </tr>
-                    )}
+                      )}
+                    </tr>
                     {!isCollapsed &&
                       list.map((row) => {
                         return (
@@ -689,6 +772,7 @@ export function EstimateSheet({
             <label className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Add category</span>
               <NativeSelect
+                data-sheet-add-category=""
                 value=""
                 disabled={locked || unusedCategories.length === 0}
                 onChange={(e) => e.target.value && addRow(e.target.value as EstimateCategory)}
@@ -724,13 +808,17 @@ export function EstimateSheet({
             }}
           >
             <DialogHeader>
-              <DialogTitle>Remove line item?</DialogTitle>
+              <DialogTitle>{pendingRemoval?.kind === 'category' ? 'Remove category?' : 'Remove line item?'}</DialogTitle>
               <DialogDescription>
-                {pendingRemoval
-                  ? `"${pendingRemoval.description.trim() || 'Untitled line item'}" in ${pendingRemoval.category}${
-                      rowMath(pendingRemoval).valid ? ` (${formatCentsExact(rowMath(pendingRemoval).totalCents)})` : ''
+                {pendingRemoval?.kind === 'row'
+                  ? `"${pendingRemoval.row.description.trim() || 'Untitled line item'}" in ${pendingRemoval.row.category}${
+                      rowMath(pendingRemoval.row).valid ? ` (${formatCentsExact(rowMath(pendingRemoval.row).totalCents)})` : ''
                     } will be removed. You can undo this until you save.`
-                  : null}
+                  : pendingRemoval?.kind === 'category'
+                    ? `All ${pendingRemoval.count} ${pendingRemoval.count === 1 ? 'item' : 'items'} in ${pendingRemoval.category} (${formatCentsExact(
+                        pendingRemoval.subtotalCents,
+                      )}) will be removed from this estimate. You can undo this until you save.`
+                    : null}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -742,12 +830,19 @@ export function EstimateSheet({
                 variant="destructive"
                 onClick={() => {
                   if (!pendingRemoval || locked) return setPendingRemoval(null)
-                  removalFocus.current = focusTargetAfterRemoval(pendingRemoval)
-                  removeRow(pendingRemoval)
+                  if (pendingRemoval.kind === 'row') {
+                    removalFocus.current = focusTargetAfterRemoval(pendingRemoval.row)
+                    removeRow(pendingRemoval.row)
+                  } else {
+                    removalFocus.current =
+                      focusTargetAfterCategoryRemoval(pendingRemoval.category) ??
+                      document.querySelector<HTMLElement>('[data-sheet-add-category]')
+                    removeCategory(pendingRemoval.category)
+                  }
                   setPendingRemoval(null)
                 }}
               >
-                Remove line item
+                {pendingRemoval?.kind === 'category' ? 'Remove category' : 'Remove line item'}
               </Button>
             </DialogFooter>
           </DialogContent>
