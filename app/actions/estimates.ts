@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireManager } from '@/lib/session'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
-import { DECISION_METHODS, ESTIMATE_CATEGORIES } from '@/lib/estimates'
+import { DECISION_METHODS, EDITABLE_ESTIMATE_STATUSES, ESTIMATE_CATEGORIES } from '@/lib/estimates'
 import { estimateNameSchema } from '@/lib/estimate-title'
 import { guardSaveSession, readSaveRequest, runTrackedSave } from '@/lib/save-requests-server'
 
@@ -85,6 +85,54 @@ const estimateSchema = z
   })
 
 const createSchema = z.object({ project_id: z.uuid('Select a project') })
+
+const settingsSchema = z.object({
+  description: optionalText(4000),
+  markup_percent: percent,
+  contingency_percent: percent,
+  land_cost: optionalMoney,
+  notes: optionalText(5000),
+})
+
+/** Updates only the pricing settings and notes edited beside the cost items; core fields are untouched. */
+export async function updateEstimateSettingsAction(estimateId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await requireManager()
+  if (!uuid.safeParse(estimateId).success) return { error: 'Estimate not found.' }
+  const values = formValues(formData)
+  const parsed = settingsSchema.safeParse(values)
+  if (!parsed.success) return { ...fromZodError(parsed.error), values }
+
+  const supabase = await createClient()
+  const { data: current } = await supabase
+    .from('estimates')
+    .select('id, project_id, family_id, revision, status')
+    .eq('id', estimateId)
+    .eq('organization_id', session.organizationId)
+    .maybeSingle()
+  if (!current) return { error: 'Estimate not found.', values }
+
+  const { count } = await supabase
+    .from('estimates')
+    .select('id', { count: 'exact', head: true })
+    .eq('family_id', current.family_id)
+    .gt('revision', current.revision)
+  if ((count ?? 0) > 0) return { error: 'This is an older revision. Open the latest revision to change its settings.', values }
+
+  const { land_cost, ...rest } = parsed.data
+  const { data, error } = await supabase
+    .from('estimates')
+    .update({ ...rest, land_cost_cents: land_cost, updated_by: session.userId })
+    .eq('id', estimateId)
+    .eq('organization_id', session.organizationId)
+    .in('status', EDITABLE_ESTIMATE_STATUSES)
+    .select('id')
+    .maybeSingle()
+  if (error) return { error: friendlyDbError(error), values }
+  if (!data) return { error: 'This estimate is locked for editing. Reload to see its latest status.', values }
+
+  revalidateEstimate(estimateId, current.project_id)
+  return { success: 'Pricing settings saved.', savedId: estimateId }
+}
 
 function toEstimateRow(d: z.infer<typeof estimateSchema>) {
   const { land_cost, ...rest } = d

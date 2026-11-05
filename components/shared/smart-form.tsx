@@ -54,7 +54,10 @@ export function useSmartForm(state: ActionState, formKey: string) {
   useEffect(() => {
     if (!state.error) return
     const id = requestAnimationFrame(() => {
-      const first = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"], [role="alert"]')
+      // Invalid fields win over alerts, so a recovery banner at the top never steals focus from the field to fix.
+      const first =
+        formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+        formRef.current?.querySelector<HTMLElement>('[role="alert"]')
       first?.scrollIntoView({ block: 'center', behavior: 'smooth' })
       if (first?.matches('input, select, textarea')) first.focus({ preventScroll: true })
     })
@@ -91,12 +94,16 @@ export function SmartFormLayout({
   message,
   cancelHref,
   submit,
+  footerClassName,
+  actionsClassName,
   children,
 }: {
   dirty: boolean
   message?: React.ReactNode
   cancelHref: string
   submit: React.ReactNode
+  footerClassName?: string
+  actionsClassName?: string
   children: React.ReactNode
 }) {
   const overlay = useFormOverlay()
@@ -110,7 +117,7 @@ export function SmartFormLayout({
     return (
       <>
         <OverlayBody className="py-1">{children}</OverlayBody>
-        <OverlayFooter message={message}>
+        <OverlayFooter message={message} className={footerClassName} actionsClassName={actionsClassName}>
           {note}
           <Button type="button" variant="outline" size="lg" onClick={overlay.requestClose}>
             Cancel
@@ -126,7 +133,7 @@ export function SmartFormLayout({
       {children}
       <div className="sticky bottom-0 z-10 flex flex-col gap-3 rounded-xl border border-border/80 bg-card/95 p-4 shadow-sm backdrop-blur supports-backdrop-filter:bg-card/85">
         {message}
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <div className={actionsClassName ?? 'flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end'}>
           {note}
           <Button
             variant="outline"

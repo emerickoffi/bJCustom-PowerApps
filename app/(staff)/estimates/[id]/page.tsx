@@ -5,7 +5,8 @@ import { FileDown, GitCompare, Pencil, FileSpreadsheet as FileSpreadsheetIcon } 
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { clientDisplayName, getEstimate, getEstimateFamily, getEstimateLineItems } from '@/lib/estimate-queries'
-import { DECISION_METHOD_LABELS, formatCentsExact, isEditableStatus } from '@/lib/estimates'
+import { DECISION_METHOD_LABELS, centsToInput, formatCentsExact, isEditableStatus } from '@/lib/estimates'
+import { EstimateSettingsPanel } from '@/components/estimates/estimate-settings-panel'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { PageHeader, DetailList } from '@/components/shared/page-header'
 import { EstimateStatusBadge } from '@/components/estimates/estimate-status-badge'
@@ -146,6 +147,20 @@ export default async function EstimateDetailPage({ params }: { params: Promise<{
         updatedAt={estimate.updated_at}
         serverTotals={estimate}
       />
+
+      {editable && (
+        <EstimateSettingsPanel
+          estimateId={id}
+          updatedAt={estimate.updated_at}
+          defaults={{
+            markup_percent: String(Number(estimate.markup_percent)),
+            contingency_percent: String(Number(estimate.contingency_percent)),
+            land_cost: centsToInput(estimate.land_cost_cents),
+            description: estimate.description ?? '',
+            notes: estimate.notes ?? '',
+          }}
+        />
+      )}
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="flex min-w-0 flex-col gap-8">

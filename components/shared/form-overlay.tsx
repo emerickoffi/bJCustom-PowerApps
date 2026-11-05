@@ -98,10 +98,11 @@ export function FormOverlay({
           className={cn(
             'fixed z-50 flex flex-col bg-background text-sm text-foreground shadow-xl outline-none transition duration-200 ease-out',
             // Mobile: full-screen sheet for both variants so fields are never clipped.
-            'inset-0 h-dvh w-full data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:translate-y-4 data-starting-style:translate-y-4',
+            // 100vh is the fallback; max-h-dvh trims it to the visible area where dynamic units are supported.
+            'inset-0 h-screen max-h-dvh w-full data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:translate-y-4 data-starting-style:translate-y-4',
             isDrawer
               ? cn(
-                  'sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:border-l sm:border-border/80 sm:data-ending-style:translate-x-10 sm:data-ending-style:translate-y-0 sm:data-starting-style:translate-x-10 sm:data-starting-style:translate-y-0',
+                  'overflow-hidden sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:border-l sm:border-border/80 sm:data-ending-style:translate-x-10 sm:data-ending-style:translate-y-0 sm:data-starting-style:translate-x-10 sm:data-starting-style:translate-y-0',
                   size === 'xl' ? 'sm:max-w-4xl' : size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-xl',
                 )
               : cn(
@@ -167,11 +168,27 @@ export function OverlayBody({ className, children }: { className?: string; child
   return <div className={cn('min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6', className)}>{children}</div>
 }
 
-export function OverlayFooter({ message, children }: { message?: React.ReactNode; children: React.ReactNode }) {
+export function OverlayFooter({
+  message,
+  className,
+  actionsClassName,
+  children,
+}: {
+  message?: React.ReactNode
+  className?: string
+  /** Replaces the default stacked-on-mobile action layout. */
+  actionsClassName?: string
+  children: React.ReactNode
+}) {
   return (
-    <div className="flex shrink-0 flex-col gap-3 border-t border-border/70 bg-card px-5 py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-6">
+    <div
+      className={cn(
+        'flex shrink-0 flex-col gap-3 border-t border-border/70 bg-card px-5 py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-6',
+        className,
+      )}
+    >
       {message}
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">{children}</div>
+      <div className={actionsClassName ?? 'flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end'}>{children}</div>
     </div>
   )
 }
