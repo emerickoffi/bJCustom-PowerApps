@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ActivityEditor, NewActivitySheet } from '@/components/schedule/activity-editor'
 import { ScheduleCalendar, ScheduleTimeline } from '@/components/schedule/schedule-views'
 import { ScheduleStageList } from '@/components/schedule/schedule-stage-list'
-import type { ScheduleActivity, ScheduleDependency } from '@/lib/schedule'
+import type { ScheduleActivity, ScheduleDependency, SchedulePhase } from '@/lib/schedule'
 import { useOpenFromUrl } from '@/components/shared/use-open-from-url'
 import { groupByActivity, type ActivityAssignment, type AssignmentAvailability, type CompanyOption } from '@/lib/assignments'
 
@@ -19,6 +19,7 @@ const VIEW_KEY = 'schedule:view'
 export function ScheduleWorkspace({
   projectId,
   activities,
+  phases,
   dependencies,
   conflictIds,
   staffOptions,
@@ -35,6 +36,7 @@ export function ScheduleWorkspace({
   baseline?: GanttBaseline | null
   projectId: string
   activities: ScheduleActivity[]
+  phases: SchedulePhase[]
   dependencies: ScheduleDependency[]
   conflictIds: string[]
   staffOptions: { value: string; label: string }[]
@@ -154,6 +156,8 @@ export function ScheduleWorkspace({
         </div>
         <TabsContent value="list">
           <ScheduleStageList
+            projectId={projectId}
+            phases={phases}
             activities={activities}
             conflictIds={conflicts}
             nameFor={nameFor}
@@ -177,6 +181,7 @@ export function ScheduleWorkspace({
       </Tabs>
       <ActivityEditor
         projectId={projectId}
+        phases={phases}
         activity={selected}
         activities={activities}
         dependencies={dependencies}
@@ -185,7 +190,7 @@ export function ScheduleWorkspace({
         assignments={assignmentProps}
         onClose={() => setSelectedId(null)}
       />
-      {canManage && <NewActivitySheet projectId={projectId} open={creating} onClose={closeNew} />}
+      {canManage && <NewActivitySheet projectId={projectId} phases={phases} open={creating} onClose={closeNew} />}
     </>
   )
 }

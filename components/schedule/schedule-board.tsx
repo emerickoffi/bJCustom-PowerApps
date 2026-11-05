@@ -9,7 +9,7 @@ import { ScheduleTimeline } from '@/components/schedule/schedule-views'
 import { PortfolioTimeline } from '@/components/schedule/portfolio-timeline'
 import { ScheduleActivityList, plannedRange } from '@/components/schedule/schedule-activity-list'
 import { ActivityStatusBadge, ProgressBar } from '@/components/schedule/schedule-badges'
-import { isOverdue, todayIso, type ScheduleActivity, type ScheduleDependency } from '@/lib/schedule'
+import { isOverdue, todayIso, type ScheduleActivity, type ScheduleDependency, type SchedulePhase } from '@/lib/schedule'
 import { formatDate } from '@/lib/format'
 import { stageStyle } from '@/lib/schedule-stage-style'
 import { cn } from '@/lib/utils'
@@ -19,6 +19,7 @@ export type BoardGroup = {
   project: { id: string; name: string; statusLabel: string }
   activities: ScheduleActivity[]
   dependencies: ScheduleDependency[]
+  phases: SchedulePhase[]
 }
 
 type View = 'stages' | 'timeline' | 'list'
@@ -209,6 +210,7 @@ export function ScheduleBoard({
       {editingGroup && (
         <ActivityEditor
           projectId={editingGroup.project.id}
+          phases={editingGroup.phases}
           activity={editingActivity}
           activities={editingGroup.activities}
           dependencies={editingGroup.dependencies}

@@ -216,6 +216,30 @@ export async function moveActivityAction(projectId: string, activityId: string, 
   return { success: 'Activity moved.' }
 }
 
+const scheduleOrderSchema = z.object({
+  phases: z.array(uuid).max(500),
+  activities: z.array(z.object({ id: uuid, phaseId: uuid })).max(5000),
+})
+export type ScheduleOrder = z.infer<typeof scheduleOrderSchema>
+
+/** Saves the full manual List order for one project atomically. Only position and phase membership change. */
+export async function reorderScheduleAction(projectId: string, order: ScheduleOrder): Promise<ActionState> {
+  await requireManager()
+  if (!uuid.safeParse(projectId).success) return { error: 'Invalid project.' }
+  const parsed = scheduleOrderSchema.safeParse(order)
+  if (!parsed.success) return { error: 'The new order could not be read. Refresh the page and try again.' }
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('reorder_project_schedule', {
+    p_project: projectId,
+    p_phases: parsed.data.phases,
+    p_activities: parsed.data.activities.map((a) => a.id),
+    p_activity_phases: parsed.data.activities.map((a) => a.phaseId),
+  })
+  if (error) return { error: friendlyDbError(error) }
+  revalidateProject(projectId)
+  return { success: 'Order saved.' }
+}
+
 export async function removePhaseAction(
   projectId: string,
   phaseId: string,

@@ -23,6 +23,7 @@ import {
   todayIso,
   type ScheduleActivity,
   type ScheduleDependency,
+  type SchedulePhase,
 } from '@/lib/schedule'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { formatDate } from '@/lib/format'
@@ -176,6 +177,15 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
         .in('project_id', [...visibleIds])
     : { data: [], error: null }
   const dependencies = (depData ?? []) as (ScheduleDependency & { project_id: string })[]
+  const { data: phaseData } = visibleIds.size
+    ? await supabase
+        .from('schedule_phases')
+        .select('id, name, sort_order, project_id')
+        .in('project_id', [...visibleIds])
+        .order('sort_order')
+        .order('created_at')
+    : { data: [] }
+  const phases = (phaseData ?? []) as (SchedulePhase & { project_id: string })[]
   const loadFailed = Boolean(activityError || depError)
 
   const groups: BoardGroup[] = visibleProjects
@@ -183,6 +193,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
       project: { id: p.id, name: p.name, statusLabel: PROJECT_STATUS_LABELS[p.status] ?? p.status },
       activities: activities.filter((a) => a.project_id === p.id),
       dependencies: dependencies.filter((d) => d.project_id === p.id),
+      phases: phases.filter((ph) => ph.project_id === p.id),
     }))
     .filter((g) => g.activities.length > 0)
   const conflictIds = groups.flatMap((g) =>
