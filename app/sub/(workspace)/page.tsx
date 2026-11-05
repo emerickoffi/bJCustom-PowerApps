@@ -1,3 +1,5 @@
+import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import { requireSubcontractor } from '@/lib/subcontractor-session'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, APP_TIME_ZONE } from '@/lib/format'
@@ -100,6 +102,14 @@ export default async function SubWorkspacePage() {
         </h1>
         <p className="text-sm text-muted-foreground">Photograph finished work and send it to the builder for inspection.</p>
       </div>
+
+      <Link
+        href="/sub/quotes"
+        className="flex min-h-11 items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:bg-sage/30"
+      >
+        Quote requests
+        <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+      </Link>
 
       <section aria-labelledby="projects-heading" className="flex flex-col gap-3">
         <h2 id="projects-heading" className="font-serif text-lg font-semibold text-foreground">
