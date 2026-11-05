@@ -62,12 +62,13 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
         description={`Request, compare, and track subcontractor pricing for ${project.name}.`}
         actions={
           setupMissing ? null : (
-            <Button asChild>
-              <Link href={`/projects/${id}/subcontractor-work/quotes/new`}>
-                <Plus className="size-4" aria-hidden="true" />
-                New quote request
-              </Link>
-            </Button>
+            <Link
+              href={`/projects/${id}/subcontractor-work/quotes/new`}
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              New quote request
+            </Link>
           )
         }
       />

@@ -128,7 +128,7 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
               trade: request.trade ?? '',
               scope: request.draft_scope ?? '',
               document_ids: request.draft_document_ids ?? [],
-              company_ids: ((inv.data ?? []) as Invitation[]).map((i) => i.subcontractor_company_id),
+              company_ids: ((inv.data ?? []) as unknown as Invitation[]).map((i) => i.subcontractor_company_id),
               deadline_local: isoToZonedLocal(request.response_deadline, tz),
               deadline_timezone: tz,
               cost_category: request.cost_category ?? '',

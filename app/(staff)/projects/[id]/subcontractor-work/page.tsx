@@ -9,6 +9,7 @@ import { formatDate, formatDateTime } from '@/lib/format'
 import { isSubWorkSetupError, workStateFor, type SubmissionStatus } from '@/lib/subcontractor-work'
 import { PageHeader, Surface } from '@/components/shared/page-header'
 import { WorkStateBadge } from '@/components/subcontractor-work/work-state-badge'
+import { SubcontractsNav } from '@/components/subcontract-quotes/subcontracts-nav'
 
 export const metadata: Metadata = { title: 'Subcontractor work' }
 
@@ -62,6 +63,7 @@ export default async function SubcontractorWorkQueuePage({ params }: { params: P
         title="Subcontractor work"
         description="Verify completion and correction submissions before work counts as accepted."
       />
+      <SubcontractsNav projectId={id} active="work" />
 
       {error ? (
         <p className="flex items-start gap-2 rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
