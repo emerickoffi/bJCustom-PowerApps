@@ -106,11 +106,13 @@ function UpdateRow({ update }: { update: ProjectUpdate }) {
 const VISIBLE_LIMIT = 5;
 
 function ActivityRow({ item }: { item: ActivityItem }) {
-  const Icon = ACTIVITY_ICONS[item.activity_type] ?? Activity;
+  const MappedIcon = ACTIVITY_ICONS[item.activity_type];
+  const Icon = MappedIcon ?? Activity;
+  const iconTone = MappedIcon ? "bg-sage text-primary" : "bg-[#FFF1E8] text-[#C84B00]";
   return (
     <>
       <span
-        className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-sage text-primary ring-4 ring-card"
+        className={`relative flex size-7 shrink-0 items-center justify-center rounded-full ring-4 ring-card ${iconTone}`}
         aria-hidden="true"
       >
         <Icon className="size-3.5" />
