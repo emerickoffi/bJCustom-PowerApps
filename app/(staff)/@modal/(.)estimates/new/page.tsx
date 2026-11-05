@@ -23,7 +23,7 @@ export default async function NewEstimateDrawer({ searchParams }: { searchParams
     <RouteFormDrawer
       kind="estimate"
       title="Create estimate"
-      description="Set up your estimate, then add cost items."
+      description="Name it and choose the project. Add cost items next."
     >
       {projects.length === 0 ? (
         <OverlayBody className="py-6">

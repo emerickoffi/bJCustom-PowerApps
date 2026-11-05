@@ -402,12 +402,22 @@ export function SaveStatus({ save, className }: { save: ResilientSave; className
   )
 }
 
-const bannerClass =
+const baseBannerClass =
   'flex flex-col gap-3 rounded-lg border border-amber-300/70 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100'
 
 /** Restore/discard prompt, plus the conflict, sign-in and unconfirmed-save explanations. */
-export function SaveBanners({ save, latestHref }: { save: ResilientSave; latestHref?: string }) {
+export function SaveBanners({
+  save,
+  latestHref,
+  compact = false,
+}: {
+  save: ResilientSave
+  latestHref?: string
+  /** Tighter padding and copy, for banners placed inside a form body. */
+  compact?: boolean
+}) {
   const { recovery, server, notice } = save
+  const bannerClass = compact ? cn(baseBannerClass, 'gap-2 px-3 py-2 text-xs sm:gap-3') : baseBannerClass
 
   if (recovery) {
     const when = new Date(recovery.draft.savedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
@@ -437,6 +447,8 @@ export function SaveBanners({ save, latestHref }: { save: ResilientSave; latestH
             <p className="font-medium">Unsaved entries from {when} were found on this device.</p>
             {recovery.serverChanged ? (
               <p>The saved record has changed since then. Restoring puts your device copy in the form so you can review it before saving.</p>
+            ) : compact ? (
+              <p>Not saved to the server yet. Restore them or discard them.</p>
             ) : (
               <p>Restore them to keep working, or discard them.</p>
             )}
