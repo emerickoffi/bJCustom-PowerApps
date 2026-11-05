@@ -185,7 +185,9 @@ export function useResilientSave(opts: {
     if (!form) return
     const onEdit = () => {
       if (holdRef.current) return
-      setDevice((d) => (d === 'unavailable' ? d : 'unsaved'))
+      // Deferred: this native listener runs before React's root listener, so a synchronous state update
+      // re-renders mid-event and resets controlled checkboxes before React sees the toggle.
+      window.setTimeout(() => setDevice((d) => (d === 'unavailable' ? d : 'unsaved')), 0)
       window.clearTimeout(debounceRef.current)
       debounceRef.current = window.setTimeout(() => void persist(), 600)
     }
