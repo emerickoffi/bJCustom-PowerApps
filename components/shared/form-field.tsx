@@ -86,9 +86,13 @@ export function TextField({ name, id, label, error, hint, required, className, l
   )
 }
 
-type TextAreaFieldProps = BaseProps & Omit<React.ComponentProps<'textarea'>, 'name' | 'className'>
+type TextAreaFieldProps = BaseProps &
+  Omit<React.ComponentProps<'textarea'>, 'name' | 'className'> & {
+    /** Overrides the textarea's default minimum height, e.g. for compact optional sections. */
+    inputClassName?: string
+  }
 
-export function TextAreaField({ name, id, label, error, hint, required, className, labelAction, ...props }: TextAreaFieldProps) {
+export function TextAreaField({ name, id, label, error, hint, required, className, labelAction, inputClassName, ...props }: TextAreaFieldProps) {
   const fieldId = id ?? name
   return (
     <FieldShell name={name} id={id} label={label} error={error} hint={hint} required={required} className={className} labelAction={labelAction}>
@@ -98,7 +102,7 @@ export function TextAreaField({ name, id, label, error, hint, required, classNam
         required={required}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
-        className="min-h-28 placeholder:text-muted-foreground/80"
+        className={cn('min-h-28 placeholder:text-muted-foreground/80', inputClassName)}
         {...props}
       />
     </FieldShell>

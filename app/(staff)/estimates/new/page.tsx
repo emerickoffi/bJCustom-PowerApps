@@ -33,7 +33,7 @@ export default async function NewEstimatePage({ searchParams }: { searchParams: 
         backHref={preselected ? `/projects/${preselected}` : '/estimates'}
         backLabel={preselected ? 'Project' : 'Estimates'}
         title="Create estimate"
-        description="Set up the estimate for an existing project. You will add cost line items on the next screen."
+        description="Set up your estimate, then add cost items."
       />
       {projects.length === 0 ? (
         <EmptyState
