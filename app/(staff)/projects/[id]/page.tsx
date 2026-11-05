@@ -37,11 +37,8 @@ import { ProjectWalkthroughsPanel } from '@/components/walkthroughs/project-walk
 import { ProjectEstimatesPanel } from '@/components/estimates/project-estimates-panel'
 import { ProjectSchedulePanel } from '@/components/schedule/project-schedule-panel'
 import { ProjectInvoicesPanel } from '@/components/invoices/project-invoices-panel'
-import {
-  ProjectClientsPanel,
-  ProjectTeamPanel,
-  type ProjectClientLink,
-} from '@/components/projects/project-people'
+import { ProjectClientsPanel, type ProjectClientLink } from '@/components/projects/project-people'
+import { ProjectTeamPanel } from '@/components/projects/project-team-panel'
 import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, projectAcceptsNewAssignments, type ProjectStatus } from '@/lib/domain'
 import { loadProjectContacts } from '@/lib/project-contacts-data'
 import { loadProjectHomeowners } from '@/lib/project-homeowners-data'
@@ -597,6 +594,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <div id={PROJECT_SECTION_ANCHORS.team} className="scroll-mt-24">
             <ProjectTeamPanel
               projectId={project.id}
+              projectName={project.name}
+              managerId={project.project_manager_id ?? null}
               managerName={nameFor(project.project_manager_id)}
               members={members}
               staffOptions={staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))}

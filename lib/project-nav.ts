@@ -9,7 +9,6 @@ export type ProjectNavKey =
   | 'change_orders'
   | 'financials'
   | 'documents'
-  | 'team'
   | 'contacts'
   | 'walkthroughs'
   | 'warranty'
@@ -34,6 +33,7 @@ export type ProjectNavAccess = {
 
 // Anchors on the overview page; these must match the ids rendered by the overview panels.
 export const PROJECT_SECTION_ANCHORS = {
+  // No longer a tab; kept so existing #project-team links still scroll to the Project team card.
   team: 'project-team',
   walkthroughs: 'walkthroughs-heading',
 } as const
@@ -107,7 +107,6 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
       href: `${base}/subcontractor-work`,
       activePrefix: `${base}/subcontractor-work`,
     },
-    { key: 'team', label: 'Team', href: `${base}#${PROJECT_SECTION_ANCHORS.team}`, activePrefix: null },
     { key: 'contacts', label: 'Contacts', href: `${base}/contacts`, activePrefix: `${base}/contacts` },
     features.walkthroughs && {
       key: 'walkthroughs',

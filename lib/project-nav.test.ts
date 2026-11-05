@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { getActiveProjectNavKey, getProjectNavItems, getSectionIdFromHref, type ProjectNavAccess } from './project-nav.ts'
+import { getActiveProjectNavKey, getProjectNavItems, getSectionIdFromHref, isProjectSectionId, type ProjectNavAccess } from './project-nav.ts'
 
 const ID = '7f3c2a10-0000-4000-8000-000000000001'
 const BASE = `/projects/${ID}`
@@ -14,7 +14,7 @@ const allOn: ProjectNavAccess = {
 const keys = (access: ProjectNavAccess) => getProjectNavItems(ID, access).map((i) => i.key)
 
 test('shows every tab in order when all features are on', () => {
-  assert.deepEqual(keys(allOn), ['overview', 'schedule', 'estimates', 'documents', 'team', 'contacts', 'walkthroughs', 'warranty'])
+  assert.deepEqual(keys(allOn), ['overview', 'schedule', 'estimates', 'documents', 'contacts', 'walkthroughs', 'warranty'])
 })
 
 test('every tab is scoped to the current project', () => {
@@ -30,7 +30,7 @@ test('hides tabs for disabled organization features', () => {
     ...allOn,
     features: { schedule: false, estimates: false, documents: false, walkthroughs: false, warranty: false },
   }
-  assert.deepEqual(keys(access), ['overview', 'team', 'contacts'])
+  assert.deepEqual(keys(access), ['overview', 'contacts'])
 })
 
 test('hides Documents when the user cannot view internal project data', () => {
@@ -43,8 +43,15 @@ test('shows Warranty only for completed projects', () => {
 
 test('section tabs link to overview anchors', () => {
   const items = getProjectNavItems(ID, allOn)
-  assert.equal(items.find((i) => i.key === 'team')?.href, `${BASE}#project-team`)
   assert.equal(items.find((i) => i.key === 'walkthroughs')?.href, `${BASE}#walkthroughs-heading`)
+})
+
+test('the Project team card lives on Overview, so there is no separate Team tab', () => {
+  assert.ok(!getProjectNavItems(ID, allOn).some((i) => i.label === 'Team'))
+})
+
+test('legacy #project-team links remain a recognized overview section', () => {
+  assert.ok(isProjectSectionId('project-team'))
 })
 
 test('estimates tab opens the existing Estimates module filtered to the project', () => {
