@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { REVISION_PREFILL_EVENT, type RevisionPrefillDetail } from '@/lib/ai/quote-analysis'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -205,6 +206,25 @@ export function RevisionRequestButton({ projectId, requestId, invitationId }: { 
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
+  const fieldId = `revision-text-${invitationId}`
+
+  // AI-suggested questions only prefill this form; the builder still edits and sends it.
+  useEffect(() => {
+    function onPrefill(e: Event) {
+      const detail = (e as CustomEvent<RevisionPrefillDetail>).detail
+      if (detail?.invitationId !== invitationId || !detail.text) return
+      setOpen(true)
+      setText((prev) => (prev.includes(detail.text) ? prev : prev.trim() ? `${prev.trim()}\n${detail.text}` : detail.text).slice(0, 4000))
+      requestAnimationFrame(() => {
+        const el = document.getElementById(fieldId)
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el?.focus({ preventScroll: true })
+      })
+    }
+    window.addEventListener(REVISION_PREFILL_EVENT, onPrefill)
+    return () => window.removeEventListener(REVISION_PREFILL_EVENT, onPrefill)
+  }, [invitationId, fieldId])
+
   if (!open) {
     return (
       <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
@@ -216,7 +236,7 @@ export function RevisionRequestButton({ projectId, requestId, invitationId }: { 
     <div className="flex w-full flex-col gap-2">
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium">Revision instructions</span>
-        <Textarea rows={3} maxLength={4000} value={text} onChange={(e) => setText(e.target.value)} placeholder="Break out the skylight cost separately." />
+        <Textarea id={fieldId} rows={3} maxLength={4000} value={text} onChange={(e) => setText(e.target.value)} placeholder="Break out the skylight cost separately." />
       </label>
       <div className="flex gap-2">
         <Button

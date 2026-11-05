@@ -1,22 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { KeyRound, Mail, Phone, UserCog, Users } from 'lucide-react'
-import {
-  addProjectMemberAction,
-  removeProjectClientAction,
-  removeProjectMemberAction,
-} from '@/app/actions/projects'
+import { KeyRound, Mail, Phone, Users } from 'lucide-react'
+import { removeProjectClientAction } from '@/app/actions/projects'
 import { CONTACT_RELATIONSHIP_LABELS, PROJECT_CLIENT_RELATIONSHIP_LABELS } from '@/lib/domain'
 import { HOMEOWNER_PORTAL_STATUS } from '@/lib/project-homeowners'
 import type { HomeownerContact, ProjectHomeowners } from '@/lib/project-homeowners-data'
 import { AddAdditionalContactDialog } from '@/components/projects/add-additional-contact-dialog'
 import { AssignPrimaryClient } from '@/components/projects/assign-primary-client'
 import type { ClientOption } from '@/lib/client-options'
-import { ActionButton, InlineActionForm } from '@/components/shared/inline-action'
 import { ConfirmActionButton } from '@/components/shared/confirm-action-button'
-import { SelectField } from '@/components/shared/form-field'
-import { SubmitButton } from '@/components/shared/form-message'
 import { cn } from '@/lib/utils'
 
 type Option = { value: string; label: string }
@@ -29,7 +22,7 @@ export type ProjectClientLink = {
 
 export type ProjectMemberRow = { id: string; user_id: string; project_role: string; name: string }
 
-const MEMBER_ROLE_LABELS: Record<string, string> = {
+export const MEMBER_ROLE_LABELS: Record<string, string> = {
   project_manager: 'Project manager',
   staff: 'Staff',
   viewer: 'Viewer',
@@ -40,7 +33,7 @@ function initials(name: string): string {
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?'
 }
 
-function Avatar({ name, tone = 'sage' }: { name: string; tone?: 'sage' | 'primary' }) {
+export function Avatar({ name, tone = 'sage' }: { name: string; tone?: 'sage' | 'primary' }) {
   return (
     <span
       aria-hidden="true"
@@ -54,7 +47,7 @@ function Avatar({ name, tone = 'sage' }: { name: string; tone?: 'sage' | 'primar
   )
 }
 
-function Panel({
+export function Panel({
   title,
   action,
   children,
@@ -249,80 +242,3 @@ export function ProjectClientsPanel({
   )
 }
 
-export function ProjectTeamPanel({
-  projectId,
-  managerName,
-  members,
-  staffOptions,
-  canEdit,
-}: {
-  projectId: string
-  managerName: string | null
-  members: ProjectMemberRow[]
-  staffOptions: Option[]
-  canEdit: boolean
-}) {
-  const assigned = new Set(members.map((m) => m.user_id))
-  const available = staffOptions.filter((o) => !assigned.has(o.value))
-
-  return (
-    <Panel title="Builder team">
-      <div className="flex items-center gap-3 rounded-lg border border-[#D5E2D3] bg-interactive-soft/60 p-3">
-        {managerName ? (
-          <Avatar name={managerName} tone="primary" />
-        ) : (
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-dashed border-primary/40 text-primary">
-            <UserCog className="size-4" aria-hidden="true" />
-          </span>
-        )}
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-primary">Project manager</span>
-          <span className="truncate font-medium text-foreground">{managerName ?? 'Unassigned'}</span>
-        </div>
-        {canEdit && (
-          <PanelLink href={`/projects/${projectId}/edit`} icon={UserCog}>
-            {managerName ? 'Change' : 'Assign'}
-          </PanelLink>
-        )}
-      </div>
-      {members.length > 0 ? (
-        <ul className="flex flex-col divide-y">
-          {members.map((member) => (
-            <li key={member.id} className="flex items-center gap-3 py-3 last:pb-0">
-              <Avatar name={member.name} />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate font-medium text-foreground">{member.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {MEMBER_ROLE_LABELS[member.project_role] ?? member.project_role}
-                </span>
-              </div>
-              {canEdit && (
-                <ActionButton
-                  label="Remove"
-                  confirmMessage="Remove this person from the project?"
-                  action={() => removeProjectMemberAction(projectId, member.id)}
-                />
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm text-muted-foreground">No additional team members assigned.</p>
-      )}
-      {canEdit && available.length > 0 && (
-        <InlineActionForm action={addProjectMemberAction.bind(null, projectId)} className="grid gap-3 border-t pt-4">
-          <SelectField name="user_id" label="Add team member" required placeholder="Select a person" options={available} />
-          <SelectField
-            name="project_role"
-            label="Project role"
-            options={Object.entries(MEMBER_ROLE_LABELS).map(([value, label]) => ({ value, label }))}
-            defaultValue="staff"
-          />
-          <SubmitButton variant="outline" pendingLabel="Adding...">
-            Add to team
-          </SubmitButton>
-        </InlineActionForm>
-      )}
-    </Panel>
-  )
-}
