@@ -49,7 +49,13 @@ function StageDot({ status }: { status: ProjectStatus }) {
 
 export function HealthCell({ job }: { job: PriorityJob }) {
   const key = job.health ?? (job.status === 'completed' ? 'closed' : 'not_assessed')
-  return <HealthBadge healthKey={key} reasons={job.health ? job.healthReasons : undefined} />
+  return (
+    <HealthBadge
+      healthKey={key}
+      reasons={job.health ? job.healthReasons : undefined}
+      label={key === 'insufficient_data' ? 'Limited Data' : undefined}
+    />
+  )
 }
 
 function shortDate(value: string): string {

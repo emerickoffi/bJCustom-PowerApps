@@ -59,11 +59,20 @@ export function healthBadgeLabel(key: string): string {
   return HEALTH_LABELS[key as HealthLevel] ?? key
 }
 
-export function HealthBadge({ healthKey, reasons }: { healthKey: string; reasons?: readonly string[] }) {
+export function HealthBadge({
+  healthKey,
+  reasons,
+  label: labelOverride,
+}: {
+  healthKey: string
+  reasons?: readonly string[]
+  /** Display-only label; the health key, treatment, and assessment are unchanged. */
+  label?: string
+}) {
   const [open, setOpen] = useState(false)
   const treatment = TREATMENTS[healthKey as HealthBadgeKey] ?? UNKNOWN
   const { icon: Icon } = treatment
-  const label = healthBadgeLabel(healthKey)
+  const label = labelOverride ?? healthBadgeLabel(healthKey)
   const shownReasons = healthKey === 'on_track' ? [] : (reasons ?? []).filter(Boolean)
 
   return (
