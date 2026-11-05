@@ -1,7 +1,7 @@
 'use client'
 
 import { memo } from 'react'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, Trash2 } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -184,12 +184,24 @@ export const SheetRowView = memo(function SheetRowView({
         <ReadCell className="truncate text-muted-foreground">{row.notes || '—'}</ReadCell>
       )}
       {editable && (
-        <td className="h-10 px-1 text-center">
+        <td className="sticky right-0 z-[2] h-10 border-l border-border/60 bg-card px-1 shadow-[-6px_0_8px_-6px_rgb(0_0_0/0.12)]">
+          <div className="flex items-center justify-center gap-0.5">
+          <button
+            type="button"
+            data-remove-row={row.key}
+            disabled={locked}
+            onClick={() => onCommand(row.key, { type: 'delete' })}
+            title="Remove line item"
+            aria-label={`Remove line item${row.description ? `, ${row.description}` : ''}`}
+            className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
+          >
+            <Trash2 className="size-4" aria-hidden="true" />
+          </button>
           <DropdownMenu>
             <DropdownMenuTrigger
               disabled={locked}
               aria-label={`Row actions, ${row.description || 'new line item'}`}
-              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               <MoreHorizontal className="size-4" aria-hidden="true" />
             </DropdownMenuTrigger>
@@ -210,12 +222,9 @@ export const SheetRowView = memo(function SheetRowView({
                   ))}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => onCommand(row.key, { type: 'delete' })}>
-                Delete row
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </td>
       )}
     </tr>
