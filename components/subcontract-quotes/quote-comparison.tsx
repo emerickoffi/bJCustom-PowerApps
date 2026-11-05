@@ -5,7 +5,9 @@ import { AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/format'
 import { TAX_LABELS, formatMoney, payableCents, type QuoteDecision, type QuoteRevision } from '@/lib/subcontract-quotes'
+import type { AiReviewState } from '@/lib/ai/quote-analysis'
 import { DecisionBadge } from './status-badges'
+import { QuoteAnalysisPanel } from './quote-analysis'
 
 export type CompareEntry = {
   invitationId: string
@@ -126,7 +128,21 @@ function Flags({ e }: { e: CompareEntry }) {
   )
 }
 
-export function QuoteComparison({ entries, currency, currentScope }: { entries: CompareEntry[]; currency: string | null; currentScope: number }) {
+export function QuoteComparison({
+  entries,
+  currency,
+  currentScope,
+  projectId,
+  requestId,
+  ai,
+}: {
+  entries: CompareEntry[]
+  currency: string | null
+  currentScope: number
+  projectId: string
+  requestId: string
+  ai: AiReviewState
+}) {
   const [picked, setPicked] = useState<string[]>(() => entries.slice(0, 3).map((e) => e.invitationId))
   const defs = useMemo(() => rows(currency, currentScope), [currency, currentScope])
   const shown = entries.filter((e) => picked.includes(e.invitationId))
@@ -239,6 +255,15 @@ export function QuoteComparison({ entries, currency, currentScope }: { entries: 
           </ul>
         </>
       )}
+
+      <QuoteAnalysisPanel
+        projectId={projectId}
+        requestId={requestId}
+        selectedIds={shown.map((e) => e.invitationId)}
+        selectedNames={shown.map((e) => e.company)}
+        currency={currency}
+        ai={ai}
+      />
     </div>
   )
 }
