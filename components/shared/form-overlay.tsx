@@ -20,7 +20,14 @@ type OverlayContextValue = {
   requestClose: () => void
   /** Closes immediately, for example after a confirmed successful save. */
   forceClose: () => void
+  /**
+   * Lets a multi-step form retitle the same overlay and replace what closing does
+   * (for example, once its first record is saved). Pass null to restore the defaults.
+   */
+  setOverride: (override: OverlayOverride | null) => void
 }
+
+export type OverlayOverride = { title?: React.ReactNode; description?: React.ReactNode; onClose?: () => void }
 
 const OverlayContext = createContext<OverlayContextValue | null>(null)
 
@@ -55,6 +62,13 @@ export function FormOverlay({
   const [confirming, setConfirming] = useState(false)
   const dirtyRef = useRef(false)
   const discardRef = useRef<HTMLButtonElement>(null)
+  const [override, setOverrideState] = useState<OverlayOverride | null>(null)
+  const overrideCloseRef = useRef<(() => void) | undefined>(undefined)
+
+  const setOverride = useCallback((next: OverlayOverride | null) => {
+    overrideCloseRef.current = next?.onClose
+    setOverrideState(next)
+  }, [])
 
   const setDirty = useCallback((next: boolean) => {
     dirtyRef.current = next
@@ -66,7 +80,7 @@ export function FormOverlay({
     dirtyRef.current = false
     setDirtyState(false)
     setConfirming(false)
-    onClose()
+    ;(overrideCloseRef.current ?? onClose)()
   }, [onClose])
 
   const requestClose = useCallback(() => {
@@ -79,9 +93,11 @@ export function FormOverlay({
   }, [forceClose])
 
   const ctx = useMemo<OverlayContextValue>(
-    () => ({ markDirty: () => !dirtyRef.current && setDirty(true), setDirty, requestClose, forceClose }),
-    [setDirty, requestClose, forceClose],
+    () => ({ markDirty: () => !dirtyRef.current && setDirty(true), setDirty, requestClose, forceClose, setOverride }),
+    [setDirty, requestClose, forceClose, setOverride],
   )
+  const shownTitle = override?.title ?? title
+  const shownDescription = override?.description ?? description
 
   const isDrawer = variant === 'drawer'
 
@@ -119,10 +135,10 @@ export function FormOverlay({
                 </span>
               )}
               <div className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
-                <DialogPrimitive.Title className="font-serif text-lg leading-tight font-semibold text-balance">{title}</DialogPrimitive.Title>
-                {description && (
+                <DialogPrimitive.Title className="font-serif text-lg leading-tight font-semibold text-balance">{shownTitle}</DialogPrimitive.Title>
+                {shownDescription && (
                   <DialogPrimitive.Description className="text-sm leading-relaxed text-pretty text-muted-foreground">
-                    {description}
+                    {shownDescription}
                   </DialogPrimitive.Description>
                 )}
               </div>
