@@ -2,13 +2,19 @@
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronRight, Lock, Plus, Redo2, Save, Trash2, Undo2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, List, Lock, Plus, Redo2, Save, Table2, Trash2, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { NativeSelect } from '@/components/shared/form-field'
 import { EstimateSummary } from '@/components/estimates/estimate-summary'
 import { SheetRowView, type RowCommand } from '@/components/estimates/estimate-sheet-row'
+import { EstimateLineItemList } from '@/components/estimates/estimate-line-item-list'
+import {
+  EstimateLineItemDrawer,
+  type DrawerSaveResult,
+  type DrawerTarget,
+} from '@/components/estimates/estimate-line-item-drawer'
 import { saveEstimateLineItemsAction } from '@/app/actions/estimates'
 import {
   ESTIMATE_CATEGORIES,
@@ -102,6 +108,10 @@ export function EstimateSheet({
   const [saving, startSaving] = useTransition()
   const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null)
   const removalFocus = useRef<HTMLElement | null>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+  const [view, setView] = useState<'list' | 'spreadsheet'>('list')
+  const [drawer, setDrawer] = useState<(DrawerTarget & { session: number }) | null>(null)
+  const drawerReturnFocus = useRef<HTMLElement | null>(null)
 
   const rows = history.present.rows
   const emptyCategories = history.present.emptyCategories
@@ -214,13 +224,68 @@ export function EstimateSheet({
     [commit, focusCell],
   )
 
+  const drawerSession = useRef(0)
+  const openDrawer = useCallback((target: DrawerTarget) => {
+    drawerReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    drawerSession.current += 1
+    setDrawer({ ...target, session: drawerSession.current })
+  }, [])
+
+  const closeDrawer = useCallback((focusKey?: string) => {
+    setDrawer(null)
+    const fallback = drawerReturnFocus.current
+    requestAnimationFrame(() => {
+      const section = sectionRef.current
+      const byKey = focusKey ? section?.querySelector<HTMLElement>(`[data-edit-row="${CSS.escape(focusKey)}"]`) : null
+      const target = byKey ?? (fallback?.isConnected ? fallback : section?.querySelector<HTMLElement>('[data-add-line]'))
+      target?.focus()
+    })
+  }, [])
+
+  /** Commit a drawer row as one undoable step. New rows go to the end of their category. */
+  const saveDrawerRow = useCallback(
+    (row: SheetRow, addAnother: boolean): DrawerSaveResult => {
+      if (locked) return { ok: false, error: 'The draft is saving. Try again in a moment.' }
+      const exists = rows.some((r) => r.key === row.key)
+      if (!exists && rows.length >= MAX_SHEET_ROWS) {
+        return { ok: false, error: `This estimate is at the ${MAX_SHEET_ROWS}-item limit. Remove an item before adding another.` }
+      }
+      commitSnapshot((s) => {
+        if (!exists) return { ...s, rows: [...s.rows, row] }
+        const previous = s.rows.find((r) => r.key === row.key)
+        const nextRows = s.rows.map((r) => (r.key === row.key ? row : r))
+        const leftEmpty =
+          previous && previous.category !== row.category && !nextRows.some((r) => r.category === previous.category)
+        return {
+          rows: nextRows,
+          emptyCategories: leftEmpty ? [...s.emptyCategories, previous.category] : s.emptyCategories,
+        }
+      })
+      setCollapsed((s) => {
+        if (!s.has(row.category)) return s
+        const next = new Set(s)
+        next.delete(row.category)
+        return next
+      })
+      const label = row.description.trim()
+      if (!addAnother) {
+        toast.success(exists ? `Updated "${label}" in the draft.` : `Added "${label}" to the draft.`, {
+          description: 'Use Save draft to save line items.',
+        })
+        closeDrawer(row.key)
+      }
+      return { ok: true }
+    },
+    [locked, rows, commitSnapshot, closeDrawer],
+  )
+
   /** Element to focus once `key` is gone: next row in its category, else previous, else the category's add button. */
   const focusTargetAfterRemoval = useCallback(
     (row: SheetRow): HTMLElement | null => {
       const siblings = ordered(rows).filter((r) => r.category === row.category)
       const i = siblings.findIndex((r) => r.key === row.key)
       const neighbor = siblings[i + 1] ?? siblings[i - 1]
-      const table = tableRef.current
+      const table = sectionRef.current
       if (!table) return null
       if (neighbor) return table.querySelector<HTMLElement>(`[data-remove-row="${CSS.escape(neighbor.key)}"]`)
       return table.querySelector<HTMLElement>(`[data-add-line="${CSS.escape(row.category)}"]`)
@@ -256,7 +321,7 @@ export function EstimateSheet({
       const cats = groups.map(([c]) => c)
       const i = cats.indexOf(category)
       const neighbor = cats[i + 1] ?? cats[i - 1]
-      const table = tableRef.current
+      const table = sectionRef.current
       if (neighbor && table) return table.querySelector<HTMLElement>(`[data-add-line="${CSS.escape(neighbor)}"]`)
       return null
     },
@@ -444,6 +509,10 @@ export function EstimateSheet({
     if (invalidRows.length) {
       setAttempted(true)
       const first = invalidRows[0]
+      if (view === 'list') {
+        openDrawer({ row: first, category: first.category, showErrors: true })
+        return
+      }
       const col = SHEET_COLUMNS.find((c) => errorsByKey.get(first.key)?.[c])
       setCollapsed((s) => {
         const next = new Set(s)
@@ -471,7 +540,7 @@ export function EstimateSheet({
   const onSaveShortcut = useEffectEvent((e: KeyboardEvent) => {
     if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 's') return
     e.preventDefault()
-    save()
+    if (!drawer) save()
   })
 
   useEffect(() => {
@@ -527,7 +596,7 @@ export function EstimateSheet({
   return (
     <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_22rem]">
       <section aria-labelledby="sheet-heading" className="surface flex min-w-0 flex-col" onKeyDown={onShortcutKeyDown}>
-        <div className="sticky top-0 z-10 flex flex-col gap-3 rounded-t-2xl border-b bg-card/95 p-4 backdrop-blur md:p-5">
+        <div className="flex flex-col gap-3 rounded-t-2xl border-b bg-card p-4 md:p-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="flex flex-col gap-0.5">
               <h2 id="sheet-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
@@ -573,6 +642,42 @@ export function EstimateSheet({
             )}
           </div>
 
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div role="group" aria-label="Line item view" className="inline-flex rounded-lg border bg-muted/50 p-0.5">
+              {(
+                [
+                  ['list', 'List', List],
+                  ['spreadsheet', 'Spreadsheet', Table2],
+                ] as const
+              ).map(([value, label, Icon]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={view === value}
+                  onClick={() => setView(value)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                    view === value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  <Icon className="size-4" aria-hidden="true" />
+                  {label}
+                </button>
+              ))}
+            </div>
+            {editable && view === 'list' && (
+              <Button
+                type="button"
+                data-add-line=""
+                onClick={() => openDrawer({ row: null, category: null })}
+                disabled={locked || rows.length >= MAX_SHEET_ROWS}
+              >
+                <Plus data-icon="inline-start" />
+                Add line item
+              </Button>
+            )}
+          </div>
+
           {saveError && (
             <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {saveError}
@@ -580,16 +685,35 @@ export function EstimateSheet({
           )}
           {attempted && invalidRows.length > 0 && (
             <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {`${invalidRows.length} ${invalidRows.length === 1 ? 'row needs' : 'rows need'} attention before saving. Highlighted cells show what to fix.`}
+              {view === 'list'
+                ? `${invalidRows.length} ${invalidRows.length === 1 ? 'item needs' : 'items need'} attention before saving. Flagged items are marked below.`
+                : `${invalidRows.length} ${invalidRows.length === 1 ? 'row needs' : 'rows need'} attention before saving. Highlighted cells show what to fix.`}
             </p>
           )}
-          {editable && (
+          {editable && view === 'spreadsheet' && (
             <p className="text-xs text-muted-foreground">
               {'Enter moves down (adds a row at the end of a group) · Arrows move between cells · Esc reverts a cell · Paste rows from Excel or Sheets · Ctrl+Z / Ctrl+S'}
             </p>
           )}
         </div>
 
+        {view === 'list' ? (
+          <EstimateLineItemList
+            groups={groups}
+            collapsed={collapsed}
+            errorsByKey={errorsByKey}
+            editable={editable}
+            locked={locked}
+            onToggleGroup={toggleGroup}
+            onAdd={(category) => openDrawer({ row: null, category })}
+            onEdit={(key) => {
+              const row = rows.find((r) => r.key === key)
+              if (row) openDrawer({ row, category: row.category, showErrors: attempted })
+            }}
+            onDelete={(key) => onCommand(key, { type: 'delete' })}
+            onRemoveCategory={requestCategoryRemoval}
+          />
+        ) : (
         <div className="overflow-x-auto" onKeyDown={onKeyDown} onFocus={onFocus} onPaste={onPaste}>
           <table ref={tableRef} className="w-full table-fixed border-collapse text-left">
             <caption className="sr-only">
@@ -766,9 +890,10 @@ export function EstimateSheet({
             )}
           </table>
         </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t p-4 md:px-5">
-          {editable && groups.length > 0 ? (
+          {editable && view === 'spreadsheet' && groups.length > 0 ? (
             <label className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Add category</span>
               <NativeSelect
@@ -847,6 +972,15 @@ export function EstimateSheet({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {drawer && (
+          <EstimateLineItemDrawer
+            key={drawer.session}
+            target={drawer}
+            locked={locked}
+            onSave={saveDrawerRow}
+            onClose={() => closeDrawer()}
+          />
+        )}
       </section>
 
       <div className="2xl:sticky 2xl:top-4 2xl:self-start">
