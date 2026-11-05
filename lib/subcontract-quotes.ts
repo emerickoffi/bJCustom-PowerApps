@@ -19,13 +19,26 @@ export const QUOTE_TIMEZONES = [
   'America/Halifax',
 ] as const
 
-export type RequestStatus = 'draft' | 'open' | 'closed' | 'cancelled'
+export const QUOTE_DECISIONS_MIGRATION = '20261201000010_subcontract_quote_decisions.sql'
+
+export type RequestStatus = 'draft' | 'open' | 'closed' | 'cancelled' | 'awarded'
 export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   draft: 'Draft',
   open: 'Open',
   closed: 'Closed',
   cancelled: 'Cancelled',
+  awarded: 'Awarded',
 }
+
+export type QuoteDecision = 'selected' | 'not_selected' | 'rejected'
+export const DECISION_LABELS: Record<QuoteDecision, string> = {
+  selected: 'Selected',
+  not_selected: 'Not selected',
+  rejected: 'Rejected',
+}
+
+export const SELECTION_DISCLAIMER =
+  'Selecting a quote does not sign a contract, approve payment, or authorize work to start. It records your decision and notifies the companies.'
 
 export type TaxTreatment = 'included' | 'excluded' | 'not_applicable'
 export const TAX_LABELS: Record<TaxTreatment, string> = {

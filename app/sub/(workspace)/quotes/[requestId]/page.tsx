@@ -10,7 +10,15 @@ import { QuoteForm } from '@/components/subcontract-quotes/quote-form'
 import { QuoteDetails } from '@/components/subcontract-quotes/quote-details'
 import { FileLink } from '@/components/subcontract-quotes/file-link'
 import { ResponseBadge } from '@/components/subcontract-quotes/status-badges'
-import { REVISION_COLUMNS, formatDeadline, responseState, type QuoteRevision, type ScopeDocument } from '@/lib/subcontract-quotes'
+import {
+  REVISION_COLUMNS,
+  SELECTION_DISCLAIMER,
+  formatDeadline,
+  responseState,
+  type QuoteDecision,
+  type QuoteRevision,
+  type ScopeDocument,
+} from '@/lib/subcontract-quotes'
 import type { SubQuoteRow } from '../page'
 
 export const metadata: Metadata = { title: 'Quote request' }
@@ -29,7 +37,7 @@ export default async function SubQuotePage({ params }: { params: Promise<{ reque
   if (!row) notFound()
 
   const [{ data: inv }, { data: versions }, { data: revs }, { data: events }] = await Promise.all([
-    supabase.from('subcontract_quote_invitations').select('organization_id, revision_instructions, decline_reason').eq('id', row.invitation_id).maybeSingle(),
+    supabase.from('subcontract_quote_invitations').select('organization_id, revision_instructions, decline_reason, decision, decision_message').eq('id', row.invitation_id).maybeSingle(),
     supabase.from('subcontract_quote_scope_versions').select('version, scope, documents, change_summary, published_at').eq('request_id', requestId).order('version', { ascending: false }),
     supabase.from('subcontract_quote_revisions').select(REVISION_COLUMNS).eq('invitation_id', row.invitation_id).order('revision_number', { ascending: false }),
     supabase.from('subcontract_quote_events').select('id, event_type, message, created_at').eq('request_id', requestId).eq('company_visible', true).order('created_at', { ascending: false }).limit(50),
@@ -43,7 +51,9 @@ export default async function SubQuotePage({ params }: { params: Promise<{ reque
     ? await supabase.from('subcontract_quote_attachments').select('id, file_name').eq('revision_id', draft.id)
     : { data: [] }
   const state = responseState(row.invitation_status, row.revision_requested_at, row.last_submitted_at)
-  const canEdit = row.status === 'open' && row.invitation_status === 'invited'
+  const decision = (inv as { decision?: QuoteDecision | null } | null)?.decision ?? null
+  const decisionMessage = (inv as { decision_message?: string | null } | null)?.decision_message ?? ''
+  const canEdit = row.status === 'open' && row.invitation_status === 'invited' && !decision
   const organizationId = (inv as { organization_id?: string } | null)?.organization_id ?? session.accounts[0]?.organizationId
 
   return (
@@ -60,7 +70,21 @@ export default async function SubQuotePage({ params }: { params: Promise<{ reque
         </div>
       </div>
 
-      {state === 'revision_requested' ? (
+      {decision === 'selected' ? (
+        <p className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-foreground">
+          <span className="font-medium">Your quote was selected.</span> The builder will contact you about next steps. {SELECTION_DISCLAIMER}
+        </p>
+      ) : decision === 'rejected' ? (
+        <p className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground">
+          <span className="font-medium">The builder did not accept your quote.</span> {decisionMessage}
+        </p>
+      ) : decision === 'not_selected' ? (
+        <p className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground">
+          <span className="font-medium">This request has been awarded to another company.</span> Thank you for quoting.
+        </p>
+      ) : null}
+
+      {state === 'revision_requested' && !decision ? (
         <p className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-foreground">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
           <span>
