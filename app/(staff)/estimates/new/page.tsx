@@ -51,7 +51,6 @@ export default async function NewEstimatePage({ searchParams }: { searchParams: 
           action={createEstimateAction}
           projects={projects}
           defaults={{
-            project_id: preselected,
             estimate_date: today,
             expiration_date: addDays(today, ESTIMATE_VALIDITY_DAYS),
           }}

@@ -425,8 +425,8 @@ export function EstimateSheet({
       : saveError
         ? 'Not saved'
         : dirty
-          ? 'Unsaved changes'
-          : 'All changes saved'
+          ? 'Unsaved line items'
+          : 'Line items saved'
 
   return (
     <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -462,9 +462,10 @@ export function EstimateSheet({
                 <Button type="button" variant="outline" size="icon" onClick={redo} disabled={!history.future.length || locked} aria-label="Redo">
                   <Redo2 aria-hidden="true" />
                 </Button>
-                <Button type="button" onClick={save} disabled={!dirty || locked}>
+                <Button type="button" onClick={save} disabled={!dirty || locked} title="Saves cost items only. Pricing settings and notes have their own Save settings button.">
                   <Save data-icon="inline-start" />
                   {saving ? 'Saving...' : 'Save draft'}
+                  <span className="sr-only"> (cost items only)</span>
                 </Button>
               </div>
             ) : (
@@ -542,7 +543,38 @@ export function EstimateSheet({
               <tbody>
                 <tr>
                   <td colSpan={editable ? 12 : 11} className="px-6 py-12 text-center text-sm text-muted-foreground">
-                    {editable ? 'No line items yet. Pick a category below to add the first one.' : 'This estimate has no line items.'}
+                    {editable ? (
+                      <div className="mx-auto flex max-w-md flex-col items-center gap-3">
+                        <span className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <Plus className="size-5" aria-hidden="true" />
+                        </span>
+                        <div className="flex flex-col gap-1">
+                          <p className="text-base font-semibold text-foreground">Add your first cost item</p>
+                          <p>Choose a category, then enter the work, quantity, and costs.</p>
+                        </div>
+                        <label className="flex w-full flex-col items-center gap-1.5 sm:w-auto">
+                          <span className="sr-only">Choose a category for the first cost item</span>
+                          <NativeSelect
+                            value=""
+                            disabled={locked}
+                            onChange={(e) => e.target.value && addRow(e.target.value as EstimateCategory)}
+                            className="h-10 w-full border-primary bg-primary text-primary-foreground sm:w-64"
+                          >
+                            <option value="">Choose a category to start</option>
+                            {unusedCategories.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </NativeSelect>
+                        </label>
+                        <p className="text-xs">
+                          Costs are entered here. Creating the estimate only saved its setup, and you can save this draft with no cost items.
+                        </p>
+                      </div>
+                    ) : (
+                      'This estimate has no line items.'
+                    )}
                   </td>
                 </tr>
               </tbody>
@@ -602,7 +634,7 @@ export function EstimateSheet({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t p-4 md:px-5">
-          {editable ? (
+          {editable && groups.length > 0 ? (
             <label className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Add category</span>
               <NativeSelect
