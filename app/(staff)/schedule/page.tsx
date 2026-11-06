@@ -243,8 +243,8 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
             title="Schedule"
             description={
               selected
-                ? `Construction activities for ${selected.name}. Changes here update the same records as the project tracker.`
-                : 'All projects, grouped by project. Changes here update the same records as each project tracker.'
+                ? `Construction activities for ${selected.name}. Open an activity to edit it in the project schedule.`
+                : 'All projects, grouped by project. Open an activity to edit it in its project schedule.'
             }
             actions={<ProjectFilter value={selected ? selected.id : 'all'} projects={filterProjects} />}
           />
@@ -255,12 +255,6 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
               <span className="rounded-full border border-[#D6DDE5] bg-[#F3F4F6] px-2.5 py-0.5 text-xs font-medium text-[#17212B]">
                 {PROJECT_STATUS_LABELS[selected.status]}
               </span>
-              <Link
-                href={`/projects/${selected.id}/schedule`}
-                className="rounded font-medium text-[#006B78] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006B78] focus-visible:ring-offset-2"
-              >
-                Open project tracker
-              </Link>
             </div>
           )}
         </HeaderSurface>
@@ -308,7 +302,12 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
                     {upcoming.slice(0, 6).map(({ a, on }) => (
                       <li key={a.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                         <span className="flex min-w-0 flex-col">
-                          <span className="text-sm font-medium text-[#17212B]">{a.name}</span>
+                          <Link
+                            href={`/projects/${a.project_id}/schedule?activity=${encodeURIComponent(a.id)}`}
+                            className="w-fit rounded text-sm font-medium text-[#006B78] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006B78] focus-visible:ring-offset-2"
+                          >
+                            {a.name}
+                          </Link>
                           <span className="truncate text-xs text-[#526173]">
                             {selected ? a.phase : `${projectName.get(a.project_id)} · ${a.phase}`}
                           </span>
