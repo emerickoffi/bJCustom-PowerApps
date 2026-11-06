@@ -82,7 +82,7 @@ export default async function DailyLogsDirectoryPage({
   const filtered = Boolean(filters.q || filters.project || filters.status)
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Daily logs"
         description="Site activity across every project you have access to. Open a log to view or edit it inside its project."
