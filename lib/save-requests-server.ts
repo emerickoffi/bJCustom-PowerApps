@@ -53,10 +53,14 @@ export async function findCommittedSave(supabase: Supabase, requestId: string, k
   return data.record_id as string
 }
 
+export const SAVE_LEDGER_MISSING_MESSAGE =
+  'Saving is paused: retry and conflict protection is not set up on the server yet. Your entries are kept on this device. Contact your administrator.'
+
 /**
  * Prefers the tracked RPC; if it errors, checks whether the identical request already committed (for
- * example a concurrent tab) before reporting failure. Falls back to the original save when the ledger
- * migration is not applied.
+ * example a concurrent tab) before reporting failure. When the client sent a request id (so it relies on
+ * retry protection) and the ledger migration is missing, the save is refused rather than run unprotected.
+ * Requests without an id keep the original untracked save.
  */
 export async function runTrackedSave(opts: {
   supabase: Supabase
@@ -74,6 +78,7 @@ export async function runTrackedSave(opts: {
       if (typeof committed === 'string' && committed !== 'unavailable') return { id: committed, error: null, conflict: false }
       return { id: null, error: r.error, conflict: isConflictMessage(r.error?.message) }
     }
+    return { id: null, error: { code: 'SAVE_LEDGER_MISSING', message: SAVE_LEDGER_MISSING_MESSAGE }, conflict: false }
   }
   const r = await opts.untracked()
   return { id: (r.data as string) ?? null, error: r.error, conflict: isConflictMessage(r.error?.message) }

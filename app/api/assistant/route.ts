@@ -167,11 +167,30 @@ export async function POST(request: Request) {
   }
   if (!context) return fail(404, 'That project is not available to you.')
 
-  const { error: logError } = await supabase.from('ai_assistant_requests').insert({
-    organization_id: session.organizationId,
-    user_id: session.userId,
-    project_id: projectId,
-  })
+  const attempt = { organization_id: session.organizationId, user_id: session.userId, project_id: projectId }
+  let tracked = true
+  let { error: logError } = await supabase.from('ai_assistant_requests').insert({ ...attempt, request_ref: requestId })
+  if (logError && (logError.code === 'PGRST204' || logError.code === '42703')) {
+    tracked = false
+    ;({ error: logError } = await supabase.from('ai_assistant_requests').insert(attempt))
+  }
+  const startedAt = Date.now()
+  const complete = async (
+    outcome: 'success' | 'failure' | 'timeout',
+    category: 'timeout' | 'provider_error' | 'empty_answer' | 'internal' | null,
+    usage?: { inputTokens?: number; outputTokens?: number },
+  ) => {
+    if (!tracked) return
+    const { error } = await supabase.rpc('complete_ai_assistant_request', {
+      p_ref: requestId,
+      p_outcome: outcome,
+      p_error_category: category,
+      p_duration_ms: Date.now() - startedAt,
+      p_input_tokens: usage?.inputTokens ?? -1,
+      p_output_tokens: usage?.outputTokens ?? -1,
+    })
+    if (error) console.warn('[assistant] outcome record failed', { requestId, code: error.code })
+  }
   if (logError) {
     console.error('[assistant] usage log insert failed', { requestId, code: logError.code })
     return fail(403, 'The assistant is not available for your account.', requestId)
@@ -389,10 +408,12 @@ export async function POST(request: Request) {
     const { text, links } = extractLinks(result.text, allowedLinks)
     if (!text) {
       console.error('[assistant] empty answer', { requestId, finishReason: result.finishReason, steps: result.steps.length })
+      await complete('failure', 'empty_answer', result.totalUsage)
       return fail(502, 'The assistant returned an empty answer. Try again or rephrase your question.', requestId)
     }
     const finalHealth = health as { project: string; indicator: HealthLevel } | null
     const finalDraft = estimateDraft as DraftProposal | null
+    await complete('success', null, result.totalUsage)
     return Response.json({
       ...(finalDraft ? { estimateDraft: finalDraft } : {}),
       text,
@@ -404,6 +425,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const details = describeGenerationError(error)
     console.error('[assistant] generation failed', { requestId, model: provider.model, turns: messages.length, ...details })
+    await complete(details.timedOut ? 'timeout' : 'failure', details.timedOut ? 'timeout' : 'provider_error')
     return details.timedOut
       ? fail(504, 'The assistant took too long to answer. Your conversation is saved, so you can retry.', requestId)
       : fail(502, 'The AI service could not answer right now. Your conversation is saved, so you can retry.', requestId)

@@ -8,6 +8,7 @@ import { requireManager } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { DRAW_MILESTONES, PAYMENT_METHODS, dollarsToCents } from '@/lib/invoices'
+import { SAVE_REQUEST_FIELD } from '@/lib/save-requests'
 
 const uuid = z.uuid()
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date')
@@ -208,17 +209,37 @@ export async function recordPayment(_prev: ActionState, formData: FormData): Pro
   const cents = dollarsToCents(parsed.data.amount)
   if (!cents || cents <= 0) return { error: 'Please correct the highlighted fields.', fieldErrors: { amount: 'Enter an amount like 2500.00' }, values }
 
+  const requestId = uuid.safeParse(formData.get(SAVE_REQUEST_FIELD))
+  if (!requestId.success) return { error: 'This payment could not be submitted safely. Reload the page and try again.', values }
+
   const supabase = await createClient()
-  const { error } = await supabase.from('invoice_payments').insert({
-    organization_id: session.organizationId,
-    invoice_id: parsed.data.invoice_id,
-    payment_date: parsed.data.payment_date,
-    amount_cents: cents,
-    method: parsed.data.method,
-    reference: parsed.data.reference,
-    notes: parsed.data.notes,
-  })
-  if (error) return { error: friendlyDbError(error), values }
+  const { data: invoice } = await supabase
+    .from('invoices')
+    .select('id')
+    .eq('id', parsed.data.invoice_id)
+    .eq('organization_id', session.organizationId)
+    .maybeSingle()
+  if (!invoice) return { error: 'That invoice could not be found in your current company.', values }
+
+  const { data, error } = await supabase
+    .rpc('record_invoice_payment', {
+      p_invoice: parsed.data.invoice_id,
+      p_request: requestId.data,
+      p_payment_date: parsed.data.payment_date,
+      p_amount_cents: cents,
+      p_method: parsed.data.method,
+      p_reference: parsed.data.reference,
+      p_notes: parsed.data.notes,
+    })
+    .maybeSingle<{ payment_id: string; replayed: boolean }>()
+  if (error) {
+    if (error.code === 'PGRST202' || error.code === '42883') {
+      return { error: 'Recording payments is unavailable until a required database update is applied. Nothing was recorded.', values }
+    }
+    if (error.hint === 'payment_request_conflict') return { error: error.message, values }
+    return { error: friendlyDbError(error), values }
+  }
+  if (!data) return { error: 'We could not confirm the payment. Press Record payment again; it will not be recorded twice.', values }
   revalidateInvoice(parsed.data.invoice_id)
-  return { success: 'Payment recorded.' }
+  return { success: data.replayed ? 'This payment was already recorded. No duplicate was created.' : 'Payment recorded.' }
 }

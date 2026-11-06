@@ -1,11 +1,32 @@
 'use client'
 
-import { useActionState, useState, useTransition } from 'react'
+import { useState, useTransition, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TextField, NativeSelect } from '@/components/shared/form-field'
 import { recordPayment, reversePayment } from '@/app/actions/invoices'
-import { initialActionState } from '@/lib/action-state'
+import { initialActionState, type ActionState } from '@/lib/action-state'
+import { SAVE_REQUEST_FIELD, canonicalPayload, fingerprint, resolveRequestId, type PendingSave } from '@/lib/save-requests'
+
+/** The id outlives refreshes so a retry after a lost response is recognised instead of recorded again. */
+function readPending(key: string): PendingSave | null {
+  try {
+    const raw = sessionStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as PendingSave) : null
+  } catch {
+    return null
+  }
+}
+function writePending(key: string, value: PendingSave) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(value))
+  } catch {}
+}
+function clearPending(key: string) {
+  try {
+    sessionStorage.removeItem(key)
+  } catch {}
+}
 import { formatCentsExact } from '@/lib/estimates'
 import { formatDate } from '@/lib/format'
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '@/lib/invoices'
@@ -22,12 +43,33 @@ export function InvoicePayments({
   balanceCents: number
   canRecord: boolean
 }) {
-  const [state, formAction, pending] = useActionState(recordPayment, initialActionState)
+  const [state, setState] = useState<ActionState>(initialActionState)
+  const [pending, startSubmit] = useTransition()
   const [formKey, setFormKey] = useState(0)
-  const [lastSuccess, setLastSuccess] = useState<string | undefined>()
-  if (state.success && state.success !== lastSuccess) {
-    setLastSuccess(state.success)
-    setFormKey((k) => k + 1)
+  const pendingKey = `payment-request:${invoiceId}`
+
+  function submitPayment(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const print = fingerprint(canonicalPayload(fd.entries()))
+    const requestId = resolveRequestId(readPending(pendingKey), print, () => crypto.randomUUID())
+    writePending(pendingKey, { requestId, fingerprint: print, startedAt: Date.now() })
+    fd.set(SAVE_REQUEST_FIELD, requestId)
+    startSubmit(async () => {
+      try {
+        const result = await recordPayment(initialActionState, fd)
+        setState(result)
+        if (result.success) {
+          clearPending(pendingKey)
+          setFormKey((k) => k + 1)
+        }
+      } catch {
+        setState({
+          error: 'We could not confirm whether this payment was recorded. Check your connection and press Record payment again; it will not be recorded twice.',
+          values: Object.fromEntries([...fd.entries()].filter(([, val]) => typeof val === 'string')) as Record<string, string>,
+        })
+      }
+    })
   }
   const v = state.success ? undefined : state.values
   const fe = state.fieldErrors ?? {}
@@ -55,7 +97,7 @@ export function InvoicePayments({
       )}
 
       {canRecord && balanceCents > 0 && (
-        <form key={formKey} action={formAction} className="flex flex-col gap-4 border-t pt-5" noValidate>
+        <form key={formKey} onSubmit={submitPayment} className="flex flex-col gap-4 border-t pt-5" noValidate>
           <h3 className="text-sm font-medium">Record a payment</h3>
           <input type="hidden" name="invoice_id" value={invoiceId} />
           <div className="grid gap-4 sm:grid-cols-2">
