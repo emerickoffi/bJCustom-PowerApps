@@ -53,7 +53,7 @@ const isOpen = (a: Pick<ScheduleActivity, 'status'>) => a.status !== 'completed'
 
 function ScheduleShell({ children }: { children: React.ReactNode }) {
   return (
-    <div data-schedule-page className="flex flex-col gap-5">
+    <div data-schedule-page data-page-width="wide" className="flex flex-col gap-5">
       {children}
     </div>
   )

@@ -40,7 +40,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   ].map((f) => ({ ...f, count: all.filter((inv) => matchesFilter(inv, f.value)).length }))
 
   return (
-    <div className="flex flex-col gap-5 md:gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         icon={Receipt}
         title="Invoices"

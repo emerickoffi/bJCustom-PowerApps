@@ -73,7 +73,7 @@ export default async function OrgChangeOrdersPage() {
   const awaitingCount = list.filter((r) => r.status === 'awaiting_homeowner').length
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Change orders"
         description="Scope and price changes across every project you can access. Open a change order to work on it inside its project."

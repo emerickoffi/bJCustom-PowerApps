@@ -129,7 +129,7 @@ export default async function SubcontractorsPage({
   )
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         icon={HardHat}
         title="Subcontractors"

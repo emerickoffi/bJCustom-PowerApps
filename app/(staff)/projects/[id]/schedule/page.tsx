@@ -157,7 +157,7 @@ export default async function SchedulePage({
       : null
 
   return (
-    <div className="flex flex-col gap-6">
+    <div data-page-width="wide" className="flex flex-col gap-6">
       <PageHeader
         icon={CalendarDaysIcon}
         eyebrow={
