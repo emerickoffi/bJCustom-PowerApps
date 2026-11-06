@@ -10,6 +10,8 @@ import { isSubWorkSetupError, workStateFor, type SubmissionStatus } from '@/lib/
 import { PageHeader, Surface } from '@/components/shared/page-header'
 import { WorkStateBadge } from '@/components/subcontractor-work/work-state-badge'
 import { SubcontractsNav } from '@/components/subcontract-quotes/subcontracts-nav'
+import { SubWorkProjectSwitcher } from '@/components/subcontract-quotes/sub-work-project-switcher'
+import { loadSubWorkProjectOptions } from '@/lib/subcontract-project-options'
 
 export const metadata: Metadata = { title: 'Subcontractor work' }
 
@@ -38,6 +40,7 @@ export default async function SubcontractorWorkQueuePage({ params }: { params: P
   ])
   if (!project || !canViewInternal) notFound()
 
+  const projectOptionsPromise = loadSubWorkProjectOptions(supabase, session.organizationId, { id: project.id, name: project.name })
   const { data, error } = await supabase
     .from('subcontractor_work_submissions')
     .select(
@@ -52,6 +55,7 @@ export default async function SubcontractorWorkQueuePage({ params }: { params: P
     .order('submitted_at', { ascending: false })
     .limit(200)
 
+  const projectOptions = await projectOptionsPromise
   const rows = (data ?? []) as unknown as QueueRow[]
   const awaiting = rows.filter((r) => r.status === 'submitted').sort((a, b) => (a.submitted_at ?? '').localeCompare(b.submitted_at ?? ''))
   const reviewed = rows.filter((r) => r.status !== 'submitted')
@@ -62,6 +66,7 @@ export default async function SubcontractorWorkQueuePage({ params }: { params: P
         icon={ClipboardCheck}
         title="Subcontractor work"
         description="Verify completion and correction submissions before work counts as accepted."
+        actions={<SubWorkProjectSwitcher projects={projectOptions} currentId={project.id} tab="work" />}
       />
       <SubcontractsNav projectId={id} active="work" />
 

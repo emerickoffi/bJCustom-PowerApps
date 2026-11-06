@@ -7,6 +7,8 @@ import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader, Surface } from '@/components/shared/page-header'
 import { SubcontractsNav } from '@/components/subcontract-quotes/subcontracts-nav'
+import { SubWorkProjectSwitcher } from '@/components/subcontract-quotes/sub-work-project-switcher'
+import { loadSubWorkProjectOptions } from '@/lib/subcontract-project-options'
 import { NewQuoteRequestDrawer } from '@/components/subcontract-quotes/new-request-drawer'
 import { emptyRequestDraft, loadRequestFormOptions } from '@/lib/subcontract-quotes-data'
 import { RequestStatusBadge } from '@/components/subcontract-quotes/status-badges'
@@ -38,7 +40,7 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
   ])
   if (!project || !canViewInternal) notFound()
 
-  const [{ data, error }, { data: currencyRow }, options] = await Promise.all([
+  const [{ data, error }, { data: currencyRow }, options, projectOptions] = await Promise.all([
     supabase
       .from('subcontract_quote_requests')
       .select(
@@ -50,6 +52,7 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
       .limit(200),
     supabase.from('projects').select('currency').eq('id', id).maybeSingle(),
     loadRequestFormOptions(supabase, session.organizationId, id),
+    loadSubWorkProjectOptions(supabase, session.organizationId, { id: project.id, name: project.name }),
   ])
   const setupMissing = isQuoteSetupError(error)
   const rows = (data ?? []) as unknown as Row[]
@@ -62,17 +65,21 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
         title="Subcontract quotes"
         description={`Request, compare, and track subcontractor pricing for ${project.name}.`}
         actions={
-          setupMissing ? null : (
-            <NewQuoteRequestDrawer
-              projectId={id}
-              projectName={project.name}
-              currency={currency}
-              initial={emptyRequestDraft()}
-              companies={options.companies}
-              documents={options.documents}
-              activities={options.activities}
-            />
-          )
+          <>
+            <SubWorkProjectSwitcher projects={projectOptions} currentId={project.id} tab="quotes" />
+            {setupMissing ? null : (
+              <NewQuoteRequestDrawer
+                key={id}
+                projectId={id}
+                projectName={project.name}
+                currency={currency}
+                initial={emptyRequestDraft()}
+                companies={options.companies}
+                documents={options.documents}
+                activities={options.activities}
+              />
+            )}
+          </>
         }
       />
       <SubcontractsNav projectId={id} active="quotes" />
