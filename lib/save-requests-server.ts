@@ -53,6 +53,16 @@ export async function findCommittedSave(supabase: Supabase, requestId: string, k
   return data.record_id as string
 }
 
+/**
+ * Development-only trace of why a tracked save failed. Logs the error code and database message only,
+ * never the submitted values, request id or user, because Postgres messages can echo row data.
+ */
+function logSaveFailure(kind: SaveKind, error: DbError) {
+  if (process.env.NODE_ENV === 'production' || !error) return
+  const hint = isMissingSaveLedger(error) ? ' (save ledger migration not applied: 20261128000010 + 20261205000020)' : ''
+  console.error(`[save:${kind}] tracked save failed: ${error.code ?? 'unknown'} ${error.message ?? ''}${hint}`)
+}
+
 export const SAVE_LEDGER_MISSING_MESSAGE =
   'Saving is paused: retry and conflict protection is not set up on the server yet. Your entries are kept on this device. Contact your administrator.'
 
@@ -73,6 +83,7 @@ export async function runTrackedSave(opts: {
   if (req.id) {
     const r = await opts.tracked(req.id)
     if (!r.error && r.data) return { id: r.data as string, error: null, conflict: false }
+    logSaveFailure(kind, r.error)
     if (!isMissingSaveLedger(r.error)) {
       const committed = await findCommittedSave(supabase, req.id, kind, req.hash)
       if (typeof committed === 'string' && committed !== 'unavailable') return { id: committed, error: null, conflict: false }
