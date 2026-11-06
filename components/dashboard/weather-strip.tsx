@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition, type FormEvent } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import {
   Cloud,
@@ -27,7 +27,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { WEATHER_STALE_MS, type WeatherChoice, type WeatherKind, type WeatherResult } from '@/lib/weather'
+import { Input } from '@/components/ui/input'
+import {
+  normalizePlaceQuery,
+  PLACE_QUERY_MAX,
+  WEATHER_STALE_MS,
+  type FixedWeatherChoice,
+  type WeatherChoice,
+  type WeatherKind,
+  type WeatherResult,
+} from '@/lib/weather'
 import { cn } from '@/lib/utils'
 
 export type WeatherLocation = { id: string; name: string; hasAddress: boolean }
@@ -54,43 +63,66 @@ const ICON_TONE: Record<WeatherKind, string> = {
   wind: 'text-primary',
 }
 
+type GeoFailure = 'denied' | 'unavailable' | 'timeout'
+
 /** Device position held in memory only, already coarsened to ~1 km before it leaves the browser. */
 type GeoState =
   | { status: 'checking' }
   | { status: 'needs_permission' }
   | { status: 'locating' }
   | { status: 'ready'; lat: number; lon: number }
-  | { status: 'denied' | 'unavailable' | 'timeout' }
+  | { status: GeoFailure }
 
-type WeatherKey = readonly ['weather', 'project', string] | readonly ['weather', 'device', number, number]
+type WeatherKey =
+  | readonly ['weather', 'project', string]
+  | readonly ['weather', 'place', string]
+  | readonly ['weather', 'device', number, number]
 
-const GEO_MESSAGES = {
-  denied: {
-    title: 'Location access is off',
-    detail: 'Location is blocked for this site. Allow it in your browser settings, or choose an active project.',
-  },
-  unavailable: {
-    title: 'Location unavailable',
-    detail: 'This device could not provide a location. Try again, or choose an active project.',
-  },
-  timeout: {
-    title: 'Location timed out',
-    detail: 'Finding your location took too long. Try again, or choose an active project.',
-  },
-} as const
+/** Shown inside the location chooser only; the strip itself just says "Location unavailable". */
+const GEO_REASONS: Record<GeoFailure, string> = {
+  denied: 'Location access is blocked for this site in your browser settings.',
+  unavailable: 'This device could not provide a location.',
+  timeout: 'Finding your location took too long.',
+}
+
+/**
+ * Remembers a failed device lookup for this browser tab session so reloading the dashboard does not keep re-running
+ * a request that just failed. Any explicit "Use my location" press still tries again.
+ */
+const GEO_FAILED_KEY = 'dash-weather-geo-failed'
+const readGeoFailed = (): GeoFailure | null => {
+  try {
+    const v = sessionStorage.getItem(GEO_FAILED_KEY)
+    return v === 'denied' || v === 'unavailable' || v === 'timeout' ? v : null
+  } catch {
+    return null
+  }
+}
+const writeGeoFailed = (v: GeoFailure | null) => {
+  try {
+    if (v) sessionStorage.setItem(GEO_FAILED_KEY, v)
+    else sessionStorage.removeItem(GEO_FAILED_KEY)
+  } catch {}
+}
 
 const coarse = (n: number) => Math.round(n * 100) / 100
+const fixedValue = (f: FixedWeatherChoice) => (f.mode === 'project' ? f.projectId : `place:${f.query}`)
+const placeKey = (query: string) => ['weather', 'place', query] as const
 
 async function fetchWeather(key: WeatherKey): Promise<WeatherResult> {
   const res =
     key[1] === 'project'
       ? await fetch(`/api/weather?project=${encodeURIComponent(key[2])}`)
-      : await fetch('/api/weather', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lat: key[2], lon: key[3] }),
-        })
+      : key[1] === 'place'
+        ? await fetch(`/api/weather?place=${encodeURIComponent(key[2])}`)
+        : await fetch('/api/weather', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lat: key[2], lon: key[3] }),
+          })
   if (res.status === 404) return { state: 'unavailable', message: 'This project is no longer available to you.' }
+  if (res.status === 400 && key[1] === 'place')
+    return { state: 'unresolved', message: 'Enter a U.S. city (for example "Austin, TX") or a 5-digit ZIP code.' }
   if (!res.ok) return { state: 'unavailable', message: 'Weather could not be loaded. Try again shortly.' }
   return res.json()
 }
@@ -98,6 +130,8 @@ async function fetchWeather(key: WeatherKey): Promise<WeatherResult> {
 const timeFmt = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' })
 const fmtTime = (iso: string | null | undefined) => (iso ? timeFmt.format(new Date(iso)) : null)
 const deg = (n: number | null) => (n === null ? '\u2014' : `${n}\u00B0F`)
+
+const CHOOSE_PLACE = '__choose_place'
 
 export function WeatherStrip({
   locations,
@@ -113,18 +147,24 @@ export function WeatherStrip({
   /** Standard dashboard header: tighter layout; rain and wind move into the details dialog. */
   compact?: boolean
 }) {
-  const restoredProjectValid =
-    initialChoice?.mode === 'project' && locations.some((l) => l.id === initialChoice.projectId)
+  const isValidFixed = (f: FixedWeatherChoice | null | undefined): f is FixedWeatherChoice =>
+    !!f && (f.mode === 'place' || locations.some((l) => l.id === f.projectId))
+
+  const restoredFixed = initialChoice && initialChoice.mode !== 'device' ? initialChoice : null
+  const restoredFallback = initialChoice?.mode === 'device' ? initialChoice.fallback : undefined
   const [choice, setChoice] = useState<WeatherChoice>(
-    restoredProjectValid ? initialChoice! : { mode: 'device' },
+    isValidFixed(restoredFixed) ? restoredFixed : { mode: 'device' },
   )
-  const [savedUnavailable, setSavedUnavailable] = useState(initialChoice?.mode === 'project' && !restoredProjectValid)
+  /** Last fixed location the user picked; shown whenever the device location can't be used. */
+  const [lastFixed, setLastFixed] = useState<FixedWeatherChoice | null>(
+    isValidFixed(restoredFixed) ? restoredFixed : isValidFixed(restoredFallback) ? restoredFallback : null,
+  )
+  const [savedUnavailable, setSavedUnavailable] = useState(!!restoredFixed && !isValidFixed(restoredFixed))
   const [geo, setGeo] = useState<GeoState>({ status: 'checking' })
+  const [chooserOpen, setChooserOpen] = useState(false)
   const geoRequest = useRef(0)
   const [, startTransition] = useTransition()
   const { mutate: mutateKey } = useSWRConfig()
-
-  const project = choice.mode === 'project' ? locations.find((l) => l.id === choice.projectId) ?? null : null
 
   const locate = useCallback(
     (fresh: boolean) => {
@@ -139,20 +179,27 @@ export function WeatherStrip({
           if (id !== geoRequest.current) return
           const lat = coarse(pos.coords.latitude)
           const lon = coarse(pos.coords.longitude)
+          writeGeoFailed(null)
           setGeo({ status: 'ready', lat, lon })
           if (fresh) void mutateKey(['weather', 'device', lat, lon] as const)
         },
         (err) => {
           if (id !== geoRequest.current) return
-          setGeo({ status: err.code === err.PERMISSION_DENIED ? 'denied' : err.code === err.TIMEOUT ? 'timeout' : 'unavailable' })
+          const failure: GeoFailure =
+            err.code === err.PERMISSION_DENIED ? 'denied' : err.code === err.TIMEOUT ? 'timeout' : 'unavailable'
+          writeGeoFailed(failure)
+          setGeo({ status: failure })
         },
-        { enableHighAccuracy: false, timeout: 10_000, maximumAge: fresh ? 0 : 10 * 60 * 1000 },
+        { enableHighAccuracy: false, timeout: 15_000, maximumAge: fresh ? 0 : 30 * 60 * 1000 },
       )
     },
     [mutateKey],
   )
 
-  /** Only checks existing permission; the browser prompt is shown solely after the user presses "Use my location". */
+  /**
+   * Only checks existing permission; the browser prompt is shown solely after an explicit "Use my location".
+   * A lookup that already failed in this tab session is not re-run automatically.
+   */
   useEffect(() => {
     if (choice.mode !== 'device' || geo.status !== 'checking') return
     if (!('geolocation' in navigator)) {
@@ -168,8 +215,13 @@ export function WeatherStrip({
       .query({ name: 'geolocation' })
       .then((perm) => {
         if (cancelled) return
-        if (perm.state === 'granted') locate(false)
-        else setGeo({ status: perm.state === 'denied' ? 'denied' : 'needs_permission' })
+        if (perm.state === 'denied') setGeo({ status: 'denied' })
+        else if (perm.state !== 'granted') setGeo({ status: 'needs_permission' })
+        else {
+          const failed = readGeoFailed()
+          if (failed) setGeo({ status: failed })
+          else locate(false)
+        }
       })
       .catch(() => {
         if (!cancelled) setGeo({ status: 'needs_permission' })
@@ -179,53 +231,84 @@ export function WeatherStrip({
     }
   }, [choice.mode, geo.status, locate])
 
-  const key: WeatherKey | null =
-    choice.mode === 'project'
-      ? project?.hasAddress
+  const fallback = isValidFixed(lastFixed) ? lastFixed : null
+  const showingFallback = choice.mode === 'device' && geo.status !== 'ready' && !!fallback
+  const fixedTarget: FixedWeatherChoice | null = choice.mode !== 'device' ? choice : showingFallback ? fallback : null
+  const project =
+    fixedTarget?.mode === 'project' ? (locations.find((l) => l.id === fixedTarget.projectId) ?? null) : null
+
+  const key: WeatherKey | null = fixedTarget
+    ? fixedTarget.mode === 'place'
+      ? placeKey(fixedTarget.query)
+      : project?.hasAddress
         ? ['weather', 'project', project.id]
         : null
-      : geo.status === 'ready'
-        ? ['weather', 'device', geo.lat, geo.lon]
-        : null
+    : geo.status === 'ready'
+      ? ['weather', 'device', geo.lat, geo.lon]
+      : null
 
   const { data, error, isLoading, isValidating, mutate } = useSWR(key, fetchWeather, {
     revalidateOnFocus: false,
     dedupingInterval: 10 * 60 * 1000,
     refreshInterval: 30 * 60 * 1000,
+    shouldRetryOnError: false,
   })
 
-  const choose = (value: string) => {
-    const next: WeatherChoice = value === 'device' ? { mode: 'device' } : { mode: 'project', projectId: value }
+  const save = (value: string, fallbackValue?: string | null) =>
+    startTransition(async () => {
+      await setWeatherLocationAction(value, fallbackValue)
+    })
+
+  const chooseFixed = (next: FixedWeatherChoice) => {
     setSavedUnavailable(false)
-    if (next.mode === 'project' && geo.status === 'locating') {
+    if (geo.status === 'locating') {
       geoRequest.current++
       setGeo({ status: 'checking' })
     }
     setChoice(next)
-    startTransition(async () => {
-      await setWeatherLocationAction(value)
-    })
+    setLastFixed(next)
+    save(fixedValue(next))
   }
 
+  const selectMyLocation = () => {
+    setSavedUnavailable(false)
+    setChoice({ mode: 'device' })
+    save('device', fallback ? fixedValue(fallback) : null)
+    if (geo.status !== 'ready' && geo.status !== 'locating') locate(false)
+  }
+
+  const onSelect = (value: string) => {
+    if (value === CHOOSE_PLACE) setChooserOpen(true)
+    else if (value === 'device') selectMyLocation()
+    else if (value.startsWith('place:')) chooseFixed({ mode: 'place', query: value.slice('place:'.length) })
+    else chooseFixed({ mode: 'project', projectId: value })
+  }
+
+  const usingDevice = choice.mode === 'device' && !showingFallback
   const refresh = () => {
-    if (choice.mode === 'device') locate(true)
+    if (usingDevice) locate(true)
     else void mutate()
   }
 
+  const geoFailure: GeoFailure | null =
+    geo.status === 'denied' || geo.status === 'unavailable' || geo.status === 'timeout' ? geo.status : null
   const busy = isValidating || geo.status === 'locating'
+  const placeOption = lastFixed?.mode === 'place' ? lastFixed.query : null
+
   const selector = (
     <label className="flex h-10 min-w-0 cursor-pointer items-center gap-1.5 rounded-md border border-[#80C5CC] bg-[#E6F5F6] pl-2.5 text-xs font-medium text-[#006773] transition-colors hover:bg-[#CCECEF] has-[select:focus-visible]:ring-2 has-[select:focus-visible]:ring-[#006773] has-[select:focus-visible]:ring-offset-1">
       <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
       <span className="sr-only">Weather location (does not change the project or work filters)</span>
       <select
-        value={choice.mode === 'device' ? 'device' : choice.projectId}
-        onChange={(e) => choose(e.target.value)}
+        value={choice.mode === 'device' ? 'device' : fixedValue(choice)}
+        onChange={(e) => onSelect(e.target.value)}
         className={cn(
           'h-full min-w-0 cursor-pointer truncate rounded-r-md bg-transparent pr-2 text-xs font-medium text-[#006773] outline-none',
           compact ? 'max-w-[14rem]' : 'max-w-[12rem]',
         )}
       >
         <option value="device">My location</option>
+        {placeOption && <option value={`place:${placeOption}`}>{placeOption}</option>}
         {locations.length > 0 && (
           <optgroup label="Active projects">
             {locations.map((l) => (
@@ -235,8 +318,41 @@ export function WeatherStrip({
             ))}
           </optgroup>
         )}
+        <option value={CHOOSE_PLACE}>City or ZIP code{'\u2026'}</option>
       </select>
     </label>
+  )
+
+  const chooser = (
+    <LocationChooser
+      open={chooserOpen}
+      onOpenChange={setChooserOpen}
+      geoFailure={geoFailure}
+      canUseDevice={typeof navigator === 'undefined' || 'geolocation' in navigator}
+      initialQuery={placeOption ?? ''}
+      onPlace={(query, result) => {
+        void mutateKey(placeKey(query), result, { revalidate: false })
+        chooseFixed({ mode: 'place', query })
+        setChooserOpen(false)
+      }}
+      onUseDevice={() => {
+        setChooserOpen(false)
+        setSavedUnavailable(false)
+        setChoice({ mode: 'device' })
+        save('device', fallback ? fixedValue(fallback) : null)
+        locate(true)
+      }}
+    />
+  )
+
+  const chooseButton = (label: string) => (
+    <button
+      type="button"
+      onClick={() => setChooserOpen(true)}
+      className="inline-flex h-10 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-[#006773] underline-offset-2 transition-colors hover:bg-[#E6F5F6] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006773]"
+    >
+      {label}
+    </button>
   )
 
   const refreshButton = (
@@ -244,7 +360,7 @@ export function WeatherStrip({
       type="button"
       onClick={refresh}
       disabled={busy}
-      aria-label={choice.mode === 'device' ? 'Refresh location and weather' : 'Refresh weather'}
+      aria-label={usingDevice ? 'Refresh location and weather' : 'Refresh weather'}
       className="flex size-10 shrink-0 items-center justify-center rounded-md text-[#006773] transition-colors hover:bg-[#E6F5F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006773] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
     >
       <RefreshCw className={cn('size-4', busy && 'animate-spin motion-reduce:animate-none')} aria-hidden="true" />
@@ -264,6 +380,7 @@ export function WeatherStrip({
       </span>
       {selector}
       {savedNote}
+      {chooser}
     </div>
   )
 
@@ -307,10 +424,11 @@ export function WeatherStrip({
       </Dialog>
       {selector}
       {savedNote}
+      {chooser}
     </div>
   )
 
-  if (choice.mode === 'device') {
+  if (choice.mode === 'device' && !showingFallback) {
     if (geo.status === 'checking') return loading('Checking location access')
     if (geo.status === 'locating') return loading('Finding your location')
     if (geo.status === 'needs_permission') {
@@ -320,26 +438,34 @@ export function WeatherStrip({
             type="button"
             onClick={() => locate(false)}
             className="inline-flex h-10 items-center gap-1.5 rounded-md border border-primary/40 bg-background px-3 text-sm font-medium text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-describedby="weather-location-hint"
           >
             <LocateFixed className="size-4" aria-hidden="true" />
             Use my location
           </button>
-          <span id="weather-location-hint" className="text-xs text-muted-foreground">
-            Shows local weather where you are.
-          </span>
+          {chooseButton('Enter city or ZIP')}
           {selector}
           {savedNote}
+          {chooser}
         </div>
       )
     }
-    if (geo.status !== 'ready') {
-      const msg = GEO_MESSAGES[geo.status]
-      return unavailable(msg.title, msg.detail, { retry: geo.status !== 'denied' })
+    if (geoFailure) {
+      return (
+        <div className={shell}>
+          <MapPin className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span role="status" className="text-xs font-medium text-foreground">
+            Location unavailable
+          </span>
+          {chooseButton('Choose location')}
+          {selector}
+          {savedNote}
+          {chooser}
+        </div>
+      )
     }
-  } else if (!project) {
+  } else if (fixedTarget?.mode === 'project' && !project) {
     return unavailable('Weather unavailable', 'This project is no longer available.', {})
-  } else if (!project.hasAddress) {
+  } else if (fixedTarget?.mode === 'project' && project && !project.hasAddress) {
     return unavailable('Weather unavailable', `${project.name} has no complete jobsite address.`, {
       editProjectId: project.id,
     })
@@ -373,6 +499,27 @@ export function WeatherStrip({
   const rain = data.rainChanceToday === null ? '\u2014' : `${data.rainChanceToday}%`
   const wind = current?.windMph === null || current?.windMph === undefined ? '\u2014' : `${current.windMph} mph`
 
+  /** While "My location" is selected but can't be used, weather comes from the last chosen location. */
+  const fallbackNote = !showingFallback ? null : geo.status === 'needs_permission' ? (
+    <button
+      type="button"
+      onClick={() => locate(false)}
+      className="inline-flex h-10 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-[#006773] transition-colors hover:bg-[#E6F5F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006773]"
+    >
+      <LocateFixed className="size-3.5" aria-hidden="true" />
+      Use my location
+    </button>
+  ) : geoFailure ? (
+    <button
+      type="button"
+      onClick={() => setChooserOpen(true)}
+      className="inline-flex h-10 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-[#E6F5F6] hover:text-[#006773] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006773]"
+    >
+      <span role="status">Location unavailable</span>
+      <span className="font-medium text-[#006773] underline underline-offset-2">Choose location</span>
+    </button>
+  ) : null
+
   return (
     <div className={shell}>
       <Dialog>
@@ -401,9 +548,121 @@ export function WeatherStrip({
         </DialogTrigger>
         <ForecastDialog data={data} now={{ condition, rain, wind, observed: observedLabel }} />
       </Dialog>
+      {fallbackNote}
       {selector}
       {refreshButton}
+      {chooser}
     </div>
+  )
+}
+
+/** Manual city / ZIP entry, with "Use my location" as an optional action. Validates before saving. */
+function LocationChooser({
+  open,
+  onOpenChange,
+  geoFailure,
+  canUseDevice,
+  initialQuery,
+  onPlace,
+  onUseDevice,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  geoFailure: GeoFailure | null
+  canUseDevice: boolean
+  initialQuery: string
+  onPlace: (query: string, result: WeatherResult) => void
+  onUseDevice: () => void
+}) {
+  const [query, setQuery] = useState(initialQuery)
+  const [message, setMessage] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (pending) return
+    const normalized = normalizePlaceQuery(query)
+    if (!normalized) {
+      setMessage('Enter a U.S. city (for example "Austin, TX") or a 5-digit ZIP code.')
+      return
+    }
+    setPending(true)
+    setMessage(null)
+    try {
+      const result = await fetchWeather(placeKey(normalized))
+      if (result.state === 'ok') onPlace(normalized, result)
+      else setMessage(result.message)
+    } catch {
+      setMessage('Weather could not be loaded. Check your connection and try again.')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          setQuery(initialQuery)
+          setMessage(null)
+        }
+        onOpenChange(next)
+      }}
+    >
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Choose weather location</DialogTitle>
+          <DialogDescription>
+            {geoFailure
+              ? `${GEO_REASONS[geoFailure]} Enter a city or ZIP code instead.`
+              : 'Weather only. This does not change the project or work filters.'}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="flex flex-col gap-2" noValidate>
+          <label htmlFor="weather-place" className="text-sm font-medium text-foreground">
+            City or ZIP code
+          </label>
+          <div className="flex gap-2">
+            <Input
+              id="weather-place"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Austin, TX or 78701"
+              autoComplete="address-level2"
+              maxLength={PLACE_QUERY_MAX}
+              aria-invalid={message ? true : undefined}
+              aria-describedby={message ? 'weather-place-message' : undefined}
+              className="h-10"
+              autoFocus
+            />
+            <button
+              type="submit"
+              disabled={pending}
+              className="inline-flex h-10 shrink-0 items-center rounded-md bg-[#006773] px-3 text-sm font-medium text-white transition-colors hover:bg-[#00525C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006773] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {pending ? 'Checking\u2026' : 'Show weather'}
+            </button>
+          </div>
+          {message && (
+            <p id="weather-place-message" role="alert" className="text-xs text-destructive">
+              {message}
+            </p>
+          )}
+        </form>
+        {canUseDevice && geoFailure !== 'denied' && (
+          <button
+            type="button"
+            onClick={onUseDevice}
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-[#80C5CC] bg-[#E6F5F6] px-3 text-sm font-medium text-[#006773] transition-colors hover:bg-[#CCECEF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006773]"
+          >
+            <LocateFixed className="size-4" aria-hidden="true" />
+            {geoFailure ? 'Try my location again' : 'Use my location'}
+          </button>
+        )}
+        <p className="text-xs text-muted-foreground">Active jobsites are also listed in the weather menu.</p>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -417,7 +676,13 @@ function ForecastDialog({
   return (
     <DialogContent className="sm:max-w-md">
       <DialogHeader>
-        <DialogTitle>{data.source === 'device' ? '3-day local forecast' : '3-day jobsite forecast'}</DialogTitle>
+        <DialogTitle>
+          {data.source === 'device'
+            ? '3-day local forecast'
+            : data.source === 'place'
+              ? '3-day forecast'
+              : '3-day jobsite forecast'}
+        </DialogTitle>
         <DialogDescription>
           {`${data.locationLabel}. Forecasts are predictions, not recorded conditions.`}
         </DialogDescription>

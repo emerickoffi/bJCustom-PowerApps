@@ -165,6 +165,77 @@ export async function getJobsiteWeather(address: JobsiteAddress, today: string):
   }
 }
 
+const US_STATES: Record<string, string> = {
+  AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado', CT: 'Connecticut',
+  DE: 'Delaware', DC: 'District of Columbia', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois',
+  IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland',
+  MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri', MT: 'Montana',
+  NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York',
+  NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania',
+  PR: 'Puerto Rico', RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas',
+  UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
+}
+const STATE_ABBR = Object.fromEntries(Object.entries(US_STATES).map(([abbr, name]) => [name.toLowerCase(), abbr]))
+
+type ZipResponse = { places?: { 'place name': string; latitude: string; longitude: string; 'state abbreviation': string }[] }
+type PlaceSearchResponse = {
+  results?: { name: string; latitude: number; longitude: number; admin1?: string; country_code?: string; population?: number }[]
+}
+
+/** Resolves a typed U.S. ZIP (Zippopotam.us) or "City" / "City, ST" (Open-Meteo geocoding). Both are keyless. */
+async function geocodePlace(query: string): Promise<{ lat: number; lon: number; label: string }> {
+  const zip = query.match(/^(\d{5})(?:-\d{4})?$/)?.[1]
+  if (zip) {
+    let data: ZipResponse
+    try {
+      data = await getJson<ZipResponse>(`https://api.zippopotam.us/us/${zip}`, GEO_REVALIDATE, { Accept: 'application/json' })
+    } catch (error) {
+      throw error instanceof WeatherError && error.reason === 'unsupported' ? new WeatherError('unresolved') : error
+    }
+    const place = data.places?.[0]
+    if (!place) throw new WeatherError('unresolved')
+    return {
+      lat: Number(Number(place.latitude).toFixed(4)),
+      lon: Number(Number(place.longitude).toFixed(4)),
+      label: `${place['place name']}, ${place['state abbreviation']} ${zip}`,
+    }
+  }
+
+  const [cityPart, statePart] = query.split(',').map((s) => s.trim())
+  if (!cityPart) throw new WeatherError('unresolved')
+  const stateKey = statePart?.toUpperCase()
+  const wantedState = stateKey ? (US_STATES[stateKey] ?? (STATE_ABBR[statePart.toLowerCase()] ? statePart : null)) : null
+  if (statePart && !wantedState) throw new WeatherError('unresolved')
+
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityPart)}&count=10&countryCode=US&language=en&format=json`
+  const data = await getJson<PlaceSearchResponse>(url, GEO_REVALIDATE, { Accept: 'application/json' })
+  const matches = (data.results ?? []).filter(
+    (r) => r.country_code === 'US' && (!wantedState || r.admin1?.toLowerCase() === wantedState.toLowerCase()),
+  )
+  if (!matches.length) throw new WeatherError('unresolved')
+  const best = matches.reduce((a, b) => ((b.population ?? 0) > (a.population ?? 0) ? b : a))
+  const abbr = best.admin1 ? STATE_ABBR[best.admin1.toLowerCase()] : undefined
+  return {
+    lat: Number(best.latitude.toFixed(4)),
+    lon: Number(best.longitude.toFixed(4)),
+    label: abbr ? `${best.name}, ${abbr}` : best.name,
+  }
+}
+
+/** Weather for a typed U.S. city or ZIP. The query is a place name, not a device position, so it may be cached. */
+export async function getPlaceWeather(query: string, today: string): Promise<WeatherResult> {
+  try {
+    const place = await geocodePlace(query)
+    return await weatherAtPoint(place, today, { source: 'place', label: place.label, cachePoint: true })
+  } catch (error) {
+    const reason = error instanceof WeatherError ? error.reason : 'unavailable'
+    if (reason === 'unresolved' || reason === 'ambiguous')
+      return { state: 'unresolved', message: 'That city or ZIP code could not be found. Try "City, ST" or a 5-digit ZIP.' }
+    if (reason === 'unsupported') return { state: 'unsupported', message: 'Weather is available for U.S. locations only.' }
+    return fail(reason)
+  }
+}
+
 /** Rounded to ~1 km: enough for a forecast gridpoint, never a precise position. */
 const coarse = (n: number) => Math.round(n * 100) / 100
 
@@ -192,7 +263,7 @@ export async function getDeviceWeather(lat: number, lon: number, today: string):
 async function weatherAtPoint(
   { lat, lon }: { lat: number; lon: number },
   today: string,
-  opts: { source: 'device' | 'jobsite'; label: string | null; cachePoint: boolean },
+  opts: { source: 'device' | 'jobsite' | 'place'; label: string | null; cachePoint: boolean },
 ): Promise<WeatherResult> {
     const point = await getJson<PointResponse>(`${NWS}/points/${lat},${lon}`, opts.cachePoint ? GEO_REVALIDATE : null)
     const [forecast, hourly, observed] = await Promise.all([

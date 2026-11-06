@@ -3,7 +3,8 @@ import { isProjectId } from '@/lib/route-job'
 import { todayIso } from '@/lib/schedule'
 import { getSession } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
-import { getDeviceWeather, getJobsiteWeather } from '@/lib/weather-data'
+import { normalizePlaceQuery } from '@/lib/weather'
+import { getDeviceWeather, getJobsiteWeather, getPlaceWeather } from '@/lib/weather-data'
 
 async function staffSession() {
   const session = await getSession()
@@ -14,7 +15,14 @@ async function staffSession() {
 export async function GET(request: Request) {
   const session = await staffSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const projectId = new URL(request.url).searchParams.get('project')
+  const params = new URL(request.url).searchParams
+  if (params.has('place')) {
+    const query = normalizePlaceQuery(params.get('place'))
+    if (!query) return NextResponse.json({ error: 'Invalid place' }, { status: 400 })
+    const weather = await getPlaceWeather(query, todayIso())
+    return NextResponse.json(weather, { headers: { 'Cache-Control': 'private, max-age=600' } })
+  }
+  const projectId = params.get('project')
   if (!isProjectId(projectId)) return NextResponse.json({ error: 'Invalid project' }, { status: 400 })
 
   const supabase = await createClient()

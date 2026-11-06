@@ -29,8 +29,8 @@ export type WeatherUnavailableReason =
 export type WeatherResult =
   | {
       state: 'ok'
-      /** `device` = the viewer's current position; `jobsite` = a project's jobsite address. */
-      source?: 'device' | 'jobsite'
+      /** `device` = the viewer's current position; `jobsite` = a project's jobsite address; `place` = a typed city/ZIP. */
+      source?: 'device' | 'jobsite' | 'place'
       locationLabel: string
       current: WeatherCurrent | null
       rainChanceToday: number | null
@@ -52,8 +52,25 @@ export const WEATHER_MESSAGES: Record<WeatherUnavailableReason, string> = {
   rate_limited: 'The weather service is busy. Try again in a few minutes.',
 }
 
-/** An explicitly chosen weather location. Absent means first use, which defaults to the device location. */
-export type WeatherChoice = { mode: 'device' } | { mode: 'project'; projectId: string }
+/** A fixed weather location: an active project's jobsite or a typed U.S. city / ZIP. */
+export type FixedWeatherChoice = { mode: 'project'; projectId: string } | { mode: 'place'; query: string }
+
+/**
+ * An explicitly chosen weather location. Absent means first use, which defaults to the device location.
+ * Device mode may carry the last fixed location so weather still shows when the device cannot be located.
+ */
+export type WeatherChoice = { mode: 'device'; fallback?: FixedWeatherChoice } | FixedWeatherChoice
+
+export const PLACE_QUERY_MAX = 60
+
+/** Trims and validates a typed city or ZIP ("Austin, TX", "30301"). Returns null when unusable. */
+export function normalizePlaceQuery(input: unknown): string | null {
+  if (typeof input !== 'string') return null
+  const q = input.replace(/\s+/g, ' ').trim()
+  if (q.length < 2 || q.length > PLACE_QUERY_MAX) return null
+  if (!/^[\p{L}\p{N} .,'-]+$/u.test(q)) return null
+  return q
+}
 
 /** Forecasts older than this are flagged as stale. */
 export const WEATHER_STALE_MS = 3 * 60 * 60 * 1000
