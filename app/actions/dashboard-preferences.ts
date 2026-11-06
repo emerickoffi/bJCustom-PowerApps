@@ -11,34 +11,44 @@ import {
 } from '@/lib/dashboard-prefs'
 import { ACTIVE_PROJECT_STATUSES, type ProjectStatus } from '@/lib/domain'
 import { LAYOUT_PREFERENCES, parseLayoutPreference } from '@/lib/ui-layout'
+import { normalizePlaceQuery, type FixedWeatherChoice, type WeatherChoice } from '@/lib/weather'
 import { requireStaff } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 
-/** Saves an explicit weather choice: `'device'` or an authorized, active project id. Never stores coordinates. */
-export async function setWeatherLocationAction(choice: string): Promise<{ ok: boolean }> {
-  const session = await requireStaff()
-  if (choice === 'device') {
-    await writePreference(
-      WEATHER_LOCATION_COOKIE,
-      session.userId,
-      serializeWeatherChoice(session.organizationId, { mode: 'device' }),
-    )
-    return { ok: true }
+/** Parses `'place:<city or ZIP>'` or a project id, re-checking any project against the viewer's active projects. */
+async function resolveFixedChoice(value: string, organizationId: string): Promise<FixedWeatherChoice | null> {
+  if (value.startsWith('place:')) {
+    const query = normalizePlaceQuery(value.slice('place:'.length))
+    return query ? { mode: 'place', query } : null
   }
-  if (!isProjectId(choice)) return { ok: false }
+  if (!isProjectId(value)) return null
   const supabase = await createClient()
   const { data } = await supabase
     .from('projects')
     .select('id, status')
-    .eq('organization_id', session.organizationId)
-    .eq('id', choice)
+    .eq('organization_id', organizationId)
+    .eq('id', value)
     .maybeSingle()
-  if (!data || !ACTIVE_PROJECT_STATUSES.includes(data.status as ProjectStatus)) return { ok: false }
-  await writePreference(
-    WEATHER_LOCATION_COOKIE,
-    session.userId,
-    serializeWeatherChoice(session.organizationId, { mode: 'project', projectId: choice }),
-  )
+  if (!data || !ACTIVE_PROJECT_STATUSES.includes(data.status as ProjectStatus)) return null
+  return { mode: 'project', projectId: value }
+}
+
+/**
+ * Saves an explicit weather choice: `'device'`, an authorized active project id, or `'place:<city or ZIP>'`.
+ * For `'device'`, `fallback` keeps the last fixed location so weather still shows when the device can't be located.
+ * Never stores coordinates.
+ */
+export async function setWeatherLocationAction(choice: string, fallback?: string | null): Promise<{ ok: boolean }> {
+  const session = await requireStaff()
+  let next: WeatherChoice | null
+  if (choice === 'device') {
+    const fixed = fallback ? await resolveFixedChoice(fallback, session.organizationId) : null
+    next = fixed ? { mode: 'device', fallback: fixed } : { mode: 'device' }
+  } else {
+    next = await resolveFixedChoice(choice, session.organizationId)
+  }
+  if (!next) return { ok: false }
+  await writePreference(WEATHER_LOCATION_COOKIE, session.userId, serializeWeatherChoice(session.organizationId, next))
   return { ok: true }
 }
 
