@@ -108,13 +108,13 @@ export function Breadcrumbs({
 
 export function HeaderSearch() {
   return (
-    <form action="/projects" role="search" className="hidden w-full max-w-[13rem] md:block xl:max-w-xs">
+    <form action="/projects" role="search" className="hidden w-full min-w-[10rem] max-w-[13rem] md:block xl:max-w-xs">
       <SearchInput
         id="global-search"
         label="Search projects"
         placeholder="Search projects, addresses..."
         syncUrl={false}
-        inputClassName="rounded-xl border-transparent bg-muted/80 focus-visible:border-primary/30 focus-visible:bg-card focus-visible:ring-primary/10"
+        inputClassName="rounded-xl border-transparent bg-white focus-visible:border-primary/30 focus-visible:bg-white focus-visible:ring-primary/10"
       />
     </form>
   )
