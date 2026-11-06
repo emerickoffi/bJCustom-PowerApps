@@ -6,7 +6,10 @@ import {
   includeOptionalActivityAction,
   initializeScheduleAction,
 } from '@/app/actions/schedule'
+import { ListPlus } from 'lucide-react'
 import { OPTIONAL_ACTIVITIES } from '@/lib/schedule'
+import { SectionDisclosure } from '@/components/schedule/schedule-section-card'
+import { SECTION_CARD_CLASS, SectionCardHeader } from '@/components/schedule/schedule-section-header'
 import { ActionButton, InlineActionForm } from '@/components/shared/inline-action'
 import { SubmitButton } from '@/components/shared/form-message'
 import { TextAreaField, TextField } from '@/components/shared/form-field'
@@ -24,16 +27,24 @@ export function InitializeScheduleButton({ projectId, label = 'Apply standard te
 }
 
 export function OptionalActivitiesPanel({ projectId, includedKeys }: { projectId: string; includedKeys: string[] }) {
+  const includedNames = OPTIONAL_ACTIVITIES.filter((o) => includedKeys.includes(o.key)).map((o) => o.name)
   return (
-    <section aria-labelledby="optional-activities-heading" className="flex flex-col gap-3 rounded-xl border bg-card p-5">
-      <div className="flex flex-col gap-1">
-        <h2 id="optional-activities-heading" className="text-sm font-semibold text-foreground">
-          Optional activities
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          Include these only for projects that need them. Changes apply to this project only.
-        </p>
-      </div>
+    <section aria-labelledby="optional-activities-heading" className={SECTION_CARD_CLASS}>
+      <SectionCardHeader
+        icon={ListPlus}
+        title="Optional activities"
+        titleId="optional-activities-heading"
+        description="Include only when this project needs them"
+      />
+      <SectionDisclosure
+        expandLabel="Manage"
+        summary={
+          <>
+            <span className="font-medium tabular-nums text-brand-deep">{`${includedNames.length} of ${OPTIONAL_ACTIVITIES.length} included`}</span>
+            {includedNames.length > 0 && <span className="block truncate text-xs">{includedNames.join(', ')}</span>}
+          </>
+        }
+      >
       <ul className="flex flex-col divide-y">
         {OPTIONAL_ACTIVITIES.map((o) => {
           const included = includedKeys.includes(o.key)
@@ -69,6 +80,7 @@ export function OptionalActivitiesPanel({ projectId, includedKeys }: { projectId
           )
         })}
       </ul>
+      </SectionDisclosure>
     </section>
   )
 }
