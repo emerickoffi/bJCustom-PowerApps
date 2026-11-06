@@ -2,9 +2,9 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ChevronDown, ChevronsDownUp, ChevronsUpDown, Diamond, GanttChart, Layers, List, Pencil } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { ActivityEditor } from '@/components/schedule/activity-editor'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { ScheduleTimeline } from '@/components/schedule/schedule-views'
 import { PortfolioTimeline } from '@/components/schedule/portfolio-timeline'
 import { ScheduleActivityList, plannedRange } from '@/components/schedule/schedule-activity-list'
@@ -79,8 +79,8 @@ export function ScheduleBoard({
   conflictIds: string[]
   canManage: boolean
 }) {
+  const router = useRouter()
   const [view, setView] = useState<View>('stages')
-  const [selected, setSelected] = useState<{ projectId: string; id: string } | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     const initial = new Set<string>()
     for (const g of groups) {
@@ -119,9 +119,10 @@ export function ScheduleBoard({
   const allCollapsed = allKeys.every((k) => collapsed.has(k))
   const noneCollapsed = allKeys.every((k) => !collapsed.has(k))
 
-  const editingGroup = selected ? groups.find((g) => g.project.id === selected.projectId) : undefined
-  const editingActivity = editingGroup?.activities.find((a) => a.id === selected?.id) ?? null
-  const open = (projectId: string) => (a: ScheduleActivity) => setSelected({ projectId, id: a.id })
+  // Editing lives in the project schedule workspace, which opens the activity from ?activity=.
+  const open = (projectId: string) => (a: ScheduleActivity) =>
+    router.push(`/projects/${projectId}/schedule?activity=${encodeURIComponent(a.id)}`)
+  const manageHref = mode === 'project' && groups[0] ? `/projects/${groups[0].project.id}/schedule` : null
 
   const totalActivities = groups.reduce((n, g) => n + g.activities.length, 0)
 
@@ -160,11 +161,14 @@ export function ScheduleBoard({
               </Button>
             </>
           )}
-          {totalActivities > 0 && (
-            <span className="flex items-center gap-1.5 px-2 text-xs text-[#526173]">
-              <Pencil className="size-3.5" aria-hidden="true" />
-              {canManage ? 'Select an activity to edit it' : 'Select an activity to view details'}
-            </span>
+          {manageHref && (
+            <Link
+              href={manageHref}
+              className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'min-h-10 text-[#006B78] hover:bg-[#E9EDF2] hover:text-[#006B78]')}
+            >
+              <Pencil data-icon="inline-start" />
+              {canManage ? 'Manage schedule' : 'Open project schedule'}
+            </Link>
           )}
         </div>
       </div>
@@ -205,19 +209,6 @@ export function ScheduleBoard({
 
       {view === 'list' && (
         <ScheduleActivityList mode={mode} groups={groups} nameFor={nameFor} onSelect={open} today={today} canManage={canManage} />
-      )}
-
-      {editingGroup && (
-        <ActivityEditor
-          projectId={editingGroup.project.id}
-          phases={editingGroup.phases}
-          activity={editingActivity}
-          activities={editingGroup.activities}
-          dependencies={editingGroup.dependencies}
-          staffOptions={staffOptions}
-          canManage={canManage}
-          onClose={() => setSelected(null)}
-        />
       )}
     </section>
   )
@@ -271,7 +262,7 @@ function ProjectSection({
           href={`/projects/${group.project.id}/schedule`}
           className="hidden shrink-0 rounded-md px-2 py-1 text-xs font-medium text-[#006B78] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006B78] sm:inline"
         >
-          Open tracker
+          Manage schedule
         </Link>
       </div>
       {open && (
