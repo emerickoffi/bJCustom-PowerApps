@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { AlertCircle, ArrowRight, CalendarDays, House } from 'lucide-react'
 import { DashboardSectionHeader } from '@/components/dashboard/dashboard-section-header'
 import { HealthBadge } from '@/components/dashboard/health-badge'
+import { buttonVariants } from '@/components/ui/button'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { formatDate } from '@/lib/format'
 import { dueDateLabel, nextStepDue } from '@/lib/next-step-due'
@@ -94,7 +95,7 @@ function ViewProjectLink({ job }: { job: PriorityJob }) {
     <Link
       href={`/projects/${job.id}`}
       aria-label={`View project ${job.name}`}
-      className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border border-[#007F95]/35 bg-card px-3 text-xs font-semibold text-[#007F95] transition-colors duration-150 hover:border-[#2171B5] hover:bg-[#2171B5] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={buttonVariants({ variant: 'view', className: 'h-auto min-h-9 gap-1 rounded-md px-3 text-xs font-semibold' })}
     >
       View
       <ArrowRight className="size-3.5" aria-hidden="true" />

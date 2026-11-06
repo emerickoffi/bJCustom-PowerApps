@@ -19,7 +19,8 @@ const buttonVariants = cva(
         destructive:
           'bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40',
         link: 'text-primary underline-offset-4 hover:underline',
-        view: 'border-interactive bg-interactive text-white hover:border-interactive-hover hover:bg-interactive-hover active:border-interactive-pressed active:bg-interactive-pressed focus-visible:border-interactive-pressed focus-visible:ring-interactive/40',
+        view: 'border-accent-blue bg-white text-accent-blue duration-150 ease-out hover:border-accent-blue hover:bg-accent-blue hover:text-white active:border-accent-blue active:bg-accent-blue active:text-white aria-expanded:bg-accent-blue aria-expanded:text-white focus-visible:border-accent-blue focus-visible:ring-accent-blue/40',
+        action: 'border-interactive bg-interactive text-white hover:border-interactive-hover hover:bg-interactive-hover active:border-interactive-pressed active:bg-interactive-pressed focus-visible:border-interactive-pressed focus-visible:ring-interactive/40',
         edit: 'border-interactive-border bg-interactive-soft text-interactive-strong hover:bg-interactive-soft-hover hover:text-interactive-strong active:bg-interactive-soft-pressed aria-expanded:bg-interactive-soft-pressed focus-visible:border-interactive focus-visible:ring-interactive/40',
       },
       size: {

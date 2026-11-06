@@ -399,7 +399,7 @@ export function EstimateTitleCell({
       <div className="flex flex-wrap items-center gap-2">
         <Button
           type="submit"
-          variant="view"
+          variant="action"
           size="sm"
           disabled={saving || locked}
           aria-label={`Save title for ${estimateNumber}`}

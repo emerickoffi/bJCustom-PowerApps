@@ -168,7 +168,7 @@ function ChangeOrderTable({ projectId, projectName, rows }: { projectId: string;
                 <td className="hidden whitespace-nowrap px-3 py-3 text-right text-muted-foreground lg:table-cell">{formatDate(r.updated_at)}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-right lg:px-5">
                   <div className="flex justify-end gap-1">
-                    <Link href={href} className={buttonVariants({ variant: 'view', size: 'sm' })} aria-label={`Open ${r.co_number}`}>
+                    <Link href={href} className={buttonVariants({ variant: 'action', size: 'sm' })} aria-label={`Open ${r.co_number}`}>
                       Open
                     </Link>
                     {isEditableStatus(r.status) && (
