@@ -26,3 +26,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .v0tmp/
+/public/v0-tmp-*
