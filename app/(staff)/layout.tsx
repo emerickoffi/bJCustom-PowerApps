@@ -145,7 +145,11 @@ export default async function StaffLayout({ children, modal }: { children: React
                 />
               </div>
               <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
-                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2 md:mr-2 lg:mr-3">
+                <div
+                  role="group"
+                  aria-label="Project navigation"
+                  className="flex min-w-0 items-center gap-1.5 sm:gap-2 md:mr-2 md:rounded-[12px] md:bg-[#E8F3F5] md:p-1.5 lg:mr-3"
+                >
                   <JobSwitcher
                     organizationId={session.organizationId}
                     filterRoutes={projectFilterRoutes}

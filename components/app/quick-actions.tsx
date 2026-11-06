@@ -84,7 +84,7 @@ function ActionItem({ action }: { action: QuickAction }) {
   )
 }
 
-/** Header "New" menu: actions for the current job first, then records that stand on their own. */
+/** Header "Quick Create" menu: actions for the current job first, then records that stand on their own. */
 export function QuickCreateMenu({
   globalActions,
   jobScope,
@@ -100,14 +100,14 @@ export function QuickCreateMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label="Create new"
+        aria-label="Quick create"
         className={cn(
-          'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-sm font-medium text-primary-foreground transition-colors sm:px-3',
+          'inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-2.5 text-sm font-medium text-primary-foreground transition-colors sm:px-3',
           'hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30',
         )}
       >
         <Plus className="size-4" aria-hidden="true" />
-        <span className="hidden sm:inline">New</span>
+        <span className="hidden sm:inline md:hidden lg:inline">Quick Create</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={8} className="w-64 max-w-[calc(100vw-1.5rem)] p-1.5">
         {jobActions.length > 0 && scope && (
