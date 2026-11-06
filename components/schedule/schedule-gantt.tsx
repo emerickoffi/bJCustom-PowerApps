@@ -52,6 +52,7 @@ import {
 
 const ROW_H = 44
 const HEADER_H = 48
+const UNSCHEDULED_PREVIEW = 5
 const ZOOM_LABELS: Record<Zoom, string> = { day: 'Day', week: 'Week', month: 'Month' }
 
 type Placed = Exclude<Placement, { kind: 'incomplete' }>
@@ -120,6 +121,7 @@ export function ScheduleGantt({
   baseline = null,
 }: ScheduleGanttProps) {
   const [showBaseline, setShowBaseline] = useState(false)
+  const [showAllUnscheduled, setShowAllUnscheduled] = useState(false)
   const baselineOn = showBaseline && !!baseline
   const uid = useId()
   const today = useMemo(() => todayInZone(timeZone), [timeZone])
@@ -521,8 +523,10 @@ export function ScheduleGantt({
       )}
 
       {rows.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-[#D6DDE5] bg-white px-4 py-10 text-center">
-          <CalendarRange className="size-5 text-[#526173]" aria-hidden="true" />
+        <div className="flex w-full flex-col items-center gap-1.5 rounded-xl border border-dashed border-[#D6DDE5] bg-white px-4 py-7 text-center">
+          <span aria-hidden="true" className="mb-1 flex size-9 items-center justify-center rounded-lg bg-interactive-soft text-primary">
+            <CalendarRange className="size-4" />
+          </span>
           <p className="text-sm font-medium text-[#17212B]">
             {filtered && placedVisible.length === 0 && visible.length === 0 ? 'No activities match these filters' : 'Nothing to draw yet'}
           </p>
@@ -817,8 +821,8 @@ export function ScheduleGantt({
             </h3>
             <p className="text-xs text-[#526173]">These activities don&apos;t have complete, valid planned dates, so they aren&apos;t drawn on the chart.</p>
           </div>
-          <ul className="divide-y divide-[#E4E9EF]">
-            {unscheduled.map((a) => {
+          <ul id={`${uid}-unscheduled-list`} className="divide-y divide-[#E4E9EF]">
+            {(showAllUnscheduled ? unscheduled : unscheduled.slice(0, UNSCHEDULED_PREVIEW)).map((a) => {
               const p = placements.get(a.id)!
               const reason = p.kind === 'incomplete' ? p.reason : 'undated'
               const known = [a.planned_start && `Start ${formatDate(a.planned_start)}`, a.planned_end && `Finish ${formatDate(a.planned_end)}`].filter(Boolean).join(' · ')
@@ -844,6 +848,24 @@ export function ScheduleGantt({
               )
             })}
           </ul>
+          {unscheduled.length > UNSCHEDULED_PREVIEW && (
+            <div className="flex justify-center border-t border-[#E4E9EF] px-4 py-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="min-h-11 sm:min-h-8"
+                aria-expanded={showAllUnscheduled}
+                aria-controls={`${uid}-unscheduled-list`}
+                onClick={() => setShowAllUnscheduled((v) => !v)}
+              >
+                {showAllUnscheduled ? 'Show less' : `Show all (${unscheduled.length})`}
+                <ChevronDown
+                  className={cn('size-4 transition-transform motion-reduce:transition-none', showAllUnscheduled && 'rotate-180')}
+                  aria-hidden="true"
+                />
+              </Button>
+            </div>
+          )}
         </section>
       )}
     </section>

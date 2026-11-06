@@ -34,6 +34,8 @@ import { ActivityHistoryCard } from '@/components/schedule/activity-history-card
 import { getOrgFeatures } from '@/lib/features'
 import { loadProjectAssignments } from '@/lib/assignments-data'
 import { ProjectAssignmentsCard } from '@/components/schedule/project-assignments-card'
+import { SectionDisclosure } from '@/components/schedule/schedule-section-card'
+import { SECTION_CARD_CLASS, SectionCardHeader } from '@/components/schedule/schedule-section-header'
 
 export const metadata: Metadata = { title: 'Schedule' }
 
@@ -299,15 +301,15 @@ export default async function SchedulePage({
             }
           />
 
-          {assignmentData.availability !== 'off' && (
-            <ProjectAssignmentsCard
-              availability={assignmentData.availability}
-              assignments={assignmentData.assignments}
-              activities={activities}
-            />
-          )}
+          <div className="grid items-start gap-4 lg:grid-cols-2">
+            {assignmentData.availability !== 'off' && (
+              <ProjectAssignmentsCard
+                availability={assignmentData.availability}
+                assignments={assignmentData.assignments}
+                activities={activities}
+              />
+            )}
 
-          <div className="grid gap-8 xl:grid-cols-[1fr_22rem]">
             <div className="min-w-0">
               <ActivityHistoryCard
                 events={recentHistory.events.map((e) => presentEvent(e, nameFor, timeZone))}
@@ -318,39 +320,62 @@ export default async function SchedulePage({
               />
             </div>
 
-            <aside className="flex flex-col gap-4">
-              {manager && (
-                <OptionalActivitiesPanel
-                  projectId={project.id}
-                  includedKeys={activities.map((a) => a.template_key).filter((k): k is string => !!k)}
-                />
+            {manager && (
+              <OptionalActivitiesPanel
+                projectId={project.id}
+                includedKeys={activities.map((a) => a.template_key).filter((k): k is string => !!k)}
+              />
+            )}
+
+            <section aria-labelledby="baselines-heading" className={SECTION_CARD_CLASS}>
+              <SectionCardHeader
+                icon={Lock}
+                title="Approved baselines"
+                titleId="baselines-heading"
+                description="Locked snapshots of planned dates. Schedule edits never change them."
+                aside={
+                  baselines.length > 0 && (
+                    <span className="text-sm tabular-nums text-muted-foreground">
+                      {`${baselines.length} ${baselines.length === 1 ? 'baseline' : 'baselines'}`}
+                    </span>
+                  )
+                }
+              />
+              {baselines.length === 0 && !manager ? (
+                <p className="px-4 py-4 text-sm text-muted-foreground">No baseline has been approved yet.</p>
+              ) : (
+                <SectionDisclosure
+                  expandLabel={manager ? 'Manage' : 'View all'}
+                  summary={
+                    latest ? (
+                      <>
+                        <span className="block truncate font-medium text-brand-deep">{`Latest: v${latest.version} · ${latest.name}`}</span>
+                        <span className="block text-xs">{`Approved ${formatDate(latest.created_at)} by ${nameFor(latest.created_by) ?? 'System'}`}</span>
+                      </>
+                    ) : (
+                      'No baseline approved yet'
+                    )
+                  }
+                >
+                  <div className="flex flex-col gap-4">
+                    {baselines.length > 0 && (
+                      <ul className="flex flex-col divide-y rounded-lg border">
+                        {baselines.map((b) => (
+                          <li key={b.id} className="flex flex-col gap-0.5 p-3">
+                            <span className="text-sm font-medium text-foreground">{`v${b.version} · ${b.name}`}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {`${formatDate(b.created_at)} · ${nameFor(b.created_by) ?? 'System'} · ${(b.snapshot as unknown[]).length} activities`}
+                            </span>
+                            {b.notes && <p className="text-xs text-muted-foreground">{b.notes}</p>}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {manager && <BaselineForm projectId={project.id} nextVersion={(latest?.version ?? 0) + 1} />}
+                  </div>
+                </SectionDisclosure>
               )}
-              <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
-                <div className="flex flex-col gap-1">
-                  <h2 className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
-                    <Lock className="size-4 text-primary" aria-hidden="true" />
-                    Approved baselines
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Baselines are locked snapshots of planned dates. Schedule edits never change them.
-                  </p>
-                </div>
-                {baselines.length > 0 && (
-                  <ul className="flex flex-col divide-y rounded-lg border">
-                    {baselines.map((b) => (
-                      <li key={b.id} className="flex flex-col gap-0.5 p-3">
-                        <span className="text-sm font-medium text-foreground">{`v${b.version} · ${b.name}`}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {`${formatDate(b.created_at)} · ${nameFor(b.created_by) ?? 'System'} · ${(b.snapshot as unknown[]).length} activities`}
-                        </span>
-                        {b.notes && <p className="text-xs text-muted-foreground">{b.notes}</p>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {manager && <BaselineForm projectId={project.id} nextVersion={(latest?.version ?? 0) + 1} />}
-              </section>
-            </aside>
+            </section>
           </div>
         </>
       )}
