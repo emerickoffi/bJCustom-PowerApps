@@ -252,7 +252,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
                 </dl>
                 <Link
                   href={`/projects/${r.project_id}/warranty`}
-                  className={buttonVariants({ variant: 'view', className: 'h-11 w-full rounded-lg' })}
+                  className={buttonVariants({ variant: 'action', className: 'h-11 w-full rounded-lg' })}
                 >
                   View details
                   <span className="sr-only">{` for ${r.projects?.name ?? 'project'}`}</span>

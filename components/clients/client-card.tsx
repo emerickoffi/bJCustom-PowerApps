@@ -224,7 +224,7 @@ export function ClientCard({
             </Button>
           )}
           <Button
-            variant="outline"
+            variant="view"
             size="sm"
             className={canManageContacts ? 'h-11 sm:h-8' : 'col-span-2 h-11 sm:h-8'}
             render={<Link href={href} />}
