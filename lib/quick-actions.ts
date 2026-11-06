@@ -11,7 +11,8 @@ export type QuickActionIcon =
   | 'invoice'
   | 'daily_log'
 
-export type QuickAction = { key: string; label: string; href: string; icon: QuickActionIcon }
+/** Actions with `drawer` open an in-place drawer from the menu; `href` stays the full-page fallback. */
+export type QuickAction = { key: string; label: string; href: string; icon: QuickActionIcon; drawer?: 'contact' }
 
 type QuickActionFeatures = Partial<
   Record<'schedule' | 'estimates' | 'documents' | 'daily_logs' | 'invoices' | 'subcontractors', boolean>
@@ -89,7 +90,7 @@ export function buildGlobalQuickActions(input: { role: OrgRole | null; features:
   const actions: QuickAction[] = [
     { key: 'project', label: 'New project', href: '/projects/new', icon: 'project' },
     { key: 'client', label: 'New client', href: '/clients/new', icon: 'client' },
-    { key: 'contact', label: 'New contact', href: '/contacts/people/new', icon: 'contact' },
+    { key: 'contact', label: 'New contact', href: '/contacts/people/new', icon: 'contact', drawer: 'contact' },
   ]
   if (features.subcontractors) {
     actions.push({ key: 'subcontractor', label: 'New subcontractor', href: '/subcontractors/new', icon: 'subcontractor' })

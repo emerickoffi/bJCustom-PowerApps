@@ -47,6 +47,7 @@ export function PersonForm({
   currentCompanies = [],
   currentProjects = [],
   onSaved,
+  submitLabel,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   /** Used by the full-page variant. Inside a FormOverlay, Cancel asks the overlay to close instead. */
@@ -59,6 +60,8 @@ export function PersonForm({
   currentProjects?: CurrentProjectAssignment[]
   /** Overlay variant: called after a successful save instead of redirecting. */
   onSaved?: (result: ActionState) => void
+  /** Overrides the create/save button text. */
+  submitLabel?: string
 }) {
   const overlay = useFormOverlay()
   const inOverlay = Boolean(overlay)
@@ -307,7 +310,7 @@ export function PersonForm({
 
   const submit = (
     <SubmitButton pendingLabel={isEdit ? 'Saving changes…' : 'Saving contact…'} disabled={Boolean(newCompany)}>
-      {isEdit ? 'Save changes' : 'Add contact'}
+      {submitLabel ?? (isEdit ? 'Save changes' : 'Add contact')}
     </SubmitButton>
   )
   const message = !state.savedId ? <FormMessage state={state} /> : null

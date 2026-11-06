@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   Building2,
@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { QuickCreateContactDrawer } from '@/components/contacts/quick-create-contact-drawer'
 import type { QuickAction, QuickActionIcon } from '@/lib/quick-actions'
 
 export type { QuickAction, QuickActionIcon } from '@/lib/quick-actions'
@@ -43,16 +44,27 @@ const ICONS: Record<QuickActionIcon, LucideIcon> = {
   daily_log: ClipboardPen,
 }
 
+type QuickActionDrawer = NonNullable<QuickAction['drawer']>
+
 type QuickActionsContextValue = {
   scope: ProjectScope | null
   setScope: (scope: ProjectScope | null) => void
+  openDrawer: (drawer: QuickActionDrawer) => void
 }
 
 const QuickActionsContext = createContext<QuickActionsContextValue | null>(null)
 
 export function QuickActionsProvider({ children }: { children: React.ReactNode }) {
   const [scope, setScope] = useState<ProjectScope | null>(null)
-  return <QuickActionsContext.Provider value={{ scope, setScope }}>{children}</QuickActionsContext.Provider>
+  const [drawer, setDrawer] = useState<QuickActionDrawer | null>(null)
+  const closeDrawer = useCallback(() => setDrawer(null), [])
+  const value = useMemo(() => ({ scope, setScope, openDrawer: setDrawer }), [scope])
+  return (
+    <QuickActionsContext.Provider value={value}>
+      {children}
+      <QuickCreateContactDrawer open={drawer === 'contact'} onClose={closeDrawer} />
+    </QuickActionsContext.Provider>
+  )
 }
 
 /**
@@ -74,8 +86,15 @@ export function ProjectQuickActionsScope({ projectName, actions }: ProjectScope)
 
 function ActionItem({ action }: { action: QuickAction }) {
   const Icon = ICONS[action.icon]
+  const openDrawer = useContext(QuickActionsContext)?.openDrawer
+  const drawer = openDrawer ? action.drawer : undefined
   return (
-    <DropdownMenuItem render={<Link href={action.href} />} className="min-h-11 gap-3 px-2.5 py-2 sm:min-h-0">
+    <DropdownMenuItem
+      render={drawer ? undefined : <Link href={action.href} />}
+      // The menu closes on click; the drawer opens on the next frame so focus moves into it, not back to the trigger.
+      onClick={drawer ? () => requestAnimationFrame(() => openDrawer?.(drawer)) : undefined}
+      className="min-h-11 gap-3 px-2.5 py-2 sm:min-h-0"
+    >
       <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-sage text-primary" aria-hidden="true">
         <Icon className="size-4" />
       </span>
