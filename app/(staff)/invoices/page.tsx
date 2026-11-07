@@ -40,14 +40,14 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   ].map((f) => ({ ...f, count: all.filter((inv) => matchesFilter(inv, f.value)).length }))
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-5 md:gap-6">
       <PageHeader
         icon={Receipt}
         title="Invoices"
-        description="Progress draws and invoices for your projects. Payments are recorded manually."
+        count={failed ? undefined : { value: all.length, noun: 'invoice' }}
         actions={
           manager ? (
-            <Button render={<Link href="/invoices/new" />} nativeButton={false}>
+            <Button size="lg" render={<Link href="/invoices/new" />} nativeButton={false}>
               <Plus data-icon="inline-start" />
               New invoice
             </Button>
@@ -55,7 +55,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         }
       />
 
-      <dl className="grid gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+      <dl className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
         <Stat
           icon={Wallet}
           tone="blue"
@@ -83,11 +83,11 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
       <section aria-labelledby="invoice-directory" className="surface flex min-w-0 flex-col overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-[#D6DDE5] p-4 md:p-5">
           <div className="flex items-baseline justify-between gap-3">
-            <h2 id="invoice-directory" className="font-serif text-lg font-semibold tracking-tight text-foreground">
-              Invoice directory
+            <h2 id="invoice-directory" className="text-sm font-medium text-foreground">
+              Filter by status
             </h2>
-            <p className="text-sm tabular-nums text-muted-foreground">
-              {invoices.length} {invoices.length === 1 ? 'invoice' : 'invoices'}
+            <p className="text-sm tabular-nums text-muted-foreground" aria-live="polite">
+              {statusFilter ? `Showing ${invoices.length} of ${all.length}` : `${invoices.length} shown`}
             </p>
           </div>
           <nav aria-label="Filter by status" className="-mx-1 flex flex-wrap gap-1.5">
@@ -196,26 +196,26 @@ function Stat({
 }) {
   const danger = tone === 'danger'
   return (
-    <div className={cn('surface flex items-start justify-between gap-4 p-4 md:p-5', className)}>
-      <div className="flex min-w-0 flex-col gap-1.5">
-        <dt className="text-xs font-medium uppercase tracking-wider text-[#526173]">{label}</dt>
+    <div className={cn('flex items-center justify-between gap-4 bg-card px-4 py-3', className)}>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <dt className="text-xs font-medium text-[#526173]">{label}</dt>
         <dd
           className={cn(
-            'truncate font-serif text-3xl font-semibold leading-none tracking-tight tabular-nums',
+            'truncate text-lg font-semibold leading-tight tabular-nums',
             danger ? 'text-destructive' : 'text-[#17212B]',
           )}
         >
           {value}
         </dd>
-        <dd className="text-sm text-[#526173]">{note}</dd>
+        <dd className="text-xs text-[#526173]">{note}</dd>
       </div>
       <span
         className={cn(
-          'flex size-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset',
+          'flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset',
           STAT_TONES[tone],
         )}
       >
-        <Icon className="size-5" aria-hidden="true" />
+        <Icon className="size-4" aria-hidden="true" />
       </span>
     </div>
   )

@@ -9,7 +9,19 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export const isProjectId = (value: string | null | undefined): value is string => Boolean(value && UUID.test(value))
 
 /** Company-wide pages whose content genuinely filters by `?project=`. */
-export type ProjectFilterRoute = '/schedule' | '/dashboard'
+export type ProjectFilterRoute = '/schedule' | '/dashboard' | '/estimates' | '/documents'
+
+/**
+ * Project tools with a company-wide counterpart. Choosing "All projects" from one of these keeps the user in
+ * the same tool instead of dropping them on the project list.
+ */
+const COMPANY_TOOL_FOR_SECTION: Record<string, string> = {
+  schedule: '/schedule?project=all',
+  documents: '/documents',
+  'daily-logs': '/daily-logs',
+  'change-orders': '/change-orders',
+  warranty: '/warranty',
+}
 
 export type RouteJobScope =
   | { kind: 'project'; projectId: string; section: string | null }
@@ -36,6 +48,8 @@ export function resolveRouteJob(
 
 function withProjectParam(route: string, searchParams: URLSearchParams, value: string | null) {
   const next = new URLSearchParams(searchParams)
+  // A page number belongs to the previous project's result set.
+  next.delete('page')
   if (value) next.set('project', value)
   else next.delete('project')
   const qs = next.toString()
@@ -49,7 +63,7 @@ export function switchDestination(
   projectId: string | null,
 ): string | null {
   if (scope.kind === 'project') {
-    if (!projectId) return '/projects'
+    if (!projectId) return (scope.section && COMPANY_TOOL_FOR_SECTION[scope.section]) || '/projects'
     return `/projects/${encodeURIComponent(projectId)}${scope.section ? `/${scope.section}` : ''}`
   }
   if (scope.kind === 'filter') {

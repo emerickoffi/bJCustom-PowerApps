@@ -23,6 +23,7 @@ import { AssistantProvider } from '@/components/assistant/assistant-context'
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher'
 import { FloatingCameraProvider } from '@/components/camera/floating-camera'
 import { DraftScopeProvider } from '@/components/shared/draft-scope'
+import { NavigationGuard } from '@/components/app/navigation-guard'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import {
   HeaderSearch,
@@ -32,7 +33,8 @@ import {
 } from '@/components/app/top-bar'
 
 /** The tabbed Home scopes every role's dashboard by `?project=`. */
-const TABLET_FILTER_ROUTES: ProjectFilterRoute[] = ['/schedule', '/dashboard']
+const COMPANY_FILTER_ROUTES: ProjectFilterRoute[] = ['/schedule', '/estimates', '/documents']
+const TABLET_FILTER_ROUTES: ProjectFilterRoute[] = [...COMPANY_FILTER_ROUTES, '/dashboard']
 
 type ProjectRef = { name: string } | { name: string }[] | null
 const projectName = (p: ProjectRef) => (Array.isArray(p) ? p[0]?.name : p?.name) ?? 'Project'
@@ -87,8 +89,10 @@ export default async function StaffLayout({ children, modal }: { children: React
   ])
   // Only pages whose content really filters by `?project=` keep the selection there; elsewhere picking a
   // project opens it. The owner dashboard is portfolio-wide and has no per-project filter.
-  const projectFilterRoutes: ProjectFilterRoute[] =
-    dashboardKeyForRole(session.role) === 'owner' ? ['/schedule'] : ['/schedule', '/dashboard']
+  const projectFilterRoutes: ProjectFilterRoute[] = [
+    ...COMPANY_FILTER_ROUTES,
+    ...(dashboardKeyForRole(session.role) === 'owner' ? [] : (['/dashboard'] as const)),
+  ]
   const layoutPreference = await readLayoutPreference(session.userId, session.organizationId)
   const sidebarMode = parseSidebarMode(cookieStore.get(SIDEBAR_COOKIE)?.value)
   const closedGroups = parseClosedNavGroups(cookieStore.get(NAV_GROUPS_COOKIE)?.value)
@@ -112,6 +116,7 @@ export default async function StaffLayout({ children, modal }: { children: React
       <QuickActionsProvider>
       <FloatingCameraProvider placement={showAssistant ? 'above-assistant' : 'corner'}>
       <LayoutModeProvider preference={layoutPreference}>
+      <NavigationGuard />
       <div data-staff-shell className="flex min-h-svh bg-background">
         <div className="contents tablet:hidden">
           <Sidebar

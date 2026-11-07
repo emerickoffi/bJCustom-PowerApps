@@ -15,6 +15,16 @@ type PageHeaderProps = {
   avatar?: React.ReactNode
   /** Rendered inline after the title, e.g. a status badge. */
   titleAddon?: React.ReactNode
+  /** Record count for list pages, shown as a quiet chip beside the title. */
+  count?: { value: number; noun: string; plural?: string }
+}
+
+function CountChip({ value, noun, plural }: NonNullable<PageHeaderProps['count']>) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-sage px-2.5 py-0.5 text-sm font-medium tabular-nums text-foreground/80 ring-1 ring-inset ring-primary/10">
+      {`${value.toLocaleString()} ${value === 1 ? noun : (plural ?? `${noun}s`)}`}
+    </span>
+  )
 }
 
 export function PageHeader({
@@ -23,7 +33,8 @@ export function PageHeader({
   eyebrow,
   icon: Icon,
   avatar,
-  titleAddon,
+  titleAddon: titleAddonProp,
+  count,
   backHref,
   backLabel,
   actions,
@@ -32,6 +43,13 @@ export function PageHeader({
   // The dark 'forest' banner was a legacy decorative treatment; it now renders as the standard white card.
   const sage = tone === 'sage' || tone === 'forest'
   const forest = false
+  const titleAddon =
+    count || titleAddonProp ? (
+      <>
+        {count && <CountChip {...count} />}
+        {titleAddonProp}
+      </>
+    ) : null
   return (
     <header
       className={cn(
