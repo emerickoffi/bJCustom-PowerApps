@@ -9,6 +9,7 @@ import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { buildPanel, type CompactProjectCardData } from '@/components/dashboard/compact-project-card'
 import { formatDate } from '@/lib/format'
 import { coverAlt } from '@/lib/project-cover'
+import { formatLocation } from '@/lib/location-display'
 import { cn } from '@/lib/utils'
 import { DIRECTORY_TH_TEXT, DIRECTORY_THEAD_ROW } from '@/lib/directory-table-styles'
 
@@ -24,6 +25,14 @@ const PANEL_TEXT = {
   neutral: 'text-foreground',
   danger: 'text-red-800',
   success: 'text-green-800',
+  muted: 'text-muted-foreground',
+} as const
+
+const PANEL_ICON_TEXT = {
+  neutral: 'text-primary',
+  danger: 'text-red-600',
+  success: 'text-green-700',
+  muted: 'text-muted-foreground',
 } as const
 
 function dateCell(p: ProjectTableRow) {
@@ -37,17 +46,17 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
       <div className="relative overflow-x-auto">
-        <table className="w-full min-w-[60rem] text-sm tablet:min-w-0">
+        <table className="w-full min-w-[64rem] text-sm tablet:min-w-0">
           <caption className="sr-only">Projects</caption>
           <thead className={DIRECTORY_THEAD_ROW}>
             <tr>
-              <th scope="col" className={`${TH} min-w-56 tablet:min-w-0`}>Project</th>
-              <th scope="col" className={`${TH} tablet:hidden`}>Location</th>
-              <th scope="col" className={TH}>Status</th>
-              <th scope="col" className={TH}>Progress</th>
-              <th scope="col" className={TH}>Project manager</th>
-              <th scope="col" className={TH}>Target / completion</th>
-              <th scope="col" className={TH}>Next action</th>
+              <th scope="col" className={`${TH} w-[26%] min-w-64 tablet:min-w-48`}>Project</th>
+              <th scope="col" className={`${TH} whitespace-nowrap tablet:hidden`}>Location</th>
+              <th scope="col" className={`${TH} whitespace-nowrap`}>Status</th>
+              <th scope="col" className={`${TH} whitespace-nowrap`}>Progress</th>
+              <th scope="col" className={`${TH} whitespace-nowrap`}>Project manager</th>
+              <th scope="col" className={`${TH} whitespace-nowrap`}>Target / completion</th>
+              <th scope="col" className={`${TH} w-[30%] min-w-72 tablet:min-w-56`}>Next action</th>
               <th scope="col" className={`${TH} text-right`}>
                 <span className="sr-only">Actions</span>
               </th>
@@ -60,6 +69,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
               const progress = showProgress ? Math.round(Number(p.progress_percent)) : null
               const panel = buildPanel(p)
               const date = dateCell(p)
+              const location = p.locationLabel ?? formatLocation(p.city, p.state)
               return (
                 <tr key={p.id} className="transition-colors hover:bg-link-soft/60">
                   <td className={TD}>
@@ -82,12 +92,12 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                         </Link>
                         <span className="font-mono text-xs text-muted-foreground">{p.project_number}</span>
                         <ProjectTypeLabel type={p.project_type} />
-                        <span className="hidden truncate text-xs text-muted-foreground tablet:block">{`${p.city}, ${p.state}`}</span>
+                        <span className="hidden truncate text-xs text-muted-foreground tablet:block">{location}</span>
                       </div>
                     </div>
                   </td>
-                  <td className={`${TD} text-muted-foreground tablet:hidden`}>{`${p.city}, ${p.state}`}</td>
-                  <td className={TD}>
+                  <td className={`${TD} whitespace-nowrap text-muted-foreground tablet:hidden`}>{location}</td>
+                  <td className={`${TD} whitespace-nowrap`}>
                     <ProjectStatusBadge status={p.status} />
                   </td>
                   <td className={`${TD} w-36 tablet:w-36`}>
@@ -102,7 +112,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                       </span>
                     )}
                   </td>
-                  <td className={cn(TD, p.managerName ? 'text-foreground' : 'text-muted-foreground')}>
+                  <td className={cn(TD, 'whitespace-nowrap', p.managerName ? 'text-foreground' : 'text-muted-foreground')}>
                     {p.managerName ?? 'Unassigned'}
                   </td>
                   <td className={`${TD} whitespace-nowrap`}>
@@ -111,16 +121,38 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                       <span className="text-foreground">{date.value}</span>
                     </div>
                   </td>
-                  <td className={`${TD} max-w-64 tablet:max-w-56`}>
-                    <div className="flex min-w-0 flex-col">
-                      {panel.href ? (
-                        <Link href={panel.href} title={panel.title} className={cn('line-clamp-2 font-medium hover:underline', PANEL_TEXT[panel.tone])}>
-                          {panel.title}
-                        </Link>
-                      ) : (
-                        <span title={panel.title} className={cn('line-clamp-2 font-medium', PANEL_TEXT[panel.tone])}>{panel.title}</span>
-                      )}
-                      {panel.meta && <span title={panel.meta} className="line-clamp-1 text-xs text-muted-foreground">{panel.meta}</span>}
+                  <td className={TD}>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <panel.Icon
+                        className={cn('mt-0.5 size-4 shrink-0', PANEL_ICON_TEXT[panel.tone])}
+                        aria-hidden="true"
+                      />
+                      <div className="flex min-w-0 flex-col">
+                        <span className="sr-only">{panel.kind === 'action' ? 'Next action: ' : 'Status: '}</span>
+                        {panel.href ? (
+                          <Link
+                            href={panel.href}
+                            className={cn(
+                              'line-clamp-2 hover:underline',
+                              panel.kind === 'action' ? 'font-medium' : 'font-normal',
+                              PANEL_TEXT[panel.tone],
+                            )}
+                          >
+                            {panel.title}
+                          </Link>
+                        ) : (
+                          <span
+                            className={cn(
+                              'line-clamp-2',
+                              panel.kind === 'action' ? 'font-medium' : 'font-normal',
+                              PANEL_TEXT[panel.tone],
+                            )}
+                          >
+                            {panel.title}
+                          </span>
+                        )}
+                        {panel.meta && <span className="line-clamp-2 text-xs text-muted-foreground">{panel.meta}</span>}
+                      </div>
                     </div>
                   </td>
                   <td className={`${TD} text-right`}>

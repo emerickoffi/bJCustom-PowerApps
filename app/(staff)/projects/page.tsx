@@ -31,6 +31,7 @@ import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { ListFilters } from '@/components/shared/list-filters'
 import { ALL_PROJECT_STATUSES, PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, type ProjectStatus } from '@/lib/domain'
 import { sanitizeSearch } from '@/lib/format'
+import { canonicalCityLabels, formatLocation } from '@/lib/location-display'
 import { cn } from '@/lib/utils'
 import { PROJECT_SUMMARY_COLUMNS, getProfileNames, type ProjectSummary } from '@/lib/queries'
 
@@ -81,6 +82,7 @@ export default async function ProjectsPage({
     if (!locationMap.has(key)) locationMap.set(key, { city, state })
   }
   const locations = [...locationMap.values()]
+  const cityLabels = canonicalCityLabels(locationRows ?? [])
   const stateFilter = stateNames.get(params.state?.trim().toLowerCase() ?? '') ?? ''
   const cityFilter =
     locations.find(
@@ -142,6 +144,7 @@ export default async function ProjectsPage({
     details: cardDetails.get(p.id)!,
     warrantyEnabled: features.warranty,
     managerName: p.project_manager_id ? (managerNames.get(p.project_manager_id) ?? null) : null,
+    locationLabel: formatLocation(p.city, p.state, cityLabels),
   }))
 
   return (
@@ -175,6 +178,7 @@ export default async function ProjectsPage({
         location={{ options: locations, defaultState: stateFilter, defaultCity: cityFilter }}
         clearHref={filtered ? directoryHref('/projects', { sort: stateParams.sort, view: urlView }) : undefined}
         preserve={{ sort: stateParams.sort, view: urlView }}
+        autoApply
       />
       {projects.length ? (
         <div className="flex flex-col gap-4">
