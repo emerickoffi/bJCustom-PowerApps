@@ -43,8 +43,13 @@ import { loadProjectHomeowners } from '@/lib/project-homeowners-data'
 import { formatAddress, formatCents, formatDate, formatDateTime } from '@/lib/format'
 import { PROJECT_SECTION_ANCHORS } from '@/lib/project-nav'
 import { ProjectSectionScroll } from '@/components/projects/project-section-scroll'
-import { ProjectNextActions } from '@/components/projects/next-actions'
+import { cookies } from 'next/headers'
+import { ProjectNextActions, type WorkScope } from '@/components/projects/next-actions'
 import { buildProjectNextActions } from '@/lib/next-actions'
+import { buildProjectSetup, setupDismissCookie } from '@/lib/project-setup'
+import { ProjectSetupChecklist, ShowSetupChecklistButton } from '@/components/projects/project-setup-checklist'
+import { PROGRESS_WEIGHTING_NOTE } from '@/components/schedule/project-schedule-panel'
+import { lifecycleGroup } from '@/lib/project-lifecycle'
 import { todayIso } from '@/lib/schedule'
 import { showsCompletionReadiness } from '@/lib/completion-readiness'
 import { loadCompletionReadiness, loadCompletionRecord } from '@/lib/completion-readiness-data'
@@ -98,9 +103,16 @@ function DetailField({
   )
 }
 
-export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ work?: string | string[] }>
+}) {
   const session = await requireStaff()
-  const { id } = await params
+  const [{ id }, query] = await Promise.all([params, searchParams])
+  const scope: WorkScope = query.work === 'mine' ? 'mine' : 'all'
   const supabase = await createClient()
 
   const { data: project } = await supabase
@@ -132,7 +144,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     loadProjectHomeowners(supabase, session.organizationId, id),
     supabase
       .from('schedule_activities')
-      .select('name, status, planned_start, planned_end, sort_order')
+      .select('name, status, planned_start, planned_end, sort_order, assigned_to')
       .eq('project_id', id)
       .order('sort_order'),
     supabase
@@ -155,9 +167,25 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           .limit(200)
       : Promise.resolve({ data: [] as { document_id: string; status: string; created_at: string }[], error: null }),
   ])
-  const [projectContacts, clientOptions] = await Promise.all([
+  const noCount = Promise.resolve({ count: null as number | null, error: null })
+  const [projectContacts, clientOptions, myIssuesRes, documentsRes, estimatesRes, cookieJar] = await Promise.all([
     projectContactsPromise,
     manager ? getClientOptions(session.organizationId) : Promise.resolve(undefined),
+    supabase
+      .from('project_issues')
+      .select('id, item_label', { count: 'exact' })
+      .eq('project_id', id)
+      .eq('responsible_user_id', session.userId)
+      .neq('status', 'closed')
+      .order('reported_at', { ascending: true })
+      .limit(1),
+    manager && features.documents
+      ? supabase.from('project_documents').select('id', { count: 'exact', head: true }).eq('project_id', id).is('archived_at', null)
+      : noCount,
+    manager && features.estimates
+      ? supabase.from('estimates').select('id', { count: 'exact', head: true }).eq('project_id', id)
+      : noCount,
+    cookies(),
   ])
   const isCompleted = project.status === 'completed'
   const [readiness, completionRecord, warrantyRes] = await Promise.all([
@@ -190,17 +218,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const completed = counted.filter((a) => a.status === 'completed').length
   const delayed = counted.filter((a) => a.status === 'delayed').length
   const nextUp = counted.find((a) => a.status !== 'completed')
-  const openIssues = openIssuesRes.count ?? 0
+  /** `null` when the lookup failed, so the header never shows an unavailable count as zero. */
+  const openIssues = openIssuesRes.error ? null : (openIssuesRes.count ?? 0)
   const today = todayIso()
   const lateActivities = counted
     .filter((a) => a.status !== 'completed' && (a.status === 'delayed' || (!!a.planned_end && a.planned_end < today)))
     .sort((a, b) => (a.planned_end ?? '9999-12-31').localeCompare(b.planned_end ?? '9999-12-31'))
-  const lateActivityCount = lateActivities.length
-  const firstLate = lateActivities[0]
   const nextActionsIncomplete = Boolean(
-    activitiesRes.error || openIssuesRes.error || reviewEstimatesRes.error || signaturesRes.error,
+    activitiesRes.error || openIssuesRes.error || myIssuesRes.error || reviewEstimatesRes.error || signaturesRes.error,
   )
-  const nextActions = buildProjectNextActions({
+  const lateSummary = (list: typeof lateActivities) => ({
+    lateActivityCount: list.length,
+    firstLateActivity: list[0]
+      ? { name: list[0].name, dueLabel: list[0].planned_end ? `Due ${formatDate(list[0].planned_end)}` : null }
+      : null,
+  })
+  const sharedActionState = {
     projectId: project.id,
     canManage: manager,
     features: {
@@ -212,20 +245,52 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       warranty: features.warranty,
     },
     status: project.status,
-    hasProjectManager: Boolean(project.project_manager_id),
-    activityCount: activities.length,
-    lateActivityCount,
+    isProjectManager: project.project_manager_id === session.userId,
     reviewEstimateIds: (reviewEstimatesRes.data ?? []).map((e) => e.id),
     signatureRequests: signaturesRes.data ?? [],
-    openIssueCount: openIssues,
-    firstOpenIssueId: openIssuesRes.data?.[0]?.id ?? null,
-    firstLateActivity: firstLate
-      ? { name: firstLate.name, dueLabel: firstLate.planned_end ? `Due ${formatDate(firstLate.planned_end)}` : null }
-      : null,
-    firstOpenIssueLabel: openIssuesRes.data?.[0]?.item_label ?? null,
-  })
+  }
+  const actionsByScope = {
+    all: buildProjectNextActions({
+      ...sharedActionState,
+      scope: 'all',
+      ...lateSummary(lateActivities),
+      openIssueCount: openIssues ?? 0,
+      firstOpenIssueId: openIssuesRes.data?.[0]?.id ?? null,
+      firstOpenIssueLabel: openIssuesRes.data?.[0]?.item_label ?? null,
+    }),
+    mine: buildProjectNextActions({
+      ...sharedActionState,
+      scope: 'mine',
+      ...lateSummary(lateActivities.filter((a) => a.assigned_to === session.userId)),
+      openIssueCount: myIssuesRes.error ? 0 : (myIssuesRes.count ?? 0),
+      firstOpenIssueId: myIssuesRes.data?.[0]?.id ?? null,
+      firstOpenIssueLabel: myIssuesRes.data?.[0]?.item_label ?? null,
+    }),
+  }
+  const nextActions = actionsByScope[scope]
+  const scopeTotal = (s: WorkScope) => actionsByScope[s].items.length + actionsByScope[s].hiddenCount
+  const scopeHref = (s: WorkScope) => (s === 'mine' ? `/projects/${project.id}?work=mine` : `/projects/${project.id}`)
   const contactsActiveCount =
     projectContacts.availability === 'ready' ? projectContacts.contacts.filter((c) => c.status === 'active').length : null
+
+  const showsSetup = manager && !isCompleted && lifecycleGroup(project.status) !== 'closed'
+  const setup = buildProjectSetup({
+    projectId: project.id,
+    features: { schedule: features.schedule, documents: features.documents, estimates: features.estimates },
+    hasProjectManager: Boolean(project.project_manager_id),
+    hasHomeowner: linksRes.error ? null : (linksRes.data?.length ?? 0) > 0,
+    hasTeam:
+      (membersRes.data?.length ?? 0) > 0 || (contactsActiveCount ?? 0) > 0
+        ? true
+        : membersRes.error || contactsActiveCount === null
+          ? null
+          : false,
+    hasSchedule: activitiesRes.error ? null : activities.length > 0,
+    hasDocuments: documentsRes.error || documentsRes.count === null ? null : documentsRes.count > 0,
+    hasEstimate: estimatesRes.error || estimatesRes.count === null ? null : estimatesRes.count > 0,
+    teamAnchor: PROJECT_SECTION_ANCHORS.team,
+  })
+  const setupDismissed = cookieJar.get(setupDismissCookie(project.id))?.value === '1'
   const history = historyRes.data ?? []
   const longDescription = (project.description?.length ?? 0) > 220
   const primaryClient = links[0]?.client
@@ -300,7 +365,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                       {`${openExceptionCount} open completion ${openExceptionCount === 1 ? 'exception' : 'exceptions'}`}
                     </span>
                   )}
-                  {openIssues > 0 && (
+                  {openIssues !== null && openIssues > 0 && (
                     <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/85">
                       {`${openIssues} open ${openIssues === 1 ? 'issue' : 'issues'}`}
                     </span>
@@ -329,11 +394,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                     Progress is calculated from weighted schedule milestones. Initialize the construction schedule to begin tracking.
                   </span>
                 ) : (
-                  counted.length > 0 && (
-                    <span className="max-w-md text-xs text-white/65">
-                      {`${Math.round(progress)}% is weighted by each activity's schedule weight and partial progress, so it can differ from the activity count.`}
-                    </span>
-                  )
+                  counted.length > 0 && <span className="max-w-md text-xs text-white/65">{PROGRESS_WEIGHTING_NOTE}</span>
                 )}
                 {nextUp && <span className="text-sm text-white/65">{`Next: ${nextUp.name}`}</span>}
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -343,10 +404,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                       {`${delayed} delayed`}
                     </span>
                   )}
-                  {openIssues > 0 && (
-                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/85">
-                      {`${openIssues} open ${openIssues === 1 ? 'issue' : 'issues'}`}
-                    </span>
+                  {openIssues === null ? (
+                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/85">Issues unavailable</span>
+                  ) : (
+                    openIssues > 0 && (
+                      <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/85">
+                        {`${openIssues} open ${openIssues === 1 ? 'issue' : 'issues'}`}
+                      </span>
+                    )
                   )}
                 </div>
               </div>
@@ -438,7 +503,18 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </div>
       </section>
 
-      <ProjectNextActions items={nextActions.items} hiddenCount={nextActions.hiddenCount} incomplete={nextActionsIncomplete} />
+      {showsSetup && !setup.complete && !setupDismissed && (
+        <ProjectSetupChecklist projectId={project.id} steps={setup.steps} doneCount={setup.doneCount} />
+      )}
+
+      <ProjectNextActions
+        items={nextActions.items}
+        hiddenCount={nextActions.hiddenCount}
+        incomplete={nextActionsIncomplete}
+        scope={scope}
+        scopeTotals={{ mine: scopeTotal('mine'), all: scopeTotal('all') }}
+        scopeHrefs={{ mine: scopeHref('mine'), all: scopeHref('all') }}
+      />
 
       {readiness && <CompletionReadinessPanel summary={readiness} projectId={project.id} canReview={manager} />}
       {isCompleted && (
@@ -464,7 +540,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_23rem]">
         <div className="flex min-w-0 flex-col gap-6">
-          {features.schedule && <ProjectSchedulePanel projectId={project.id} canManage={manager} progressPercent={progress} />}
+          {features.schedule && <ProjectSchedulePanel projectId={project.id} canManage={manager} />}
 
           {features.estimates && (
             <ProjectEstimatesPanel
@@ -603,6 +679,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   )}
                 </div>
               </details>
+            )}
+            {showsSetup && !setup.complete && setupDismissed && (
+              <div className="border-t pt-2">
+                <ShowSetupChecklistButton projectId={project.id} remaining={setup.steps.length - setup.doneCount} />
+              </div>
             )}
           </section>
         </aside>
