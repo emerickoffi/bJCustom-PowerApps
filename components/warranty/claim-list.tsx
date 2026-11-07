@@ -138,7 +138,14 @@ export async function ClaimList({
         const claimEvents = events.filter((e) => e.claim_id === c.id)
         const claimMedia = media.filter((m) => m.claim_id === c.id)
         return (
-          <li key={c.id} className={cn('flex flex-col gap-4', embedded ? 'px-5 py-5 md:px-6' : 'surface p-5')}>
+          <li
+            key={c.id}
+            id={`claim-${c.id}`}
+            className={cn(
+              'flex scroll-mt-24 flex-col gap-4 target:ring-2 target:ring-ring/40',
+              embedded ? 'px-5 py-5 md:px-6' : 'surface p-5',
+            )}
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex min-w-0 flex-col gap-1">
                 <h3 className="font-medium text-foreground">{c.title}</h3>
