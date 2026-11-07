@@ -34,6 +34,9 @@ export type ProjectActionState = {
   signatureRequests: SignatureRequestRef[]
   openIssueCount: number
   firstOpenIssueId: string | null
+  /** Most urgent late activity, with its planned finish already formatted for display. */
+  firstLateActivity?: { name: string; dueLabel: string | null } | null
+  firstOpenIssueLabel?: string | null
 }
 
 export const NEXT_ACTION_LIMIT = 3
@@ -63,11 +66,18 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
   const signatures = signing ? latestSignatureRequests(state.signatureRequests) : []
 
   if (features.schedule && state.lateActivityCount > 0) {
+    const late = state.firstLateActivity
+    const due = late?.dueLabel ? ` · planned finish ${late.dueLabel}` : ''
     actions.push({
       key: 'late-activities',
       tone: 'critical',
-      title: `${plural(state.lateActivityCount, 'activity needs', 'activities need')} an update`,
-      description: 'Delayed or past the planned finish. Update progress, status, or dates.',
+      title:
+        late && state.lateActivityCount === 1
+          ? `Update ${late.name}`
+          : `${plural(state.lateActivityCount, 'activity needs', 'activities need')} an update`,
+      description: late
+        ? `${state.lateActivityCount === 1 ? 'Delayed or past the planned finish' : `Starting with ${late.name}`}${due}. Update progress, status, or dates.`
+        : 'Delayed or past the planned finish. Update progress, status, or dates.',
       href: `${base}/schedule`,
       actionLabel: 'Update schedule',
     })
@@ -115,7 +125,10 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
     actions.push({
       key: 'open-issues',
       tone: 'review',
-      title: `${plural(state.openIssueCount, 'walkthrough issue is', 'walkthrough issues are')} open`,
+      title:
+        one && state.firstOpenIssueLabel
+          ? `Open issue: ${state.firstOpenIssueLabel}`
+          : `${plural(state.openIssueCount, 'walkthrough issue is', 'walkthrough issues are')} open`,
       description: 'Record corrective work and approve repairs for homeowner confirmation.',
       href: one ? `${base}/issues/${encodeURIComponent(state.firstOpenIssueId!)}` : `${base}#walkthroughs-heading`,
       actionLabel: one ? 'Open issue' : 'View issues',

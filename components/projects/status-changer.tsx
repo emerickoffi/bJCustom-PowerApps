@@ -9,7 +9,15 @@ import { SelectField, TextField } from '@/components/shared/form-field'
 import { SubmitButton } from '@/components/shared/form-message'
 import { Button } from '@/components/ui/button'
 
-export function StatusChanger({ projectId, status }: { projectId: string; status: ProjectStatus }) {
+export function StatusChanger({
+  projectId,
+  status,
+  onSuccess,
+}: {
+  projectId: string
+  status: ProjectStatus
+  onSuccess?: (message: string) => void
+}) {
   const next = allowedNextStatuses(status)
   if (next.length === 0) {
     return <p className="text-sm text-muted-foreground">This project is completed. Its status is locked.</p>
@@ -26,7 +34,7 @@ export function StatusChanger({ projectId, status }: { projectId: string; status
         </Button>
       )}
       {options.length > 0 && (
-        <InlineActionForm action={changeProjectStatusAction} className="flex flex-col gap-4">
+        <InlineActionForm action={changeProjectStatusAction} className="flex flex-col gap-4" onSuccess={onSuccess}>
           <input type="hidden" name="project_id" value={projectId} />
           <SelectField
             name="status"
