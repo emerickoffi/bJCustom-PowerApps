@@ -6,13 +6,11 @@ import { getInvoiceAccess } from '@/lib/invoice-access'
 import { listInvoicesResult, invoiceClientName, type InvoiceRow } from '@/lib/invoice-queries'
 import { INVOICE_STATUSES, INVOICE_STATUS_LABELS, balanceCents, isOverdue } from '@/lib/invoices'
 import { formatCentsExact } from '@/lib/estimates'
-import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
-import { InvoiceStatusBadge } from '@/components/invoices/invoice-status-badge'
+import { InvoiceList } from '@/components/invoices/invoice-list'
 import { pillClass } from '@/lib/interaction-styles'
-import { invoiceDetailHref } from '@/lib/invoice-return'
 
 export const metadata: Metadata = { title: 'Invoices' }
 
@@ -40,14 +38,14 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   ].map((f) => ({ ...f, count: all.filter((inv) => matchesFilter(inv, f.value)).length }))
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-5 md:gap-6">
       <PageHeader
         icon={Receipt}
         title="Invoices"
-        description="Progress draws and invoices for your projects. Payments are recorded manually."
+        count={failed ? undefined : { value: all.length, noun: 'invoice' }}
         actions={
           manager ? (
-            <Button render={<Link href="/invoices/new" />} nativeButton={false}>
+            <Button size="lg" render={<Link href="/invoices/new" />} nativeButton={false}>
               <Plus data-icon="inline-start" />
               New invoice
             </Button>
@@ -55,7 +53,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         }
       />
 
-      <dl className="grid gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+      <dl className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
         <Stat
           icon={Wallet}
           tone="blue"
@@ -83,11 +81,11 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
       <section aria-labelledby="invoice-directory" className="surface flex min-w-0 flex-col overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-[#D6DDE5] p-4 md:p-5">
           <div className="flex items-baseline justify-between gap-3">
-            <h2 id="invoice-directory" className="font-serif text-lg font-semibold tracking-tight text-foreground">
-              Invoice directory
+            <h2 id="invoice-directory" className="text-sm font-medium text-foreground">
+              Filter by status
             </h2>
-            <p className="text-sm tabular-nums text-muted-foreground">
-              {invoices.length} {invoices.length === 1 ? 'invoice' : 'invoices'}
+            <p className="text-sm tabular-nums text-muted-foreground" aria-live="polite">
+              {statusFilter ? `Showing ${invoices.length} of ${all.length}` : `${invoices.length} shown`}
             </p>
           </div>
           <nav aria-label="Filter by status" className="-mx-1 flex flex-wrap gap-1.5">
@@ -156,16 +154,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
             }
           />
         ) : (
-          <>
-            <InvoiceTable invoices={invoices} from={listHref} />
-            <ul className="flex flex-col divide-y divide-[#D6DDE5] lg:hidden">
-              {invoices.map((inv) => (
-                <li key={inv.id}>
-                  <InvoiceCard invoice={inv} from={listHref} />
-                </li>
-              ))}
-            </ul>
-          </>
+          <InvoiceList invoices={invoices.map((inv) => ({ ...inv, clientName: invoiceClientName(inv) }))} from={listHref} />
         )}
       </section>
     </div>
@@ -196,124 +185,27 @@ function Stat({
 }) {
   const danger = tone === 'danger'
   return (
-    <div className={cn('surface flex items-start justify-between gap-4 p-4 md:p-5', className)}>
-      <div className="flex min-w-0 flex-col gap-1.5">
-        <dt className="text-xs font-medium uppercase tracking-wider text-[#526173]">{label}</dt>
+    <div className={cn('flex items-center justify-between gap-4 bg-card px-4 py-3', className)}>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <dt className="text-xs font-medium text-[#526173]">{label}</dt>
         <dd
           className={cn(
-            'truncate font-serif text-3xl font-semibold leading-none tracking-tight tabular-nums',
+            'truncate text-lg font-semibold leading-tight tabular-nums',
             danger ? 'text-destructive' : 'text-[#17212B]',
           )}
         >
           {value}
         </dd>
-        <dd className="text-sm text-[#526173]">{note}</dd>
+        <dd className="text-xs text-[#526173]">{note}</dd>
       </div>
       <span
         className={cn(
-          'flex size-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset',
+          'flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset',
           STAT_TONES[tone],
         )}
       >
-        <Icon className="size-5" aria-hidden="true" />
+        <Icon className="size-4" aria-hidden="true" />
       </span>
-    </div>
-  )
-}
-
-function InvoiceTable({ invoices, from }: { invoices: InvoiceRow[]; from: string }) {
-  return (
-    <div className="hidden overflow-x-auto lg:block">
-      <table className="w-full text-sm">
-        <caption className="sr-only">Invoices</caption>
-        <thead>
-          <tr className="border-b border-[#D6DDE5] bg-table-head text-left text-xs text-[#526173]">
-            <th scope="col" className="px-5 py-3 font-medium">Invoice</th>
-            <th scope="col" className="px-4 py-3 font-medium">Project / homeowner</th>
-            <th scope="col" className="px-4 py-3 font-medium">Invoice date</th>
-            <th scope="col" className="px-4 py-3 font-medium">Due</th>
-            <th scope="col" className="px-4 py-3 text-right font-medium">Total</th>
-            <th scope="col" className="px-4 py-3 text-right font-medium">Balance</th>
-            <th scope="col" className="px-5 py-3 font-medium">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {invoices.map((inv) => (
-            <tr
-              key={inv.id}
-              className="border-b border-[#D6DDE5] bg-white transition-colors last:border-0 hover:bg-link-soft/60 has-[:focus-visible]:bg-link-soft/60"
-            >
-              <td className="px-5 py-3.5">
-                <Link
-                  href={invoiceDetailHref(inv.id, from)}
-                  className="rounded-sm font-medium text-link hover:text-link-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
-                >
-                  {inv.invoice_number}
-                </Link>
-                <p className="line-clamp-1 text-xs text-muted-foreground">{inv.title}</p>
-              </td>
-              <td className="px-4 py-3.5">
-                <p className="line-clamp-1">{inv.project?.name ?? '—'}</p>
-                <p className="line-clamp-1 text-xs text-muted-foreground">{invoiceClientName(inv)}</p>
-              </td>
-              <td className="whitespace-nowrap px-4 py-3.5 tabular-nums text-muted-foreground">{formatDate(inv.invoice_date)}</td>
-              <td className="whitespace-nowrap px-4 py-3.5 tabular-nums">{formatDate(inv.due_date)}</td>
-              <td className="whitespace-nowrap px-4 py-3.5 text-right tabular-nums">{formatCentsExact(inv.total_cents)}</td>
-              <td className="whitespace-nowrap px-4 py-3.5 text-right font-medium tabular-nums">
-                {inv.status === 'draft' ? '—' : formatCentsExact(balanceCents(inv))}
-              </td>
-              <td className="px-5 py-3.5">
-                <StatusCell invoice={inv} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function InvoiceCard({ invoice: inv, from }: { invoice: InvoiceRow; from: string }) {
-  return (
-    <Link
-      href={invoiceDetailHref(inv.id, from)}
-      className="flex flex-col gap-3 p-4 transition-colors hover:bg-link-soft/60 focus-visible:bg-link-soft/60 focus-visible:shadow-[inset_3px_0_0_var(--link)] focus-visible:outline-none md:px-5"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col">
-          <span className="font-medium text-link">{inv.invoice_number}</span>
-          <span className="truncate text-sm text-muted-foreground">{inv.title}</span>
-        </div>
-        <StatusCell invoice={inv} />
-      </div>
-      <div className="flex min-w-0 flex-col text-sm">
-        <span className="truncate text-foreground">{inv.project?.name ?? '—'}</span>
-        <span className="truncate text-xs text-muted-foreground">{invoiceClientName(inv)}</span>
-      </div>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-[#F3F4F6] p-3 text-sm sm:grid-cols-4">
-        <CardField label="Invoice date" value={formatDate(inv.invoice_date)} />
-        <CardField label="Due" value={formatDate(inv.due_date)} />
-        <CardField label="Total" value={formatCentsExact(inv.total_cents)} />
-        <CardField label="Balance" value={inv.status === 'draft' ? '—' : formatCentsExact(balanceCents(inv))} strong />
-      </dl>
-    </Link>
-  )
-}
-
-function CardField({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="flex min-w-0 flex-col">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className={cn('truncate tabular-nums', strong ? 'font-semibold text-foreground' : 'text-foreground')}>{value}</dd>
-    </div>
-  )
-}
-
-function StatusCell({ invoice: inv }: { invoice: InvoiceRow }) {
-  return (
-    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 lg:justify-start">
-      <InvoiceStatusBadge status={inv.status} dueDate={inv.due_date} />
-      {inv.portal_published && inv.status !== 'draft' && <span className="text-xs text-muted-foreground">In portal</span>}
     </div>
   )
 }

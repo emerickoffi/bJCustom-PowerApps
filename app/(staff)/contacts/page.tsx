@@ -42,11 +42,18 @@ export default async function ContactsPage({
   ])
 
   return (
-    <PageContainer>
+    <PageContainer className="gap-5 md:gap-6">
       <PageHeader
         icon={BookUser}
         title="Contacts"
-        description="Every person and business your team works with: architects, engineers, vendors, suppliers, and subcontractors."
+        count={availability === 'ready' ? { value: people.length, noun: 'person', plural: 'people' } : undefined}
+        titleAddon={
+          availability === 'ready' ? (
+            <span className="text-sm tabular-nums text-muted-foreground">
+              {`${companies.length.toLocaleString()} ${companies.length === 1 ? 'company' : 'companies'}`}
+            </span>
+          ) : undefined
+        }
         actions={
           availability === 'ready' && (
             <>

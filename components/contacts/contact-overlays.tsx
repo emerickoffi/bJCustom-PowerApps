@@ -13,7 +13,7 @@ import { formatDate, formatPhone } from '@/lib/format'
 import { createCompanyAction, createPersonAction, updatePersonAction } from '@/app/actions/contacts'
 import { CompanyForm } from '@/components/contacts/company-form'
 import { DetailList } from '@/components/shared/page-header'
-import { FormOverlay, OverlayBody, OverlayFooter } from '@/components/shared/form-overlay'
+import { FormOverlay, OverlayBody, OverlayFooter, useFormOverlay } from '@/components/shared/form-overlay'
 import { PersonForm } from '@/components/contacts/person-form'
 import { ContactStatusBadge } from '@/components/contacts/contact-status-button'
 import type { AssignableProjectOption } from '@/components/contacts/project-assignments-field'
@@ -189,6 +189,17 @@ export function ContactOverlays({
                   .filter((p) => p.status === 'active')
                   .map((p) => ({ id: p.id, href: `/projects/${p.project_id}`, label: p.project_number ? `${p.project_number} · ${p.name}` : p.name, meta: p.project_role }))}
               />
+              <section className="flex flex-col gap-2">
+                <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Account and access</h3>
+                <div className="flex flex-col gap-1 rounded-lg border border-border/80 bg-card px-3 py-2.5 text-sm">
+                  <p className="font-medium text-foreground">
+                    {person.status === 'active' ? 'Active directory contact' : 'Inactive directory contact'}
+                  </p>
+                  <p className="text-muted-foreground">
+                    No individual sign-in. Directory contacts don&apos;t have their own app account; subcontractor access is managed per company.
+                  </p>
+                </div>
+              </section>
               {person.notes && (
                 <div className="flex flex-col gap-1.5">
                   <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Notes</h3>
@@ -197,9 +208,10 @@ export function ContactOverlays({
               )}
             </OverlayBody>
             <OverlayFooter>
+              <OverlayCloseButton />
               <Button variant="outline" size="lg" render={<Link href={`/contacts/people/${person.id}`} />} nativeButton={false}>
                 <ExternalLink data-icon="inline-start" />
-                Full profile
+                Open full details
               </Button>
               <Button size="lg" render={<Link href={hrefWith({ edit: person.id, back: 'contact' })} scroll={false} replace />} nativeButton={false}>
                 <Pencil data-icon="inline-start" />
@@ -210,6 +222,15 @@ export function ContactOverlays({
         )}
       </FormOverlay>
     </>
+  )
+}
+
+function OverlayCloseButton() {
+  const overlay = useFormOverlay()
+  return (
+    <Button type="button" variant="ghost" size="lg" className="sm:mr-auto" onClick={() => overlay?.requestClose()}>
+      Close
+    </Button>
   )
 }
 

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Archive, Building2, FolderKanban, FolderOpen } from 'lucide-react'
+import { AlertTriangle, Archive, Building2, FolderKanban, FolderOpen, SearchX } from 'lucide-react'
 import { canManage, requireStaff } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
@@ -52,6 +52,7 @@ export default async function CompanyDocumentsPage({ searchParams }: { searchPar
   }))
   const projectFilter = !isCompany && sp.project && projects.some((p) => p.id === sp.project) ? sp.project : undefined
   const params: BrowseParams = { ...sp, tab: tabParams.tab, project: projectFilter }
+  const projectFilterName = projectFilter ? projects.find((p) => p.id === projectFilter)?.name : undefined
 
   const [list, archivedCount] = await Promise.all([
     listDocuments(
@@ -82,11 +83,12 @@ export default async function CompanyDocumentsPage({ searchParams }: { searchPar
   ) : null
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-5 md:gap-6">
       <PageHeader
         icon={FolderOpen}
         title={archived ? 'Archived documents' : 'Documents'}
-        description="Your central workspace for project files and internal company records. Every document stays private until you choose to share it."
+        count={list.ok ? { value: list.total, noun: 'document' } : undefined}
+        description={projectFilterName ? `Filtered to ${projectFilterName}` : undefined}
         actions={uploadAction}
       />
 
@@ -120,10 +122,25 @@ export default async function CompanyDocumentsPage({ searchParams }: { searchPar
       </div>
 
       {!list.ok ? (
-        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{list.error}</p>
+        <div role="alert" className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <div className="flex flex-col gap-0.5">
+            <p className="font-medium">{"Documents couldn't be loaded"}</p>
+            <p>{list.error}</p>
+          </div>
+        </div>
       ) : list.rows.length === 0 ? (
         filtered ? (
-          <EmptyState icon={FolderOpen} title="No matching documents" description="Try a different search, project, or category." />
+          <EmptyState
+            icon={SearchX}
+            title="No matching documents"
+            description="Try a different search, project, or category."
+            action={
+              <Button variant="outline" render={<Link href={browseHref(base, tabParams, archived ? { archived: '1' } : {})} />} nativeButton={false}>
+                Clear filters
+              </Button>
+            }
+          />
         ) : archived ? (
           <EmptyState icon={Archive} title="No archived documents" description="Archived documents will appear here and can be restored." />
         ) : isCompany ? (

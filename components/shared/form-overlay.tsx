@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button'
 type OverlayContextValue = {
   /** Call from any input change so the overlay knows there is unsaved work. */
   markDirty: () => void
+  /** True while the overlay holds unsaved changes. */
+  dirty: boolean
   setDirty: (dirty: boolean) => void
   /** Asks to close. Prompts first when the form has unsaved changes. */
   requestClose: () => void
@@ -93,8 +95,8 @@ export function FormOverlay({
   }, [forceClose])
 
   const ctx = useMemo<OverlayContextValue>(
-    () => ({ markDirty: () => !dirtyRef.current && setDirty(true), setDirty, requestClose, forceClose, setOverride }),
-    [setDirty, requestClose, forceClose, setOverride],
+    () => ({ markDirty: () => !dirtyRef.current && setDirty(true), dirty, setDirty, requestClose, forceClose, setOverride }),
+    [dirty, setDirty, requestClose, forceClose, setOverride],
   )
   const shownTitle = override?.title ?? title
   const shownDescription = override?.description ?? description

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowRight, Calculator, CircleCheckBig, Clock, FileText, LoaderCircle, Plus, Calculator as CalculatorIcon } from 'lucide-react'
+import { ArrowRight, Calculator, CircleCheckBig, Clock, FileText, LoaderCircle, Plus, SearchX, Calculator as CalculatorIcon } from 'lucide-react'
 import { ConstructionTotalInfo, EstimatePdfAction } from '@/components/estimates/estimate-table-hints'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
@@ -48,6 +48,9 @@ export default async function EstimatesPage({
       .order('name'),
   ])
   const projects = projectsRes.data ?? []
+  const projectName = projectId ? projects.find((p) => p.id === projectId)?.name : undefined
+  const createHref = projectId ? `/estimates/new?project=${projectId}` : '/estimates/new'
+  const clearHref = projectId ? `/estimates?project=${projectId}` : '/estimates'
 
   const approvedTotal = all
     .filter((e) => e.status === 'approved')
@@ -72,16 +75,16 @@ export default async function EstimatesPage({
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-5 md:gap-6">
       <PageHeader icon={CalculatorIcon}
-        eyebrow="Preconstruction"
         title="Estimates"
-        description="Builder-entered construction estimates for existing projects, with revisions and recorded homeowner approvals."
+        count={{ value: estimates.length, noun: 'estimate' }}
+        description={projectName ? `Filtered to ${projectName}` : undefined}
         actions={
           manager && (
             <Button
               size="lg"
-              render={<Link href={projectId ? `/estimates/new?project=${projectId}` : '/estimates/new'} />}
+              render={<Link href={createHref} />}
               nativeButton={false}
             >
               <Plus data-icon="inline-start" />
@@ -91,38 +94,27 @@ export default async function EstimatesPage({
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3">
         {[
           { label: 'In progress', value: String(openCount), hint: 'Draft or internal review', wide: false, icon: LoaderCircle, tone: 'bg-[#E6F0FF] text-[#1D5FBD]' },
           { label: 'Awaiting homeowner', value: String(awaitingCount), hint: 'Submitted, no decision yet', wide: false, icon: Clock, tone: 'bg-[#FFF2DA] text-[#96570E]' },
           { label: 'Approved construction value', value: formatCents(approvedTotal), hint: 'All approved versions', wide: true, icon: CircleCheckBig, tone: 'bg-[#E2F3E9] text-[#187542]' },
         ].map((s) => (
-          <div key={s.label} className={`surface flex min-w-0 flex-col gap-1 p-4 sm:p-5 ${s.wide ? 'col-span-2 sm:col-span-1' : ''}`}>
-            <span className="flex min-w-0 items-center gap-2 text-xs font-medium text-muted-foreground">
-              <span className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${s.tone}`}>
-                <s.icon className="size-4" aria-hidden="true" />
-              </span>
-              <span className="min-w-0">{s.label}</span>
+          <div key={s.label} title={s.hint} className={`flex min-w-0 items-center gap-3 bg-card px-4 py-3 ${s.wide ? 'col-span-2 sm:col-span-1' : ''}`}>
+            <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${s.tone}`}>
+              <s.icon className="size-4" aria-hidden="true" />
             </span>
-            <span className="break-words font-serif text-xl font-semibold tabular-nums text-foreground sm:text-2xl">{s.value}</span>
-            <span className="hidden text-xs text-muted-foreground sm:block">{s.hint}</span>
+            <div className="flex min-w-0 flex-col">
+              <dt className="truncate text-xs font-medium text-muted-foreground">{s.label}</dt>
+              <dd className="break-words text-lg font-semibold tabular-nums text-foreground">{s.value}</dd>
+            </div>
           </div>
         ))}
-      </div>
+      </dl>
 
-      <form method="get" className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
-        <label className="flex min-w-0 flex-col gap-1.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Project</span>
-          <NativeSelect name="project" defaultValue={projectId ?? ''} className="w-full bg-card sm:w-auto sm:min-w-56">
-            <option value="">All projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
-        <label className="flex min-w-0 flex-col gap-1.5">
+      <form method="get" className="flex flex-wrap items-end gap-2 sm:gap-3">
+        {projectId && <input type="hidden" name="project" value={projectId} />}
+        <label className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-none">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</span>
           <NativeSelect name="status" defaultValue={status ?? ''} className="w-full bg-card sm:w-auto sm:min-w-48">
             <option value="">All statuses</option>
@@ -136,21 +128,32 @@ export default async function EstimatesPage({
         <Button type="submit" variant="outline" size="lg">
           Apply
         </Button>
-        {(projectId || status) && (
-          <Button variant="ghost" size="lg" render={<Link href="/estimates" />} nativeButton={false}>
-            Clear
+        {status && (
+          <Button variant="ghost" size="lg" render={<Link href={clearHref} />} nativeButton={false}>
+            Clear status
           </Button>
         )}
       </form>
 
-      {estimates.length === 0 ? (
+      {estimates.length === 0 && status ? (
+        <EmptyState
+          icon={SearchX}
+          title="No estimates match this status"
+          description={`No ${projectName ? `${projectName} ` : ''}estimates are ${ESTIMATE_STATUS_LABELS[status as EstimateStatus].toLowerCase()} right now.`}
+          action={
+            <Button variant="outline" render={<Link href={clearHref} />} nativeButton={false}>
+              Clear status filter
+            </Button>
+          }
+        />
+      ) : estimates.length === 0 ? (
         <EmptyState
           icon={Calculator}
-          title={projectId || status ? 'No estimates match these filters' : 'No estimates yet'}
+          title={projectName ? `No estimates for ${projectName} yet` : 'No estimates yet'}
           description="Create an estimate for an existing project. Line items, markup and contingency are totaled on the server."
           action={
             manager && (
-              <Button render={<Link href="/estimates/new" />} nativeButton={false}>
+              <Button render={<Link href={createHref} />} nativeButton={false}>
                 <Plus data-icon="inline-start" />
                 Create estimate
               </Button>

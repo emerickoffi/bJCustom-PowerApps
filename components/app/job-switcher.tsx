@@ -10,6 +10,7 @@ import { useTabletLayout } from '@/components/app/layout-mode'
 import { getJobAction, searchJobsAction } from '@/app/actions/job-context'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import { resolveRouteJob, switchDestination, type ProjectFilterRoute } from '@/lib/route-job'
+import { confirmLeave } from '@/components/app/navigation-guard'
 import { stageColor, stageIndicatorColor } from '@/lib/stage-colors'
 import { cn } from '@/lib/utils'
 
@@ -111,7 +112,7 @@ export function JobSwitcher({
     close()
     if ((job?.id ?? null) === projectId && !unavailable) return
     const href = switchDestination(scope, new URLSearchParams(searchParams.toString()), job?.id ?? null)
-    if (href) startTransition(() => router.push(href))
+    if (href && confirmLeave()) startTransition(() => router.push(href))
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
