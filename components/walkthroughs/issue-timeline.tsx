@@ -1,4 +1,4 @@
-import { CalendarClock, Camera, CheckCircle2, CircleDot, Flag, Hammer, MessageSquare, ShieldCheck, UserRound, XCircle } from 'lucide-react'
+import { CalendarClock, CalendarRange, Camera, CheckCircle2, CircleDot, FileDiff, Flag, Hammer, HelpCircle, Link2, MessageSquare, ShieldCheck, Unlink, UserRound, XCircle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDate, formatDateTime } from '@/lib/format'
@@ -18,13 +18,39 @@ const ICONS: Record<IssueEventType, { icon: LucideIcon; tone: string }> = {
   evidence_photo_added: { icon: Camera, tone: 'bg-accent text-accent-foreground' },
   builder_reply: { icon: MessageSquare, tone: 'bg-primary/15 text-primary' },
   homeowner_comment: { icon: MessageSquare, tone: 'bg-warning/15 text-warning-foreground' },
+  change_order_draft_created: { icon: FileDiff, tone: 'bg-primary/15 text-primary' },
+  change_order_linked: { icon: Link2, tone: 'bg-secondary text-secondary-foreground' },
+  change_order_unlinked: { icon: Unlink, tone: 'bg-muted text-muted-foreground' },
+  schedule_activity_linked: { icon: CalendarRange, tone: 'bg-secondary text-secondary-foreground' },
+  schedule_activity_unlinked: { icon: Unlink, tone: 'bg-muted text-muted-foreground' },
+  review_requested: { icon: HelpCircle, tone: 'bg-warning/15 text-warning-foreground' },
+  review_responded: { icon: MessageSquare, tone: 'bg-primary/15 text-primary' },
 }
 
 const statusLabel = (v: string | null) => (v ? (ISSUE_STATUS_LABELS[v as IssueStatus] ?? v) : '—')
 const priorityLabel = (v: string | null) => (v ? (PRIORITY_LABELS[v as IssuePriority] ?? v) : '—')
 
-function describe(event: IssueEvent, nameFor: (id: string | null) => string | null): string {
+function describe(
+  event: IssueEvent,
+  nameFor: (id: string | null) => string | null,
+  recordLabel: (id: string | null) => string | null,
+): string {
+  const record = (fallback: string) => recordLabel(event.to_value ?? event.from_value) ?? fallback
   switch (event.event_type) {
+    case 'change_order_draft_created':
+      return `Change order draft created: ${record('change order')}`
+    case 'change_order_linked':
+      return `Linked change order ${record('')}`.trim()
+    case 'change_order_unlinked':
+      return `Unlinked change order ${record('')}`.trim()
+    case 'schedule_activity_linked':
+      return `Linked schedule activity ${record('')}`.trim()
+    case 'schedule_activity_unlinked':
+      return `Unlinked schedule activity ${record('')}`.trim()
+    case 'review_requested':
+      return `Review requested from ${nameFor(event.to_value) ?? 'a team member'}`
+    case 'review_responded':
+      return 'Review answered'
     case 'reported':
       return 'Issue reported from the homeowner walkthrough'
     case 'status_changed':
@@ -54,7 +80,16 @@ function describe(event: IssueEvent, nameFor: (id: string | null) => string | nu
   }
 }
 
-export function IssueTimeline({ events, nameFor }: { events: IssueEvent[]; nameFor: (id: string | null) => string | null }) {
+export function IssueTimeline({
+  events,
+  nameFor,
+  recordLabels,
+}: {
+  events: IssueEvent[]
+  nameFor: (id: string | null) => string | null
+  recordLabels?: Record<string, string>
+}) {
+  const recordLabel = (id: string | null) => (id && recordLabels?.[id]) || null
   if (events.length === 0) {
     return <p className="text-sm text-muted-foreground">No activity has been recorded yet.</p>
   }
@@ -74,7 +109,7 @@ export function IssueTimeline({ events, nameFor }: { events: IssueEvent[]; nameF
               {!last && <span className="w-px flex-1 bg-border" aria-hidden="true" />}
             </div>
             <div className={cn('flex min-w-0 flex-1 flex-col gap-1', !last && 'pb-6')}>
-              <p className="pt-1 text-sm font-medium text-foreground">{describe(event, nameFor)}</p>
+              <p className="pt-1 text-sm font-medium text-foreground">{describe(event, nameFor, recordLabel)}</p>
               <p className="text-xs text-muted-foreground">
                 {`${nameFor(event.actor_id) ?? 'System'} · ${formatDateTime(event.created_at)}`}
                 {photoEvent && event.details ? ` · ${event.details}` : ''}

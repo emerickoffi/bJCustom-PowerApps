@@ -30,6 +30,7 @@ import type { ReactNode } from 'react'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { ProgressRing } from '@/components/shared/progress'
 import { ProjectStatusCard } from '@/components/projects/project-status-card'
+import { ReportIssueAction } from '@/components/issues/report-issue-action'
 import { AssistantProjectScope } from '@/components/assistant/assistant-context'
 import { ProjectWalkthroughsPanel } from '@/components/walkthroughs/project-walkthroughs-panel'
 import { ProjectEstimatesPanel } from '@/components/estimates/project-estimates-panel'
@@ -506,6 +507,14 @@ export default async function ProjectDetailPage({
       {showsSetup && !setup.complete && !setupDismissed && (
         <ProjectSetupChecklist projectId={project.id} steps={setup.steps} doneCount={setup.doneCount} />
       )}
+
+      <div className="flex justify-end">
+        <ReportIssueAction
+          projectId={project.id}
+          projectLabel={`${project.project_number} · ${project.name}`}
+          triggerVariant="outline"
+        />
+      </div>
 
       <ProjectNextActions
         items={nextActions.items}

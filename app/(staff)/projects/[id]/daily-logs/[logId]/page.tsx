@@ -10,6 +10,7 @@ import { DailyLogReport, DailyLogStatusBadge } from '@/components/daily-logs/dai
 import { DailyLogPhotos } from '@/components/daily-logs/daily-log-photos'
 import { FinalizeDailyLog } from '@/components/daily-logs/finalize-daily-log'
 import { buttonVariants } from '@/components/ui/button'
+import { ReportIssueAction } from '@/components/issues/report-issue-action'
 
 export const metadata: Metadata = { title: 'Daily log' }
 
@@ -39,6 +40,13 @@ export default async function DailyLogPage({
         backLabel="Daily logs"
         actions={
           <div className="flex flex-wrap gap-2">
+            {!project.archived_at && (
+              <ReportIssueAction
+                projectId={project.id}
+                projectLabel={project.name}
+                source={{ kind: 'daily_log', id: log.id, label: `Daily log · ${formatDate(log.log_date)}` }}
+              />
+            )}
             <Link href={dailyLogPrintPath(log.id)} className={buttonVariants({ variant: 'outline' })} target="_blank" rel="noopener">
               <FileDown className="size-4" aria-hidden="true" />
               PDF

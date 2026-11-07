@@ -43,8 +43,9 @@ export function WalkthroughStatusBadge({ status, className }: { status: Walkthro
   return <span className={cn(base, WALKTHROUGH_TONE[status], className)}>{WALKTHROUGH_STATUS_LABELS[status]}</span>
 }
 
-export function IssueStatusBadge({ status, className }: { status: IssueStatus; className?: string }) {
-  return <span className={cn(base, ISSUE_TONE[status], className)}>{ISSUE_STATUS_LABELS[status]}</span>
+export function IssueStatusBadge({ status, field = false, className }: { status: IssueStatus; field?: boolean; className?: string }) {
+  const label = field && status === 'resolved' ? 'Ready for verification' : ISSUE_STATUS_LABELS[status]
+  return <span className={cn(base, ISSUE_TONE[status], className)}>{label}</span>
 }
 
 export function ResponseBadge({ response }: { response: ResponseValue | null }) {

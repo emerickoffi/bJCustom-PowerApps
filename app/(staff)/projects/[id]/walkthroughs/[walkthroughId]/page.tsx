@@ -14,6 +14,7 @@ import { PunchListTable, type PunchListRow } from '@/components/walkthroughs/pun
 import { formatDate, formatDateTime } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { StartWalkthroughButton } from '@/components/walkthroughs/start-walkthrough-button'
+import { ReportIssueAction } from '@/components/issues/report-issue-action'
 
 export const metadata: Metadata = { title: 'Walkthrough' }
 
@@ -96,6 +97,15 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
         }
         title={walkthrough.title}
         description={WALKTHROUGH_TYPE_LABELS[walkthrough.walkthrough_type] ?? walkthrough.walkthrough_type}
+        actions={
+          canConduct ? (
+            <ReportIssueAction
+              projectId={project.id}
+              projectLabel={project.name}
+              source={{ kind: 'walkthrough', id: walkthrough.id, label: `Walkthrough · ${walkthrough.title}` }}
+            />
+          ) : undefined
+        }
       />
 
       <section className="rounded-xl border bg-card p-5">

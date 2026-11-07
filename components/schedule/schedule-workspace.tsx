@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ActivityEditor, NewActivitySheet } from '@/components/schedule/activity-editor'
 import { ScheduleCalendar, ScheduleTimeline } from '@/components/schedule/schedule-views'
 import { ScheduleStageList } from '@/components/schedule/schedule-stage-list'
-import type { ScheduleActivity, ScheduleDependency, SchedulePhase } from '@/lib/schedule'
+import type { RelatedIssueLink, ScheduleActivity, ScheduleDependency, SchedulePhase } from '@/lib/schedule'
 import { useOpenFromUrl } from '@/components/shared/use-open-from-url'
 import { groupByActivity, type ActivityAssignment, type AssignmentAvailability, type CompanyOption } from '@/lib/assignments'
 
@@ -26,6 +26,7 @@ export function ScheduleWorkspace({
   canManage,
   assignmentAvailability = 'off',
   assignments = [],
+  relatedIssues = {},
   companies = [],
   acceptsNewAssignments = false,
   initialActivityId = null,
@@ -43,6 +44,7 @@ export function ScheduleWorkspace({
   canManage: boolean
   assignmentAvailability?: AssignmentAvailability
   assignments?: ActivityAssignment[]
+  relatedIssues?: Record<string, RelatedIssueLink[]>
   companies?: CompanyOption[]
   acceptsNewAssignments?: boolean
   /** Opens this activity on load (e.g. linked from the dashboard). Ignored when it isn't in this project. */
@@ -188,6 +190,7 @@ export function ScheduleWorkspace({
         staffOptions={staffOptions}
         canManage={canManage}
         assignments={assignmentProps}
+        relatedIssues={selected ? relatedIssues[selected.id] ?? [] : []}
         onClose={() => setSelectedId(null)}
       />
       {canManage && <NewActivitySheet projectId={projectId} phases={phases} open={creating} onClose={closeNew} />}

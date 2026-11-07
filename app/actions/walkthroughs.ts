@@ -231,18 +231,42 @@ export async function updateIssueAction(
   const parsed = issueUpdateSchema.safeParse(formValues(formData))
   if (!parsed.success) return fromZodError(parsed.error)
 
+  const expectedUpdatedAt = String(formData.get('expected_updated_at') ?? '')
+
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('project_issues')
     .update(parsed.data)
     .eq('id', issueId)
     .eq('organization_id', session.organizationId)
-    .select('id')
-  if (error) return { error: friendlyDbError(error) }
-  if (!data?.length) return { error: 'Issue not found or you do not have access.' }
+  if (expectedUpdatedAt) query = query.eq('updated_at', expectedUpdatedAt)
+  const { data, error } = await query.select('id')
+  if (error) {
+    if ((error.code === '42501' || error.code === 'P0001') && error.message) return { error: error.message, values: formValues(formData) }
+    return { error: friendlyDbError(error), values: formValues(formData) }
+  }
+  if (!data?.length) {
+    if (expectedUpdatedAt) {
+      const { data: exists } = await supabase
+        .from('project_issues')
+        .select('id')
+        .eq('id', issueId)
+        .eq('organization_id', session.organizationId)
+        .maybeSingle()
+      if (exists) {
+        return {
+          error: 'Someone else changed this issue since you opened it. Reload to see their changes; nothing was saved.',
+          conflict: true,
+          values: formValues(formData),
+        }
+      }
+    }
+    return { error: 'Issue not found or you do not have access.' }
+  }
 
   revalidatePath(`/projects/${projectId}/issues/${issueId}`)
   revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/my-work')
   return { success: 'Issue updated.' }
 }
 

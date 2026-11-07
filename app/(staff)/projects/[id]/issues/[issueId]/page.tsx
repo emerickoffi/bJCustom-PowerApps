@@ -10,6 +10,10 @@ import { MediaGrid } from '@/components/walkthroughs/media-uploader'
 import { IssueStatusBadge, PriorityBadge, ValidationBadge } from '@/components/walkthroughs/badges'
 import { ApproveRepairButton, IssueNoteForm, IssueUpdateForm, MissingRepairPhotosReminder, RepairPhotoUploader, SupplementalEvidenceUploader } from '@/components/walkthroughs/issue-management'
 import { IssueTimeline } from '@/components/walkthroughs/issue-timeline'
+import { FieldIssueReview } from '@/components/issues/field-issue-review'
+import { getIssueReportOptions } from '@/lib/field-issues'
+import { getIssueRelations } from '@/lib/issue-relations'
+import { IssueRelatedRecords } from '@/components/issues/issue-related-records'
 import Link from 'next/link'
 import { getOrgFeatures } from '@/lib/features'
 import { workStateFor, type SubmissionStatus } from '@/lib/subcontractor-work'
@@ -73,7 +77,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
 
   const { data: issue } = await supabase
     .from('project_issues')
-    .select('*, project:projects(id, name, project_number), walkthrough:walkthroughs(id, title)')
+    .select('*, project:projects(id, name, project_number), walkthrough:walkthroughs!project_issues_walkthrough_id_fkey(id, title)')
     .eq('id', issueId)
     .eq('project_id', id)
     .eq('organization_id', session.organizationId)
@@ -156,8 +160,45 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
   const priority = (issue.priority ?? 'normal') as IssuePriority
   const validation = issue.homeowner_validation as HomeownerValidation
   const project = issue.project as { id: string; name: string; project_number: string }
-  const walkthrough = issue.walkthrough as { id: string; title: string }
+  const walkthrough = issue.walkthrough as { id: string; title: string } | null
+  const fieldIssue = !walkthrough
+  const sourceLogId = (issue.source_daily_log_id as string | null | undefined) ?? null
+  const sourceWalkthroughId = (issue.source_walkthrough_id as string | null | undefined) ?? null
+  const [sourceLogRes, sourceWalkthroughRes] = await Promise.all([
+    sourceLogId
+      ? supabase.from('daily_logs').select('id, log_date').eq('id', sourceLogId).eq('project_id', id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    sourceWalkthroughId
+      ? supabase.from('walkthroughs').select('id, title').eq('id', sourceWalkthroughId).eq('project_id', id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+  const sourceLink = sourceLogRes.data
+    ? { href: `/projects/${id}/daily-logs/${sourceLogRes.data.id}`, label: `Daily log · ${formatDate(sourceLogRes.data.log_date)}` }
+    : sourceWalkthroughRes.data
+      ? { href: `/projects/${id}/walkthroughs/${sourceWalkthroughRes.data.id}`, label: `Walkthrough · ${sourceWalkthroughRes.data.title}` }
+      : walkthrough
+        ? { href: `/projects/${id}/walkthroughs/${walkthrough.id}`, label: `Walkthrough · ${walkthrough.title}` }
+        : null
+  const [reportOptions, features] = await Promise.all([
+    getIssueReportOptions(session.organizationId, project.id),
+    getOrgFeatures(session.organizationId),
+  ])
+  const issueAssignees = fieldIssue ? reportOptions.assignees : []
   const manager = canManage(session.role)
+  const relations = await getIssueRelations(supabase, {
+    projectId: project.id,
+    issueId: issue.id,
+    showChangeOrders: manager && !!features.change_orders,
+    showSchedule: !!features.schedule,
+    events,
+  })
+  const reviewers = reportOptions.assignees.filter((a) => a.value !== session.userId)
+  const reviewNames: Record<string, string> = {}
+  for (const r of relations.reviews) {
+    for (const uid of [r.requestedBy, r.reviewerId, r.response?.by ?? null]) {
+      if (uid) reviewNames[uid] = nameFor(uid) ?? 'Team member'
+    }
+  }
   const closed = status === 'closed'
   const overdue = isOverdue(issue.due_date, status)
   const rejections = events.filter((e) => e.event_type === 'homeowner_rejected')
@@ -192,12 +233,12 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
   return (
     <div className="flex flex-col gap-8">
       <PageHeader icon={ListChecksIcon}
-        backHref={`/projects/${project.id}/walkthroughs/${walkthrough.id}`}
-        backLabel={walkthrough.title}
+        backHref={walkthrough ? `/projects/${project.id}/walkthroughs/${walkthrough.id}` : `/projects/${project.id}`}
+        backLabel={walkthrough ? walkthrough.title : project.name}
         eyebrow={
           <span className="flex flex-wrap items-center gap-2 normal-case tracking-normal">
             <span className="font-mono">{project.project_number}</span>
-            <IssueStatusBadge status={status} />
+            <IssueStatusBadge status={status} field={fieldIssue} />
             <PriorityBadge priority={priority} />
           </span>
         }
@@ -207,7 +248,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
 
       <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border lg:grid-cols-4">
         {[
-          { label: 'Location', value: issue.category },
+          { label: 'Location', value: fieldIssue ? (issue.location as string | null) || 'Not set' : issue.category },
           { label: 'Assigned to', value: nameFor(issue.responsible_user_id) ?? 'Unassigned' },
           {
             label: 'Due date',
@@ -235,19 +276,23 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
           <Section
             id="observation-heading"
             step={1}
-            title={staffReported ? 'Builder observation' : 'Homeowner observation'}
+            title={fieldIssue ? 'Field observation' : staffReported ? 'Builder observation' : 'Homeowner observation'}
             aside={
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Lock className="size-3.5" aria-hidden="true" />
-                Original wording · read-only
+                {fieldIssue ? 'Builder team only · read-only' : 'Original wording · read-only'}
               </span>
             }
           >
             <DetailList
               items={[
-                { label: 'Checklist item', value: issue.item_label },
+                { label: fieldIssue ? 'Title' : 'Checklist item', value: issue.item_label },
+                ...(fieldIssue ? [{ label: 'Category', value: issue.category }] : []),
                 { label: 'Reported by', value: reporter },
                 { label: 'Date reported', value: formatDateTime(issue.reported_at) },
+                ...(sourceLink
+                  ? [{ label: 'Source', value: <Link href={sourceLink.href} className="font-medium text-primary underline-offset-4 hover:underline">{sourceLink.label}</Link> }]
+                  : []),
               ]}
             />
             <blockquote className="whitespace-pre-line rounded-lg border-l-4 border-primary bg-primary/5 p-4 text-sm leading-relaxed text-foreground">
@@ -318,6 +363,33 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
             </div>
           </Section>
 
+          {fieldIssue ? (
+          <Section id="verification-heading" step={3} title="Verification" aside={<IssueStatusBadge status={status} field />}>
+            {closed ? (
+              <DetailList
+                items={[
+                  { label: 'Verified by', value: nameFor(issue.builder_approved_by) ?? 'Manager' },
+                  { label: 'Decision', value: 'Closed' },
+                  { label: 'Date', value: formatDateTime(issue.builder_approved_at ?? issue.updated_at) },
+                ]}
+              />
+            ) : status === 'resolved' ? (
+              manager ? (
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Review the resolution and after photos, then close the issue or return it with a reason. Closing records your review only; it does not certify safety or code compliance.
+                  </p>
+                  {toMedia('repair').length === 0 && <MissingRepairPhotosReminder />}
+                  <FieldIssueReview projectId={project.id} issueId={issue.id} updatedAt={issue.updated_at} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Ready for verification. An administrator or project manager will review and close it.</p>
+              )
+            ) : (
+              <p className="text-sm text-muted-foreground">Set the status to Ready for verification once the work is done.</p>
+            )}
+          </Section>
+          ) : (
           <Section id="verification-heading" step={3} title="Builder verification">
             {issue.builder_approved_at ? (
               <DetailList
@@ -341,7 +413,10 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
               <p className="text-sm text-muted-foreground">Set the status to Repair complete to request builder verification.</p>
             )}
           </Section>
+          )}
 
+          {!fieldIssue && (
+          <>
           <Section id="validation-heading" step={4} title="Homeowner validation" aside={<ValidationBadge value={validation} />}>
             {issue.homeowner_validated_at ? (
               <DetailList
@@ -385,6 +460,8 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
               </div>
             )}
           </Section>
+          </>
+          )}
         </div>
 
         <aside className="flex flex-col gap-6">
@@ -401,8 +478,14 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
                 correctiveAction={issue.corrective_action}
                 priority={priority}
                 dueDate={issue.due_date}
-                staffOptions={staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))}
-                canApprove={manager}
+                staffOptions={
+                  fieldIssue
+                    ? issueAssignees
+                    : staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))
+                }
+                fieldIssue={fieldIssue}
+                updatedAt={issue.updated_at}
+                canApprove={manager && !fieldIssue}
                 builderApproved={!!issue.builder_approved_at}
                 repairPhotoCount={toMedia('repair').length}
               />
@@ -445,6 +528,18 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
             </section>
           )}
 
+          <IssueRelatedRecords
+            projectId={project.id}
+            issueId={issue.id}
+            relations={relations}
+            canManage={manager}
+            closed={closed}
+            currentUserId={session.userId}
+            reviewers={reviewers}
+            nameFor={reviewNames}
+            draftDefaults={{ title: `${issue.category} · ${issue.item_label}`.slice(0, 160), description: (issue.homeowner_description ?? '').slice(0, 4000) }}
+          />
+
           <section aria-labelledby="history-heading" className="flex flex-col gap-4 rounded-xl border bg-card p-5">
             <div className="flex flex-col gap-1">
               <h2 id="history-heading" className="font-serif text-lg font-semibold text-foreground">
@@ -452,7 +547,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
               </h2>
               <p className="text-xs text-muted-foreground">Permanent record. Entries cannot be edited or removed.</p>
             </div>
-            <IssueTimeline events={events} nameFor={nameFor} />
+            <IssueTimeline events={events} nameFor={nameFor} recordLabels={relations.recordLabels} />
           </section>
         </aside>
       </div>

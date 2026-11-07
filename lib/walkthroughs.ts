@@ -54,6 +54,13 @@ export type IssueEventType =
   | 'evidence_photo_added'
   | 'builder_reply'
   | 'homeowner_comment'
+  | 'change_order_draft_created'
+  | 'change_order_linked'
+  | 'change_order_unlinked'
+  | 'schedule_activity_linked'
+  | 'schedule_activity_unlinked'
+  | 'review_requested'
+  | 'review_responded'
 
 export type IssueEvent = {
   id: string
