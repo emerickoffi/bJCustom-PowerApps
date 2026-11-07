@@ -3,9 +3,9 @@
 import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Building2, Plus, Search, UserPlus } from 'lucide-react'
+import { Building2, Plus, Search, UserPlus, Users } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/shared/form-field'
 import { formatDate, formatPhone } from '@/lib/format'
@@ -131,10 +131,14 @@ export function ProjectContactsTable({
                 <UserPlus data-icon="inline-start" />
                 Create and assign
               </Button>
-              <Button size="sm" onClick={() => setDialog({ prefill: null, mode: 'existing' })}>
+              <Button size="sm" variant="outline" onClick={() => setDialog({ prefill: null, mode: 'existing' })}>
                 <Plus data-icon="inline-start" />
                 Add existing contact
               </Button>
+              <Link href={`/projects/${projectId}/contacts/add`} className={buttonVariants({ size: 'sm' })}>
+                <Users data-icon="inline-start" />
+                Add from directory
+              </Link>
             </div>
           )}
         </div>
