@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { AlertTriangle, ArrowRight, ClipboardList, Settings2 } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CircleCheck, ClipboardList, Settings2 } from 'lucide-react'
 import type { NextAction, NextActionTone } from '@/lib/next-actions'
 import { cn } from '@/lib/utils'
 
@@ -9,56 +9,70 @@ const TONE: Record<NextActionTone, { icon: typeof AlertTriangle; className: stri
   setup: { icon: Settings2, className: 'bg-champagne-soft text-warning', label: 'Setup' },
 }
 
-export function ProjectNextActions({ items, hiddenCount }: { items: NextAction[]; hiddenCount: number }) {
-  if (items.length === 0) return null
-  const single = items.length === 1
+export function ProjectNextActions({
+  items,
+  hiddenCount,
+  incomplete = false,
+}: {
+  items: NextAction[]
+  hiddenCount: number
+  /** Some action sources failed to load, so an empty list must not read as "nothing to do". */
+  incomplete?: boolean
+}) {
+  const empty = items.length === 0
   return (
-    <section aria-labelledby="next-actions-heading" className="surface flex flex-col gap-3 p-4 sm:gap-4 sm:p-5">
+    <section aria-labelledby="next-actions-heading" className="surface flex flex-col gap-3 p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="next-actions-heading" className="font-serif text-lg font-semibold text-foreground">
           Next actions
         </h2>
-        {hiddenCount > 0 && (
-          <span className="text-xs text-muted-foreground">{`${hiddenCount} more after these`}</span>
-        )}
+        {hiddenCount > 0 && <span className="text-xs text-muted-foreground">{`${hiddenCount} more after these`}</span>}
       </div>
-      <ul className={cn('grid gap-3', items.length === 2 && 'md:grid-cols-2', items.length >= 3 && 'md:grid-cols-2 lg:grid-cols-3')}>
-        {items.map((action) => {
-          const tone = TONE[action.tone]
-          const Icon = tone.icon
-          return (
-            <li key={action.key}>
-              <Link
-                href={action.href}
-                className={cn(
-                  'group flex h-full min-h-11 flex-col gap-3 rounded-xl border border-[#D6DDE5] bg-white p-4 transition-colors hover:border-primary/40 hover:bg-[#F3F4F6] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
-                  single && 'sm:flex-row sm:items-center sm:justify-between sm:gap-6',
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg', tone.className)}>
-                    <Icon className="size-4" aria-hidden="true" />
-                    <span className="sr-only">{tone.label}</span>
-                  </span>
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <span className="text-sm font-medium leading-snug text-foreground">{action.title}</span>
-                    <span className="text-xs leading-relaxed text-muted-foreground">{action.description}</span>
-                  </div>
-                </div>
-                <span
-                  className={cn(
-                    'mt-auto inline-flex items-center gap-1 pl-11 text-sm font-medium text-primary',
-                    single && 'sm:mt-0 sm:shrink-0 sm:pl-0',
-                  )}
+      {empty && !incomplete && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CircleCheck className="size-4 text-primary" aria-hidden="true" />
+          No pending actions
+        </p>
+      )}
+      {!empty && (
+        <ul className={cn('grid gap-3', items.length === 2 && 'md:grid-cols-2', items.length >= 3 && 'md:grid-cols-2 lg:grid-cols-3')}>
+          {items.map((action) => {
+            const tone = TONE[action.tone]
+            const Icon = tone.icon
+            return (
+              <li key={action.key}>
+                <Link
+                  href={action.href}
+                  className="group flex h-full min-h-11 flex-col gap-2 rounded-xl border border-[#D6DDE5] bg-white p-3.5 transition-colors hover:border-primary/40 hover:bg-[#F3F4F6] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
-                  {action.actionLabel}
-                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-                </span>
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+                  <div className="flex items-start gap-3">
+                    <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg', tone.className)}>
+                      <Icon className="size-4" aria-hidden="true" />
+                      <span className="sr-only">{tone.label}</span>
+                    </span>
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-sm font-medium leading-snug text-foreground">{action.title}</span>
+                      <span className="text-xs leading-relaxed text-muted-foreground">{action.description}</span>
+                    </div>
+                  </div>
+                  <span className="mt-auto inline-flex items-center gap-1 pl-11 text-sm font-medium text-primary">
+                    {action.actionLabel}
+                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  </span>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {incomplete && (
+        <p role="status" className="flex items-center gap-2 text-sm text-warning">
+          <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+          {empty
+            ? 'Pending actions could not be checked. Refresh the page to try again.'
+            : 'Some checks could not load, so this list may be incomplete. Refresh the page to try again.'}
+        </p>
+      )}
     </section>
   )
 }

@@ -11,15 +11,13 @@ import {
   FolderOpen,
   Hammer,
   History,
-  House,
   LandPlot,
   MapPin,
   Pencil,
   Trees,
-  UserRound,
+  Users,
   Wallet,
 } from 'lucide-react'
-import { OverviewSection } from '@/components/projects/overview-section'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -31,7 +29,7 @@ import { CoverImage } from '@/components/projects/cover-image'
 import type { ReactNode } from 'react'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { ProgressRing } from '@/components/shared/progress'
-import { StatusChanger } from '@/components/projects/status-changer'
+import { ProjectStatusCard } from '@/components/projects/project-status-card'
 import { AssistantProjectScope } from '@/components/assistant/assistant-context'
 import { ProjectWalkthroughsPanel } from '@/components/walkthroughs/project-walkthroughs-panel'
 import { ProjectEstimatesPanel } from '@/components/estimates/project-estimates-panel'
@@ -39,10 +37,9 @@ import { ProjectSchedulePanel } from '@/components/schedule/project-schedule-pan
 import { ProjectInvoicesPanel } from '@/components/invoices/project-invoices-panel'
 import { ProjectClientsPanel, type ProjectClientLink } from '@/components/projects/project-people'
 import { ProjectTeamPanel } from '@/components/projects/project-team-panel'
-import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, projectAcceptsNewAssignments, type ProjectStatus } from '@/lib/domain'
+import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, type ProjectStatus } from '@/lib/domain'
 import { loadProjectContacts } from '@/lib/project-contacts-data'
 import { loadProjectHomeowners } from '@/lib/project-homeowners-data'
-import { ProjectContactsPanel } from '@/components/projects/project-contacts-panel'
 import { formatAddress, formatCents, formatDate, formatDateTime } from '@/lib/format'
 import { PROJECT_SECTION_ANCHORS } from '@/lib/project-nav'
 import { ProjectSectionScroll } from '@/components/projects/project-section-scroll'
@@ -69,6 +66,10 @@ function Fact({ icon: Icon, label, value }: { icon: typeof Wallet; label: string
     </div>
   )
 }
+
+/** Flattens the existing people panels so they read as parts of one Project team card. */
+const TEAM_PART =
+  'px-4 py-3 [&>section]:gap-3 [&>section]:rounded-none [&>section]:border-0 [&>section]:bg-transparent [&>section]:p-0 [&>section]:shadow-none [&>section>div>h2]:font-sans [&>section>div>h2]:text-sm [&>section>div>h2]:font-semibold'
 
 function DetailField({
   icon: Icon,
@@ -136,7 +137,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .order('sort_order'),
     supabase
       .from('project_issues')
-      .select('id', { count: 'exact' })
+      .select('id, item_label', { count: 'exact' })
       .eq('project_id', id)
       .neq('status', 'closed')
       .order('reported_at', { ascending: true })
@@ -144,7 +145,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     getProjectCoverPhotos([id]),
     features.estimates && manager
       ? supabase.from('estimates').select('id').eq('project_id', id).eq('status', 'internal_review').order('created_at')
-      : Promise.resolve({ data: [] as { id: string }[] }),
+      : Promise.resolve({ data: [] as { id: string }[], error: null }),
     signing
       ? supabase
           .from('signature_requests')
@@ -152,7 +153,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           .eq('project_id', id)
           .order('created_at', { ascending: false })
           .limit(200)
-      : Promise.resolve({ data: [] as { document_id: string; status: string; created_at: string }[] }),
+      : Promise.resolve({ data: [] as { document_id: string; status: string; created_at: string }[], error: null }),
   ])
   const [projectContacts, clientOptions] = await Promise.all([
     projectContactsPromise,
@@ -191,9 +192,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const nextUp = counted.find((a) => a.status !== 'completed')
   const openIssues = openIssuesRes.count ?? 0
   const today = todayIso()
-  const lateActivityCount = counted.filter(
-    (a) => a.status !== 'completed' && (a.status === 'delayed' || (!!a.planned_end && a.planned_end < today)),
-  ).length
+  const lateActivities = counted
+    .filter((a) => a.status !== 'completed' && (a.status === 'delayed' || (!!a.planned_end && a.planned_end < today)))
+    .sort((a, b) => (a.planned_end ?? '9999-12-31').localeCompare(b.planned_end ?? '9999-12-31'))
+  const lateActivityCount = lateActivities.length
+  const firstLate = lateActivities[0]
+  const nextActionsIncomplete = Boolean(
+    activitiesRes.error || openIssuesRes.error || reviewEstimatesRes.error || signaturesRes.error,
+  )
   const nextActions = buildProjectNextActions({
     projectId: project.id,
     canManage: manager,
@@ -213,7 +219,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     signatureRequests: signaturesRes.data ?? [],
     openIssueCount: openIssues,
     firstOpenIssueId: openIssuesRes.data?.[0]?.id ?? null,
+    firstLateActivity: firstLate
+      ? { name: firstLate.name, dueLabel: firstLate.planned_end ? `Due ${formatDate(firstLate.planned_end)}` : null }
+      : null,
+    firstOpenIssueLabel: openIssuesRes.data?.[0]?.item_label ?? null,
   })
+  const contactsActiveCount =
+    projectContacts.availability === 'ready' ? projectContacts.contacts.filter((c) => c.status === 'active').length : null
+  const history = historyRes.data ?? []
+  const longDescription = (project.description?.length ?? 0) > 220
   const primaryClient = links[0]?.client
   const managerName = nameFor(project.project_manager_id)
   const lotBlockPhase =
@@ -250,12 +264,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const completionDate = (project.completion_date as string | null) ?? null
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <ProjectSectionScroll />
       <section aria-labelledby="project-heading" className="overflow-hidden rounded-3xl bg-brand-deep text-white shadow-lift">
-        <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,15rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,19rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-          <div className="flex flex-col gap-5 p-5 sm:p-6 xl:px-8 xl:py-7">
-            <div className="flex flex-col gap-2.5">
+        <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,15rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+          <div className="flex flex-col gap-4 p-4 sm:p-5 xl:px-7 xl:py-5">
+            <div className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2.5">
                 <span className="font-mono text-xs text-white/60">{project.project_number}</span>
                 <ProjectStatusBadge status={status} />
@@ -296,22 +310,30 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             ) : (
             <div className="flex flex-wrap items-center gap-4">
               {progress === null ? (
-                <span className="flex size-[72px] shrink-0 items-center justify-center rounded-full border-[6px] border-white/15 px-1.5 text-center text-[0.65rem] font-medium leading-tight text-white/70">
+                <span className="flex size-16 shrink-0 items-center justify-center rounded-full border-[5px] border-white/15 px-1 text-center text-[0.6rem] font-medium leading-tight text-white/70">
                   Not configured
                 </span>
               ) : (
-                <ProgressRing value={progress} label="Construction progress" tone="light" size={72} stroke={6} />
+                <ProgressRing value={progress} label="Weighted construction progress" tone="light" size={64} stroke={5} />
               )}
               <div className="flex min-w-0 flex-col gap-1">
                 <span className="text-sm font-medium">
                   {progress === null
                     ? 'Construction progress not configured'
-                    : `${completed} of ${counted.length} schedule steps complete`}
+                    : counted.length === 0
+                      ? 'No schedule activities yet'
+                      : `${completed} of ${counted.length} activities complete`}
                 </span>
-                {progress === null && (
+                {progress === null ? (
                   <span className="max-w-sm text-xs text-white/65">
                     Progress is calculated from weighted schedule milestones. Initialize the construction schedule to begin tracking.
                   </span>
+                ) : (
+                  counted.length > 0 && (
+                    <span className="max-w-md text-xs text-white/65">
+                      {`${Math.round(progress)}% is weighted by each activity's schedule weight and partial progress, so it can differ from the activity count.`}
+                    </span>
+                  )
                 )}
                 {nextUp && <span className="text-sm text-white/65">{`Next: ${nextUp.name}`}</span>}
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -330,7 +352,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </div>
             </div>
             )}
-            <div className="grid gap-x-4 gap-y-3 border-t border-white/10 pt-4 sm:grid-cols-2 2xl:grid-cols-4">
+            <div className="grid gap-x-4 gap-y-2.5 border-t border-white/10 pt-3 sm:grid-cols-2 xl:grid-cols-4">
               <Fact icon={Wallet} label="Estimated budget" value={formatCents(project.estimated_budget_cents)} />
               <Fact icon={CalendarRange} label="Proposed start" value={formatDate(project.proposed_start_date)} />
               {isCompleted ? (
@@ -393,7 +415,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               )}
             </div>
           </div>
-          <div className="relative min-h-48 sm:min-h-56 md:min-h-full">
+          <div className="relative aspect-[16/9] md:aspect-auto md:min-h-full">
             {cover ? (
               <CoverImage
                 src={cover.url}
@@ -416,7 +438,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </div>
       </section>
 
-      <ProjectNextActions items={nextActions.items} hiddenCount={nextActions.hiddenCount} />
+      <ProjectNextActions items={nextActions.items} hiddenCount={nextActions.hiddenCount} incomplete={nextActionsIncomplete} />
 
       {readiness && <CompletionReadinessPanel summary={readiness} projectId={project.id} canReview={manager} />}
       {isCompleted && (
@@ -440,57 +462,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         />
       )}
 
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="flex flex-col gap-8">
-          <OverviewSection
-            id="overview-heading"
-            icon={House}
-            title="Project details"
-            subtitle="Property and construction information."
-            variant="identity"
-          >
-            <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-              <DetailField
-                icon={Hammer}
-                label="Project type"
-                value={PROJECT_TYPE_LABELS[project.project_type] ?? project.project_type ?? null}
-              />
-              <DetailField
-                icon={UserRound}
-                label="Project manager"
-                value={managerName}
-                empty="Not assigned"
-                action={
-                  !managerName && manager ? (
-                    <Link href={`/projects/${project.id}/edit`} className="text-xs font-medium text-primary underline-offset-4 hover:underline">
-                      Assign manager
-                    </Link>
-                  ) : null
-                }
-              />
-              <DetailField icon={Trees} label="Community" value={project.community || null} />
-              <DetailField icon={LandPlot} label="Lot / Block / Phase" value={lotBlockPhase} />
-            </dl>
-            {project.description && (
-              <div className="flex flex-col gap-1.5 border-t pt-5">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Description</h3>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{project.description}</p>
-              </div>
-            )}
-            {project.legal_description && (
-              <div className="flex flex-col gap-1.5 border-t pt-5">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Legal description</h3>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{project.legal_description}</p>
-              </div>
-            )}
-            {project.internal_notes && (
-              <div className="flex flex-col gap-1.5 rounded-xl bg-champagne-soft p-4">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-warning">Internal notes · staff only</h3>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{project.internal_notes}</p>
-              </div>
-            )}
-          </OverviewSection>
-
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_23rem]">
+        <div className="flex min-w-0 flex-col gap-6">
           {features.schedule && <ProjectSchedulePanel projectId={project.id} canManage={manager} progressPercent={progress} />}
 
           {features.estimates && (
@@ -506,18 +479,164 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           )}
 
           {features.walkthroughs && <ProjectWalkthroughsPanel projectId={project.id} canCreate={manager} />}
+        </div>
 
-          <OverviewSection
-            id="history-heading"
-            icon={History}
-            title="Status history"
-            subtitle="Project lifecycle changes and recorded transitions."
+        <aside className="flex min-w-0 flex-col gap-6">
+          {manager && (
+            <ProjectStatusCard
+              projectId={project.id}
+              projectName={project.name}
+              status={status}
+              lastUpdatedLabel={history[0] ? formatDate(history[0].created_at) : formatDate(project.updated_at ?? project.created_at)}
+              dateLabel={project.completion_date ? 'Completed' : 'Target completion'}
+              dateValue={formatDate(project.completion_date ?? project.target_completion_date)}
+            />
+          )}
+
+          <section
+            id={PROJECT_SECTION_ANCHORS.team}
+            aria-labelledby="project-team-heading"
+            className="surface flex scroll-mt-36 flex-col divide-y p-0"
           >
-            {(historyRes.data ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">No status changes recorded yet.</p>
+            <header className="flex items-center gap-3 px-4 py-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sage text-primary">
+                <Users className="size-4" aria-hidden="true" />
+              </span>
+              <h2 id="project-team-heading" className="font-serif text-lg font-semibold text-foreground">
+                Project team
+              </h2>
+            </header>
+            <div className={TEAM_PART}>
+              <ProjectClientsPanel projectId={project.id} homeowners={homeowners} canEdit={manager} clientOptions={clientOptions} />
+            </div>
+            <div className={TEAM_PART}>
+              <ProjectTeamPanel
+                projectId={project.id}
+                projectName={project.name}
+                managerId={project.project_manager_id ?? null}
+                managerName={managerName}
+                members={members}
+                staffOptions={staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))}
+                canEdit={manager}
+              />
+              {!managerName && manager && (
+                <Link
+                  href={`/projects/${project.id}/edit`}
+                  className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  Assign manager
+                </Link>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+              <span className="text-muted-foreground">
+                {contactsActiveCount === null
+                  ? 'Directory contacts could not be loaded'
+                  : `${contactsActiveCount} active directory ${contactsActiveCount === 1 ? 'contact' : 'contacts'}`}
+              </span>
+              <Link
+                href={`/projects/${project.id}/contacts`}
+                className="inline-flex min-h-11 items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Open Contacts
+                <ArrowRight className="size-3.5" aria-hidden="true" />
+              </Link>
+            </div>
+          </section>
+
+          <section aria-labelledby="overview-heading" className="surface flex flex-col gap-4 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="overview-heading" className="scroll-mt-36 font-serif text-lg font-semibold text-foreground">
+                Project details
+              </h2>
+              {manager && (
+                <Link
+                  href={`/projects/${project.id}/edit`}
+                  className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  <Pencil className="size-3.5" aria-hidden="true" />
+                  Edit
+                </Link>
+              )}
+            </div>
+            <dl className="grid gap-4">
+              <DetailField
+                icon={Hammer}
+                label="Project type"
+                value={PROJECT_TYPE_LABELS[project.project_type] ?? project.project_type ?? null}
+              />
+              <DetailField icon={Trees} label="Community" value={project.community || null} />
+              <DetailField icon={LandPlot} label="Lot / Block / Phase" value={lotBlockPhase} />
+            </dl>
+            {project.description && (
+              <div className="flex flex-col gap-1 border-t pt-4">
+                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Description</h3>
+                <p className={`whitespace-pre-line text-sm leading-relaxed text-foreground ${longDescription ? 'line-clamp-3' : ''}`}>
+                  {project.description}
+                </p>
+              </div>
+            )}
+            {(longDescription || project.legal_description || project.internal_notes) && (
+              <details className="group border-t pt-3">
+                <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
+                  <span className="group-open:hidden">View details</span>
+                  <span className="hidden group-open:inline">Hide details</span>
+                </summary>
+                <div className="flex flex-col gap-4 pt-2">
+                  {longDescription && (
+                    <div className="flex flex-col gap-1">
+                      <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Full description</h3>
+                      <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{project.description}</p>
+                    </div>
+                  )}
+                  {project.legal_description && (
+                    <div className="flex flex-col gap-1">
+                      <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Legal description</h3>
+                      <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{project.legal_description}</p>
+                    </div>
+                  )}
+                  {project.internal_notes && (
+                    <div className="flex flex-col gap-1 rounded-xl bg-champagne-soft p-3">
+                      <h3 className="text-xs font-medium uppercase tracking-wider text-warning">Internal notes · staff only</h3>
+                      <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{project.internal_notes}</p>
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
+          </section>
+        </aside>
+      </div>
+
+      <section aria-labelledby="history-heading" className="surface flex flex-col gap-2 px-4 py-3 sm:px-5">
+        <details id="status-history-details" className="group">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sage text-primary">
+                <History className="size-4" aria-hidden="true" />
+              </span>
+              <h2 id="history-heading" className="scroll-mt-36 font-serif text-lg font-semibold text-foreground">
+                Status history
+              </h2>
+              <span className="text-sm text-muted-foreground">
+                {historyRes.error
+                  ? 'Could not be loaded'
+                  : `${history.length} ${history.length === 1 ? 'change' : 'changes'}${history.length === 30 ? ' (most recent)' : ''}`}
+              </span>
+            </span>
+            <span className="text-sm font-medium text-primary">
+              <span className="group-open:hidden">Show</span>
+              <span className="hidden group-open:inline">Hide</span>
+            </span>
+          </summary>
+          <div className="pb-2 pt-4">
+            {history.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {historyRes.error ? 'Status history could not be loaded. Refresh the page to try again.' : 'No status changes recorded yet.'}
+              </p>
             ) : (
               <ol className="relative flex flex-col gap-5 before:absolute before:bottom-4 before:left-[0.4375rem] before:top-4 before:w-px before:bg-[#D6DDE5]">
-                {(historyRes.data ?? []).map((entry, index) => (
+                {history.map((entry, index) => (
                   <li key={entry.id} className="relative flex flex-col gap-1.5 pl-8">
                     <span
                       className={
@@ -554,66 +673,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 ))}
               </ol>
             )}
-          </OverviewSection>
-        </div>
-
-        <aside className="flex flex-col gap-6">
-          {manager && (
-            <section aria-labelledby="status-heading" className="surface flex flex-col gap-4 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <h2 id="status-heading" className="font-serif text-lg font-semibold text-foreground">
-                  Project status
-                </h2>
-                <ProjectStatusBadge status={status} />
-              </div>
-              <dl className="grid grid-cols-2 gap-3 rounded-lg bg-[#F3F4F6] p-3 text-sm">
-                <div className="flex flex-col gap-0.5">
-                  <dt className="text-xs text-muted-foreground">Last updated</dt>
-                  <dd className="font-medium tabular-nums text-foreground">
-                    {historyRes.data?.[0] ? formatDate(historyRes.data[0].created_at) : formatDate(project.updated_at ?? project.created_at)}
-                  </dd>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <dt className="text-xs text-muted-foreground">{project.completion_date ? 'Completed' : 'Target completion'}</dt>
-                  <dd className="font-medium tabular-nums text-foreground">
-                    {formatDate(project.completion_date ?? project.target_completion_date)}
-                  </dd>
-                </div>
-              </dl>
-              <StatusChanger projectId={project.id} status={status} />
-              <a
-                href="#history-heading"
-                className="inline-flex items-center gap-1.5 self-start text-sm font-medium text-primary underline-offset-4 hover:underline"
-              >
-                <History className="size-3.5" aria-hidden="true" />
-                View status history
-              </a>
-            </section>
-          )}
-          <ProjectClientsPanel projectId={project.id} homeowners={homeowners} canEdit={manager} clientOptions={clientOptions} />
-          <div id={PROJECT_SECTION_ANCHORS.team} className="scroll-mt-24">
-            <ProjectTeamPanel
-              projectId={project.id}
-              projectName={project.name}
-              managerId={project.project_manager_id ?? null}
-              managerName={nameFor(project.project_manager_id)}
-              members={members}
-              staffOptions={staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))}
-              canEdit={manager}
-            />
           </div>
-          {projectContacts.availability === 'ready' && (
-            <ProjectContactsPanel
-              projectId={project.id}
-              contacts={projectContacts.contacts}
-              companies={projectContacts.companies}
-              assignable={projectContacts.assignable}
-              canEdit={manager}
-              acceptsAssignments={projectAcceptsNewAssignments(project.status as string)}
-            />
-          )}
-        </aside>
-      </div>
+        </details>
+      </section>
     </div>
   )
 }

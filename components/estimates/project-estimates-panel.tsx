@@ -43,14 +43,14 @@ function SummaryCard({
   valueClassName?: string
 }) {
   return (
-    <div className="flex h-full min-w-0 flex-col gap-2 rounded-xl border border-[#D6DDE5] bg-[#F3F4F6] p-4">
+    <div className="flex h-full min-w-0 flex-col gap-1.5 rounded-xl border border-[#D6DDE5] bg-[#F3F4F6] p-3">
       <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</dt>
       <dd
         className={cn(
-          'flex min-h-8 items-center break-words',
+          'flex min-h-7 items-center break-words',
           unavailable
             ? 'text-sm font-medium italic text-muted-foreground'
-            : 'font-serif text-2xl font-semibold leading-tight tabular-nums text-foreground',
+            : 'font-serif text-xl font-semibold leading-tight tabular-nums text-foreground',
           valueClassName,
         )}
       >
@@ -71,11 +71,26 @@ export async function ProjectEstimatesPanel({
   canManage: boolean
 }) {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('estimates')
     .select('id, family_id, revision, estimate_number, name, status, construction_total_cents, land_cost_cents, decision_at, created_at')
     .eq('project_id', projectId)
     .order('revision', { ascending: false })
+  const createAction = canManage ? (
+    <Button variant="outline" size="sm" render={<Link href={`/estimates/new?project=${projectId}`} />} nativeButton={false}>
+      <Plus data-icon="inline-start" />
+      Create estimate
+    </Button>
+  ) : null
+  if (error) {
+    return (
+      <OverviewSection id="estimates-heading" icon={Wallet} title="Estimates & Budget">
+        <p role="status" className="text-sm text-warning">
+          Estimates could not be loaded, so the approved amount and budget variance are unknown. Refresh the page to try again.
+        </p>
+      </OverviewSection>
+    )
+  }
   const rows = (data ?? []) as Row[]
 
   const latest = new Map<string, Row>()
@@ -94,20 +109,20 @@ export async function ProjectEstimatesPanel({
       title="Estimates & Budget"
       subtitle="Approved construction cost compared with the project budget."
       actions={
-        <>
-          {estimates.length ? (
+        estimates.length ? (
+          <>
             <Button variant="outline" render={<Link href={`/estimates?project=${projectId}`} />} nativeButton={false}>
               <Calculator data-icon="inline-start" />
               All estimates
             </Button>
-          ) : null}
-          {canManage ? (
-            <Button render={<Link href={`/estimates/new?project=${projectId}`} />} nativeButton={false}>
-              <Plus data-icon="inline-start" />
-              Create estimate
-            </Button>
-          ) : null}
-        </>
+            {canManage ? (
+              <Button render={<Link href={`/estimates/new?project=${projectId}`} />} nativeButton={false}>
+                <Plus data-icon="inline-start" />
+                Create estimate
+              </Button>
+            ) : null}
+          </>
+        ) : null
       }
     >
       <dl className="grid gap-3 md:grid-cols-3">
@@ -132,7 +147,10 @@ export async function ProjectEstimatesPanel({
       </dl>
 
       {estimates.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No estimates for this project yet.</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed px-4 py-3">
+          <p className="text-sm text-muted-foreground">No estimates for this project yet.</p>
+          {createAction}
+        </div>
       ) : (
         <ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
           {estimates.slice(0, 5).map((e) => (
