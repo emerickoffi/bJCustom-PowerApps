@@ -95,46 +95,6 @@ const settingsSchema = z.object({
   notes: optionalText(5000),
 })
 
-/** Updates only the pricing settings and notes edited beside the cost items; core fields are untouched. */
-export async function updateEstimateSettingsAction(estimateId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  const session = await requireManager()
-  if (!uuid.safeParse(estimateId).success) return { error: 'Estimate not found.' }
-  const values = formValues(formData)
-  const parsed = settingsSchema.safeParse(values)
-  if (!parsed.success) return { ...fromZodError(parsed.error), values }
-
-  const supabase = await createClient()
-  const { data: current } = await supabase
-    .from('estimates')
-    .select('id, project_id, family_id, revision, status')
-    .eq('id', estimateId)
-    .eq('organization_id', session.organizationId)
-    .maybeSingle()
-  if (!current) return { error: 'Estimate not found.', values }
-
-  const { count } = await supabase
-    .from('estimates')
-    .select('id', { count: 'exact', head: true })
-    .eq('family_id', current.family_id)
-    .gt('revision', current.revision)
-  if ((count ?? 0) > 0) return { error: 'This is an older revision. Open the latest revision to change its settings.', values }
-
-  const { land_cost, ...rest } = parsed.data
-  const { data, error } = await supabase
-    .from('estimates')
-    .update({ ...rest, land_cost_cents: land_cost, updated_by: session.userId })
-    .eq('id', estimateId)
-    .eq('organization_id', session.organizationId)
-    .in('status', EDITABLE_ESTIMATE_STATUSES)
-    .select('id')
-    .maybeSingle()
-  if (error) return { error: friendlyDbError(error), values }
-  if (!data) return { error: 'This estimate is locked for editing. Reload to see its latest status.', values }
-
-  revalidateEstimate(estimateId, current.project_id)
-  return { success: 'Pricing settings saved.', savedId: estimateId }
-}
-
 function toEstimateRow(d: z.infer<typeof estimateSchema>) {
   const { land_cost, ...rest } = d
   return { ...rest, land_cost_cents: land_cost }
@@ -365,39 +325,6 @@ const sheetItemSchema = z.object({
   notes: z.string().trim().max(1000).nullable(),
 })
 const sheetSchema = z.array(sheetItemSchema).max(1000, 'An estimate can have at most 1,000 line items')
-
-export type SaveSheetResult = { ok: true; updatedAt: string } | { ok: false; error: string; rowIndex?: number }
-
-/** Saves the whole line-item grid in one transaction (see save_estimate_line_items). */
-export async function saveEstimateLineItemsAction(
-  estimateId: string,
-  expectedUpdatedAt: string,
-  items: unknown,
-): Promise<SaveSheetResult> {
-  await requireManager()
-  if (!uuid.safeParse(estimateId).success) return { ok: false, error: 'Invalid estimate.' }
-  const parsed = sheetSchema.safeParse(items)
-  if (!parsed.success) {
-    const issue = parsed.error.issues[0]
-    const rowIndex = typeof issue?.path[0] === 'number' ? issue.path[0] : undefined
-    return {
-      ok: false,
-      error: rowIndex === undefined ? (issue?.message ?? 'Invalid line items.') : `Row ${rowIndex + 1}: ${issue.message}`,
-      rowIndex,
-    }
-  }
-
-  const supabase = await createClient()
-  const { data, error } = await supabase.rpc('save_estimate_line_items', {
-    p_estimate: estimateId,
-    p_items: parsed.data,
-    p_expected_updated_at: expectedUpdatedAt,
-  })
-  if (error) return { ok: false, error: friendlyDbError(error) }
-
-  revalidateEstimate(estimateId)
-  return { ok: true, updatedAt: String(data) }
-}
 
 export type SaveDraftResult =
   | { ok: true; updatedAt: string }
