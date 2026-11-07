@@ -12,6 +12,8 @@ import { ApproveRepairButton, IssueNoteForm, IssueUpdateForm, MissingRepairPhoto
 import { IssueTimeline } from '@/components/walkthroughs/issue-timeline'
 import { FieldIssueReview } from '@/components/issues/field-issue-review'
 import { getIssueReportOptions } from '@/lib/field-issues'
+import { getIssueRelations } from '@/lib/issue-relations'
+import { IssueRelatedRecords } from '@/components/issues/issue-related-records'
 import Link from 'next/link'
 import { getOrgFeatures } from '@/lib/features'
 import { workStateFor, type SubmissionStatus } from '@/lib/subcontractor-work'
@@ -177,10 +179,26 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
       : walkthrough
         ? { href: `/projects/${id}/walkthroughs/${walkthrough.id}`, label: `Walkthrough · ${walkthrough.title}` }
         : null
-  const issueAssignees = fieldIssue
-    ? (await getIssueReportOptions(session.organizationId, project.id)).assignees
-    : []
+  const [reportOptions, features] = await Promise.all([
+    getIssueReportOptions(session.organizationId, project.id),
+    getOrgFeatures(session.organizationId),
+  ])
+  const issueAssignees = fieldIssue ? reportOptions.assignees : []
   const manager = canManage(session.role)
+  const relations = await getIssueRelations(supabase, {
+    projectId: project.id,
+    issueId: issue.id,
+    showChangeOrders: manager && !!features.change_orders,
+    showSchedule: !!features.schedule,
+    events,
+  })
+  const reviewers = reportOptions.assignees.filter((a) => a.value !== session.userId)
+  const reviewNames: Record<string, string> = {}
+  for (const r of relations.reviews) {
+    for (const uid of [r.requestedBy, r.reviewerId, r.response?.by ?? null]) {
+      if (uid) reviewNames[uid] = nameFor(uid) ?? 'Team member'
+    }
+  }
   const closed = status === 'closed'
   const overdue = isOverdue(issue.due_date, status)
   const rejections = events.filter((e) => e.event_type === 'homeowner_rejected')
@@ -510,6 +528,18 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
             </section>
           )}
 
+          <IssueRelatedRecords
+            projectId={project.id}
+            issueId={issue.id}
+            relations={relations}
+            canManage={manager}
+            closed={closed}
+            currentUserId={session.userId}
+            reviewers={reviewers}
+            nameFor={reviewNames}
+            draftDefaults={{ title: `${issue.category} · ${issue.item_label}`.slice(0, 160), description: (issue.homeowner_description ?? '').slice(0, 4000) }}
+          />
+
           <section aria-labelledby="history-heading" className="flex flex-col gap-4 rounded-xl border bg-card p-5">
             <div className="flex flex-col gap-1">
               <h2 id="history-heading" className="font-serif text-lg font-semibold text-foreground">
@@ -517,7 +547,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
               </h2>
               <p className="text-xs text-muted-foreground">Permanent record. Entries cannot be edited or removed.</p>
             </div>
-            <IssueTimeline events={events} nameFor={nameFor} />
+            <IssueTimeline events={events} nameFor={nameFor} recordLabels={relations.recordLabels} />
           </section>
         </aside>
       </div>

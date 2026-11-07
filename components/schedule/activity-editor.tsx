@@ -27,6 +27,8 @@ import {
   type SchedulePhase,
 } from '@/lib/schedule'
 import { PhasePicker } from '@/components/schedule/phase-picker'
+import Link from 'next/link'
+import type { RelatedIssueLink } from '@/lib/schedule'
 import { formatDate } from '@/lib/format'
 import { ActivityAssignments } from '@/components/schedule/activity-assignments'
 import type { ActivityAssignment, AssignmentAvailability, CompanyOption } from '@/lib/assignments'
@@ -389,6 +391,7 @@ export function ActivityEditor({
   staffOptions,
   canManage,
   assignments,
+  relatedIssues = [],
   onClose,
 }: {
   projectId: string
@@ -399,6 +402,7 @@ export function ActivityEditor({
   staffOptions: StaffOption[]
   canManage: boolean
   assignments?: AssignmentProps
+  relatedIssues?: RelatedIssueLink[]
   onClose: () => void
 }) {
   const [notice, setNotice] = useState<{ activityId: string; section: 'progress' | 'plan'; message: string } | null>(null)
@@ -414,6 +418,21 @@ export function ActivityEditor({
               <SheetDescription>{`${activity.phase} · ${ACTIVITY_TYPE_LABELS[activity.activity_type]}`}</SheetDescription>
             </SheetHeader>
             <div className="flex flex-col gap-8 px-4 pb-8">
+              {relatedIssues.length > 0 && (
+                <section className="flex flex-col gap-3">
+                  <SectionTitle>Related issues</SectionTitle>
+                  <ul className="flex flex-col gap-2">
+                    {relatedIssues.map((i) => (
+                      <li key={i.id}>
+                        <Link href={`/projects/${projectId}/issues/${i.id}`} className="flex flex-col gap-0.5 rounded-lg border p-3 text-sm hover:bg-muted/40">
+                          <span className="font-medium text-foreground">{i.label}</span>
+                          <span className="text-xs text-muted-foreground">{i.category}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
               <section className="flex flex-col gap-3">
                 <SectionTitle>Progress</SectionTitle>
                 <ProgressForm

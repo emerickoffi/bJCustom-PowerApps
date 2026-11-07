@@ -44,6 +44,7 @@ export type ScheduleActivity = {
 }
 
 export type ScheduleDependency = { id: string; predecessor_id: string; successor_id: string }
+export type RelatedIssueLink = { id: string; label: string; category: string }
 
 /**
  * Activities a builder may include per project. They are intentionally not schedule template rows,
