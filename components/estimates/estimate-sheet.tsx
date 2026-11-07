@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronRight, List, Lock, Plus, Redo2, Save, Table2, Trash2, Undo2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, List, Lock, Plus, Redo2, Table2, Trash2, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { NativeSelect } from '@/components/shared/form-field'
-import { EstimateSummary } from '@/components/estimates/estimate-summary'
 import { SheetRowView, type RowCommand } from '@/components/estimates/estimate-sheet-row'
 import { EstimateLineItemList } from '@/components/estimates/estimate-line-item-list'
 import {
@@ -537,15 +536,20 @@ export function EstimateSheet({
     })
   }
 
-  function save() {
-    if (!editable || locked || !dirty) return
+  /** Resolves true only once the server has confirmed the save (or there was nothing to save). */
+  function save(): Promise<boolean> {
+    if (!editable) return Promise.resolve(true)
+    if (locked) return Promise.resolve(false)
+    if (!dirty) return Promise.resolve(true)
     setSaveError(null)
     if (invalidRows.length) {
       setAttempted(true)
+      setSaveError(`${invalidRows.length} cost ${invalidRows.length === 1 ? 'item needs' : 'items need'} attention before saving.`)
+      draft?.setTab('items')
       const first = invalidRows[0]
       if (view === 'list') {
         openDrawer({ row: first, category: first.category, showErrors: true })
-        return
+        return Promise.resolve(false)
       }
       const col = SHEET_COLUMNS.find((c) => errorsByKey.get(first.key)?.[c])
       setCollapsed((s) => {
@@ -553,44 +557,78 @@ export function EstimateSheet({
         next.delete(first.category)
         return next
       })
-      if (col) focusCell(first.key, col)
-      return
+      // Wait for the Cost items panel to be shown before moving focus into it.
+      if (col) requestAnimationFrame(() => focusCell(first.key, col))
+      return Promise.resolve(false)
     }
     const settings = draft?.settings
     if (!settings) {
       setSaveError('Pricing settings are still loading. Try again in a moment.')
-      return
+      return Promise.resolve(false)
     }
     const payload = ordered(rows).filter((r) => !isBlankNewRow(r)).map(toPayload)
     const expected = expectedStamp.current
     const print = fingerprint(JSON.stringify([expected, payload, settings]))
     const requestId = resolveRequestId(pendingSave.current, print, () => crypto.randomUUID())
     pendingSave.current = { requestId, fingerprint: print, startedAt: Date.now() }
-    startSaving(async () => {
-      let result: SaveDraftResult
-      try {
-        result = await saveEstimateDraftAction(estimateId, expected, requestId, payload, settings)
-      } catch {
-        setSaveError('Could not reach the server. Your edits are kept. Press Save draft to retry.')
-        return
-      }
-      if (!result.ok) {
-        setSaveError(result.error)
-        const fieldErrors = result.fieldErrors ?? {}
-        draft?.setFieldErrors(fieldErrors)
-        const firstField = Object.keys(fieldErrors)[0]
-        if (firstField) document.getElementsByName(firstField)[0]?.focus()
-        return
-      }
-      pendingSave.current = null
-      draft?.setFieldErrors({})
-      expectedStamp.current = result.updatedAt
-      setAttempted(false)
-      setAwaitingSync(true)
-      toast.success('Draft saved.')
-      router.refresh()
+    return new Promise<boolean>((resolve) => {
+      startSaving(async () => {
+        let result: SaveDraftResult
+        try {
+          result = await saveEstimateDraftAction(estimateId, expected, requestId, payload, settings)
+        } catch {
+          setSaveError('Could not reach the server. Your edits are kept. Press Save draft to retry.')
+          resolve(false)
+          return
+        }
+        if (!result.ok) {
+          setSaveError(result.error)
+          const fieldErrors = result.fieldErrors ?? {}
+          draft?.setFieldErrors(fieldErrors)
+          const firstField = Object.keys(fieldErrors)[0]
+          if (firstField) {
+            draft?.setTab('pricing')
+            requestAnimationFrame(() => document.getElementsByName(firstField)[0]?.focus())
+          }
+          resolve(false)
+          return
+        }
+        pendingSave.current = null
+        draft?.setFieldErrors({})
+        expectedStamp.current = result.updatedAt
+        setAttempted(false)
+        setAwaitingSync(true)
+        toast.success('Draft saved.')
+        router.refresh()
+        resolve(true)
+      })
     })
   }
+
+  const registerSave = draft?.registerSave
+  const latestSave = useRef(save)
+  useEffect(() => {
+    latestSave.current = save
+  })
+  useEffect(() => {
+    if (!editable || !registerSave) return
+    registerSave(() => latestSave.current())
+    return () => registerSave(null)
+  }, [editable, registerSave])
+
+  const publishSheet = draft?.setSheet
+  const itemErrorCount = attempted ? invalidRows.length : 0
+  useEffect(() => {
+    publishSheet?.({
+      dirty,
+      itemsDirty,
+      saving,
+      refreshing: awaitingSync,
+      saveError,
+      itemErrors: itemErrorCount,
+      totals,
+    })
+  }, [publishSheet, dirty, itemsDirty, saving, awaitingSync, saveError, itemErrorCount, totals])
 
   const onSaveShortcut = useEffectEvent((e: KeyboardEvent) => {
     if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 's') return
@@ -638,18 +676,7 @@ export function EstimateSheet({
   const populatedCount = groups.length - emptyCount
   const rowNumbers = new Map(groups.flatMap(([, list]) => list).map((r, i) => [r.key, i + 1]))
 
-  const statusText = saving
-    ? 'Saving...'
-    : awaitingSync
-      ? 'Refreshing...'
-      : saveError
-        ? 'Not saved'
-        : dirty
-          ? 'Unsaved changes'
-          : 'All changes saved'
-
   return (
-    <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_22rem]">
       <section aria-labelledby="sheet-heading" className="surface flex min-w-0 flex-col" onKeyDown={onShortcutKeyDown}>
         <div className="flex flex-col gap-3 rounded-t-2xl border-b bg-card p-4 md:p-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -667,25 +694,11 @@ export function EstimateSheet({
             </div>
             {editable ? (
               <div className="flex flex-wrap items-center gap-2">
-                <span
-                  role="status"
-                  aria-live="polite"
-                  className={cn(
-                    'text-xs font-medium',
-                    saveError ? 'text-destructive' : dirty ? 'text-warning' : 'text-muted-foreground',
-                  )}
-                >
-                  {statusText}
-                </span>
                 <Button type="button" variant="outline" size="icon" onClick={undo} disabled={!history.past.length || locked} aria-label="Undo">
                   <Undo2 aria-hidden="true" />
                 </Button>
                 <Button type="button" variant="outline" size="icon" onClick={redo} disabled={!history.future.length || locked} aria-label="Redo">
                   <Redo2 aria-hidden="true" />
-                </Button>
-                <Button type="button" onClick={save} disabled={!dirty || locked} title="Saves line items, pricing settings, land cost, description and notes together.">
-                  <Save data-icon="inline-start" />
-                  {saving ? 'Saving...' : 'Save draft'}
                 </Button>
               </div>
             ) : (
@@ -1036,13 +1049,5 @@ export function EstimateSheet({
           />
         )}
       </section>
-
-      <div className="2xl:sticky 2xl:top-4 2xl:self-start">
-        <EstimateSummary
-          totals={totals}
-          note={editable ? (dirty ? 'Live preview of unsaved edits. Excludes land.' : 'Excludes land. Matches the saved estimate.') : undefined}
-        />
-      </div>
-    </div>
   )
 }

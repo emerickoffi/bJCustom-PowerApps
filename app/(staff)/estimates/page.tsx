@@ -51,6 +51,8 @@ export default async function EstimatesPage({
   const projectName = projectId ? projects.find((p) => p.id === projectId)?.name : undefined
   const createHref = projectId ? `/estimates/new?project=${projectId}` : '/estimates/new'
   const clearHref = projectId ? `/estimates?project=${projectId}` : '/estimates'
+  const listQuery = new URLSearchParams([...(projectId ? [["project", projectId]] : []), ...(status ? [["status", status]] : [])]).toString()
+  const detailHref = (estimateId: string) => (listQuery ? `/estimates/${estimateId}?from=${encodeURIComponent(listQuery)}` : `/estimates/${estimateId}`)
 
   const approvedTotal = all
     .filter((e) => e.status === 'approved')
@@ -243,7 +245,7 @@ export default async function EstimatesPage({
                   <td className="px-5 py-2">
                     <div className="flex items-center justify-end gap-1">
                       <Link
-                        href={`/estimates/${e.id}`}
+                        href={detailHref(e.id)}
                         className={buttonVariants({ variant: 'view', size: 'sm', className: 'h-9' })}
                       >
                         View
@@ -296,7 +298,7 @@ export default async function EstimatesPage({
                   <Button
                     variant="view"
                     className="h-11"
-                    render={<Link href={`/estimates/${e.id}`} />} nativeButton={false}>
+                    render={<Link href={detailHref(e.id)} />} nativeButton={false}>
                     View
                     <span className="sr-only">{` ${e.estimate_number}`}</span>
                   </Button>

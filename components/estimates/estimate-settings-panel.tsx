@@ -41,10 +41,10 @@ export function EstimateSettingsPanel({
     <section aria-labelledby="estimate-settings-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
       <header className="flex flex-col gap-1">
         <h2 id="estimate-settings-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
-          Pricing settings &amp; notes
+          Pricing &amp; notes
         </h2>
         <p className="text-sm text-muted-foreground">
-          Review these before you finalize the estimate. Land cost stays separate from construction totals. Save draft saves these with the line items.
+          Markup and contingency change the construction total. Land cost stays separate. The description and notes appear on the customer PDF.
         </p>
       </header>
       <form
@@ -70,7 +70,7 @@ export function EstimateSettingsPanel({
         </fieldset>
         <div className="mt-4 flex justify-end border-t border-border/60 pt-4">
           <p role="status" aria-live="polite" className={dirty ? 'text-xs font-medium text-warning' : 'text-xs text-muted-foreground'}>
-            {dirty ? 'Unsaved settings and notes. Use Save draft above.' : 'Settings and notes saved'}
+            {dirty ? 'Unsaved pricing and notes. Save draft saves them with your cost items.' : 'Settings and notes saved'}
           </p>
         </div>
       </form>

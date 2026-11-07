@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { ActionButton } from '@/components/shared/inline-action'
-import { initialActionState } from '@/lib/action-state'
+import { initialActionState, type ActionState } from '@/lib/action-state'
+import { useEstimateDraft } from '@/components/estimates/estimate-draft-context'
 import {
   changeEstimateStatusAction,
   createEstimateRevisionAction,
@@ -111,11 +112,21 @@ export function EstimateWorkflow({
 }) {
   const [showDecision, setShowDecision] = useState(false)
   const locked = status === 'submitted' || status === 'approved' || status === 'rejected'
+  const draft = useEstimateDraft()
+
+  // Status changes and copies use the saved estimate, so unsaved edits must be saved (or kept) first.
+  const afterSave =
+    (purpose: string, run: () => Promise<ActionState>) => async (): Promise<ActionState> => {
+      const saved = draft ? await draft.ensureSaved(purpose) : 'clean'
+      if (saved === 'cancelled') return initialActionState
+      if (saved === 'failed') return { error: 'Your edits did not save, so nothing else changed. Fix the issue and try again.' }
+      return run()
+    }
 
   return (
     <section aria-labelledby="workflow-heading" className="surface flex flex-col gap-4 p-5">
       <div className="flex flex-col gap-1">
-        <h2 id="workflow-heading" className="font-serif text-lg font-semibold text-foreground">
+        <h2 id="workflow-heading" tabIndex={-1} className="font-serif text-lg font-semibold text-foreground outline-none">
           Workflow
         </h2>
         <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground" aria-label="Estimate stages">
@@ -156,7 +167,7 @@ export function EstimateWorkflow({
         <div className="flex flex-col gap-2">
           {status === 'draft' && (
             <ActionButton
-              action={() => changeEstimateStatusAction(estimateId, 'internal_review')}
+              action={afterSave('send it to internal review', () => changeEstimateStatusAction(estimateId, 'internal_review'))}
               label="Send to internal review"
               variant="outline"
               size="default"
@@ -172,7 +183,7 @@ export function EstimateWorkflow({
           )}
           {(status === 'draft' || status === 'internal_review') && (
             <ActionButton
-              action={() => changeEstimateStatusAction(estimateId, 'submitted')}
+              action={afterSave('finalize it', () => changeEstimateStatusAction(estimateId, 'submitted'))}
               label={lineCount === 0 ? 'Add line items to finalize' : 'Finalize Estimate'}
               confirmMessage="Finalizing locks this estimate so no more line items can be changed. It is not emailed or sent to the homeowner automatically. Continue?"
               variant="default"
@@ -204,7 +215,7 @@ export function EstimateWorkflow({
       {canManage && (
         <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
           <ActionButton
-            action={() => duplicateEstimateAction(estimateId)}
+            action={afterSave('duplicate it', () => duplicateEstimateAction(estimateId))}
             label="Duplicate as new estimate"
             pendingLabel="Duplicating..."
           />
