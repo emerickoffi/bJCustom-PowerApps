@@ -16,22 +16,24 @@ type Activity = {
   status: ActivityStatus
   planned_start: string | null
   planned_end: string | null
+  actual_end: string | null
   activity_type: string
 }
 
-export async function ProjectSchedulePanel({
-  projectId,
-  canManage,
-  progressPercent,
-}: {
-  projectId: string
-  canManage: boolean
-  progressPercent: number | null
-}) {
+const MILESTONE_LIMIT = 5
+
+function MilestoneActual({ a }: { a: Activity }) {
+  if (a.actual_end) return <span className="text-foreground">{formatDate(a.actual_end)}</span>
+  if (a.status === 'completed') return <span className="text-muted-foreground">Completed · date not recorded</span>
+  return <span className="text-muted-foreground">Not reached</span>
+}
+
+/** Weighted progress lives in the project header; this panel lists activities and milestones only. */
+export async function ProjectSchedulePanel({ projectId, canManage }: { projectId: string; canManage: boolean }) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('schedule_activities')
-    .select('id, name, status, planned_start, planned_end, activity_type')
+    .select('id, name, status, planned_start, planned_end, actual_end, activity_type')
     .eq('project_id', projectId)
     .neq('status', 'skipped')
     .order('sort_order')
@@ -66,6 +68,8 @@ export async function ProjectSchedulePanel({
     ...open.filter((a) => !isLate(a) && a.status !== 'in_progress'),
   ].slice(0, 3)
   const anyScheduled = activities.some((a) => a.planned_start || a.planned_end)
+  const milestones = activities.filter((a) => a.activity_type === 'milestone')
+  const shownMilestones = milestones.slice(0, MILESTONE_LIMIT)
 
   return (
     <OverviewSection
@@ -89,30 +93,8 @@ export async function ProjectSchedulePanel({
     >
       {activities.length ? (
         <>
-          {progressPercent !== null && (
-            <div className="flex flex-col gap-2 rounded-xl border border-border bg-[#F8F7F3] p-3.5">
-              <div className="flex items-end justify-between gap-3">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs font-medium text-muted-foreground">Weighted construction progress</span>
-                  <span className="text-sm text-foreground">{`Activities: ${completed} of ${activities.length} complete`}</span>
-                </div>
-                <span className="font-serif text-2xl font-semibold leading-none tabular-nums text-primary">{`${Math.round(progressPercent)}%`}</span>
-              </div>
-              <div
-                className="h-2.5 overflow-hidden rounded-full bg-white ring-1 ring-inset ring-border"
-                role="progressbar"
-                aria-label="Construction progress"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round(progressPercent)}
-              >
-                <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }} />
-              </div>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {PROGRESS_WEIGHTING_NOTE}
-              </p>
-              {late > 0 && <p className="text-xs font-medium text-warning">{`${late} delayed or past due`}</p>}
-            </div>
+          {late > 0 && (
+            <p className="text-xs font-medium text-warning">{`${late} ${late === 1 ? 'activity is' : 'activities are'} delayed or past the planned finish`}</p>
           )}
 
           {!anyScheduled && (
@@ -149,6 +131,45 @@ export async function ProjectSchedulePanel({
           ) : (
             <p className="text-sm text-muted-foreground">All schedule activities are complete.</p>
           )}
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="text-sm font-semibold text-foreground">Milestones</h3>
+              {milestones.length > MILESTONE_LIMIT && (
+                <Link href={scheduleHref} className="text-xs font-medium text-primary underline-offset-4 hover:underline">
+                  {`View all ${milestones.length}`}
+                </Link>
+              )}
+            </div>
+            {shownMilestones.length ? (
+              <div className="overflow-x-auto rounded-xl border">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-[#F8F7F3] text-xs text-muted-foreground">
+                    <tr>
+                      <th scope="col" className="px-4 py-2 font-medium">Milestone</th>
+                      <th scope="col" className="whitespace-nowrap px-4 py-2 font-medium">Planned</th>
+                      <th scope="col" className="whitespace-nowrap px-4 py-2 font-medium">Actual</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {shownMilestones.map((m) => (
+                      <tr key={m.id}>
+                        <th scope="row" className="max-w-[16rem] truncate px-4 py-2.5 font-medium text-foreground">{m.name}</th>
+                        <td className={isOverdue(m) ? 'whitespace-nowrap px-4 py-2.5 font-medium text-warning' : 'whitespace-nowrap px-4 py-2.5 text-foreground'}>
+                          {m.planned_end ? formatDate(m.planned_end) : <span className="text-muted-foreground">Not planned</span>}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-2.5">
+                          <MilestoneActual a={m} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No milestone activities in this schedule.</p>
+            )}
+          </div>
         </>
       ) : (
         <OverviewNotice

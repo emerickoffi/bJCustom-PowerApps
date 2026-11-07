@@ -1,5 +1,3 @@
-import { lifecycleGroup } from './project-lifecycle.ts'
-
 export type NextActionTone = 'critical' | 'review' | 'setup'
 
 export type NextAction = {
@@ -26,8 +24,12 @@ export type ProjectActionState = {
   }
   /** Project status; gates stage-specific steps. Omitted = treated as an active build. */
   status?: string
-  hasProjectManager: boolean
-  activityCount: number
+  /**
+   * `mine` limits the list to work assigned to the viewer: the caller passes only activities and issues
+   * assigned to them, and project-wide reviews appear only when they are this project's manager.
+   */
+  scope?: 'all' | 'mine'
+  isProjectManager?: boolean
   /** Open activities marked delayed or still open after their planned finish. */
   lateActivityCount: number
   reviewEstimateIds: string[]
@@ -60,7 +62,6 @@ export function latestSignatureRequests(requests: SignatureRequestRef[]): Signat
 export function buildProjectNextActions(state: ProjectActionState): { items: NextAction[]; hiddenCount: number } {
   const base = `/projects/${encodeURIComponent(state.projectId)}`
   const { features, canManage } = state
-  const stage = state.status ? lifecycleGroup(state.status) : 'active'
   const actions: NextAction[] = []
   const signing = features.documents && features.e_signatures
   const signatures = signing ? latestSignatureRequests(state.signatureRequests) : []
@@ -83,8 +84,9 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
     })
   }
 
+  const ownsProjectWide = state.scope !== 'mine' || Boolean(state.isProjectManager)
   const problems = signatures.filter((s) => SIGNATURE_PROBLEM.has(s.status)).length
-  if (canManage && problems > 0) {
+  if (canManage && ownsProjectWide && problems > 0) {
     actions.push({
       key: 'signature-problems',
       tone: 'critical',
@@ -95,18 +97,7 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
     })
   }
 
-  if (canManage && !state.hasProjectManager) {
-    actions.push({
-      key: 'assign-manager',
-      tone: 'setup',
-      title: 'Assign a project manager',
-      description: 'No project manager is assigned to this project yet.',
-      href: `${base}/edit`,
-      actionLabel: 'Assign manager',
-    })
-  }
-
-  if (features.estimates && canManage && state.reviewEstimateIds.length > 0) {
+  if (features.estimates && canManage && ownsProjectWide && state.reviewEstimateIds.length > 0) {
     const one = state.reviewEstimateIds.length === 1
     actions.push({
       key: 'estimate-review',
@@ -136,7 +127,7 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
   }
 
   const awaiting = signatures.filter((s) => AWAITING_SIGNATURE.has(s.status)).length
-  if (awaiting > 0) {
+  if (ownsProjectWide && awaiting > 0) {
     actions.push({
       key: 'signatures-pending',
       tone: 'review',
@@ -147,19 +138,8 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
     })
   }
 
-  // A build schedule is a readiness task once a job is approved; pipeline and closed jobs don't need one yet.
-  if (stage === 'active' && features.schedule && canManage && state.activityCount === 0) {
-    actions.push({
-      key: 'schedule-setup',
-      tone: 'setup',
-      title: 'Set up the construction schedule',
-      description: 'Progress tracking starts once the schedule is initialized.',
-      href: `${base}/schedule`,
-      actionLabel: 'Set up schedule',
-    })
-  }
-
-  if (state.status === 'completed' && features.warranty) {
+  // Setup gaps (manager, schedule, documents...) live in the setup checklist so they never read as urgent work.
+  if (state.status === 'completed' && features.warranty && ownsProjectWide) {
     actions.push({
       key: 'warranty',
       tone: 'review',

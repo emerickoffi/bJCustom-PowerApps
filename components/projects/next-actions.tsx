@@ -9,29 +9,65 @@ const TONE: Record<NextActionTone, { icon: typeof AlertTriangle; className: stri
   setup: { icon: Settings2, className: 'bg-champagne-soft text-warning', label: 'Setup' },
 }
 
+export type WorkScope = 'mine' | 'all'
+
 export function ProjectNextActions({
   items,
   hiddenCount,
   incomplete = false,
+  scope,
+  scopeTotals,
+  scopeHrefs,
 }: {
   items: NextAction[]
   hiddenCount: number
   /** Some action sources failed to load, so an empty list must not read as "nothing to do". */
   incomplete?: boolean
+  scope: WorkScope
+  /** Total actions per scope, including those beyond the display limit. */
+  scopeTotals: Record<WorkScope, number>
+  scopeHrefs: Record<WorkScope, string>
 }) {
   const empty = items.length === 0
+  const options: { value: WorkScope; label: string }[] = [
+    { value: 'mine', label: 'My work' },
+    { value: 'all', label: 'All project work' },
+  ]
   return (
     <section aria-labelledby="next-actions-heading" className="surface flex flex-col gap-3 p-4 sm:p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="next-actions-heading" className="font-serif text-lg font-semibold text-foreground">
-          Next actions
-        </h2>
-        {hiddenCount > 0 && <span className="text-xs text-muted-foreground">{`${hiddenCount} more after these`}</span>}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 id="next-actions-heading" className="font-serif text-lg font-semibold text-foreground">
+            Next actions
+          </h2>
+          {hiddenCount > 0 && <span className="text-xs text-muted-foreground">{`${hiddenCount} more after these`}</span>}
+        </div>
+        <nav aria-label="Next actions scope" className="flex rounded-lg border border-border bg-[#F8F7F3] p-0.5">
+          {options.map((o) => {
+            const active = o.value === scope
+            return (
+              <Link
+                key={o.value}
+                href={scopeHrefs[o.value]}
+                scroll={false}
+                replace
+                aria-current={active ? 'true' : undefined}
+                className={cn(
+                  'inline-flex min-h-9 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+                  active ? 'bg-white text-foreground shadow-sm ring-1 ring-border' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {o.label}
+                <span className="tabular-nums text-xs text-muted-foreground">{incomplete ? '—' : scopeTotals[o.value]}</span>
+              </Link>
+            )
+          })}
+        </nav>
       </div>
       {empty && !incomplete && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <CircleCheck className="size-4 text-primary" aria-hidden="true" />
-          No pending actions
+          {scope === 'mine' ? 'Nothing assigned to you needs action right now' : 'No pending actions'}
         </p>
       )}
       {!empty && (
