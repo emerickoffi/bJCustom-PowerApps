@@ -15,7 +15,9 @@ import {
   type DrawerSaveResult,
   type DrawerTarget,
 } from '@/components/estimates/estimate-line-item-drawer'
-import { saveEstimateLineItemsAction } from '@/app/actions/estimates'
+import { saveEstimateDraftAction, type SaveDraftResult } from '@/app/actions/estimates'
+import { sameSettings, useEstimateDraft } from '@/components/estimates/estimate-draft-context'
+import { fingerprint, resolveRequestId, type PendingSave } from '@/lib/save-requests'
 import {
   ESTIMATE_CATEGORIES,
   ESTIMATE_STATUS_LABELS,
@@ -115,7 +117,12 @@ export function EstimateSheet({
 
   const rows = history.present.rows
   const emptyCategories = history.present.emptyCategories
-  const dirty = editable && serialize(rows) !== baseline
+  const draft = useEstimateDraft()
+  const pendingSave = useRef<PendingSave | null>(null)
+  const [adoptions, setAdoptions] = useState(0)
+  const itemsDirty = editable && serialize(rows) !== baseline
+  const settingsDirty = editable && !sameSettings(draft?.settings ?? null, draft?.baseline ?? null)
+  const dirty = itemsDirty || settingsDirty
   const locked = saving || awaitingSync
 
   // Adopt fresh server data when it arrives (after our own save, or when nothing local is pending).
@@ -127,8 +134,35 @@ export function EstimateSheet({
       setHistory({ past: [], present: { rows: fresh, emptyCategories: [] }, future: [], lastKey: null })
       setBaseline(serialize(fresh))
       setAwaitingSync(false)
+      setAdoptions((n) => n + 1)
     }
   }
+
+  const bumpSettingsVersion = draft?.bumpVersion
+  const setDraftLocked = draft?.setLocked
+  useEffect(() => {
+    if (adoptions > 0) bumpSettingsVersion?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bumpVersion is recreated with the context value
+  }, [adoptions])
+  useEffect(() => {
+    setDraftLocked?.(locked)
+  }, [locked, setDraftLocked])
+
+  const liveSettings = useMemo(() => {
+    const s = draft?.settings
+    if (!s) return serverTotals
+    const pct = (raw: string, fallback: number | string) => {
+      const n = Number(raw.trim())
+      return raw.trim() !== '' && Number.isFinite(n) && n >= 0 ? n : Number(fallback)
+    }
+    const landRaw = s.land_cost.replace(/[$,\s]/g, '')
+    const land = Number(landRaw)
+    return {
+      markup_percent: pct(s.markup_percent, serverTotals.markup_percent),
+      contingency_percent: pct(s.contingency_percent, serverTotals.contingency_percent),
+      land_cost_cents: landRaw === '' ? 0 : Number.isFinite(land) && land >= 0 ? Math.round(land * 100) : serverTotals.land_cost_cents,
+    }
+  }, [draft?.settings, serverTotals])
 
   const commitSnapshot = useCallback((update: (s: Snapshot) => Snapshot, coalesceKey: string | null = null) => {
     setHistory((h) => {
@@ -181,7 +215,7 @@ export function EstimateSheet({
     [rows, errorsByKey],
   )
 
-  const totals = useMemo(() => (editable ? computeTotals(rows, serverTotals) : serverTotals), [editable, rows, serverTotals])
+  const totals = useMemo(() => (editable ? computeTotals(rows, liveSettings) : serverTotals), [editable, rows, liveSettings, serverTotals])
 
   const focusCell = useCallback((key: string, col: SheetColumn) => {
     requestAnimationFrame(() => {
@@ -522,13 +556,34 @@ export function EstimateSheet({
       if (col) focusCell(first.key, col)
       return
     }
+    const settings = draft?.settings
+    if (!settings) {
+      setSaveError('Pricing settings are still loading. Try again in a moment.')
+      return
+    }
     const payload = ordered(rows).filter((r) => !isBlankNewRow(r)).map(toPayload)
+    const expected = expectedStamp.current
+    const print = fingerprint(JSON.stringify([expected, payload, settings]))
+    const requestId = resolveRequestId(pendingSave.current, print, () => crypto.randomUUID())
+    pendingSave.current = { requestId, fingerprint: print, startedAt: Date.now() }
     startSaving(async () => {
-      const result = await saveEstimateLineItemsAction(estimateId, expectedStamp.current, payload)
-      if (!result.ok) {
-        setSaveError(result.error)
+      let result: SaveDraftResult
+      try {
+        result = await saveEstimateDraftAction(estimateId, expected, requestId, payload, settings)
+      } catch {
+        setSaveError('Could not reach the server. Your edits are kept. Press Save draft to retry.')
         return
       }
+      if (!result.ok) {
+        setSaveError(result.error)
+        const fieldErrors = result.fieldErrors ?? {}
+        draft?.setFieldErrors(fieldErrors)
+        const firstField = Object.keys(fieldErrors)[0]
+        if (firstField) document.getElementsByName(firstField)[0]?.focus()
+        return
+      }
+      pendingSave.current = null
+      draft?.setFieldErrors({})
       expectedStamp.current = result.updatedAt
       setAttempted(false)
       setAwaitingSync(true)
@@ -556,7 +611,7 @@ export function EstimateSheet({
     const guardLinks = (e: MouseEvent) => {
       const link = (e.target as HTMLElement | null)?.closest('a[href]')
       if (!link || link.getAttribute('target') === '_blank' || e.defaultPrevented) return
-      if (!window.confirm('You have unsaved line item changes. Leave without saving?')) {
+      if (!window.confirm('You have unsaved estimate changes. Leave without saving?')) {
         e.preventDefault()
         e.stopPropagation()
       }
@@ -590,8 +645,8 @@ export function EstimateSheet({
       : saveError
         ? 'Not saved'
         : dirty
-          ? 'Unsaved line items'
-          : 'Line items saved'
+          ? 'Unsaved changes'
+          : 'All changes saved'
 
   return (
     <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -628,10 +683,9 @@ export function EstimateSheet({
                 <Button type="button" variant="outline" size="icon" onClick={redo} disabled={!history.future.length || locked} aria-label="Redo">
                   <Redo2 aria-hidden="true" />
                 </Button>
-                <Button type="button" onClick={save} disabled={!dirty || locked} title="Saves cost items only. Pricing settings and notes have their own Save settings button.">
+                <Button type="button" onClick={save} disabled={!dirty || locked} title="Saves line items, pricing settings, land cost, description and notes together.">
                   <Save data-icon="inline-start" />
                   {saving ? 'Saving...' : 'Save draft'}
-                  <span className="sr-only"> (cost items only)</span>
                 </Button>
               </div>
             ) : (
