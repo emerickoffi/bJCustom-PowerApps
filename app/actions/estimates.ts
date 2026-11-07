@@ -1,5 +1,6 @@
 'use server'
 
+import { createHash } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -396,6 +397,70 @@ export async function saveEstimateLineItemsAction(
 
   revalidateEstimate(estimateId)
   return { ok: true, updatedAt: String(data) }
+}
+
+export type SaveDraftResult =
+  | { ok: true; updatedAt: string }
+  | { ok: false; error: string; rowIndex?: number; fieldErrors?: Record<string, string>; conflict?: boolean }
+
+/**
+ * Saves line items and pricing settings/notes together in one transaction (save_estimate_draft_tracked).
+ * The request id makes a retry of the same payload return the committed save instead of re-applying it.
+ */
+export async function saveEstimateDraftAction(
+  estimateId: string,
+  expectedUpdatedAt: string,
+  requestId: string,
+  items: unknown,
+  settings: Record<string, string>,
+): Promise<SaveDraftResult> {
+  await requireManager()
+  if (!uuid.safeParse(estimateId).success) return { ok: false, error: 'Invalid estimate.' }
+  if (!uuid.safeParse(requestId).success) return { ok: false, error: 'Invalid save request. Reload and try again.' }
+
+  const parsedItems = sheetSchema.safeParse(items)
+  if (!parsedItems.success) {
+    const issue = parsedItems.error.issues[0]
+    const rowIndex = typeof issue?.path[0] === 'number' ? issue.path[0] : undefined
+    return {
+      ok: false,
+      error: rowIndex === undefined ? (issue?.message ?? 'Invalid line items.') : `Row ${rowIndex + 1}: ${issue.message}`,
+      rowIndex,
+    }
+  }
+  const parsedSettings = settingsSchema.safeParse(settings ?? {})
+  if (!parsedSettings.success) {
+    const { fieldErrors } = fromZodError(parsedSettings.error)
+    return { ok: false, error: 'Fix the highlighted pricing settings, then save again.', fieldErrors }
+  }
+
+  const { land_cost, ...rest } = parsedSettings.data
+  const settingsRow = { ...rest, land_cost_cents: land_cost }
+  const hash = createHash('sha256')
+    .update(JSON.stringify([estimateId, expectedUpdatedAt, parsedItems.data, settingsRow]))
+    .digest('hex')
+
+  const supabase = await createClient()
+  const { error, conflict } = await runTrackedSave({
+    supabase,
+    req: { id: requestId, hash, resilient: false, expectedUser: null },
+    kind: 'estimate',
+    tracked: (id) =>
+      supabase.rpc('save_estimate_draft_tracked', {
+        p_request: id,
+        p_hash: hash,
+        p_estimate: estimateId,
+        p_expected_updated_at: expectedUpdatedAt,
+        p_items: parsedItems.data,
+        p_settings: settingsRow,
+      }),
+    untracked: async () => ({ data: null, error: { message: 'A save request id is required.' } }),
+  })
+  if (error) return { ok: false, error: friendlyDbError(error), conflict }
+
+  const { data: fresh } = await supabase.from('estimates').select('updated_at, project_id').eq('id', estimateId).maybeSingle()
+  revalidateEstimate(estimateId, fresh?.project_id)
+  return { ok: true, updatedAt: String(fresh?.updated_at ?? expectedUpdatedAt) }
 }
 
 const simpleTransitions = ['draft', 'internal_review', 'submitted'] as const
