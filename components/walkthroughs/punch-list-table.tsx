@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { IssueStatusBadge } from '@/components/walkthroughs/badges'
 import { bulkUpdateIssuesAction, type BulkItemResult } from '@/app/actions/punch-list'
+import { getIssuePanel } from '@/app/actions/issue-panel'
+import { IssuePanel, type IssuePanelState } from '@/components/walkthroughs/issue-panel'
+import { isPlainClick } from '@/components/shared/record-panel'
 import {
   ISSUE_PRIORITIES,
   ISSUE_STATUS_LABELS,
@@ -64,6 +67,11 @@ export function PunchListTable({
   const [confirming, setConfirming] = useState(false)
   const [failures, setFailures] = useState<Map<string, string>>(new Map())
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
+  const [inspecting, setInspecting] = useState<IssuePanelState | null>(null)
+
+  function openIssue(r: { issueId: string; number: string; label: string }) {
+    setInspecting({ issueId: r.issueId, label: `${r.number} · ${r.label}`, request: getIssuePanel(projectId, r.issueId) })
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -283,7 +291,15 @@ export function PunchListTable({
                   </td>
                   <td className="px-2 py-3 align-top font-mono text-xs font-semibold text-foreground">{r.number}</td>
                   <td className="px-2 py-3 align-top">
-                    <Link href={`/projects/${projectId}/issues/${r.issueId}`} className="font-medium text-foreground hover:underline">
+                    <Link
+                      href={`/projects/${projectId}/issues/${r.issueId}`}
+                      onClick={(e) => {
+                        if (!isPlainClick(e)) return
+                        e.preventDefault()
+                        openIssue(r)
+                      }}
+                      className="font-medium text-foreground hover:underline"
+                    >
                       {r.label}
                     </Link>
                     <p className="text-xs text-muted-foreground">
@@ -318,6 +334,13 @@ export function PunchListTable({
           </tbody>
         </table>
       </div>
+
+      <IssuePanel
+        projectId={projectId}
+        state={inspecting}
+        onRetry={() => inspecting && openIssue({ issueId: inspecting.issueId, number: '', label: inspecting.label })}
+        onClose={() => setInspecting(null)}
+      />
 
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>
