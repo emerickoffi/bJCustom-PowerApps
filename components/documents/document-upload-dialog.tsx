@@ -37,6 +37,8 @@ type UploadDialogProps = {
   canShare: boolean
   /** When set, the dialog uploads the next version of this document instead of creating a new one. */
   version?: NewVersionTarget | null
+  /** Preselects a category for new documents (e.g. uploading from an empty category view). */
+  defaultCategory?: AnyDocumentCategory
 }
 
 function RequiredMark() {
@@ -86,6 +88,7 @@ export function DocumentUploadDialog({
   onOpenChange,
   canShare,
   version,
+  defaultCategory,
 }: UploadDialogProps) {
   const router = useRouter()
   const ids = useId()
@@ -96,7 +99,7 @@ export function DocumentUploadDialog({
   const [file, setFile] = useState<File | null>(null)
   const [targetProject, setTargetProject] = useState('')
   const [name, setName] = useState('')
-  const [category, setCategory] = useState<AnyDocumentCategory | ''>('')
+  const [category, setCategory] = useState<AnyDocumentCategory | ''>(defaultCategory ?? '')
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<'internal' | 'homeowner'>('internal')
   const [notes, setNotes] = useState('')
@@ -124,7 +127,7 @@ export function DocumentUploadDialog({
     setFile(null)
     setTargetProject('')
     setName('')
-    setCategory('')
+    setCategory(defaultCategory ?? '')
     setDescription('')
     setVisibility('internal')
     setNotes('')

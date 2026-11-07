@@ -86,9 +86,12 @@ export function ProjectNav({
     window.history.replaceState(window.history.state, '', href)
   }
 
+  // On Documents, the global header breadcrumb (shown at lg outside tablet mode) is the only breadcrumb.
+  const deferToGlobalBreadcrumb = activeKey === 'documents'
+
   return (
     <>
-      <nav aria-label="Breadcrumb">
+      <nav aria-label="Breadcrumb" className={cn(deferToGlobalBreadcrumb && 'lg:hidden tablet:block')}>
         <ol className="flex min-w-0 flex-wrap items-center gap-1 text-sm text-muted-foreground">
           <li>
             <Link href="/projects" className="inline-flex min-h-11 items-center font-medium transition-colors hover:text-primary sm:min-h-0">
@@ -128,11 +131,12 @@ export function ProjectNav({
         </ol>
       </nav>
 
-      <div ref={sentinelRef} aria-hidden="true" className="-mt-6 h-px" />
+      <div ref={sentinelRef} aria-hidden="true" className={cn('-mt-6 h-px', deferToGlobalBreadcrumb && 'lg:mt-0 tablet:-mt-6')} />
 
       <div
         data-project-tabs
         className={cn(
+          deferToGlobalBreadcrumb && 'lg:-mt-6 tablet:-mt-3',
           'sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 -mx-4 -mt-3 border-b border-transparent bg-background px-4 py-2 transition-[border-color,box-shadow] sm:top-[calc(4rem+env(safe-area-inset-top))] sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10',
           stuck && 'border-border shadow-[0_6px_12px_-10px_rgb(0_0_0/0.25)]',
         )}

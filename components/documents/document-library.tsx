@@ -62,6 +62,8 @@ type LibraryProps = {
   archivedView?: boolean
   /** Staff project view only. enabled: the e_signatures feature is on. */
   signatures?: { enabled: boolean; summaries: Record<string, SignatureSummary> }
+  /** Denser desktop table: Document, Category, Updated, Visibility; version details move under the name. */
+  compact?: boolean
 }
 
 function FileIcon({ contentType, className }: { contentType?: string | null; className?: string }) {
@@ -90,7 +92,7 @@ async function openDownload(versionId: string) {
   window.location.assign(res.data.url)
 }
 
-export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projectId, archivedView, signatures }: LibraryProps) {
+export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projectId, archivedView, signatures, compact = false }: LibraryProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [signing, setSigning] = useState<SignatureDialogState | null>(null)
@@ -256,8 +258,90 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
     )
   }
 
+  function compactNameCell(doc: DocumentRow) {
+    return (
+      <div className="flex min-w-0 items-start gap-2.5">
+        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-interactive-soft text-primary">
+          <FileIcon contentType={doc.current_version?.content_type} className="size-4" />
+        </span>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <button
+            type="button"
+            onClick={() => setPreview(doc)}
+            className="block max-w-full truncate text-left text-sm font-medium text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:underline focus-visible:outline-none"
+          >
+            {doc.name}
+          </button>
+          <p className="truncate text-xs text-muted-foreground">
+            {[`v${doc.current_version_number}`, fileTypeLabel(doc.current_version?.content_type), formatBytes(doc.current_version?.size_bytes)].join(' · ')}
+          </p>
+          {signatures?.summaries[doc.id] && (
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <button
+                type="button"
+                onClick={() => setSigning(openSignatureState({ id: doc.id, name: doc.name }))}
+                className="w-fit rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`Signature status for ${doc.name}`}
+              >
+                <SignatureBadge
+                  status={signatures.summaries[doc.id].status}
+                  signed={signatures.summaries[doc.id].signed}
+                  total={signatures.summaries[doc.id].total}
+                />
+              </button>
+              {signatures.summaries[doc.id].status === 'completed' && (
+                <span className="text-xs text-muted-foreground">
+                  {signatures.summaries[doc.id].hasSignedPdf ? 'Signed PDF available' : 'Signed PDF synchronization pending'}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const compactTable = (
+    <div className="hidden overflow-x-auto rounded-xl border border-[#D6DDE5] bg-card md:block">
+      <table className="w-full text-sm">
+        <caption className="sr-only">Documents</caption>
+        <thead className="border-b border-[#D6DDE5] bg-table-head text-left text-xs font-medium text-[#526173]">
+          <tr>
+            <th scope="col" className="px-4 py-2.5">Document</th>
+            <th scope="col" className="whitespace-nowrap px-4 py-2.5">Category</th>
+            <th scope="col" className="whitespace-nowrap px-4 py-2.5">Updated</th>
+            {showVisibility && <th scope="col" className="whitespace-nowrap px-4 py-2.5">Visibility</th>}
+            <th scope="col" className="w-12 px-2 py-2.5"><span className="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#D6DDE5]">
+          {rows.map((doc) => (
+            <tr key={doc.id} className="align-top transition-colors hover:bg-link-soft/60">
+              {/* w-full + max-w-0 lets the name column absorb remaining width and truncate instead of widening the page. */}
+              <td className="w-full max-w-0 px-4 py-2.5">{compactNameCell(doc)}</td>
+              <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">{categoryLabel(doc.category)}</td>
+              <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
+                <span className="text-foreground">{formatDate(staff ? doc.updated_at : doc.current_version?.uploaded_at)}</span>
+                {staff && doc.current_version && (
+                  <span className="block text-xs">{people[doc.current_version.uploaded_by] ?? 'Team member'}</span>
+                )}
+              </td>
+              {showVisibility && (
+                <td className="whitespace-nowrap px-4 py-2.5">
+                  <VisibilityBadge visibility={doc.visibility} />
+                </td>
+              )}
+              <td className="px-2 py-1.5 text-right">{actionsFor(doc)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+
   return (
     <>
+      {compact ? compactTable : (
       <div className="hidden overflow-hidden rounded-xl border border-[#D6DDE5] bg-card md:block">
         <table className="w-full text-sm">
           <caption className="sr-only">Documents</caption>
@@ -301,6 +385,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
           </tbody>
         </table>
       </div>
+      )}
 
       <ul className="flex flex-col gap-3 md:hidden">
         {rows.map((doc) => (
