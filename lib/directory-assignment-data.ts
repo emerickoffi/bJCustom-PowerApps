@@ -28,6 +28,7 @@ export type DirectoryPersonRow = {
   manageAccessHref: string | null
   assigned: boolean
   disabledReason: string | null
+  trade: string | null
 }
 
 export type DirectoryCompanyRow = {
@@ -37,6 +38,7 @@ export type DirectoryCompanyRow = {
   name: string
   email: string | null
   peopleCount: number
+  trade: string | null
   assigned: boolean
   disabledReason: string | null
 }
@@ -57,7 +59,7 @@ export async function loadDirectoryForAssignment(
   projectId: string,
   subcontractorsEnabled: boolean,
 ): Promise<{ availability: 'ready' | 'setup-required'; rows: DirectoryRow[] }> {
-  const [peopleRes, companiesRes, personAssignRes, companyAssignRes, portalRes] = await Promise.all([
+  const [peopleRes, companiesRes, personAssignRes, companyAssignRes, portalRes, tradesRes] = await Promise.all([
     supabase
       .from('business_people')
       .select(
@@ -82,7 +84,12 @@ export async function loadDirectoryForAssignment(
           .is('ended_at', null)
       : Promise.resolve({ data: [] as { subcontractor_company_id: string }[], error: null }),
     supabase.from('subcontractor_portal_accounts').select('subcontractor_company_id, email, status').eq('organization_id', organizationId),
+    subcontractorsEnabled
+      ? supabase.from('subcontractor_companies').select('id, trade').eq('organization_id', organizationId)
+      : Promise.resolve({ data: [] as { id: string; trade: string }[], error: null }),
   ])
+  const tradeBySub = new Map<string, string>()
+  for (const t of tradesRes.data ?? []) if (t.trade) tradeBySub.set(t.id as string, t.trade as string)
 
   if (peopleRes.error || companiesRes.error || personAssignRes.error) return { availability: 'setup-required', rows: [] }
 
@@ -121,6 +128,7 @@ export async function loadDirectoryForAssignment(
       manageAccessHref: subIds[0] && subcontractorsEnabled ? `/subcontractors/${subIds[0]}` : null,
       assigned: assignedPeople.has(p.id as string),
       disabledReason: p.status === 'inactive' ? 'Inactive contact' : null,
+      trade: subIds.map((s) => tradeBySub.get(s)).find(Boolean) ?? null,
     }
   })
 
@@ -139,6 +147,7 @@ export async function loadDirectoryForAssignment(
       peopleCount: peopleCount.get(c.id as string) ?? 0,
       assigned: !!subId && assignedSubs.has(subId),
       disabledReason,
+      trade: subId ? (tradeBySub.get(subId) ?? null) : null,
     }
   })
 

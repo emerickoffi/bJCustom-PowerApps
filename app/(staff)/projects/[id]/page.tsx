@@ -37,7 +37,7 @@ import { ProjectEstimatesPanel } from '@/components/estimates/project-estimates-
 import { ProjectSchedulePanel } from '@/components/schedule/project-schedule-panel'
 import { ProjectInvoicesPanel } from '@/components/invoices/project-invoices-panel'
 import { ProjectClientsPanel, type ProjectClientLink } from '@/components/projects/project-people'
-import { ProjectTeamPanel } from '@/components/projects/project-team-panel'
+import { ProjectPeopleSummary } from '@/components/projects/project-people-summary'
 import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, directoryClosedReason, type ProjectStatus } from '@/lib/domain'
 import { loadProjectContacts } from '@/lib/project-contacts-data'
 import { loadProjectHomeowners } from '@/lib/project-homeowners-data'
@@ -578,66 +578,15 @@ export default async function ProjectDetailPage({
             />
           )}
 
-          <section
+          <ProjectPeopleSummary
             id={PROJECT_SECTION_ANCHORS.team}
-            aria-labelledby="project-team-heading"
-            className="surface flex scroll-mt-36 flex-col divide-y p-0"
-          >
-            <header className="flex items-center gap-3 px-4 py-3">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sage text-primary">
-                <Users className="size-4" aria-hidden="true" />
-              </span>
-              <h2 id="project-team-heading" className="font-serif text-lg font-semibold text-foreground">
-                Project team
-              </h2>
-            </header>
-            <div className={TEAM_PART}>
-              <ProjectClientsPanel projectId={project.id} homeowners={homeowners} canEdit={manager} clientOptions={clientOptions} />
-            </div>
-            <div className={TEAM_PART}>
-              <ProjectTeamPanel
-                projectId={project.id}
-                projectName={project.name}
-                managerId={project.project_manager_id ?? null}
-                managerName={managerName}
-                members={members}
-                staffOptions={staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))}
-                canEdit={manager}
-              />
-              {!managerName && manager && (
-                <Link
-                  href={`/projects/${project.id}/edit`}
-                  className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  Assign manager
-                </Link>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
-              <span className="text-muted-foreground">
-                {contactsActiveCount === null
-                  ? 'Directory contacts could not be loaded'
-                  : `${contactsActiveCount} active directory ${contactsActiveCount === 1 ? 'contact' : 'contacts'}`}
-              </span>
-              <div className="flex flex-wrap items-center gap-x-4">
-                {manager && !directoryClosedReason(project.status as string, project.archived_at as string | null) && (
-                  <Link
-                    href={`/projects/${project.id}/contacts/add`}
-                    className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
-                  >
-                    Add from directory
-                  </Link>
-                )}
-                <Link
-                  href={`/projects/${project.id}/contacts`}
-                  className="inline-flex min-h-11 items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  Open Contacts
-                  <ArrowRight className="size-3.5" aria-hidden="true" />
-                </Link>
-              </div>
-            </div>
-          </section>
+            projectId={project.id}
+            homeowners={homeowners}
+            managerName={managerName}
+            members={members}
+            contacts={projectContacts.availability === 'ready' ? projectContacts.contacts : null}
+            companies={projectContacts.availability === 'ready' ? projectContacts.companies : []}
+          />
 
           <section aria-labelledby="overview-heading" className="surface flex flex-col gap-4 p-4">
             <div className="flex items-center justify-between gap-3">

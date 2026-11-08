@@ -144,7 +144,7 @@ export function ProjectTeamPanel({
 
   return (
     <Panel
-      title="Project team"
+      title="Builder team"
       action={
         canEdit ? (
           <Button variant="outline" size="sm" onClick={(e) => openFrom(e.currentTarget)}>

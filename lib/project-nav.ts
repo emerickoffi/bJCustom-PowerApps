@@ -107,7 +107,7 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
       href: `${base}/subcontractor-work`,
       activePrefix: `${base}/subcontractor-work`,
     },
-    { key: 'contacts', label: 'Contacts', href: `${base}/contacts`, activePrefix: `${base}/contacts` },
+    { key: 'contacts', label: 'People', href: `${base}/contacts`, activePrefix: `${base}/contacts` },
     features.walkthroughs && {
       key: 'walkthroughs',
       label: 'Walkthroughs',

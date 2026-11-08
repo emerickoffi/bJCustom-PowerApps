@@ -34,14 +34,18 @@ export function emailEligibility(email: string | null | undefined, delivery: Ema
   return { eligible: true }
 }
 
-/** Suggests an approved project role from a company position; returns '' when nothing matches so the user must choose. */
+/**
+ * Company job titles that say nothing about project responsibility: an "Owner" of a plumbing company is not this
+ * project's owner, and a "Foreman" title doesn't say which work they're responsible for. These never pre-fill a role.
+ */
+const AMBIGUOUS_POSITIONS = new Set(['owner', 'foreman', 'supervisor', 'owner/company representative', 'office contact', 'billing contact', 'other'])
+
+/** Suggests a project role only when a company position maps to one unambiguously; returns '' so the user must choose otherwise. */
 export function suggestProjectRole(position: string | null | undefined): string {
   const p = position?.trim().toLowerCase() ?? ''
-  if (!p) return ''
+  if (!p || AMBIGUOUS_POSITIONS.has(p)) return ''
   const exact = PROJECT_ROLE_OPTIONS.find((r) => r.toLowerCase() === p)
   if (exact) return exact
-  if (p === 'owner') return 'Owner/Company Representative'
-  if (p === 'supervisor') return 'Project Supervisor'
   if (p === 'sales representative' || p === 'account manager') return 'Supplier Representative'
   return ''
 }
