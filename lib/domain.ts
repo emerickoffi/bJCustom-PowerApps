@@ -89,6 +89,29 @@ export function projectAcceptsNewAssignments(status: string | null | undefined):
   return ASSIGNABLE_PROJECT_STATUSES.includes(status as ProjectStatus)
 }
 
+export const CLOSED_PROJECT_STATUSES: readonly ProjectStatus[] = ['completed', 'cancelled']
+
+/**
+ * Stages where people and subcontractor companies can be linked to a project from the directory: every open stage.
+ * Mirrors public.project_accepts_directory_assignments in the database.
+ */
+export const DIRECTORY_ASSIGNABLE_PROJECT_STATUSES: readonly ProjectStatus[] = ALL_PROJECT_STATUSES.filter(
+  (s) => !CLOSED_PROJECT_STATUSES.includes(s),
+)
+
+export function projectAcceptsDirectoryAssignments(status: string | null | undefined, archivedAt?: string | null): boolean {
+  return !archivedAt && DIRECTORY_ASSIGNABLE_PROJECT_STATUSES.includes(status as ProjectStatus)
+}
+
+/** Why a project can't take new directory people or companies, or null when it can. */
+export function directoryClosedReason(status: string | null | undefined, archivedAt?: string | null): string | null {
+  if (archivedAt) return 'This project is archived. Restore it to add people or companies.'
+  if (status === 'completed') return 'This project is completed, so new people and companies can’t be added.'
+  if (status === 'cancelled') return 'This project is cancelled, so new people and companies can’t be added.'
+  if (!DIRECTORY_ASSIGNABLE_PROJECT_STATUSES.includes(status as ProjectStatus)) return 'This project’s status doesn’t allow new people or companies.'
+  return null
+}
+
 export const PROJECT_TYPE_LABELS: Record<string, string> = {
   new_custom_home: 'New Custom Home',
   renovation: 'Renovation',

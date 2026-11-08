@@ -9,7 +9,7 @@ import { OVERLAY_FIELD, fromZodError, friendlyDbError, formValues, type ActionSt
 import { CONTACT_PERSONS_FIELD, parseContactPersons } from '@/lib/subcontractor-contact-persons'
 import { precheckContactPersons, saveContactPersons } from '@/lib/subcontractor-contact-persons-save'
 import { isMissingTableError, subcontractorSchema } from '@/lib/subcontractors'
-import { projectAcceptsNewAssignments } from '@/lib/domain'
+import { projectAcceptsDirectoryAssignments } from '@/lib/domain'
 import {
   checkSelectedProjects,
   isAssignmentSetupError,
@@ -63,11 +63,11 @@ export async function createSubcontractorAction(_prev: ActionState, formData: Fo
     }
     const { data: rows, error: lookupError } = await supabase
       .from('projects')
-      .select('id, status')
+      .select('id, status, archived_at')
       .eq('organization_id', session.organizationId)
       .in('id', ids)
     if (lookupError) return { error: friendlyDbError(lookupError), values }
-    const problem = checkSelectedProjects(ids, rows ?? [], projectAcceptsNewAssignments)
+    const problem = checkSelectedProjects(ids, rows ?? [], projectAcceptsDirectoryAssignments)
     if (problem) return { error: 'Please correct the highlighted fields.', fieldErrors: { project_ids: problem }, values }
   }
 
@@ -243,11 +243,11 @@ export async function updateSubcontractorAction(
     }
     const { data: rows, error: lookupError } = await supabase
       .from('projects')
-      .select('id, status')
+      .select('id, status, archived_at')
       .eq('organization_id', session.organizationId)
       .in('id', toAdd)
     if (lookupError) return { error: friendlyDbError(lookupError), values }
-    const problem = checkSelectedProjects(toAdd, rows ?? [], projectAcceptsNewAssignments)
+    const problem = checkSelectedProjects(toAdd, rows ?? [], projectAcceptsDirectoryAssignments)
     if (problem) return { error: 'Please correct the highlighted fields.', fieldErrors: { project_ids: problem }, values }
   }
 

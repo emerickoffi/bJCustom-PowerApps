@@ -27,7 +27,7 @@ import {
 import { signedDocumentIds } from '@/lib/esign/signed-artifacts'
 import { buildQualificationAttention, type QualificationAttention } from '@/lib/subcontractor-qualification'
 import { loadQualificationSummaries } from '@/lib/subcontractor-qualification-data'
-import { projectAcceptsNewAssignments } from '@/lib/domain'
+import { projectAcceptsDirectoryAssignments } from '@/lib/domain'
 
 type ProjectRef = { name: string; archived_at?: string | null } | { name: string; archived_at?: string | null }[] | null
 const projectOf = (p: ProjectRef) => (Array.isArray(p) ? p[0] : p) ?? null
@@ -481,7 +481,7 @@ async function loadQualification(
   const currentProjects = new Map<string, number>()
   for (const a of assignmentsRes.data ?? []) {
     const p = (Array.isArray(a.projects) ? a.projects[0] : a.projects) as { status: string; archived_at: string | null } | null
-    if (!p || p.archived_at || !projectAcceptsNewAssignments(p.status)) continue
+    if (!p || !projectAcceptsDirectoryAssignments(p.status, p.archived_at)) continue
     currentProjects.set(a.subcontractor_company_id, (currentProjects.get(a.subcontractor_company_id) ?? 0) + 1)
   }
   const rows = (companiesRes.data ?? []).flatMap((c) => {

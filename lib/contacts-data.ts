@@ -1,6 +1,6 @@
 import 'server-only'
 import type { createClient } from '@/lib/supabase/server'
-import { ASSIGNABLE_PROJECT_STATUSES } from '@/lib/domain'
+import { DIRECTORY_ASSIGNABLE_PROJECT_STATUSES } from '@/lib/domain'
 import {
   categoryKeyFromName,
   deriveCompanyCategories,
@@ -483,7 +483,8 @@ export async function loadAssignableProjectOptions(supabase: Supabase, organizat
     .from('projects')
     .select('id, name, project_number')
     .eq('organization_id', organizationId)
-    .in('status', [...ASSIGNABLE_PROJECT_STATUSES])
+    .in('status', [...DIRECTORY_ASSIGNABLE_PROJECT_STATUSES])
+    .is('archived_at', null)
     .order('name')
     .limit(MAX_ROWS)
   return (data ?? []) as { id: string; name: string; project_number: string | null }[]

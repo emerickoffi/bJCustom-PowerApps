@@ -1,6 +1,6 @@
 import 'server-only'
 import type { createClient } from '@/lib/supabase/server'
-import { ASSIGNABLE_PROJECT_STATUSES } from '@/lib/domain'
+import { DIRECTORY_ASSIGNABLE_PROJECT_STATUSES } from '@/lib/domain'
 import { isMissingTableError, SUBCONTRACTOR_COLUMNS, type SubcontractorCompany } from '@/lib/subcontractors'
 import { isAssignmentSetupError, type AssignableProject, type ProjectAssignmentRecord } from '@/lib/subcontractor-projects'
 
@@ -87,7 +87,8 @@ export async function loadAssignableProjects(supabase: Supabase, organizationId:
     .from('projects')
     .select('id, name, project_number, status')
     .eq('organization_id', organizationId)
-    .in('status', [...ASSIGNABLE_PROJECT_STATUSES])
+    .in('status', [...DIRECTORY_ASSIGNABLE_PROJECT_STATUSES])
+    .is('archived_at', null)
     .order('project_number')
     .limit(500)
   return { projects: (data ?? []) as AssignableProject[], error: Boolean(error) }

@@ -8,7 +8,7 @@ import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/format'
-import { PROJECT_STATUS_LABELS, projectAcceptsNewAssignments, type ProjectStatus } from '@/lib/domain'
+import { PROJECT_STATUS_LABELS, projectAcceptsDirectoryAssignments, type ProjectStatus } from '@/lib/domain'
 import { isUuid, splitProjectAssignments, type ProjectAssignmentRecord } from '@/lib/subcontractor-projects'
 import { companyInitials, projectCountLabel } from '@/lib/subcontractor-directory'
 import { loadProjectAssignments, loadSubcontractor } from '@/lib/subcontractor-detail-data'
@@ -80,7 +80,7 @@ export default async function SubcontractorDetailPage({
         email: a.email as string,
         status: a.status as 'active' | 'revoked',
       }))
-  const { current, history } = splitProjectAssignments(records, projectAcceptsNewAssignments)
+  const { current, history } = splitProjectAssignments(records, projectAcceptsDirectoryAssignments)
   const addedProjects = Number.parseInt(sp.projects ?? '', 10)
   const editHref = `/subcontractors/${company.id}/edit`
   const tab = parseDetailTab(sp.tab)

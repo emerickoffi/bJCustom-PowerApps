@@ -40,14 +40,15 @@ export function ProjectContactsTable({
   companies,
   assignable,
   canEdit,
-  acceptsAssignments,
+  closedReason,
 }: {
   projectId: string
   contacts: ProjectContact[]
   companies: ProjectCompanyContacts[]
   assignable: AssignablePerson[]
   canEdit: boolean
-  acceptsAssignments: boolean
+  /** Why new people and companies can't be added, or null when the project is open. */
+  closedReason: string | null
 }) {
   const router = useRouter()
   const [query, setQuery] = useState('')
@@ -75,7 +76,7 @@ export function ProjectContactsTable({
       )
       .sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name))
   }, [contacts, query, roleFilter, showHistory])
-  const canAssign = canEdit && acceptsAssignments
+  const canAssign = canEdit && !closedReason
 
   function end(id: string, name: string) {
     if (!window.confirm(`End ${name}'s association with this project? It stays in the project history.`)) return
@@ -142,8 +143,8 @@ export function ProjectContactsTable({
             </div>
           )}
         </div>
-        {canEdit && !acceptsAssignments && (
-          <p className="text-xs text-muted-foreground">This project is closed to new assignments. Existing associations remain visible.</p>
+        {closedReason && (
+          <p className="text-xs text-muted-foreground">{closedReason} Existing associations remain visible.</p>
         )}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

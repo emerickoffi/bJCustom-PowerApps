@@ -38,7 +38,7 @@ import { ProjectSchedulePanel } from '@/components/schedule/project-schedule-pan
 import { ProjectInvoicesPanel } from '@/components/invoices/project-invoices-panel'
 import { ProjectClientsPanel, type ProjectClientLink } from '@/components/projects/project-people'
 import { ProjectTeamPanel } from '@/components/projects/project-team-panel'
-import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, type ProjectStatus } from '@/lib/domain'
+import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, directoryClosedReason, type ProjectStatus } from '@/lib/domain'
 import { loadProjectContacts } from '@/lib/project-contacts-data'
 import { loadProjectHomeowners } from '@/lib/project-homeowners-data'
 import { formatAddress, formatCents, formatDate, formatDateTime } from '@/lib/format'
@@ -619,13 +619,23 @@ export default async function ProjectDetailPage({
                   ? 'Directory contacts could not be loaded'
                   : `${contactsActiveCount} active directory ${contactsActiveCount === 1 ? 'contact' : 'contacts'}`}
               </span>
-              <Link
-                href={`/projects/${project.id}/contacts`}
-                className="inline-flex min-h-11 items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
-              >
-                Open Contacts
-                <ArrowRight className="size-3.5" aria-hidden="true" />
-              </Link>
+              <div className="flex flex-wrap items-center gap-x-4">
+                {manager && !directoryClosedReason(project.status as string, project.archived_at as string | null) && (
+                  <Link
+                    href={`/projects/${project.id}/contacts/add`}
+                    className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    Add from directory
+                  </Link>
+                )}
+                <Link
+                  href={`/projects/${project.id}/contacts`}
+                  className="inline-flex min-h-11 items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  Open Contacts
+                  <ArrowRight className="size-3.5" aria-hidden="true" />
+                </Link>
+              </div>
             </div>
           </section>
 
