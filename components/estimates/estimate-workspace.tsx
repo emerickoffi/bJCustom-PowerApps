@@ -210,11 +210,11 @@ export function EstimateWorkspaceHeader({
           {eyebrow}
         </div>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <h1 className="truncate font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">{title}</h1>
+          <div className="flex min-w-0 flex-col gap-0.5 lg:flex-1">
+            <h1 title={title} className="truncate font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">{title}</h1>
             {subtitle && <div className="hidden truncate text-sm text-muted-foreground sm:block">{subtitle}</div>}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:flex-nowrap">
             {editable && (
               <span role="status" aria-live="polite" className={cn('mr-1 text-xs font-medium', tone)}>
                 {text}
@@ -252,9 +252,13 @@ export function EstimateWorkspaceHeader({
               ))}
             <PdfButton href={pdfHref} />
             {editHref && (
-              <Button variant="ghost" render={<Link href={editHref} aria-label="Edit details" />} nativeButton={false}>
+              <Button
+                variant="ghost"
+                render={<Link href={editHref} aria-label="Edit details" title="Edit details" />}
+                nativeButton={false}
+              >
                 <Pencil data-icon="inline-start" />
-                <span className="hidden sm:inline">Edit details</span>
+                <span className="hidden sm:inline lg:hidden 2xl:inline">Edit details</span>
               </Button>
             )}
           </div>
