@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSession, canManage } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { friendlyDbError } from '@/lib/action-state'
-import { calculateDraft, draftSchema, toLineItemRows } from '@/lib/ai/estimate-draft'
+import { calculateDraft, composeNotes, draftSchema, toLineItemRows } from '@/lib/ai/estimate-draft'
 
 const inputSchema = z.object({
   projectId: z.uuid(),
@@ -57,9 +57,11 @@ export async function createAssistantEstimateDraftAction(input: unknown): Promis
       p_name: draft.title,
       p_description: draft.description,
       p_markup_percent: Number(calc.markupPercent),
-      p_notes: draft.notes,
+      p_notes: composeNotes(draft) || null,
       p_items: toLineItemRows(draft),
       p_creation_key: creationKey,
+      p_estimate_date: draft.estimate_date,
+      p_expiration_date: draft.expiration_date,
     })
     .single<{ new_estimate_id: string; new_estimate_number: string; was_created: boolean }>()
   if (error || !data) {

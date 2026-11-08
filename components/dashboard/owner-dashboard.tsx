@@ -77,15 +77,33 @@ export async function OwnerDashboard({
     return qs ? `/dashboard?${qs}` : '/dashboard'
   }
 
+  // Promise.resolve runs the query builder exactly once, so its result can feed both the batch and the health load.
+  const projectsPromise = Promise.resolve(
+    supabase
+      .from('projects')
+      .select(
+        'id, name, status, progress_percent, updated_at, proposed_start_date, address_line1, city, state, postal_code, country',
+      )
+      .eq('organization_id', orgId)
+      .is('archived_at', null),
+  )
+  // Health only needs the project list, so it overlaps the slower action-item load instead of waiting behind it.
+  const healthPromise = projectsPromise.then((res) =>
+    loadProjectHealth(
+      orgId,
+      session.userId,
+      ((res.data ?? []) as ProjectRow[])
+        .filter((r) => ACTIVE_PROJECT_STATUSES.includes(r.status as ProjectStatus))
+        .map((r) => r.id),
+      features,
+    ),
+  )
+  // Awaited below; this only keeps an early rejection from being reported as unhandled meanwhile.
+  healthPromise.catch(() => undefined)
+
   const [projectsRes, activityRes, signals, agendaData, warranty, allAttention, visibilitySettings, weatherChoice, workScope] =
     await Promise.all([
-      supabase
-        .from('projects')
-        .select(
-          'id, name, status, progress_percent, updated_at, proposed_start_date, address_line1, city, state, postal_code, country',
-        )
-        .eq('organization_id', orgId)
-        .is('archived_at', null),
+      projectsPromise,
       supabase
         .from('client_activity')
         .select(
@@ -112,7 +130,6 @@ export async function OwnerDashboard({
     : allAttention
 
   const rows = (projectsRes.data ?? []) as ProjectRow[]
-  const activeIds = rows.filter((r) => ACTIVE_PROJECT_STATUSES.includes(r.status as ProjectStatus)).map((r) => r.id)
   const counts = rows.reduce<Partial<Record<ProjectStatus, number>>>((acc, r) => {
     const s = r.status as ProjectStatus
     acc[s] = (acc[s] ?? 0) + 1
@@ -120,7 +137,7 @@ export async function OwnerDashboard({
   }, {})
 
   const [health, financials] = await Promise.all([
-    loadProjectHealth(orgId, session.userId, activeIds, features),
+    healthPromise,
     getFinancialMetrics(orgId, {
       features,
       today: agendaData.today,

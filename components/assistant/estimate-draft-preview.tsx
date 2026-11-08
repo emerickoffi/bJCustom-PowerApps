@@ -212,6 +212,34 @@ export function EstimateDraftPreview({
             className={cn(fieldClass, 'tabular-nums')}
           />
         </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${uid}-estimate-date`} className={labelClass}>
+            Estimate date
+          </label>
+          <input
+            id={`${uid}-estimate-date`}
+            type="date"
+            required
+            value={draft.estimate_date ?? ''}
+            onChange={(e) => update({ estimate_date: e.target.value || null })}
+            disabled={locked}
+            className={cn(fieldClass, 'tabular-nums')}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${uid}-expiration-date`} className={labelClass}>
+            Expiration date
+          </label>
+          <input
+            id={`${uid}-expiration-date`}
+            type="date"
+            min={draft.estimate_date ?? undefined}
+            value={draft.expiration_date ?? ''}
+            onChange={(e) => update({ expiration_date: e.target.value || null })}
+            disabled={locked}
+            className={cn(fieldClass, 'tabular-nums')}
+          />
+        </div>
         {draft.percent && Number(clean(draft.percent, PCT)) > 0 && (
           <>
             <div className="flex flex-col gap-1">
@@ -275,7 +303,7 @@ export function EstimateDraftPreview({
             ...d,
             items: [
               ...d.items,
-              { description: '', category: 'Other', cost_type: 'other', quantity: '1', unit: 'ea', unit_cost: null, lump_sum: false, source_text: null },
+              { description: '', category: 'Other', cost_type: 'unspecified', quantity: '1', unit: 'ea', unit_cost: null, lump_sum: false, source_text: null },
             ],
           }))
         }
@@ -283,6 +311,39 @@ export function EstimateDraftPreview({
         <Plus className="size-3.5" aria-hidden="true" />
         Add line
       </Button>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${uid}-notes`} className={labelClass}>
+            Notes
+          </label>
+          <textarea
+            id={`${uid}-notes`}
+            rows={3}
+            maxLength={5000}
+            value={draft.notes ?? ''}
+            onChange={(e) => update({ notes: e.target.value || null })}
+            disabled={locked}
+            placeholder="None"
+            className={cn(fieldClass, 'h-auto py-1.5')}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${uid}-exclusions`} className={labelClass}>
+            Exclusions (saved in Notes)
+          </label>
+          <textarea
+            id={`${uid}-exclusions`}
+            rows={3}
+            maxLength={3000}
+            value={draft.exclusions ?? ''}
+            onChange={(e) => update({ exclusions: e.target.value || null })}
+            disabled={locked}
+            placeholder="None"
+            className={cn(fieldClass, 'h-auto py-1.5')}
+          />
+        </div>
+      </div>
 
       <dl className="flex flex-col gap-1 border-t pt-2 text-sm">
         <TotalRow label="Cost subtotal" cents={calc.costSubtotalCents} />

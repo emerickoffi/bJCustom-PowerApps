@@ -4,6 +4,8 @@ import { getSession } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { todayIso } from '@/lib/schedule'
+import { todayInZone } from '@/lib/activity-history'
+import { APP_TIME_ZONE } from '@/lib/format'
 import { ASSISTANT_LIMITS, getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import {
   buildAssistantContext,
@@ -213,6 +215,7 @@ export async function POST(request: Request) {
   }
 
   const manager = canManage(session.role)
+  const draftToday = todayInZone(APP_TIME_ZONE)
   const scope: RetrievalScope = {
     supabase,
     features,
@@ -272,11 +275,11 @@ export async function POST(request: Request) {
       ? {
           proposeEstimateDraft: tool({
             description:
-              'Turns estimate details the user typed or pasted into a structured draft PREVIEW shown in the chat. It never saves anything; the user reviews, edits, and clicks "Create draft estimate" themselves. The app calculates every total.',
+              `Turns estimate details the user typed or pasted into a structured draft PREVIEW shown in the chat. It never saves anything; the user reviews, edits, and clicks "Create draft estimate" themselves. The app calculates every total. Today is ${draftToday} (America/Chicago); use it only to resolve a year or a relative expiration. Classify a line as material or labor only when the user's words say so; a single unit price with no stated split is "unspecified". Never say an estimate was created or saved.`,
             inputSchema: aiDraftInput,
             execute: (input) =>
               once(`estimate-draft:${JSON.stringify(input)}`, async () => {
-                const proposal = await buildDraftProposal(supabase, organizationId, projectId, input)
+                const proposal = await buildDraftProposal(supabase, organizationId, projectId, input, draftToday)
                 const calc = calculateDraft(proposal.draft, proposal.project)
                 estimateDraft = proposal
                 return {
@@ -284,6 +287,9 @@ export async function POST(request: Request) {
                   project: proposal.project?.name ?? null,
                   project_note: proposal.projectNote,
                   line_count: proposal.draft.items.length,
+                  estimate_date: proposal.draft.estimate_date,
+                  expiration_date: proposal.draft.expiration_date,
+                  saved: false,
                   app_calculated: {
                     cost_subtotal: calc.costSubtotalCents === null ? 'incomplete' : formatCentsExact(calc.costSubtotalCents),
                     markup_percent: calc.markupPercent,
