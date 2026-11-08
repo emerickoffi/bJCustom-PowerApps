@@ -29,6 +29,8 @@ export type DirectoryPersonRow = {
   assigned: boolean
   disabledReason: string | null
   trade: string | null
+  /** Linked to a subcontractor company, directly or through one of the person's companies. */
+  isSubcontractor: boolean
 }
 
 export type DirectoryCompanyRow = {
@@ -41,6 +43,8 @@ export type DirectoryCompanyRow = {
   trade: string | null
   assigned: boolean
   disabledReason: string | null
+  /** The business company is linked to a subcontractor company record. */
+  isSubcontractor: boolean
 }
 
 export type DirectoryRow = DirectoryPersonRow | DirectoryCompanyRow
@@ -129,6 +133,7 @@ export async function loadDirectoryForAssignment(
       assigned: assignedPeople.has(p.id as string),
       disabledReason: p.status === 'inactive' ? 'Inactive contact' : null,
       trade: subIds.map((s) => tradeBySub.get(s)).find(Boolean) ?? null,
+      isSubcontractor: subIds.length > 0,
     }
   })
 
@@ -148,6 +153,7 @@ export async function loadDirectoryForAssignment(
       assigned: !!subId && assignedSubs.has(subId),
       disabledReason,
       trade: subId ? (tradeBySub.get(subId) ?? null) : null,
+      isSubcontractor: !!subId,
     }
   })
 

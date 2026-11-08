@@ -111,7 +111,7 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
     features.walkthroughs && {
       key: 'walkthroughs',
       label: 'Walkthroughs',
-      href: `${base}#${PROJECT_SECTION_ANCHORS.walkthroughs}`,
+      href: `${base}/walkthroughs`,
       activePrefix: `${base}/walkthroughs`,
     },
     features.warranty &&

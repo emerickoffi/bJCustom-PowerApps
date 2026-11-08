@@ -4,7 +4,7 @@ import { Fragment, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ChevronDown, Info, Search, UserPlus } from 'lucide-react'
+import { ChevronDown, Info, Plus, Search, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -35,14 +35,20 @@ export function PeopleAssignWorkspace({
   projectName,
   rows,
   defaultOpen = false,
+  audience = 'all',
+  triggerLabel = 'Add people & companies',
 }: {
   projectId: string
   projectName: string
   rows: DirectoryRow[]
   defaultOpen?: boolean
+  /** 'subcontractors' opens filtered to subcontractor people and companies; the filter can be turned off. */
+  audience?: 'all' | 'subcontractors'
+  triggerLabel?: string
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(defaultOpen)
+  const [subsOnly, setSubsOnly] = useState(audience === 'subcontractors')
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<KindFilter>('all')
   const [trade, setTrade] = useState(ALL_TRADES)
@@ -68,11 +74,12 @@ export function PeopleAssignWorkspace({
       if (kind !== 'all' && r.kind !== kind) return false
       if (trade !== ALL_TRADES && r.trade !== trade) return false
       if (onlySelected && !selected.has(r.key)) return false
+      if (subsOnly && !r.isSubcontractor && !selected.has(r.key)) return false
       if (!q) return true
       const companies = r.kind === 'person' ? r.affiliations.map((a) => a.company_name).join(' ') : ''
       return `${r.name} ${r.email ?? ''} ${companies} ${r.trade ?? ''}`.toLowerCase().includes(q)
     })
-  }, [rows, query, kind, trade, onlySelected, selected])
+  }, [rows, query, kind, trade, onlySelected, subsOnly, selected])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const currentPage = Math.min(page, pageCount - 1)
@@ -155,14 +162,16 @@ export function PeopleAssignWorkspace({
   return (
     <Dialog open={open} onOpenChange={(next) => !pending && setOpen(next)}>
       <Button size="sm" onClick={() => setOpen(true)}>
-        <UserPlus data-icon="inline-start" />
-        Add people &amp; companies
+        {audience === 'subcontractors' ? <Plus data-icon="inline-start" /> : <UserPlus data-icon="inline-start" />}
+        {triggerLabel}
       </Button>
       <DialogContent className="flex max-h-[90vh] w-[calc(100vw-2rem)] flex-col gap-0 p-0 sm:max-w-6xl">
         <DialogHeader className="border-b border-border px-5 py-4">
-          <DialogTitle>Add people &amp; companies</DialogTitle>
+          <DialogTitle>{audience === 'subcontractors' ? 'Assign subcontractors' : 'Add people & companies'}</DialogTitle>
           <DialogDescription>
-            Pick from your business directory, set each person&apos;s project role, and add them to {projectName} in one step.
+            {audience === 'subcontractors'
+              ? `Pick subcontractor people and companies from your business directory and add them to ${projectName}. Turn off “Subcontractors only” to include other professionals.`
+              : `Pick from your business directory, set each person’s project role, and add them to ${projectName} in one step.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -224,6 +233,18 @@ export function PeopleAssignWorkspace({
             )}
             <Button
               type="button"
+              variant={subsOnly ? 'secondary' : 'outline'}
+              size="sm"
+              aria-pressed={subsOnly}
+              onClick={() => {
+                setSubsOnly((v) => !v)
+                resetPage()
+              }}
+            >
+              Subcontractors only
+            </Button>
+            <Button
+              type="button"
               variant={onlySelected ? 'secondary' : 'outline'}
               size="sm"
               aria-pressed={onlySelected}
@@ -263,7 +284,11 @@ export function PeopleAssignWorkspace({
         <div className="min-h-0 flex-1 overflow-auto">
           {visible.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-              {rows.length === 0 ? 'Your business directory is empty.' : 'No records match these filters.'}
+              {rows.length === 0
+                ? 'Your business directory is empty.'
+                : subsOnly
+                  ? 'No subcontractors match. Turn off “Subcontractors only” to include other professionals.'
+                  : 'No records match these filters.'}
             </p>
           ) : (
             <table className="w-full text-sm">

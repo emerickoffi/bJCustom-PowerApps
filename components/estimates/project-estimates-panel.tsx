@@ -21,6 +21,11 @@ type Row = {
   created_at: string
 }
 
+/** The most recently approved revision; shared with the Overview financial summary so both agree. */
+export function latestApprovedEstimate<T extends { status: string; decision_at: string | null }>(rows: T[]): T | undefined {
+  return rows.filter((r) => r.status === 'approved').sort((a, b) => (b.decision_at ?? '').localeCompare(a.decision_at ?? ''))[0]
+}
+
 function varianceMessage(hasBudget: boolean, hasApproved: boolean, variance: number | null) {
   if (variance !== null) return variance > 0 ? 'Over budget' : variance < 0 ? 'Within budget' : 'On budget'
   if (hasBudget) return 'An approved construction estimate is required to calculate the budget variance.'
@@ -96,9 +101,7 @@ export async function ProjectEstimatesPanel({
   const latest = new Map<string, Row>()
   for (const r of rows) if (!latest.has(r.family_id)) latest.set(r.family_id, r)
   const estimates = [...latest.values()].sort((a, b) => b.created_at.localeCompare(a.created_at))
-  const approved = rows
-    .filter((r) => r.status === 'approved')
-    .sort((a, b) => (b.decision_at ?? '').localeCompare(a.decision_at ?? ''))[0]
+  const approved = latestApprovedEstimate(rows)
   const hasBudget = budgetCents !== null
   const variance = approved && hasBudget ? approved.construction_total_cents - budgetCents : null
 

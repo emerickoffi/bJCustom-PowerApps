@@ -10,6 +10,7 @@ import { loadProjectFinancials } from '@/lib/job-costing-data'
 import { PageHeader, SectionHeading, Surface } from '@/components/shared/page-header'
 import { FinancialSummary } from '@/components/financials/financial-summary'
 import { BudgetTable } from '@/components/financials/budget-table'
+import { ProjectInvoicesPanel } from '@/components/invoices/project-invoices-panel'
 
 export const metadata: Metadata = { title: 'Project financials' }
 
@@ -77,6 +78,8 @@ export default async function ProjectFinancialsPage({ params }: { params: Promis
         <SectionHeading id="budget-heading" title="Budget versus actual" description="Grouped by cost code. Estimate categories map to cost codes; historical labels are kept as recorded." />
         <BudgetTable summary={summary} />
       </section>
+
+      {features.invoices && <ProjectInvoicesPanel projectId={project.id} canManage />}
     </div>
   )
 }
