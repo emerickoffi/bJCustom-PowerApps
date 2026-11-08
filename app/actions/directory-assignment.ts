@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { canManage, getSession } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { friendlyDbError } from '@/lib/action-state'
-import { projectAcceptsNewAssignments } from '@/lib/domain'
+import { directoryClosedReason } from '@/lib/domain'
 import { personName } from '@/lib/contacts'
 import { isUuid } from '@/lib/subcontractor-projects'
 import {
@@ -56,9 +56,8 @@ export async function bulkAssignFromDirectoryAction(projectId: string, input: un
     .maybeSingle()
   if (projectError) return { ok: false, error: friendlyDbError(projectError) }
   if (!project) return { ok: false, error: 'This project could not be found.' }
-  if (project.archived_at || !projectAcceptsNewAssignments(project.status as string)) {
-    return { ok: false, error: 'This project is closed to new assignments.' }
-  }
+  const closedReason = directoryClosedReason(project.status as string, project.archived_at as string | null)
+  if (closedReason) return { ok: false, error: closedReason }
 
   const personItems = items.filter((i): i is PersonAssignItem => i.kind === 'person')
   const companyItems = items.filter((i) => i.kind === 'company')

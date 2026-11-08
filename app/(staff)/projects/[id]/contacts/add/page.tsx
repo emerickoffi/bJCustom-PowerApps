@@ -5,7 +5,7 @@ import { ArrowLeft, Lock, Users } from 'lucide-react'
 import { canManage, requireStaff } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getOrgFeatures } from '@/lib/features'
-import { projectAcceptsNewAssignments } from '@/lib/domain'
+import { directoryClosedReason } from '@/lib/domain'
 import { loadDirectoryForAssignment } from '@/lib/directory-assignment-data'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { DirectoryAssignFlow } from '@/components/projects/directory-assign-flow'
@@ -35,18 +35,18 @@ export default async function AddFromDirectoryPage({ params }: { params: Promise
     </Link>
   )
 
-  const closed = !!project.archived_at || !projectAcceptsNewAssignments(project.status as string)
-  if (!canManage(session.role) || closed) {
+  const closedReason = directoryClosedReason(project.status as string, project.archived_at as string | null)
+  if (!canManage(session.role) || closedReason) {
     return (
       <div className="flex flex-col gap-6">
         {back}
         <EmptyState
           icon={Lock}
-          title={closed ? 'This project is closed to new assignments' : 'You cannot assign contacts'}
+          title={!canManage(session.role) ? 'You cannot assign contacts' : 'This project is closed to new people and companies'}
           description={
-            closed
-              ? 'Only projects in preconstruction, construction, or closeout accept new people and companies.'
-              : 'Ask an owner or manager to add people and companies to this project.'
+            !canManage(session.role)
+              ? 'Ask an owner or manager to add people and companies to this project.'
+              : `${closedReason} Existing contacts stay on the project.`
           }
         />
       </div>

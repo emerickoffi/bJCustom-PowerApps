@@ -1,6 +1,6 @@
 import 'server-only'
 import type { createClient } from '@/lib/supabase/server'
-import { projectAcceptsNewAssignments } from '@/lib/domain'
+import { projectAcceptsDirectoryAssignments } from '@/lib/domain'
 import { isMissingTableError, type SubcontractorCompany } from '@/lib/subcontractors'
 import { isAssignmentSetupError, splitProjectAssignments, type AssignableProject } from '@/lib/subcontractor-projects'
 import {
@@ -128,7 +128,7 @@ export async function loadEditSubcontractorFormData(
     loadPeople(supabase, organizationId),
     loadCurrentContacts(supabase, organizationId, companyId),
   ])
-  const { current: currentAssignments, history } = splitProjectAssignments(associated.records, projectAcceptsNewAssignments)
+  const { current: currentAssignments, history } = splitProjectAssignments(associated.records, projectAcceptsDirectoryAssignments)
   const currentIds = new Set(currentAssignments.map((r) => r.project.id))
   return {
     company,

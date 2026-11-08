@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { canManage, getSession, type StaffSession } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { OVERLAY_FIELD, fromZodError, formValues, friendlyDbError, type ActionState } from '@/lib/action-state'
-import { projectAcceptsNewAssignments } from '@/lib/domain'
+import { directoryClosedReason, projectAcceptsDirectoryAssignments } from '@/lib/domain'
 import { isUuid } from '@/lib/subcontractor-projects'
 import {
   CATEGORY_LABELS,
@@ -220,7 +220,7 @@ async function planAssociations(
   } else if (assignments.value.length) {
     const ids = assignments.value.map((a) => a.project_id)
     const [{ data: projects, error }, person, existing] = await Promise.all([
-      supabase.from('projects').select('id, name, project_number, status').eq('organization_id', session.organizationId).in('id', ids),
+      supabase.from('projects').select('id, name, project_number, status, archived_at').eq('organization_id', session.organizationId).in('id', ids),
       personId
         ? supabase.from('business_people').select('status').eq('organization_id', session.organizationId).eq('id', personId).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -244,7 +244,8 @@ async function planAssociations(
         const project = byId.get(a.project_id)
         const label = project ? [project.project_number, project.name].filter(Boolean).join(' · ') : 'A project'
         if (!project) fieldErrors.project_assignments = 'One of the selected projects could not be found. Remove it and try again.'
-        else if (!projectAcceptsNewAssignments(project.status as string)) fieldErrors.project_assignments = `${label} is not accepting new assignments.`
+        else if (!projectAcceptsDirectoryAssignments(project.status as string, project.archived_at as string | null))
+      fieldErrors.project_assignments = `${label} is completed, cancelled, or archived and can’t take new contacts.`
         else if (already.has(a.project_id)) fieldErrors.project_assignments = `This person is already on ${label}.`
         else plan.projects.push({ ...a, label })
         if (fieldErrors.project_assignments) break
@@ -996,13 +997,14 @@ export async function addPersonProjectAction(personId: string, _prev: ActionStat
 
   const { data: project } = await supabase
     .from('projects')
-    .select('id, status')
+    .select('id, status, archived_at')
     .eq('organization_id', session.organizationId)
     .eq('id', values.project_id)
     .maybeSingle()
   if (!project) return { error: 'Please correct the highlighted fields.', fieldErrors: { project_id: 'This project could not be found' }, values }
-  if (!projectAcceptsNewAssignments(project.status as string)) {
-    return { error: 'Please correct the highlighted fields.', fieldErrors: { project_id: 'This project is not accepting new assignments' }, values }
+  const singleClosedReason = directoryClosedReason(project.status as string, project.archived_at as string | null)
+  if (singleClosedReason) {
+    return { error: 'Please correct the highlighted fields.', fieldErrors: { project_id: singleClosedReason }, values }
   }
 
   const { error } = await supabase.from('business_person_projects').insert({
@@ -1080,12 +1082,13 @@ export async function assignProjectContactAction(projectId: string, _prev: Actio
 
   const { data: project } = await supabase
     .from('projects')
-    .select('id, status')
+    .select('id, status, archived_at')
     .eq('organization_id', session.organizationId)
     .eq('id', projectId)
     .maybeSingle()
   if (!project) return { error: 'This project could not be found.', values }
-  if (!projectAcceptsNewAssignments(project.status as string)) return { error: 'This project is not accepting new assignments.', values }
+  const dialogClosedReason = directoryClosedReason(project.status as string, project.archived_at as string | null)
+  if (dialogClosedReason) return { error: dialogClosedReason, values }
 
   let personId = values.person_id
   if (mode === 'new' && person?.success) {

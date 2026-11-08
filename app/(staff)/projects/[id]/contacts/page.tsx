@@ -4,7 +4,7 @@ import { Users } from 'lucide-react'
 import { canManage, requireStaff } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { loadProjectContacts } from '@/lib/project-contacts-data'
-import { projectAcceptsNewAssignments } from '@/lib/domain'
+import { directoryClosedReason } from '@/lib/domain'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { ProjectContactsTable } from '@/components/projects/project-contacts-table'
 
@@ -33,7 +33,7 @@ export default async function ProjectContactsPage({ params }: { params: Promise<
           companies={data.companies}
           assignable={data.assignable}
           canEdit={canManage(session.role) && !project.archived_at}
-          acceptsAssignments={projectAcceptsNewAssignments(project.status as string)}
+          closedReason={directoryClosedReason(project.status as string, project.archived_at as string | null)}
         />
       )}
     </div>

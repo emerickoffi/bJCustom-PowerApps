@@ -105,15 +105,15 @@ export function parseProjectIds(raw: readonly unknown[]): ProjectIdParse {
  */
 export function checkSelectedProjects(
   ids: readonly string[],
-  authorizedRows: readonly { id: string; status: string }[],
-  acceptsNewAssignments: (status: string) => boolean,
+  authorizedRows: readonly { id: string; status: string; archived_at?: string | null }[],
+  acceptsNewAssignments: (status: string, archivedAt?: string | null) => boolean,
 ): string | null {
   const byId = new Map(authorizedRows.map((row) => [row.id.toLowerCase(), row]))
   for (const id of ids) {
     const row = byId.get(id)
     if (!row) return 'One or more selected projects are not available to your company'
-    if (!acceptsNewAssignments(row.status)) {
-      return 'Subcontractors can only be assigned to projects in preconstruction, construction, or closeout'
+    if (!acceptsNewAssignments(row.status, row.archived_at)) {
+      return 'Subcontractors can’t be added to completed, cancelled, or archived projects'
     }
   }
   return null
