@@ -7,9 +7,42 @@ import { ESTIMATE_CATEGORIES, ESTIMATE_UNITS } from '@/lib/estimates'
  * database triggers use, and the server re-validates before saving.
  */
 
-export const COST_TYPES = ['material', 'labor', 'other'] as const
+/**
+ * `unspecified` is a combined unit cost with no materials/labor split in the source. It is
+ * stored whole in the line's "Other" cost column with a note, so nothing is allocated to
+ * materials or labor that the user did not state.
+ */
+export const COST_TYPES = ['unspecified', 'material', 'labor', 'other'] as const
 export type CostType = (typeof COST_TYPES)[number]
-export const COST_TYPE_LABELS: Record<CostType, string> = { material: 'Material', labor: 'Labor', other: 'Other' }
+export const COST_TYPE_LABELS: Record<CostType, string> = {
+  unspecified: 'Combined (no split)',
+  material: 'Material',
+  labor: 'Labor',
+  other: 'Other',
+}
+export const COMBINED_COST_NOTE = 'Combined cost; no materials/labor breakdown supplied'
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+/** True for a real calendar date in YYYY-MM-DD form (rejects 2026-02-30). */
+export function isIsoDate(value: string | null | undefined): value is string {
+  if (!value || !ISO_DATE.test(value)) return false
+  const [y, m, d] = value.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d
+}
+/** Formats a date-only value without any timezone conversion. */
+export function formatIsoDate(value: string): string {
+  const [y, m, d] = value.split('-').map(Number)
+  return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(y, m - 1, d)),
+  )
+}
+const optionalDate = z
+  .string()
+  .trim()
+  .nullable()
+  .transform((v) => (v ? v : null))
+  .refine((v) => v === null || isIsoDate(v), 'Dates must be real calendar dates (YYYY-MM-DD)')
 
 export const AMOUNT_BASES = ['cost', 'selling_price', 'unknown'] as const
 export type AmountBasis = (typeof AMOUNT_BASES)[number]
@@ -46,6 +79,10 @@ export const draftSchema = z.object({
   title: z.string().trim().max(200),
   description: z.string().trim().max(4000).nullable(),
   notes: z.string().trim().max(5000).nullable(),
+  exclusions: z.string().trim().max(3000).nullable(),
+  estimate_date: optionalDate,
+  expiration_date: optionalDate,
+  unsupported: z.array(z.string().trim().max(200)).max(10),
   amount_basis: z.enum(AMOUNT_BASES),
   percent: optionalNumberText(PCT, 'Markup must be a percentage'),
   percent_kind: z.enum(PERCENT_KINDS),
@@ -98,6 +135,31 @@ export function calculateDraft(draft: EstimateDraft, project: DraftProject | nul
   if (!project) issues.push({ level: 'block', message: 'Select the project this estimate belongs to.' })
   if (!draft.title.trim()) issues.push({ level: 'block', message: 'Add an estimate title.' })
   if (!draft.items.length) issues.push({ level: 'block', message: 'Add at least one line item.' })
+
+  if (!isIsoDate(draft.estimate_date)) issues.push({ level: 'block', message: 'Add a valid estimate date.' })
+  if (draft.expiration_date && !isIsoDate(draft.expiration_date)) {
+    issues.push({ level: 'block', message: 'The expiration date is not a valid date.' })
+  } else if (isIsoDate(draft.expiration_date) && isIsoDate(draft.estimate_date) && draft.expiration_date < draft.estimate_date) {
+    issues.push({ level: 'block', message: 'The expiration date cannot be before the estimate date.' })
+  } else if (!draft.expiration_date) {
+    issues.push({ level: 'warn', message: 'No expiration date. The estimate will be saved without one.' })
+  }
+  if (composeNotes(draft).length > 5000) {
+    issues.push({ level: 'block', message: 'Notes and exclusions together must be 5,000 characters or fewer.' })
+  }
+  if (draft.exclusions) {
+    issues.push({ level: 'warn', message: 'Estimates have no separate exclusions field, so exclusions are saved in Notes under "Exclusions".' })
+  }
+  for (const detail of draft.unsupported) {
+    issues.push({ level: 'warn', message: `Not saved (estimates have no field for it): "${detail}".` })
+  }
+  const combined = draft.items.filter((i) => i.cost_type === 'unspecified').length
+  if (combined) {
+    issues.push({
+      level: 'warn',
+      message: `${combined} line${combined === 1 ? ' has a combined cost' : 's have combined costs'} with no materials/labor split. ${combined === 1 ? 'It is' : 'They are'} saved in the Other cost column with a note, not divided between materials and labor.`,
+    })
+  }
 
   const lines = draft.items.map(lineTotalCents)
   draft.items.forEach((item, i) => {
@@ -167,8 +229,14 @@ export function toLineItemRows(draft: EstimateDraft) {
       unit: item.lump_sum ? 'lot' : item.unit,
       material_unit_cents: item.cost_type === 'material' ? cents : 0,
       labor_unit_cents: item.cost_type === 'labor' ? cents : 0,
-      other_unit_cents: item.cost_type === 'other' ? cents : 0,
-      notes: item.lump_sum ? 'Lump sum' : null,
+      other_unit_cents: item.cost_type === 'other' || item.cost_type === 'unspecified' ? cents : 0,
+      notes: [item.lump_sum ? 'Lump sum' : null, item.cost_type === 'unspecified' ? COMBINED_COST_NOTE : null].filter(Boolean).join('. ') || null,
     }
   })
+}
+
+/** Estimates have one notes field; supplied exclusions are kept there under a heading. */
+export function composeNotes(draft: Pick<EstimateDraft, 'notes' | 'exclusions'>): string {
+  const parts = [draft.notes?.trim(), draft.exclusions?.trim() ? `Exclusions:\n${draft.exclusions.trim()}` : null]
+  return parts.filter(Boolean).join('\n\n')
 }
