@@ -85,6 +85,10 @@ export async function getActionItems(
       () => undefined,
     )
   }
+  // Independent of the source reads below, so it runs alongside them rather than after them.
+  const qualificationPromise =
+    manager && features.subcontractors ? loadQualification(supabase, orgId, today) : Promise.resolve(null)
+  qualificationPromise.catch(() => undefined)
 
   const empty = Promise.resolve({ data: [] as never[], error: null, count: 0 })
   const signatureSource = manager && features.e_signatures && features.documents
@@ -217,6 +221,10 @@ export async function getActionItems(
   const activityIds = activityRows.map((a) => a.id)
   const documentIds = [...new Set(signatureRows.flatMap((r) => (r.document_id ? [r.document_id] : [])))]
   const signedDocByRequest = new Map(signatureRows.map((r) => [r.id, signedDocumentIds(r.id).documentId] as const))
+  const assigneeNamesPromise = getProfileNames(
+    activityRows.map((a) => (a as { assigned_to?: string | null }).assigned_to),
+  )
+  assigneeNamesPromise.catch(() => undefined)
 
   const [assignmentsRes, scheduledRes, snapshotsRes, filedRes, qualification] = await Promise.all([
     features.subcontractors && activityIds.length
@@ -249,7 +257,7 @@ export async function getActionItems(
           .in('id', [...signedDocByRequest.values()])
           .not('current_version_id', 'is', null)
       : empty,
-    manager && features.subcontractors ? loadQualification(supabase, orgId, today) : Promise.resolve(null),
+    qualificationPromise,
   ])
 
   const companiesByActivity = new Map<string, string[]>()
@@ -339,7 +347,7 @@ export async function getActionItems(
     project_id: n.project_id,
     projectName: projectName(n.projects as ProjectRef),
   }))
-  const assigneeNames = await getProfileNames(activityRows.map((a) => (a as { assigned_to?: string | null }).assigned_to))
+  const assigneeNames = await assigneeNamesPromise
   const activities: AttentionActivity[] = activityRows.map((a) => {
     const assignedTo = (a as { assigned_to?: string | null }).assigned_to ?? null
     return {
