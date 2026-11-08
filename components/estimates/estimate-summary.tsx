@@ -13,15 +13,21 @@ function Row({ label, value, strong, muted }: { label: string; value: string; st
 export function EstimateSummary({
   totals,
   note = 'Excludes land. Calculated on the server.',
+  headingId = 'summary-heading',
+  label = 'Estimated construction cost',
+  className,
 }: {
   totals: EstimateTotals
   note?: string
+  headingId?: string
+  label?: string
+  className?: string
 }) {
   return (
-    <section aria-labelledby="summary-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
+    <section aria-labelledby={headingId} className={cn('surface flex flex-col gap-5 p-5 md:p-6', className)}>
       <div className="flex flex-col gap-1 rounded-2xl bg-brand-deep p-5 text-white">
-        <h2 id="summary-heading" className="text-xs font-medium uppercase tracking-wider text-white/65">
-          Estimated construction cost
+        <h2 id={headingId} className="text-xs font-medium uppercase tracking-wider text-white/65">
+          {label}
         </h2>
         <p className="font-serif text-4xl font-semibold tabular-nums tracking-tight">
           {formatCentsExact(totals.construction_total_cents)}

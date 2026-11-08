@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { SignatureBadge } from '@/components/signatures/signature-badge'
 import { SignatureDialog, openSignatureState, type SignatureDialogState } from '@/components/signatures/signature-dialog'
 import { prepareEstimateSigning } from '@/app/actions/estimate-signatures'
+import { useEstimateDraft } from '@/components/estimates/estimate-draft-context'
 import type { EstimateSigningBlock, EstimateSigningEligibility } from '@/lib/estimate-signing'
 import type { EstimateSigningState } from '@/lib/esign/queries'
 import { formatDateTime } from '@/lib/format'
@@ -38,6 +39,8 @@ export function EstimateSignaturePanel({
   const [pending, startTransition] = useTransition()
   const { snapshot, summary } = signing
 
+  const draft = useEstimateDraft()
+
   const open = () => {
     setError(null)
     if (snapshot) {
@@ -45,6 +48,12 @@ export function EstimateSignaturePanel({
       return
     }
     startTransition(async () => {
+      const saved = draft ? await draft.ensureSaved('prepare the signature document') : 'clean'
+      if (saved === 'cancelled') return
+      if (saved === 'failed') {
+        setError('Your edits did not save, so no signature document was prepared. Fix the issue and try again.')
+        return
+      }
       const result = await prepareEstimateSigning(estimateId)
       if (!result.ok) {
         setError(result.error)
