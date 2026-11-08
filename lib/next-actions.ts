@@ -121,7 +121,7 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
           ? `Open issue: ${state.firstOpenIssueLabel}`
           : `${plural(state.openIssueCount, 'walkthrough issue is', 'walkthrough issues are')} open`,
       description: 'Record corrective work and approve repairs for homeowner confirmation.',
-      href: one ? `${base}/issues/${encodeURIComponent(state.firstOpenIssueId!)}` : `${base}#walkthroughs-heading`,
+      href: one ? `${base}/issues/${encodeURIComponent(state.firstOpenIssueId!)}` : `${base}/walkthroughs`,
       actionLabel: one ? 'Open issue' : 'View issues',
     })
   }

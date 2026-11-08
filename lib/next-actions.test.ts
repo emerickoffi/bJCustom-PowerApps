@@ -46,7 +46,7 @@ test('setup tasks are not next actions; they live in the setup checklist', () =>
 test('management-only actions are hidden from staff who cannot manage', () => {
   const { items } = buildProjectNextActions(state({ canManage: false, reviewEstimateIds: ['e1'], openIssueCount: 3 }))
   assert.deepEqual(items.map((a) => a.key), ['open-issues'])
-  assert.equal(items[0].href, '/projects/p1#walkthroughs-heading')
+  assert.equal(items[0].href, '/projects/p1/walkthroughs')
 })
 
 test('disabled features suppress their actions', () => {

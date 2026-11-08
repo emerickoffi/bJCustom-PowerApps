@@ -38,7 +38,7 @@ export function ProjectNextActions({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h2 id="next-actions-heading" className="font-serif text-lg font-semibold text-foreground">
-            Next actions
+            Needs attention
           </h2>
           {hiddenCount > 0 && <span className="text-xs text-muted-foreground">{`${hiddenCount} more after these`}</span>}
         </div>

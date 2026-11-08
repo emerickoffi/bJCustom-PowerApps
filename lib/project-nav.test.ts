@@ -43,7 +43,7 @@ test('shows Warranty only for completed projects', () => {
 
 test('section tabs link to overview anchors', () => {
   const items = getProjectNavItems(ID, allOn)
-  assert.equal(items.find((i) => i.key === 'walkthroughs')?.href, `${BASE}#walkthroughs-heading`)
+  assert.equal(items.find((i) => i.key === 'walkthroughs')?.href, `${BASE}/walkthroughs`)
 })
 
 test('the Project team card lives on Overview, so there is no separate Team tab', () => {

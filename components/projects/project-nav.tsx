@@ -59,18 +59,34 @@ export function ProjectNav({
     }
   }, [activeKey])
 
+  // The tab bar pins directly under the app header. Its height varies with breakpoint, safe-area inset and
+  // wrapping content, so it is measured instead of hard-coded; a fixed guess left a gap or overlap.
+  const [headerHeight, setHeaderHeight] = useState<number | null>(null)
+  useEffect(() => {
+    const header = document.querySelector<HTMLElement>('[data-app-header]')
+    if (!header) return
+    const apply = () => {
+      const height = header.offsetHeight
+      document.documentElement.style.setProperty('--app-header-h', `${height}px`)
+      setHeaderHeight(height)
+    }
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [])
+
   // The sentinel sits just above the sticky bar; once it passes under the app header the bar is pinned.
   useEffect(() => {
     const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const headerHeight = document.querySelector<HTMLElement>('[data-app-header]')?.offsetHeight ?? 64
+    if (!sentinel || headerHeight === null) return
     const observer = new IntersectionObserver(
       ([entry]) => setStuck(!entry.isIntersecting && entry.boundingClientRect.top < headerHeight),
       { rootMargin: `-${headerHeight}px 0px 0px 0px` },
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [])
+  }, [headerHeight])
 
   const overviewHref = items[0]?.href ?? `/projects/${projectId}`
   const activeTab = items.find((item) => item.key === activeKey)
@@ -137,7 +153,7 @@ export function ProjectNav({
         data-project-tabs
         className={cn(
           deferToGlobalBreadcrumb && 'lg:-mt-6 tablet:-mt-3',
-          'sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 -mx-4 -mt-3 border-b border-transparent bg-background px-4 py-2 transition-[border-color,box-shadow] sm:top-[calc(4rem+env(safe-area-inset-top))] sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10',
+          'sticky top-[var(--app-header-h,calc(4rem+env(safe-area-inset-top)))] z-20 -mx-4 -mt-3 border-b border-transparent bg-background px-4 py-2 transition-[border-color,box-shadow] sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10',
           stuck && 'border-border shadow-[0_6px_12px_-10px_rgb(0_0_0/0.25)]',
         )}
       >

@@ -77,7 +77,7 @@ export function buildFieldQuickActions(input: Parameters<typeof buildProjectQuic
   const upload = find('document')
   if (upload) actions.push({ key: 'photos', label: 'Photos', href: upload.href })
   if (input.walkthroughs && !input.archived) {
-    actions.push({ key: 'punch_list', label: 'Punch list', href: `/projects/${encodeURIComponent(input.projectId)}#walkthroughs-heading` })
+    actions.push({ key: 'punch_list', label: 'Punch list', href: `/projects/${encodeURIComponent(input.projectId)}/walkthroughs` })
   }
   if (input.hasContacts) actions.push({ key: 'contacts', label: 'Contacts', href: null })
   return actions
