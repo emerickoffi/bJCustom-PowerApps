@@ -98,7 +98,10 @@ export function centsToInput(cents: number | null | undefined): string {
   return frac === 0 ? String(whole) : `${whole}.${String(frac).padStart(2, '0')}`
 }
 
-const currencyExact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
+/** Single currency used for every stored amount; amounts are never mixed across currencies. */
+export const APP_CURRENCY = 'USD'
+
+const currencyExact = new Intl.NumberFormat('en-US', { style: 'currency', currency: APP_CURRENCY })
 
 export function formatCentsExact(cents: number | null | undefined): string {
   if (cents === null || cents === undefined) return '—'

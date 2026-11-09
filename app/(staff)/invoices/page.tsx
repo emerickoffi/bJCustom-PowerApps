@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, ChevronRight, CircleCheck, FileText, Plus, Receipt, SearchX, Wallet } from 'lucide-react'
+import { AlertTriangle, CircleCheck, FileText, Plus, Receipt, SearchX, Wallet } from 'lucide-react'
 import { requireStaff } from '@/lib/session'
 import { getInvoiceAccess } from '@/lib/invoice-access'
 import { listInvoicesResult, invoiceClientName } from '@/lib/invoice-queries'
@@ -16,11 +16,12 @@ import {
   type InvoiceListFilter,
   type InvoiceListState,
 } from '@/lib/invoice-list-filters'
-import { formatCentsExact } from '@/lib/estimates'
+import { APP_CURRENCY, formatCentsExact } from '@/lib/estimates'
 import { cn } from '@/lib/utils'
 import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { DirectoryPagination } from '@/components/shared/directory-pagination'
-import { worksheetFillerClass, worksheetStripClass, worksheetTabClass } from '@/components/shared/worksheet-tabs'
+import { SummaryStrip } from '@/components/shared/summary-strip'
+import { WorksheetFilters, worksheetResultsClass } from '@/components/shared/worksheet-filters'
 import { Button } from '@/components/ui/button'
 import { InvoiceList } from '@/components/invoices/invoice-list'
 import { InvoicesToolbar, RetryButton } from '@/components/invoices/invoices-toolbar'
@@ -87,39 +88,43 @@ async function InvoicesContent({ state }: { state: InvoiceListState }) {
       />
 
       {!failed && all.length > 0 && (
-        <section aria-labelledby="invoice-summary-heading" className="flex flex-col gap-1.5">
-          <h2 id="invoice-summary-heading" className="text-xs text-muted-foreground">
-            All projects · USD · not affected by search or status filters
-          </h2>
-          <dl className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3">
-            <Stat
-              icon={Wallet}
-              tone="blue"
-              label="Outstanding"
-              value={formatCentsExact(outstanding)}
-              note={`${open.length} open invoice${open.length === 1 ? '' : 's'}`}
-            />
-            <Stat
-              icon={AlertTriangle}
-              tone={overdueCents > 0 ? 'danger' : 'amber'}
-              label="Overdue"
-              value={formatCentsExact(overdueCents)}
-              note={overdue.length > 0 ? `${overdue.length} past due` : 'Nothing past due'}
-              href={
+        <SummaryStrip
+          id="invoice-summary-heading"
+          scope={`All projects · ${APP_CURRENCY}`}
+          helpLabel="About the invoice summary"
+          help="These totals always cover every invoice in your organization. They are not affected by search or status filters."
+          stats={[
+            {
+              key: 'outstanding',
+              icon: Wallet,
+              tone: 'blue',
+              label: 'Outstanding',
+              value: formatCentsExact(outstanding),
+              note: `${open.length} open invoice${open.length === 1 ? '' : 's'}`,
+            },
+            {
+              key: 'overdue',
+              icon: AlertTriangle,
+              tone: overdueCents > 0 ? 'danger' : 'amber',
+              label: 'Overdue',
+              value: formatCentsExact(overdueCents),
+              note: overdue.length > 0 ? `${overdue.length} past due` : 'Nothing past due',
+              href:
                 overdue.length > 0 && (!state.overdue || state.status || state.q)
                   ? invoiceListHref({ overdue: true })
-                  : undefined
-              }
-            />
-            <Stat
-              icon={CircleCheck}
-              tone="green"
-              label="Collected to date"
-              value={formatCentsExact(collected)}
-              note="Net of reversals, incl. partial payments"
-            />
-          </dl>
-        </section>
+                  : undefined,
+              hrefLabel: 'Show overdue invoices',
+            },
+            {
+              key: 'collected',
+              icon: CircleCheck,
+              tone: 'green',
+              label: 'Collected to date',
+              value: formatCentsExact(collected),
+              note: 'Net of reversals, incl. partial payments',
+            },
+          ]}
+        />
       )}
 
       {!failed && all.length > 0 && (
@@ -137,38 +142,20 @@ async function InvoicesContent({ state }: { state: InvoiceListState }) {
           {`${activeLabel}${state.overdue ? ' overdue' : ''} invoices`}
         </h2>
         {!failed && all.length > 0 && (
-          <nav aria-label="Filter invoices by status" className={worksheetStripClass}>
-            <ul className="flex w-max min-w-full items-end">
-              {filters.map((f, index) => {
-                const active = state.status === f.value
-                return (
-                  <li key={f.label} className="flex">
-                    <Link
-                      href={invoiceListHref({ status: f.value, overdue: state.overdue, q: state.q })}
-                      scroll={false}
-                      aria-current={active ? 'true' : undefined}
-                      className={worksheetTabClass(active, index === 0)}
-                    >
-                      {f.label}
-                      <span className={cn('text-xs tabular-nums', active ? 'text-foreground/70' : 'text-muted-foreground')}>
-                        {f.count}
-                        <span className="sr-only">{f.count === 1 ? ' invoice' : ' invoices'}</span>
-                      </span>
-                    </Link>
-                  </li>
-                )
-              })}
-              <li aria-hidden="true" className={worksheetFillerClass} />
-            </ul>
-          </nav>
+          <WorksheetFilters
+            label="Filter invoices by status"
+            noun={{ one: 'invoice', many: 'invoices' }}
+            filters={filters.map((f) => ({
+              key: f.value ?? 'all',
+              label: f.label,
+              count: f.count,
+              active: state.status === f.value,
+              href: invoiceListHref({ status: f.value, overdue: state.overdue, q: state.q }),
+            }))}
+          />
         )}
 
-        <div
-          className={cn(
-            'flex min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card',
-            !failed && all.length > 0 && 'rounded-t-none border-t-0',
-          )}
-        >
+        <div className={worksheetResultsClass(!failed && all.length > 0)}>
           {failed ? (
             <ListState
               icon={AlertTriangle}
@@ -246,69 +233,6 @@ function InvoicesLoading() {
 
 function Skeleton({ className }: { className?: string }) {
   return <div aria-hidden="true" className={cn('animate-pulse rounded-md bg-muted', className)} />
-}
-
-const STAT_TONES = {
-  blue: 'bg-link-soft text-link ring-link-border',
-  amber: 'bg-[#FEF3C7] text-[#92400E] ring-[#92400E]/10',
-  green: 'bg-[#DCFCE7] text-[#166534] ring-[#166534]/10',
-  danger: 'bg-destructive/10 text-destructive ring-destructive/15',
-} as const
-
-function Stat({
-  icon: Icon,
-  tone,
-  label,
-  value,
-  note,
-  href,
-}: {
-  icon: React.ComponentType<{ className?: string; 'aria-hidden'?: 'true' }>
-  tone: keyof typeof STAT_TONES
-  label: string
-  value: string
-  note: string
-  href?: string
-}) {
-  const danger = tone === 'danger'
-  const body = (
-    <>
-      <span
-        className={cn('flex size-7 shrink-0 items-center justify-center rounded-md ring-1 ring-inset', STAT_TONES[tone])}
-      >
-        <Icon className="size-3.5" aria-hidden="true" />
-      </span>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <dt className="text-xs font-medium text-[#526173]">{label}</dt>
-        <dd
-          className={cn(
-            'truncate text-base font-semibold leading-tight tabular-nums',
-            danger ? 'text-destructive' : 'text-[#17212B]',
-          )}
-        >
-          {value}
-        </dd>
-        <dd className="truncate text-xs text-[#526173]">{note}</dd>
-      </div>
-    </>
-  )
-  return (
-    <div className="flex bg-card">
-      {href ? (
-        <Link
-          href={href}
-          scroll={false}
-          aria-label={`${label} ${value}, ${note}. Show overdue invoices`}
-          className="group flex flex-1 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-link-soft/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-        >
-          {body}
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" aria-hidden="true" />
-        </Link>
-      ) : (
-        <div className="flex flex-1 items-center gap-3 px-4 py-2.5">{body}</div>
-      )}
-    </div>
-  )
 }
 
 function ListState({
