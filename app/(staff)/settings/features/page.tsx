@@ -48,7 +48,6 @@ export default async function FeaturesPage() {
     <div className={pageLayout('form')}>
       <PageHeader icon={SlidersHorizontalIcon}
         title="Feature management"
-        description="Turn modules on or off for your company. Turning a feature off hides it everywhere and blocks access in the database, but never deletes its data. Turning it back on restores everything."
         backHref="/settings"
         backLabel="Company settings"
       />

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, FileText } from 'lucide-react'
+import { PageHeader } from '@/components/shared/page-header'
 import { requireSubcontractor } from '@/lib/subcontractor-session'
 import { createClient } from '@/lib/supabase/server'
 import { ResponseBadge } from '@/components/subcontract-quotes/status-badges'
@@ -33,11 +34,13 @@ export default async function SubQuotesPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href="/sub" className="text-sm text-muted-foreground hover:text-foreground">Back to my work</Link>
-        <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">Quote requests</h1>
-        <p className="text-sm text-muted-foreground">Price scopes of work the builder has invited your company to quote.</p>
-      </div>
+      <PageHeader
+        icon={FileText}
+        title="Quote requests"
+        count={{ value: rows.length, noun: 'request' }}
+        backHref="/sub"
+        backLabel="Back to my work"
+      />
       {rows.length ? (
         <ul className="flex flex-col gap-2">
           {rows.map((r) => {

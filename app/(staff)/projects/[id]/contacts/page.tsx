@@ -59,9 +59,7 @@ export default async function ProjectPeoplePage({
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        tone="section"
         title="People"
-        description={`Everyone involved in ${project.name}: homeowners, your team, and outside companies.`}
         actions={
           directory?.availability === 'ready' && (
             <PeopleAssignWorkspace projectId={project.id} projectName={project.name as string} rows={directory.rows} defaultOpen={add === '1'} />

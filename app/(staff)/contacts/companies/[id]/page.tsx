@@ -32,7 +32,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
       <PageHeader
         icon={linked ? HardHat : Building2}
         title={company.company_name}
-        description={company.business_categories.map((k) => CATEGORY_LABELS[k]).join(' · ') || 'Business'}
+        meta={company.business_categories.map((k) => CATEGORY_LABELS[k]).join(' · ') || 'Business'}
         titleAddon={<ContactStatusBadge status={company.status} />}
         backHref="/contacts?view=companies"
         backLabel="Contacts"

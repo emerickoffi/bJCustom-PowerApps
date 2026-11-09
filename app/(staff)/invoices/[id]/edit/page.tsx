@@ -27,7 +27,6 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
       <PageHeader
         icon={Receipt}
         title={`Edit ${invoice.invoice_number}`}
-        description="Drafts can be changed freely until they are issued."
         backHref={`/invoices/${id}`}
         backLabel="Back to invoice"
       />

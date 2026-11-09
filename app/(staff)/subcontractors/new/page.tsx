@@ -24,7 +24,6 @@ export default async function NewSubcontractorPage() {
         backHref="/subcontractors"
         backLabel="Subcontractors"
         title="Add subcontractor"
-        description="Save a trade partner to your company directory. Only administrators and project managers can see it."
       />
       <SubcontractorForm action={createSubcontractorAction} cancelHref="/subcontractors" {...data} />
     </div>

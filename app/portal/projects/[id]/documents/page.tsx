@@ -50,7 +50,6 @@ export default async function PortalDocumentsPage({
         backHref="/portal"
         backLabel="My home"
         title="Documents"
-        description={`Documents your builder has shared for ${project.name}.`}
       />
       <PortalSignatureTasks tasks={tasks} />
       <FocusHashTarget />

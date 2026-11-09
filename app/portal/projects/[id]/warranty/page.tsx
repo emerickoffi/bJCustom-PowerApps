@@ -71,7 +71,7 @@ export default async function HomeownerWarrantyPage({ params }: { params: Promis
         backHref="/portal"
         backLabel="Your home"
         title="Your home warranty"
-        description={project.name}
+        meta={project.name}
       />
 
       {!warranty ? (

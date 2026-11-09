@@ -126,7 +126,6 @@ export default async function MyWorkPage() {
       <PageHeader
         icon={CalendarCheck2}
         title="My Work"
-        description="Your assigned projects, upcoming activities, and items needing attention."
       />
 
       <section aria-labelledby="my-projects" className="flex flex-col gap-4">

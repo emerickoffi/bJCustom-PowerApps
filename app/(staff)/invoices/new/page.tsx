@@ -27,7 +27,6 @@ export default async function NewInvoicePage({
       <PageHeader
         icon={Receipt}
         title="New invoice"
-        description="Saved as a draft. Homeowners see it only after you issue and share it."
         backHref={back}
         backLabel={preselected ? 'Back to project' : 'Back to invoices'}
       />

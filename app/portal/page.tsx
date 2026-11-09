@@ -141,12 +141,9 @@ export default async function PortalPage() {
           <span className="h-px w-6 bg-link" aria-hidden="true" />
           My Home
         </div>
-        <h1 className="text-balance font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-3xl">
+        <h1 className="text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
           {firstName ? `Welcome home, ${firstName}.` : 'Welcome home.'}
         </h1>
-        <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-          {`Follow every stage of your build with ${session?.brand.displayName ?? 'your builder'}: progress, timeline, and walkthroughs, all in one place.`}
-        </p>
       </div>
 
       {projects.length > 0 && <HomeownerActions actions={homeownerActions} showProject={projects.length > 1} />}

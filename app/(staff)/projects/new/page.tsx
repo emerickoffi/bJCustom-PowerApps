@@ -19,7 +19,6 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
         backHref="/projects"
         backLabel="Projects"
         title="New project"
-        description="A project number is assigned automatically when you save."
       />
       <ProjectForm
         action={createProjectAction}

@@ -47,7 +47,7 @@ export default async function CompareRevisionsPage({
   if (!otherRef) {
     return (
       <div className="flex flex-col gap-8">
-        <PageHeader icon={GitCompareArrowsIcon} backHref={`/estimates/${id}`} backLabel="Estimate" title="Compare revisions" description="This estimate has only one revision." />
+        <PageHeader icon={GitCompareArrowsIcon} backHref={`/estimates/${id}`} backLabel="Estimate" title="Compare revisions" meta="This estimate has only one revision." />
       </div>
     )
   }
@@ -77,7 +77,7 @@ export default async function CompareRevisionsPage({
         backLabel="Estimate"
         eyebrow={<span className="font-mono">{current.estimate_number}</span>}
         title="Compare revisions"
-        description={current.name}
+        meta={current.name}
         actions={
           family.length > 2 && (
             <form method="get" className="flex items-center gap-2">

@@ -151,7 +151,6 @@ export default async function ProjectsPage({
     <div className={pageLayout('workspace')}>
       <PageHeader icon={FolderKanbanIcon}
         title="Projects"
-        description="Every custom home and renovation, from first consultation to final walkthrough."
         actions={
           manager && (
             <Button size="lg" render={<Link href="/projects/new" />} nativeButton={false}>

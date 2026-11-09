@@ -88,7 +88,6 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        tone="plain"
         title={co.title}
         eyebrow={
           <span className="tabular-nums">

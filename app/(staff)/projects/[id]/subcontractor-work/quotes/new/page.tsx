@@ -24,7 +24,7 @@ export default async function NewQuoteRequestPage({ params }: { params: Promise<
 
   return (
     <div className={pageLayout('form')}>
-      <PageHeader icon={FileSpreadsheet} eyebrow={project.name} title="New quote request" description="Save as a draft while you prepare it. Nothing is shared until you send." />
+      <PageHeader icon={FileSpreadsheet} eyebrow={project.name} title="New quote request" />
       <Surface>
         <RequestForm
           projectId={id}

@@ -33,7 +33,6 @@ export default async function SettingsPage() {
     <div className={pageLayout('form')}>
       <PageHeader icon={SettingsIcon}
         title="Company settings"
-        description="Your company identity appears throughout the app, the homeowner portal, and future documents."
         actions={
           <>
             <Button variant="outline" className={navButtonClass} render={<Link href="/settings/integrations" />} nativeButton={false}>

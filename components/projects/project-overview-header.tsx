@@ -51,7 +51,7 @@ export function ProjectOverviewHeader({
             <ProjectStatusBadge status={status} />
             {badges}
           </div>
-          <h1 id="project-heading" className="text-balance font-serif text-xl font-semibold leading-tight text-foreground md:text-2xl">
+          <h1 id="project-heading" className="text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
             {name}
           </h1>
           <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm">

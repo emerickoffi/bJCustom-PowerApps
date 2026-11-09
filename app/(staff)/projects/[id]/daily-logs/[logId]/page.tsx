@@ -34,7 +34,6 @@ export default async function DailyLogPage({
       <PageHeader
         title={`Daily log: ${formatDate(log.log_date)}`}
         eyebrow={<DailyLogStatusBadge status={log.status} />}
-        description={project.name}
         icon={ClipboardList}
         backHref={dailyLogsPath(project.id)}
         backLabel="Daily logs"

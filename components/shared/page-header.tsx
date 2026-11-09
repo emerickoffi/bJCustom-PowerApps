@@ -1,104 +1,106 @@
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+type IconComponent = React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>
 
 type PageHeaderProps = {
   title: string
-  description?: React.ReactNode
+  icon?: IconComponent
+  /** Replaces the icon tile, e.g. with a person's or company's initials on a record page. */
+  avatar?: React.ReactNode
+  /** Short record context above the title, e.g. the linked project or record number. */
   eyebrow?: React.ReactNode
-  icon?: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>
+  /** Record count for list pages, shown as a chip beside the title. */
+  count?: { value: number; noun: string; plural?: string }
+  /** Rendered inline after the title, e.g. a status badge or contextual help. */
+  titleAddon?: React.ReactNode
+  /**
+   * Compact record metadata for detail and editor pages: status, revision, linked project or recipient,
+   * operational warnings. Not a place for descriptive subtitles; standard list pages leave it empty.
+   */
+  meta?: React.ReactNode
   backHref?: string
   backLabel?: string
+  /** Secondary actions first, primary (orange) action last. */
   actions?: React.ReactNode
-  /** 'section' is the compact heading used inside the project workspace, beneath the project tabs. */
-  tone?: 'plain' | 'sage' | 'forest' | 'section'
-  /** Replaces the icon tile, e.g. with a person's initials. */
-  avatar?: React.ReactNode
-  /** Rendered inline after the title, e.g. a status badge. */
-  titleAddon?: React.ReactNode
-  /** Record count for list pages, shown as a quiet chip beside the title. */
-  count?: { value: number; noun: string; plural?: string }
 }
 
-function CountChip({ value, noun, plural }: NonNullable<PageHeaderProps['count']>) {
+export function CountChip({ value, noun, plural }: NonNullable<PageHeaderProps['count']>) {
   return (
-    <span className="inline-flex items-center rounded-full bg-sage px-2.5 py-0.5 text-sm font-medium tabular-nums text-foreground/80 ring-1 ring-inset ring-primary/10">
+    <span className="inline-flex h-6 items-center rounded-full bg-interactive-soft px-2.5 text-xs font-semibold tabular-nums text-interactive-strong ring-1 ring-inset ring-interactive-border md:text-sm">
       {`${value.toLocaleString()} ${value === 1 ? noun : (plural ?? `${noun}s`)}`}
     </span>
   )
 }
 
+export function PageHeaderIcon({ icon: Icon }: { icon: IconComponent }) {
+  return (
+    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-interactive-soft text-interactive ring-1 ring-inset ring-interactive-border">
+      <Icon className="size-5" aria-hidden="true" />
+    </span>
+  )
+}
+
+/** The one heading used by every page: [icon] Title [count] on the left, actions on the right. */
 export function PageHeader({
   title,
-  description,
-  eyebrow,
-  icon: Icon,
+  icon,
   avatar,
-  titleAddon: titleAddonProp,
+  eyebrow,
   count,
+  titleAddon,
+  meta,
   backHref,
   backLabel,
   actions,
-  tone = 'sage',
 }: PageHeaderProps) {
-  if (tone === 'section') {
-    return (
-      <header className="flex min-w-0 flex-col gap-3 border-b border-border/70 pb-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex min-w-0 flex-col gap-1">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-            <h1 className="min-w-0 text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-2xl">
-              {title}
-            </h1>
-            {count && <CountChip {...count} />}
-            {titleAddonProp}
-          </div>
-          {description && <div className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground">{description}</div>}
-        </div>
-        {actions && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2 max-md:[&>*]:min-h-11 md:justify-end">{actions}</div>
-        )}
-      </header>
-    )
-  }
-  // Every top-level page uses one compact heading: back link, optional icon, title row, short description, and
-  // the primary action pinned to the right. The legacy 'sage'/'forest' intro cards and the 'plain' variant all
-  // render this same treatment so headings align and size identically across the app.
   return (
     <header className="flex min-w-0 flex-col gap-2">
       {backHref && <BackLink href={backHref} label={backLabel} />}
-      <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          {avatar}
-          {!avatar && Icon && (
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary ring-1 ring-inset ring-primary/10">
-              <Icon className="size-5" aria-hidden="true" />
-            </span>
-          )}
+          {avatar ?? (icon && <PageHeaderIcon icon={icon} />)}
           <div className="flex min-w-0 flex-col gap-0.5">
             {eyebrow && (
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="flex min-w-0 items-center gap-2 truncate text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 {eyebrow}
               </div>
             )}
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              <h1 className="min-w-0 text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-2xl">
+              <h1 className="min-w-0 text-balance break-words font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
                 {title}
               </h1>
               {count && <CountChip {...count} />}
-              {titleAddonProp}
+              {titleAddon}
             </div>
-            {description && (
-              <div className="max-w-3xl text-pretty text-sm leading-relaxed text-muted-foreground">{description}</div>
-            )}
           </div>
         </div>
         {actions && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2 max-md:[&>*]:min-h-11 max-md:[&>*]:flex-1 md:justify-end">
+          <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 max-md:[&>*]:min-h-11 md:justify-end md:[&_[data-slot=button]]:h-10">
             {actions}
           </div>
         )}
       </div>
+      {meta && (
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">{meta}</div>
+      )}
     </header>
+  )
+}
+
+/** Contextual help beside a page title: collapsed by default so it never reserves space under the heading. */
+export function HeaderHelp({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <details className="group relative">
+      <summary className="flex size-7 cursor-pointer list-none items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-interactive-soft hover:text-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+        <Info className="size-4" aria-hidden="true" />
+        <span className="sr-only">{label}</span>
+      </summary>
+      <div className="absolute left-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-popover p-3 text-sm leading-relaxed text-popover-foreground shadow-lg">
+        {children}
+      </div>
+    </details>
   )
 }
 

@@ -30,7 +30,6 @@ export default async function ChooseDailyLogProjectPage({
     <div className="flex flex-col gap-6">
       <PageHeader
         title="New daily log"
-        description="Daily logs belong to a project. Choose the project you are recording site activity for."
         icon={ClipboardList}
         backHref={DAILY_LOG_DIRECTORY_PATH}
         backLabel="Daily logs"

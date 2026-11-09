@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { Hammer } from 'lucide-react'
+import { PageHeader } from '@/components/shared/page-header'
 import { requireSubcontractor } from '@/lib/subcontractor-session'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, APP_TIME_ZONE } from '@/lib/format'
@@ -42,18 +42,15 @@ export default async function SubWorkPage({ params }: { params: Promise<{ assign
 
   return (
     <>
-      <Link href="/sub" className="flex min-h-11 items-center gap-1 self-start text-sm font-medium text-muted-foreground hover:text-primary">
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        All work
-      </Link>
+      <PageHeader
+        icon={Hammer}
+        title={work.activity_name}
+        eyebrow={work.project_name}
+        titleAddon={<WorkStateBadge state={state} />}
+        backHref="/sub"
+        backLabel="All work"
+      />
       <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{work.project_name}</p>
-            <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">{work.activity_name}</h1>
-          </div>
-          <WorkStateBadge state={state} />
-        </div>
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-xs text-muted-foreground">Planned start</dt>

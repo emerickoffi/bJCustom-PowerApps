@@ -20,7 +20,7 @@ export default async function PlannedModulePage({ params }: { params: Promise<{ 
 
   return (
     <div className={pageLayout('workspace')}>
-      <PageHeader icon={BlocksIcon} eyebrow={`Stage ${mod.stage}`} title={mod.label} description={mod.summary} />
+      <PageHeader icon={BlocksIcon} eyebrow={`Stage ${mod.stage}`} title={mod.label} />
       <EmptyState
         icon={Hammer}
         title={`${mod.label} arrives in stage ${mod.stage}`}

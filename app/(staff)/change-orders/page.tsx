@@ -76,7 +76,6 @@ export default async function OrgChangeOrdersPage() {
     <div className={pageLayout('workspace')}>
       <PageHeader
         title="Change orders"
-        description="Scope and price changes across every project you can access. Open a change order to work on it inside its project."
         icon={FileDiff}
       />
 

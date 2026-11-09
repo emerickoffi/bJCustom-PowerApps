@@ -42,7 +42,7 @@ export default async function PortalWalkthroughPage({ params }: { params: Promis
         backHref="/portal"
         backLabel="Your home"
         title={walkthrough.title}
-        description={
+        meta={
           walkthrough.scheduled_date || (walkthrough.instructions && !submitted) ? (
             <div className="flex flex-col gap-2">
               {walkthrough.scheduled_date && <p>{`Scheduled for ${formatDate(walkthrough.scheduled_date)}`}</p>}

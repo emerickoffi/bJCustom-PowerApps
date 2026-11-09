@@ -160,7 +160,7 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
     return (
       <div className={pageLayout('detail')}>
         {back}
-        <PageHeader icon={FileSpreadsheet} eyebrow={projectName} title={request.title} titleAddon={<RequestStatusBadge status="draft" />} description="Drafts are private to your team until sent." />
+        <PageHeader icon={FileSpreadsheet} eyebrow={projectName} title={request.title} titleAddon={<RequestStatusBadge status="draft" />} meta="Drafts are private to your team until sent." />
         <Surface>
           <RequestForm
             projectId={id}
@@ -317,7 +317,7 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
         eyebrow={projectName}
         title={request.title}
         titleAddon={<RequestStatusBadge status={request.status} />}
-        description={[request.trade, `Responses due ${formatDeadline(request.response_deadline, request.deadline_timezone)}`, request.currency].filter(Boolean).join(' · ')}
+        meta={[request.trade, `Responses due ${formatDeadline(request.response_deadline, request.deadline_timezone)}`, request.currency].filter(Boolean).join(' · ')}
       />
 
       <Surface aria-label="Request controls">

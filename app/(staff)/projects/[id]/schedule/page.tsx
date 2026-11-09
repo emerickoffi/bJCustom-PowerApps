@@ -166,7 +166,6 @@ export default async function SchedulePage({
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        tone="section"
         title="Construction schedule"
         actions={manager && activities.length > 0 && <InitializeScheduleButton projectId={project.id} label="Add missing template activities" />}
       />

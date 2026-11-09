@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { BASELINE_REASON_LABELS, formatMoney } from '@/lib/financials'
 import { loadProjectFinancials } from '@/lib/job-costing-data'
 import { PageHeader, SectionHeading, Surface } from '@/components/shared/page-header'
+import { SemanticBadge } from '@/components/shared/semantic-badge'
 import { FinancialSummary } from '@/components/financials/financial-summary'
 import { BudgetTable } from '@/components/financials/budget-table'
 import { ProjectInvoicesPanel } from '@/components/invoices/project-invoices-panel'
@@ -32,10 +33,9 @@ export default async function ProjectFinancialsPage({ params }: { params: Promis
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        tone="section"
         title="Financials"
-        description={`Budget, cost, forecast and billing for ${project.name}. Internal only, never shown to homeowners.`}
         icon={Landmark}
+        titleAddon={<SemanticBadge tone="neutral">Internal only</SemanticBadge>}
       />
 
       <Surface aria-label="Budget baseline">

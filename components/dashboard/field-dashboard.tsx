@@ -84,7 +84,7 @@ export async function FieldDashboard({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <p className="text-sm text-muted-foreground">{session.brand.displayName}</p>
-          <h1 className="font-serif text-xl font-semibold tracking-tight md:text-2xl">
+          <h1 className="text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
             {firstName ? `${greeting()}, ${firstName}.` : `${greeting()}.`}
           </h1>
         </div>

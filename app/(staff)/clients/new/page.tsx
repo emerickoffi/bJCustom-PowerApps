@@ -26,7 +26,6 @@ export default async function NewClientPage() {
         backHref="/clients"
         backLabel="Clients"
         title="Create client"
-        description="Add the homeowner's contact details and mailing address. A client number is assigned automatically when you save."
       />
       <ClientForm
         action={createClientAction}
