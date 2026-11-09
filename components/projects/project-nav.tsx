@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { getActiveProjectNavKey, getSectionIdFromHref, type ProjectNavItem } from '@/lib/project-nav'
 import { scrollToProjectSection } from '@/components/projects/project-section-scroll'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
+import { worksheetTabClass } from '@/components/shared/worksheet-tabs'
 import type { ProjectStatus } from '@/lib/domain'
 
 type SectionMemory = Record<string, { url?: string; y?: number }>
@@ -276,14 +277,7 @@ export function ProjectNav({
                       ref={active ? activeTabRef : undefined}
                       onClick={(event) => handleTabClick(event, item, href)}
                       aria-current={active ? 'page' : undefined}
-                      className={cn(
-                        'relative flex items-center whitespace-nowrap rounded-t-md border-r border-t border-border px-4 text-sm transition-colors',
-                        'focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40',
-                        index === 0 && 'border-l',
-                        active
-                          ? 'h-12 border-b border-b-card bg-card font-semibold text-foreground before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:rounded-t-md before:bg-primary sm:h-10'
-                          : 'h-11 border-b bg-muted/70 font-medium text-muted-foreground hover:bg-muted hover:text-foreground sm:h-9',
-                      )}
+                      className={worksheetTabClass(active, index === 0)}
                     >
                       {item.label}
                     </Link>

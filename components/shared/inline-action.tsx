@@ -46,6 +46,8 @@ export function ActionButton({
   confirmMessage,
   variant = 'ghost',
   size = 'sm',
+  disabled = false,
+  describedBy,
 }: {
   action: () => Promise<ActionState>
   label: string
@@ -53,6 +55,8 @@ export function ActionButton({
   confirmMessage?: string
   variant?: React.ComponentProps<typeof Button>['variant']
   size?: React.ComponentProps<typeof Button>['size']
+  disabled?: boolean
+  describedBy?: string
 }) {
   const [pending, startTransition] = useTransition()
   const [result, setResult] = useState<ActionState>(initialActionState)
@@ -63,7 +67,8 @@ export function ActionButton({
         type="button"
         variant={variant}
         size={size}
-        disabled={pending}
+        disabled={pending || disabled}
+        aria-describedby={describedBy}
         onClick={() => {
           if (confirmMessage && !window.confirm(confirmMessage)) return
           startTransition(async () => setResult(await action()))

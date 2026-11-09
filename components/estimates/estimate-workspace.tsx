@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useSyncExternalStore, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
-import { ArrowRight, ChevronDown, FileDown, Loader2, Pencil, Save, TriangleAlert } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, FileDown, Loader2, Pencil, Save, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BackLink } from '@/components/shared/page-header'
 import { EstimateSummary } from '@/components/estimates/estimate-summary'
@@ -10,6 +10,7 @@ import { sameSettings, useEstimateDraft } from '@/components/estimates/estimate-
 import { WORKSPACE_TABS, WORKSPACE_TAB_LABELS, type WorkspaceTab } from '@/lib/estimate-workspace'
 import { formatCentsExact, type EstimateTotals } from '@/lib/estimates'
 import { cn } from '@/lib/utils'
+import { worksheetFillerClass, worksheetStripClass, worksheetTabClass } from '@/components/shared/worksheet-tabs'
 
 export type NextAction = { label: string; href?: string }
 
@@ -115,36 +116,30 @@ function WorkspaceTabs() {
   }
 
   return (
-    <div
-      role="tablist"
-      aria-label="Estimate sections"
-      className="-mb-px flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      {WORKSPACE_TABS.map((t) => {
-        const selected = t === active
-        return (
-          <button
-            key={t}
-            id={`estimate-tab-${t}`}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            aria-controls={`estimate-panel-${t}`}
-            tabIndex={selected ? 0 : -1}
-            onClick={() => draft?.setTab(t)}
-            onKeyDown={onKeyDown}
-            className={cn(
-              'flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-              selected
-                ? 'border-primary text-foreground'
-                : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
-            )}
-          >
-            {WORKSPACE_TAB_LABELS[t]}
-            <TabIndicator {...indicators[t]} />
-          </button>
-        )
-      })}
+    <div className={worksheetStripClass}>
+      <div role="tablist" aria-label="Estimate sections" className="flex w-max min-w-full items-end">
+        {WORKSPACE_TABS.map((t, index) => {
+          const selected = t === active
+          return (
+            <button
+              key={t}
+              id={`estimate-tab-${t}`}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              aria-controls={`estimate-panel-${t}`}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => draft?.setTab(t)}
+              onKeyDown={onKeyDown}
+              className={worksheetTabClass(selected, index === 0)}
+            >
+              {WORKSPACE_TAB_LABELS[t]}
+              <TabIndicator {...indicators[t]} />
+            </button>
+          )
+        })}
+        <span aria-hidden="true" className={worksheetFillerClass} />
+      </div>
     </div>
   )
 }
@@ -160,6 +155,7 @@ export function EstimateWorkspaceHeader({
   editHref,
   pdfHref,
   nextAction,
+  moreMenu,
 }: {
   backHref: string
   backLabel: string
@@ -170,8 +166,10 @@ export function EstimateWorkspaceHeader({
   editHref?: string
   pdfHref: string
   nextAction: NextAction | null
+  moreMenu?: ReactNode
 }) {
   const { draft, dirty, busy, text, tone } = useSaveState()
+  const onReview = draft?.tab === 'review'
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -201,7 +199,7 @@ export function EstimateWorkspaceHeader({
   return (
     <div
       ref={ref}
-      className="sticky top-[var(--app-header-h,3.5rem)] z-20 mx-[calc(var(--page-gutter-x)*-1)] mt-[calc(var(--page-gutter-top)*-1)] border-b border-border bg-background/95 px-(--page-gutter-x) pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:pt-4"
+      className="sticky top-[var(--app-header-h,3.5rem)] z-20 mx-[calc(var(--page-gutter-x)*-1)] mt-[calc(var(--page-gutter-top)*-1)] bg-background/95 px-(--page-gutter-x) pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:pt-4"
     >
       <div className="flex flex-col gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -225,13 +223,25 @@ export function EstimateWorkspaceHeader({
                 type="button"
                 onClick={() => void draft?.save()}
                 disabled={!dirty || busy}
-                title="Saves cost items, pricing, land cost, description and notes together. Shortcut: Ctrl or Cmd + S."
+                variant={dirty ? 'default' : 'outline'}
+                title={
+                  dirty
+                    ? 'Saves cost items, pricing, land cost, description and notes together. Shortcut: Ctrl or Cmd + S.'
+                    : 'No unsaved changes'
+                }
               >
-                {busy ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <Save data-icon="inline-start" />}
-                Save draft
+                {busy ? (
+                  <Loader2 data-icon="inline-start" className="animate-spin" />
+                ) : dirty ? (
+                  <Save data-icon="inline-start" />
+                ) : (
+                  <Check data-icon="inline-start" />
+                )}
+                {busy ? 'Saving...' : dirty ? 'Save draft' : 'Saved'}
               </Button>
             )}
             {nextAction &&
+              !(onReview && !nextAction.href) &&
               (nextAction.href ? (
                 <Button variant="outline" render={<Link href={nextAction.href} />} nativeButton={false}>
                   {nextAction.label}
@@ -261,6 +271,7 @@ export function EstimateWorkspaceHeader({
                 <span className="hidden sm:inline lg:hidden 2xl:inline">Edit details</span>
               </Button>
             )}
+            {moreMenu}
           </div>
         </div>
         <WorkspaceTabs />
@@ -348,7 +359,12 @@ export function EstimateWorkspaceBody({
   const live = useLiveTotals(serverTotals, editable)
 
   return (
-    <div className={cn('grid gap-6', showTotals && '2xl:grid-cols-[minmax(0,1fr)_22rem]')}>
+    <div
+      className={cn(
+        'grid min-w-0 gap-6 rounded-b-xl border border-t-0 border-border bg-card p-4 sm:p-6',
+        showTotals && '2xl:grid-cols-[minmax(0,1fr)_22rem]',
+      )}
+    >
       <div className="flex min-w-0 flex-col gap-4">
         {showTotals && !wide && <CompactTotals serverTotals={serverTotals} editable={editable} />}
         {PANEL_TABS.map((t) => (
