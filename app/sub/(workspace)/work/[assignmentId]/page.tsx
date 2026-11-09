@@ -50,7 +50,7 @@ export default async function SubWorkPage({ params }: { params: Promise<{ assign
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="flex min-w-0 flex-col gap-0.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{work.project_name}</p>
-            <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">{work.activity_name}</h1>
+            <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">{work.activity_name}</h1>
           </div>
           <WorkStateBadge state={state} />
         </div>

@@ -60,7 +60,7 @@ export default async function SubQuotePage({ params }: { params: Promise<{ reque
     <>
       <div className="flex flex-col gap-1">
         <Link href="/sub/quotes" className="text-sm text-muted-foreground hover:text-foreground">All quote requests</Link>
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">{row.title}</h1>
+        <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">{row.title}</h1>
         <p className="text-sm text-muted-foreground">{row.project_name}{row.trade ? ` · ${row.trade}` : ''}</p>
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <ResponseBadge state={state} />

@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { requireStaff } from '@/lib/session'
 import { getEstimate, getEstimateFamily, getEstimateLineItems, type EstimateRecord } from '@/lib/estimate-queries'
 import { ESTIMATE_CATEGORIES, formatCentsExact, type EstimateLineItem } from '@/lib/estimates'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { EstimateStatusBadge } from '@/components/estimates/estimate-status-badge'
 import { cn } from '@/lib/utils'
 import { GitCompareArrows as GitCompareArrowsIcon } from 'lucide-react'
@@ -71,7 +71,7 @@ export default async function CompareRevisionsPage({
   ]
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('detail')}>
       <PageHeader icon={GitCompareArrowsIcon}
         backHref={`/estimates/${id}`}
         backLabel="Estimate"

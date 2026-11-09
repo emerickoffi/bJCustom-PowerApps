@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { CheckCircle2, ClipboardCheck, HardHat } from 'lucide-react'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { getSession } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { signMediaPaths } from '@/lib/media'
@@ -35,7 +35,7 @@ export default async function PortalWalkthroughPage({ params }: { params: Promis
   const builderLed = walkthrough.conducted_by === 'staff'
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('detail')}>
       <FocusHashTarget />
       <PageHeader
         icon={ClipboardCheck}

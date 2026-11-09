@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getProfileNames, PROJECT_SUMMARY_COLUMNS } from '@/lib/queries'
-import { BackLink } from '@/components/shared/page-header'
+import { BackLink, pageLayout } from '@/components/shared/page-header'
 import { ClientInformationCard } from '@/components/clients/client-information-card'
 import { ClientStatusBadge } from '@/components/shared/status-badge'
 import { ProjectList, type ProjectListItem, type WarrantyMilestone } from '@/components/projects/project-list'
@@ -197,7 +197,7 @@ export default async function ClientDetailPage({
       : statusByContact
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('detail')}>
       <BackLink href="/clients" label="Clients" />
 
       {(notice === 'created' || notice === 'project_later') && manager && (

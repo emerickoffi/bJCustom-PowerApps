@@ -4,7 +4,7 @@ import { FileSpreadsheet } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader, Surface } from '@/components/shared/page-header'
+import { PageHeader, Surface, pageLayout } from '@/components/shared/page-header'
 import { RequestForm } from '@/components/subcontract-quotes/request-form'
 import { emptyRequestDraft, loadRequestFormOptions } from '@/lib/subcontract-quotes-data'
 
@@ -23,7 +23,7 @@ export default async function NewQuoteRequestPage({ params }: { params: Promise<
   const options = await loadRequestFormOptions(supabase, session.organizationId, id)
 
   return (
-    <div className="flex w-full max-w-4xl flex-col gap-5">
+    <div className={pageLayout('form')}>
       <PageHeader icon={FileSpreadsheet} eyebrow={project.name} title="New quote request" description="Save as a draft while you prepare it. Nothing is shared until you send." />
       <Surface>
         <RequestForm

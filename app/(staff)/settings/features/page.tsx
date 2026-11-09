@@ -6,7 +6,7 @@ import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import { createClient } from '@/lib/supabase/server'
 import type { FeatureKey } from '@/lib/feature-registry'
 import { isMissingTableError } from '@/lib/subcontractors'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { FeatureToggles } from '@/components/settings/feature-toggles'
 import { SlidersHorizontal as SlidersHorizontalIcon } from 'lucide-react'
 
@@ -45,7 +45,7 @@ export default async function FeaturesPage() {
   })
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <div className={pageLayout('form')}>
       <PageHeader icon={SlidersHorizontalIcon}
         title="Feature management"
         description="Turn modules on or off for your company. Turning a feature off hides it everywhere and blocks access in the database, but never deletes its data. Turning it back on restores everything."

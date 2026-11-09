@@ -130,7 +130,7 @@ export default async function StaffLayout({ children, modal }: { children: React
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
           <header data-app-header className="sticky top-0 z-30 border-b border-[#D6DDE5] bg-white pt-[env(safe-area-inset-top)] shadow-[0_1px_2px_rgba(23,77,50,0.04)]">
-            <div className="flex h-14 items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:gap-3 sm:px-6 xl:px-10">
+            <div className="flex h-14 min-w-0 items-center gap-2 pl-[max(var(--page-gutter-x),env(safe-area-inset-left))] pr-[max(var(--page-gutter-x),env(safe-area-inset-right))] sm:h-16 sm:gap-3">
               <div className="contents tablet:hidden">
                 <MobileNav items={items} logo={logo} closedGroups={closedGroups} />
               </div>
@@ -175,7 +175,9 @@ export default async function StaffLayout({ children, modal }: { children: React
               </div>
             </div>
           </header>
-          <main className="mx-auto w-full min-w-0 max-w-[90rem] flex-1 px-4 has-[[data-page-width=wide]]:max-w-[120rem] pb-[calc(9rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8 lg:pt-10 xl:px-10 tablet:pb-[calc(11rem+env(safe-area-inset-bottom))] tablet:pt-6 has-[[data-project-frame]]:pt-4 sm:has-[[data-project-frame]]:pt-5 lg:has-[[data-project-frame]]:pt-5 tablet:has-[[data-project-frame]]:pt-4">
+          {/* The workspace always uses the full width beside the sidebar; pages narrow themselves via PageContainer.
+              Bottom padding keeps the floating Quick Actions / Assistant buttons clear of the last controls. */}
+          <main className="w-full min-w-0 flex-1 px-(--page-gutter-x) pt-(--page-gutter-top) pb-[calc(9rem+env(safe-area-inset-bottom))] tablet:pb-[calc(11rem+env(safe-area-inset-bottom))]">
             {children}
           </main>
         </div>

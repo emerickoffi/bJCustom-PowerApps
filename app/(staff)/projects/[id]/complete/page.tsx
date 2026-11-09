@@ -1,3 +1,4 @@
+import { pageLayout } from '@/components/shared/page-header'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
@@ -44,13 +45,13 @@ export default async function CompletionReviewPage({ params }: { params: Promise
     blockedReason = 'Resolve the outstanding requirements, or ask an administrator to approve completion with exceptions.'
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className={pageLayout('form')}>
       <Link href={`/projects/${id}`} className="flex items-center gap-1.5 self-start text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden="true" />
         Back to overview
       </Link>
       <header className="flex flex-col gap-2">
-        <h1 className="text-balance font-serif text-2xl font-semibold text-foreground">{`Complete ${project.name}`}</h1>
+        <h1 className="text-balance font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">{`Complete ${project.name}`}</h1>
         <p className="text-sm text-muted-foreground">
           Readiness is evaluated from current project records and checked again when you submit. Physical completion is separate from financial settlement.
         </p>

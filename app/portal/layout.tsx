@@ -21,7 +21,7 @@ export default async function PortalLayout({ children }: { children: React.React
     <BrandStyle brand={brand}>
       <div className="flex min-h-svh flex-col bg-background">
         <header className="sticky top-0 z-30 border-b border-border/70 bg-card/85 backdrop-blur-md">
-          <div className="mx-auto flex h-20 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+          <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-(--page-gutter-x) sm:h-16">
             <Link href="/portal" className="block w-36 sm:w-44" aria-label={`${brand.displayName} homeowner portal`}>
               <CompanyLogo brand={brand} priority />
             </Link>
@@ -54,7 +54,7 @@ export default async function PortalLayout({ children }: { children: React.React
             </nav>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 md:py-12">
+        <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-(--page-gutter-x) pt-(--page-gutter-top) pb-10">
           {portalEnabled ? (
             children
           ) : (
@@ -67,7 +67,7 @@ export default async function PortalLayout({ children }: { children: React.React
           )}
         </main>
         <footer className="border-t border-border/70 bg-card">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-1 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-1 px-(--page-gutter-x) py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span className="font-medium text-foreground">{brand.legalName || brand.displayName}</span>
             <span>{[brand.phone, brand.email].filter(Boolean).join(' · ')}</span>
           </div>

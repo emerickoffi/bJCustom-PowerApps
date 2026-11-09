@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
 import { requireAdmin } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
 import { PermissionsMatrix } from '@/components/settings/permissions-matrix'
 
@@ -14,7 +14,7 @@ export default async function RolesPermissionsPage() {
   const features = await getOrgFeatures(session.organizationId)
 
   return (
-    <div className="flex max-w-6xl flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader
         icon={ShieldCheck}
         title="Roles & Permissions"

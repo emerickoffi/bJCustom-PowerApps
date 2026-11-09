@@ -35,7 +35,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const inactive = person.status === 'inactive'
 
   return (
-    <PageContainer width="narrow">
+    <PageContainer width="detail">
       <PageHeader
         title={name}
         description={person.specialty ?? 'Business contact'}

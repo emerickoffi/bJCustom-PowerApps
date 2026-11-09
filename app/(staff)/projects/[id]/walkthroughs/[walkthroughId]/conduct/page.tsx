@@ -4,7 +4,7 @@ import { ClipboardCheck } from 'lucide-react'
 import { requireStaff } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { signMediaPaths } from '@/lib/media'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { ChecklistForm, type SavedResponse } from '@/components/walkthroughs/checklist-form'
 import type { MediaItem, MediaKind, ResponseValue } from '@/lib/walkthroughs'
 
@@ -57,7 +57,7 @@ export default async function ConductWalkthroughPage({ params }: { params: Promi
   const project = walkthrough.project as unknown as { name: string; project_number: string }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('detail')}>
       <PageHeader
         icon={ClipboardCheck}
         backHref={detailHref}

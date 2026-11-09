@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ShieldCheck } from 'lucide-react'
-import { PageHeader, EmptyState } from '@/components/shared/page-header'
+import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 import { z } from 'zod'
 import { getSession } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
@@ -65,7 +65,7 @@ export default async function HomeownerWarrantyPage({ params }: { params: Promis
   }))
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader
         icon={ShieldCheck}
         backHref="/portal"

@@ -5,7 +5,7 @@ import { AlertTriangle, ChevronRight, Coins, FileSpreadsheet } from 'lucide-reac
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader, Surface } from '@/components/shared/page-header'
+import { PageHeader, Surface, pageLayout } from '@/components/shared/page-header'
 import { SubcontractsNav } from '@/components/subcontract-quotes/subcontracts-nav'
 import { SubWorkProjectSwitcher } from '@/components/subcontract-quotes/sub-work-project-switcher'
 import { loadSubWorkProjectOptions } from '@/lib/subcontract-project-options'
@@ -59,7 +59,7 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
   const currency = (currencyRow as { currency?: string | null } | null)?.currency ?? null
 
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-5">
+    <div className={pageLayout('workspace')}>
       <PageHeader
         icon={FileSpreadsheet}
         title="Subcontract quotes"

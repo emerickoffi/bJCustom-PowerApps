@@ -70,7 +70,7 @@ export default async function SubCorrectionPage({ params }: { params: Promise<{ 
               {issue.project_name}
               {issue.category ? ` · ${issue.category}` : ''}
             </p>
-            <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">{issue.item_label || 'Punch list item'}</h1>
+            <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">{issue.item_label || 'Punch list item'}</h1>
           </div>
           <WorkStateBadge state={state} />
         </div>

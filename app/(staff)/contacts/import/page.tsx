@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'Import contacts' }
 export default async function ImportContactsPage() {
   await requireManager()
   return (
-    <PageContainer width="narrow">
+    <PageContainer width="form">
       <PageHeader
         icon={FileUp}
         title="Import contacts"

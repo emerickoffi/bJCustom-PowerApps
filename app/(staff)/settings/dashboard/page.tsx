@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { LayoutDashboard } from 'lucide-react'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { DashboardVisibilityForm } from '@/components/settings/dashboard-visibility-form'
 import { getDashboardVisibility } from '@/lib/dashboard-visibility-data'
 import { requireAdmin } from '@/lib/session'
@@ -12,7 +12,7 @@ export default async function DashboardSettingsPage() {
   const { settings, customized, error } = await getDashboardVisibility(session.organizationId)
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <div className={pageLayout('form')}>
       <PageHeader
         icon={LayoutDashboard}
         title="Dashboard"
