@@ -48,7 +48,7 @@ export async function ProjectFinanceStrip({
       : Promise.resolve({ data: [] as InvoiceRow[], error: null }),
   ])
 
-  const estimatesHref = `/estimates?project=${projectId}`
+  const estimatesHref = `/projects/${projectId}/estimates`
   const invoicesHref = financialsHref ? `${financialsHref}#invoices-heading` : '/invoices'
   const hasBudget = budgetCents !== null
   const figures: Figure[] = [

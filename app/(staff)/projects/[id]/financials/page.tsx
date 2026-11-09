@@ -60,7 +60,7 @@ export default async function ProjectFinancialsPage({ params }: { params: Promis
         ) : (
           <p className="text-sm text-muted-foreground">
             {BASELINE_REASON_LABELS[baseline.reason]}{' '}
-            <Link href={`/estimates?project=${encodeURIComponent(project.id)}`} className="font-medium text-primary underline-offset-4 hover:underline">
+            <Link href={`/projects/${encodeURIComponent(project.id)}/estimates`} className="font-medium text-primary underline-offset-4 hover:underline">
               Open estimates
             </Link>
           </p>

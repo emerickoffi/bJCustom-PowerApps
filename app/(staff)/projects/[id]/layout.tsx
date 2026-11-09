@@ -8,6 +8,7 @@ import { getProjectNavItems } from '@/lib/project-nav'
 import { ProjectNav } from '@/components/projects/project-nav'
 import { AssistantProjectScope } from '@/components/assistant/assistant-context'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
+import { formatAddress } from '@/lib/format'
 
 export default async function ProjectLayout({
   children,
@@ -23,7 +24,7 @@ export default async function ProjectLayout({
   const [{ data: project }, { data: canViewInternal }, features] = await Promise.all([
     supabase
       .from('projects')
-      .select('id, name, project_number, status, archived_at')
+      .select('id, name, project_number, status, archived_at, address_line1, address_line2, city, state, postal_code')
       .eq('id', id)
       .eq('organization_id', session.organizationId)
       .maybeSingle(),
@@ -64,7 +65,15 @@ export default async function ProjectLayout({
           },
         }}
       />
-      <ProjectNav projectId={project.id} projectName={project.name} projectNumber={project.project_number ?? null} items={items} />
+      <ProjectNav
+        userId={session.userId}
+        projectId={project.id}
+        projectName={project.name}
+        projectNumber={project.project_number ?? null}
+        status={project.status as ProjectStatus}
+        address={formatAddress(project)}
+        items={items}
+      />
       {children}
     </div>
   )

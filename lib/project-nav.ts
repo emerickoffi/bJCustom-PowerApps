@@ -77,9 +77,9 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
     features.estimates && {
       key: 'estimates',
       label: 'Estimates',
-      // Reuses the Estimates module's validated, organization-scoped project filter.
-      href: `/estimates?project=${encodeURIComponent(projectId)}`,
-      activePrefix: null,
+      // Stays inside the project shell; the org-wide /estimates?project= filter keeps working for existing links.
+      href: `${base}/estimates`,
+      activePrefix: `${base}/estimates`,
     },
     Boolean(features.change_orders && access.canViewFinancials && access.canViewInternal) && {
         key: 'change_orders',
