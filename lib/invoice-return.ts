@@ -24,6 +24,7 @@ export function invoiceReturnTarget(from: string | string[] | undefined): Invoic
     const kept = new URLSearchParams()
     const status = url.searchParams.get('status')
     if (status && INVOICE_LIST_STATUSES.has(status)) kept.set('status', status)
+    if (url.searchParams.get('overdue') === '1') kept.set('overdue', '1')
     const q = url.searchParams.get('q')?.trim().slice(0, 100)
     if (q) kept.set('q', q)
     const page = url.searchParams.get('page')

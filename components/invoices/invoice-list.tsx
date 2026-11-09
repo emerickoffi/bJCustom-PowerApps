@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, FileText, FolderOpen, MoreHorizontal, Printer, Receipt } from 'lucide-react'
+import { AlertTriangle, FileText, FolderOpen, Globe, MoreHorizontal, Printer, Receipt } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { InvoiceRow } from '@/lib/invoice-queries'
 import { DRAW_MILESTONE_LABELS, INVOICE_STATUS_LABELS, balanceCents, isOverdue } from '@/lib/invoices'
 import { formatCentsExact } from '@/lib/estimates'
@@ -144,7 +145,13 @@ function InvoiceSummary({ invoice: inv }: { invoice: InvoiceListRow }) {
 
 type OpenHandler = (e: React.MouseEvent, id: string) => void
 
-const PORTAL_HINT = 'Published to the homeowner portal. This does not confirm the homeowner has viewed it or received an email.'
+const PORTAL_HINT =
+  'Visible to the homeowner in their portal. This does not mean an email was delivered or that the homeowner has viewed it.'
+
+/** Only issued or partially paid invoices with money still owed get the emphasized balance. */
+function hasOutstanding(inv: InvoiceRow) {
+  return (inv.status === 'issued' || inv.status === 'partially_paid') && balanceCents(inv) > 0
+}
 
 function daysPastDue(inv: InvoiceRow) {
   if (!isOverdue(inv)) return 0
@@ -198,7 +205,7 @@ function InvoiceTable({ invoices, from, onOpen }: { invoices: InvoiceListRow[]; 
                   <p className="truncate text-xs text-muted-foreground" title={inv.title}>{inv.title}</p>
                 </td>
                 <td className="px-3 py-2.5">
-                  <p className="truncate" title={inv.project?.name}>{inv.project?.name ?? '—'}</p>
+                  <p className="truncate font-medium text-foreground" title={inv.project?.name}>{inv.project?.name ?? '—'}</p>
                   <p className="truncate text-xs text-muted-foreground">{inv.clientName}</p>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-muted-foreground">{formatDate(inv.invoice_date)}</td>
@@ -207,7 +214,12 @@ function InvoiceTable({ invoices, from, onOpen }: { invoices: InvoiceListRow[]; 
                   {late > 0 && <p className="text-xs font-medium text-destructive">{`${late} day${late === 1 ? '' : 's'} late`}</p>}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">{formatCentsExact(inv.total_cents)}</td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right font-medium tabular-nums">
+                <td
+                  className={cn(
+                    'whitespace-nowrap px-3 py-2.5 text-right tabular-nums',
+                    hasOutstanding(inv) ? 'font-semibold text-foreground' : 'text-muted-foreground',
+                  )}
+                >
                   {inv.status === 'draft' ? '—' : formatCentsExact(balanceCents(inv))}
                 </td>
                 <td className="px-3 py-2.5">
@@ -294,7 +306,11 @@ function InvoiceCard({ invoice: inv, from, onOpen }: { invoice: InvoiceListRow; 
           danger={late > 0}
         />
         <CardField label="Total" value={formatCentsExact(inv.total_cents)} />
-        <CardField label="Balance" value={inv.status === 'draft' ? '—' : formatCentsExact(balanceCents(inv))} strong />
+        <CardField
+          label="Balance"
+          value={inv.status === 'draft' ? '—' : formatCentsExact(balanceCents(inv))}
+          strong={hasOutstanding(inv)}
+        />
       </dl>
       <RowActions invoice={inv} from={from} onOpen={onOpen} />
     </div>
@@ -322,10 +338,21 @@ function StatusCell({ invoice: inv }: { invoice: InvoiceRow }) {
     <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-1.5 gap-y-0.5 lg:justify-start">
       <InvoiceStatusBadge status={inv.status} dueDate={inv.due_date} />
       {inv.portal_published && inv.status !== 'draft' && (
-        <span className="cursor-help text-xs text-muted-foreground underline decoration-dotted underline-offset-2" title={PORTAL_HINT}>
-          In portal
-          <span className="sr-only">{`. ${PORTAL_HINT}`}</span>
-        </span>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span
+                tabIndex={0}
+                className="inline-flex cursor-help items-center gap-1 rounded-sm text-xs text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              />
+            }
+          >
+            <Globe className="size-3.5" aria-hidden="true" />
+            Portal
+            <span className="sr-only">{`. ${PORTAL_HINT}`}</span>
+          </TooltipTrigger>
+          <TooltipContent>{PORTAL_HINT}</TooltipContent>
+        </Tooltip>
       )}
     </div>
   )

@@ -20,15 +20,14 @@ import { formatCentsExact } from '@/lib/estimates'
 import { cn } from '@/lib/utils'
 import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { DirectoryPagination } from '@/components/shared/directory-pagination'
-import { worksheetStripClass } from '@/components/shared/worksheet-tabs'
-import { pillClass } from '@/lib/interaction-styles'
+import { worksheetFillerClass, worksheetStripClass, worksheetTabClass } from '@/components/shared/worksheet-tabs'
 import { Button } from '@/components/ui/button'
 import { InvoiceList } from '@/components/invoices/invoice-list'
 import { InvoicesToolbar, RetryButton } from '@/components/invoices/invoices-toolbar'
 
 export const metadata: Metadata = { title: 'Invoices' }
 
-type SearchParams = Promise<{ status?: string; q?: string; page?: string }>
+type SearchParams = Promise<{ status?: string; overdue?: string; q?: string; page?: string }>
 
 export default async function InvoicesPage({ searchParams }: { searchParams: SearchParams }) {
   const state = parseInvoiceListState(await searchParams)
@@ -48,11 +47,15 @@ async function InvoicesContent({ state }: { state: InvoiceListState }) {
   const all = raw.map((inv) => ({ ...inv, clientName: invoiceClientName(inv) }))
 
   const searched = all.filter((inv) => matchesInvoiceSearch(inv, state.q))
-  const counts = invoiceFilterCounts(searched)
-  const matching = searched.filter((inv) => matchesInvoiceFilter(inv, state.status))
+  const counts = invoiceFilterCounts(searched, { status: state.status, overdue: state.overdue })
+  const matching = searched.filter((inv) => matchesInvoiceFilter(inv, state.status, state.overdue))
   const { rows, page, pageCount } = paginate(matching, state.page)
-  const listHref = invoiceListHref({ status: state.status, q: state.q, page })
-  const filtered = !!state.status || !!state.q
+  const listHref = invoiceListHref({ status: state.status, overdue: state.overdue, q: state.q, page })
+  const filtered = !!state.status || state.overdue || !!state.q
+  const summary =
+    rows.length > 0 && (filtered || pageCount > 1)
+      ? `Showing ${rows.length} of ${filtered ? `${matching.length} matching · ${all.length} total` : all.length}`
+      : undefined
 
   // Summary scope is the whole organization; it intentionally ignores the status tabs and search.
   const open = all.filter((i) => i.status === 'issued' || i.status === 'partially_paid')
@@ -64,7 +67,6 @@ async function InvoicesContent({ state }: { state: InvoiceListState }) {
   const filters: { value?: InvoiceListFilter; label: string; count: number }[] = [
     { value: undefined, label: 'All', count: counts.all },
     ...INVOICE_STATUSES.map((s) => ({ value: s, label: INVOICE_STATUS_LABELS[s], count: counts[s] })),
-    { value: 'overdue' as const, label: 'Overdue', count: counts.overdue },
   ]
   const activeLabel = filters.find((f) => f.value === state.status)?.label ?? 'All'
 
@@ -103,7 +105,11 @@ async function InvoicesContent({ state }: { state: InvoiceListState }) {
               label="Overdue"
               value={formatCentsExact(overdueCents)}
               note={overdue.length > 0 ? `${overdue.length} past due` : 'Nothing past due'}
-              href={overdue.length > 0 && state.status !== 'overdue' ? invoiceListHref({ status: 'overdue' }) : undefined}
+              href={
+                overdue.length > 0 && (!state.overdue || state.status || state.q)
+                  ? invoiceListHref({ overdue: true })
+                  : undefined
+              }
             />
             <Stat
               icon={CircleCheck}
@@ -116,35 +122,35 @@ async function InvoicesContent({ state }: { state: InvoiceListState }) {
         </section>
       )}
 
-      {!failed && all.length > 0 && <InvoicesToolbar status={state.status} query={state.q} />}
+      {!failed && all.length > 0 && (
+        <InvoicesToolbar
+          status={state.status}
+          overdue={state.overdue}
+          overdueCount={counts.overdue}
+          query={state.q}
+          summary={summary}
+        />
+      )}
 
-      <section aria-labelledby="invoice-results-heading" className="flex min-w-0 flex-col gap-2">
+      <section aria-labelledby="invoice-results-heading" className="flex min-w-0 flex-col">
         <h2 id="invoice-results-heading" className="sr-only">
-          {`${activeLabel} invoices`}
+          {`${activeLabel}${state.overdue ? ' overdue' : ''} invoices`}
         </h2>
         {!failed && all.length > 0 && (
           <nav aria-label="Filter invoices by status" className={worksheetStripClass}>
-            <ul className="flex w-max gap-1.5 py-0.5">
-              {filters.map((f) => {
+            <ul className="flex w-max min-w-full items-end">
+              {filters.map((f, index) => {
                 const active = state.status === f.value
                 return (
                   <li key={f.label} className="flex">
                     <Link
-                      href={invoiceListHref({ status: f.value, q: state.q })}
+                      href={invoiceListHref({ status: f.value, overdue: state.overdue, q: state.q })}
                       scroll={false}
                       aria-current={active ? 'true' : undefined}
-                      className={cn(
-                        'inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium pointer-coarse:min-h-11',
-                        pillClass(active),
-                      )}
+                      className={worksheetTabClass(active, index === 0)}
                     >
                       {f.label}
-                      <span
-                        className={cn(
-                          'rounded-full px-1.5 text-xs tabular-nums',
-                          active ? 'bg-card text-foreground' : 'bg-muted text-muted-foreground',
-                        )}
-                      >
+                      <span className={cn('text-xs tabular-nums', active ? 'text-foreground/70' : 'text-muted-foreground')}>
                         {f.count}
                         <span className="sr-only">{f.count === 1 ? ' invoice' : ' invoices'}</span>
                       </span>
@@ -152,18 +158,17 @@ async function InvoicesContent({ state }: { state: InvoiceListState }) {
                   </li>
                 )
               })}
+              <li aria-hidden="true" className={worksheetFillerClass} />
             </ul>
           </nav>
         )}
 
-        <div className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
-          {!failed && all.length > 0 && (
-            <p className="border-b border-border px-4 py-2 text-xs tabular-nums text-muted-foreground" aria-live="polite">
-              {filtered || pageCount > 1
-                ? `Showing ${rows.length} of ${matching.length}${filtered ? ` matching · ${all.length} total` : ''}`
-                : `${all.length} invoice${all.length === 1 ? '' : 's'}`}
-            </p>
+        <div
+          className={cn(
+            'flex min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card',
+            !failed && all.length > 0 && 'rounded-t-none border-t-0',
           )}
+        >
           {failed ? (
             <ListState
               icon={AlertTriangle}
@@ -191,8 +196,9 @@ async function InvoicesContent({ state }: { state: InvoiceListState }) {
               icon={SearchX}
               title="No invoices match these filters"
               body={[
-                state.q && `Nothing matches "${state.q}"`,
-                state.status && `${state.q ? 'in' : 'Nothing in'} ${activeLabel}`,
+                state.q ? `Nothing matches "${state.q}"` : 'Nothing',
+                state.status && `in ${activeLabel}`,
+                state.overdue && 'is overdue',
               ]
                 .filter(Boolean)
                 .join(' ')
@@ -212,7 +218,7 @@ async function InvoicesContent({ state }: { state: InvoiceListState }) {
             page={page}
             pageCount={pageCount}
             label="Invoice pages"
-            hrefFor={(p) => invoiceListHref({ status: state.status, q: state.q, page: p })}
+            hrefFor={(p) => invoiceListHref({ status: state.status, overdue: state.overdue, q: state.q, page: p })}
           />
         </div>
       </section>
