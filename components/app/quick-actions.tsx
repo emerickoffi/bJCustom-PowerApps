@@ -121,8 +121,8 @@ export function QuickCreateMenu({
       <DropdownMenuTrigger
         aria-label="Quick create"
         className={cn(
-          'inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-2.5 text-sm font-medium text-primary-foreground transition-colors sm:px-3',
-          'hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30',
+          'inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-action-border bg-action font-semibold text-action-foreground hover:bg-action-hover active:bg-action-pressed px-2.5 text-sm transition-colors aria-expanded:bg-action-pressed sm:px-3',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
         )}
       >
         <Plus className="size-4" aria-hidden="true" />

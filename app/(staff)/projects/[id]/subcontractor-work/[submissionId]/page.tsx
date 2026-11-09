@@ -137,7 +137,7 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
           </div>
           <Link
             href={`/subcontractors/${current.companyId}?rate=${current.assignmentId}&work=${current.id}#performance`}
-            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md bg-primary px-3.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-action-border bg-action font-semibold text-action-foreground hover:bg-action-hover active:bg-action-pressed px-3.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             <Star className="size-4" aria-hidden="true" />
             Rate Subcontractor

@@ -84,7 +84,7 @@ function NavLink({
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
         collapsed && 'justify-center px-0',
         active
-          ? 'bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-[inset_3px_0_0_0_var(--sidebar-active-border)]'
+          ? 'bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-[inset_4px_0_0_0_var(--sidebar-active-border)]'
           : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
         muted && !active && 'text-sidebar-muted',
       )}

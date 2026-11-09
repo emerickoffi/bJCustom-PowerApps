@@ -8,8 +8,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        // Bateevo orange primary action; disabled turns neutral so it never reads as an active orange button.
         default:
-          'bg-primary text-primary-foreground shadow-[0_1px_2px_rgb(23_33_43/0.14)] hover:bg-primary-hover active:bg-primary-pressed',
+          'border-action-border bg-action font-semibold text-action-foreground shadow-[0_1px_2px_rgb(23_33_43/0.14)] hover:bg-action-hover active:bg-action-pressed aria-expanded:bg-action-pressed focus-visible:border-action-border focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none data-disabled:border-border data-disabled:bg-muted data-disabled:text-muted-foreground data-disabled:opacity-100 data-disabled:shadow-none',
         outline:
           'border-input bg-card hover:border-primary/40 hover:bg-muted/60 hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
         secondary:

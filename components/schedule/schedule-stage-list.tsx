@@ -823,7 +823,7 @@ function PhaseNameEditor({
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex h-10 items-center rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-interactive-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60 sm:h-9"
+          className="inline-flex h-10 items-center rounded-md border border-action-border bg-action font-semibold text-action-foreground hover:bg-action-hover active:bg-action-pressed px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:border-border disabled:bg-muted disabled:text-muted-foreground sm:h-9"
         >
           {pending ? 'Saving…' : 'Save'}
         </button>

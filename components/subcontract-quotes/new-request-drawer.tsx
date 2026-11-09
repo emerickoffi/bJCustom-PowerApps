@@ -76,7 +76,7 @@ export function NewQuoteRequestDrawer({ projectId, projectName, currency, initia
           e.preventDefault()
           setOpen(true)
         }}
-        className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        className="inline-flex h-9 items-center gap-2 rounded-md border border-action-border bg-action font-semibold text-action-foreground hover:bg-action-hover active:bg-action-pressed px-4 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <Plus className="size-4" aria-hidden="true" />
         New quote request

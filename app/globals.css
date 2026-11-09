@@ -51,6 +51,17 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-pressed: var(--primary-pressed);
+  --color-action: var(--action);
+  --color-action-foreground: var(--action-foreground);
+  --color-action-hover: var(--action-hover);
+  --color-action-pressed: var(--action-pressed);
+  --color-action-border: var(--action-border);
+  --color-action-strong: var(--action-strong);
+  --color-action-soft: var(--action-soft);
+  --color-tab-accent: var(--tab-accent);
+  --color-selected: var(--selected);
+  --color-selected-border: var(--selected-border);
+  --color-focus: var(--focus);
   --color-attention: var(--attention);
   --color-attention-soft: var(--attention-soft);
   --color-attention-foreground: var(--attention-foreground);
@@ -115,6 +126,23 @@
   --primary-hover: #006b7e;
   --primary-pressed: #005867;
   --brand-deep: #005867;
+  /*
+   * Bateevo orange (#ffa500) marks the one primary action per context, active tabs, sidebar selection,
+   * selected rows, and keyboard focus. Teal stays for navigation, links, and supporting actions.
+   * #17212b on #ffa500 is 9.3:1, on hover #f29400 8.2:1, on pressed #e08600 7.1:1.
+   * #c27a00 borders are 3.4:1 on white; #a35c00 focus/text is 5.1:1 on white and 4.7:1 on the gray page.
+   */
+  --action: #ffa500;
+  --action-foreground: #17212b;
+  --action-hover: #f29400;
+  --action-pressed: #e08600;
+  --action-border: #c27a00;
+  --action-strong: #a35c00;
+  --action-soft: #fff4de;
+  --tab-accent: #ffa500;
+  --selected: #fff7e8;
+  --selected-border: #c27a00;
+  --focus: #a35c00;
   /* Legacy names kept so existing classes resolve; both are now the soft-aqua tile tone. */
   --soft-green: #e5f5f7;
   --sage: #e5f5f7;
@@ -158,7 +186,7 @@
   --info: #2171b5;
   --border: #d6dde5;
   --input: #c5ced9;
-  --ring: #007f95;
+  --ring: var(--focus);
   --chart-1: #007f95;
   --chart-2: #2171b5;
   --chart-3: #a8dadf;
@@ -217,7 +245,7 @@
   --sidebar-accent: #006777;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgb(255 255 255 / 0.18);
-  --sidebar-active-border: #f58a3c;
+  --sidebar-active-border: #ffa500;
   --sidebar-ring: #ffffff;
 }
 

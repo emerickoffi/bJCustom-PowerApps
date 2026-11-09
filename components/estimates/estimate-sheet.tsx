@@ -850,7 +850,7 @@ export function EstimateSheet({
                             value=""
                             disabled={locked}
                             onChange={(e) => e.target.value && addRow(e.target.value as EstimateCategory)}
-                            className="h-10 w-full border-primary bg-primary text-primary-foreground sm:w-64"
+                            className="h-10 w-full border-action-border bg-action font-semibold text-action-foreground sm:w-64"
                           >
                             <option value="">Choose a category to start</option>
                             {unusedCategories.map((c) => (
