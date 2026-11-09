@@ -1,15 +1,14 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { AlertTriangle, ChevronRight, Coins, FileSpreadsheet } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Plus } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader, Surface, pageLayout } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { SubcontractsNav } from '@/components/subcontract-quotes/subcontracts-nav'
-import { SubWorkProjectSwitcher } from '@/components/subcontract-quotes/sub-work-project-switcher'
-import { loadSubWorkProjectOptions } from '@/lib/subcontract-project-options'
 import { NewQuoteRequestDrawer } from '@/components/subcontract-quotes/new-request-drawer'
+import { CurrencyNotice } from '@/components/subcontract-quotes/currency-notice'
 import { emptyRequestDraft, loadRequestFormOptions } from '@/lib/subcontract-quotes-data'
 import { RequestStatusBadge } from '@/components/subcontract-quotes/status-badges'
 import { QUOTES_SETUP_MESSAGE, formatDeadline, isQuoteSetupError, type RequestStatus } from '@/lib/subcontract-quotes'
@@ -40,7 +39,7 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
   ])
   if (!project || !canViewInternal) notFound()
 
-  const [{ data, error }, { data: currencyRow }, options, projectOptions] = await Promise.all([
+  const [{ data, error }, { data: currencyRow }, options] = await Promise.all([
     supabase
       .from('subcontract_quote_requests')
       .select(
@@ -50,64 +49,54 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
       .eq('organization_id', session.organizationId)
       .order('updated_at', { ascending: false })
       .limit(200),
-    supabase.from('projects').select('currency').eq('id', id).maybeSingle(),
+    supabase.from('projects').select('currency').eq('id', id).eq('organization_id', session.organizationId).maybeSingle(),
     loadRequestFormOptions(supabase, session.organizationId, id),
-    loadSubWorkProjectOptions(supabase, session.organizationId, { id: project.id, name: project.name }),
   ])
   const setupMissing = isQuoteSetupError(error)
   const rows = (data ?? []) as unknown as Row[]
   const currency = (currencyRow as { currency?: string | null } | null)?.currency ?? null
+  // Reaching this page already requires a manager with internal access and the subcontractors feature — the same
+  // conditions set_project_currency enforces server-side through can_manage_quotes.
+  const canConfirmCurrency = Boolean(canViewInternal)
 
   return (
-    <div className={pageLayout('workspace')}>
+    <div className={pageLayout('workspace', 'gap-4 md:gap-4')}>
       <PageHeader
-        icon={FileSpreadsheet}
+        tone="section"
         title="Subcontract quotes"
-        description={`Request, compare, and track subcontractor pricing for ${project.name}.`}
+        count={setupMissing || error ? undefined : { value: rows.length, noun: 'request' }}
         actions={
-          <>
-            <SubWorkProjectSwitcher projects={projectOptions} currentId={project.id} tab="quotes" />
-            {setupMissing ? null : (
-              <NewQuoteRequestDrawer
-                key={id}
-                projectId={id}
-                projectName={project.name}
-                currency={currency}
-                initial={emptyRequestDraft()}
-                companies={options.companies}
-                documents={options.documents}
-                activities={options.activities}
-              />
-            )}
-          </>
+          setupMissing ? null : (
+            <NewQuoteRequestDrawer
+              key={id}
+              projectId={id}
+              projectName={project.name}
+              currency={currency}
+              initial={emptyRequestDraft()}
+              companies={options.companies}
+              documents={options.documents}
+              activities={options.activities}
+            />
+          )
         }
       />
       <SubcontractsNav projectId={id} active="quotes" />
 
       {setupMissing ? (
-        <p className="flex items-start gap-2 rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+        <p className="flex items-start gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
           {QUOTES_SETUP_MESSAGE}
         </p>
       ) : error ? (
-        <p role="alert" className="text-sm text-destructive">Quote requests could not be loaded. Refresh to try again.</p>
+        <p role="alert" className="text-sm text-destructive">
+          Quote requests could not be loaded. Refresh to try again.
+        </p>
       ) : (
         <>
-          {!currency ? (
-            <p className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-muted-foreground">
-              <Coins className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
-              <span>
-                <span className="font-medium text-foreground">Project currency not confirmed.</span> Requests can be saved as drafts, but
-                can&apos;t be sent until you confirm it in New quote request.
-              </span>
-            </p>
-          ) : null}
-          <Surface aria-labelledby="quote-requests-heading">
-            <h2 id="quote-requests-heading" className="font-serif text-lg font-semibold text-foreground">
-              Requests <span className="font-sans text-sm font-normal text-muted-foreground">({rows.length})</span>
-            </h2>
+          {!currency ? <CurrencyNotice projectId={id} canConfirm={canConfirmCurrency} /> : null}
+          <section aria-label="Quote requests">
             {rows.length ? (
-              <ul className="flex flex-col divide-y divide-border">
+              <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
                 {rows.map((r) => {
                   const responded = new Set(r.revisions.map((v) => v.invitation_id)).size
                   const declined = r.invitations.filter((i) => i.status === 'declined').length
@@ -115,7 +104,7 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
                     <li key={r.id}>
                       <Link
                         href={`/projects/${id}/subcontractor-work/quotes/${r.id}`}
-                        className="flex items-center gap-4 rounded-md px-2 py-3 transition-colors hover:bg-muted/60"
+                        className="flex items-center gap-4 px-3 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring sm:px-4"
                       >
                         <span className="flex min-w-0 flex-1 flex-col gap-1">
                           <span className="flex flex-wrap items-center gap-2">
@@ -131,7 +120,9 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
                         </span>
                         <span className="hidden text-right text-sm tabular-nums sm:flex sm:flex-col">
                           <span className="text-foreground">
-                            {responded}/{r.invitations.length} quoted
+                            {r.invitations.length
+                              ? `${responded} of ${r.invitations.length} ${r.invitations.length === 1 ? 'invitee' : 'invitees'} quoted`
+                              : 'No invitees yet'}
                           </span>
                           {declined ? <span className="text-xs text-muted-foreground">{declined} declined</span> : null}
                         </span>
@@ -142,9 +133,21 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
                 })}
               </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">No quote requests yet. Create one to invite qualified subcontractors to price a scope of work.</p>
+              <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-sm font-medium text-foreground">No quote requests yet</p>
+                  <p className="text-sm text-muted-foreground">Invite qualified subcontractors to price a scope of work.</p>
+                </div>
+                <Link
+                  href={`/projects/${id}/subcontractor-work/quotes/new`}
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground hover:bg-muted sm:min-h-9"
+                >
+                  <Plus className="size-4" aria-hidden="true" />
+                  Create quote request
+                </Link>
+              </div>
             )}
-          </Surface>
+          </section>
         </>
       )}
     </div>
