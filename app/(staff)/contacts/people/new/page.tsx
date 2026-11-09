@@ -18,7 +18,7 @@ export default async function NewPersonPage() {
   ])
   return (
     <PageContainer width="form">
-      <PageHeader icon={UserPlus} title="Add contact" description="Add a person to your business directory." backHref="/contacts?view=people" backLabel="Contacts" />
+      <PageHeader icon={UserPlus} title="Add contact" backHref="/contacts?view=people" backLabel="Contacts" />
       <PersonForm action={createPersonAction} cancelHref="/contacts?view=people" companies={companies} projects={projects} />
     </PageContainer>
   )

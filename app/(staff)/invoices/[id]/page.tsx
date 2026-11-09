@@ -41,7 +41,7 @@ export default async function InvoicePage({
         icon={Receipt}
         eyebrow={invoice.project?.name}
         title={`Invoice ${invoice.invoice_number}`}
-        description={
+        meta={
           invoice.status === 'draft'
             ? 'Draft — not visible to the homeowner.'
             : invoice.portal_published

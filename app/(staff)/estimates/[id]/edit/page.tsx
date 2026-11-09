@@ -25,7 +25,7 @@ export default async function EditEstimatePage({ params }: { params: Promise<{ i
         backHref={`/estimates/${id}`}
         backLabel="Estimate"
         title={`Edit ${estimate.estimate_number} · Rev ${estimate.revision}`}
-        description={`${estimate.project?.name ?? 'Project'}${clientDisplayName(estimate.client) ? ` · ${clientDisplayName(estimate.client)}` : ''}`}
+        meta={`${estimate.project?.name ?? 'Project'}${clientDisplayName(estimate.client) ? ` · ${clientDisplayName(estimate.client)}` : ''}`}
       />
       <EstimateForm
         action={updateEstimateAction.bind(null, id)}

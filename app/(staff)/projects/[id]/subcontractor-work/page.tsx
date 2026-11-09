@@ -59,10 +59,8 @@ export default async function SubcontractorWorkQueuePage({ params }: { params: P
   return (
     <div className={pageLayout('workspace', 'gap-4 md:gap-4')}>
       <PageHeader
-        tone="section"
         icon={ClipboardCheck}
         title="Subcontractor work"
-        description="Verify completion and correction submissions before work counts as accepted."
       />
       <SubcontractsNav projectId={id} active="work" />
 

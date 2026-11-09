@@ -44,9 +44,7 @@ export default async function ChangeOrdersPage({ params }: { params: Promise<{ i
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Change orders"
-        description={`Scope, cost and price changes for ${project.name}. Only approved change orders affect the budget.`}
         icon={FileDiff}
-        tone="section"
         actions={<NewChangeOrderDrawer projectId={id} projectName={project.name} />}
       />
 

@@ -243,7 +243,6 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
           </span>
         }
         title={`${issue.category} · ${issue.item_label}`}
-        description={project.name}
       />
 
       <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border lg:grid-cols-4">

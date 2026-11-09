@@ -88,7 +88,7 @@ export default async function CompanyDocumentsPage({ searchParams }: { searchPar
         icon={FolderOpen}
         title={archived ? 'Archived documents' : 'Documents'}
         count={list.ok ? { value: list.total, noun: 'document' } : undefined}
-        description={projectFilterName ? `Filtered to ${projectFilterName}` : undefined}
+        meta={projectFilterName ? `Filtered to ${projectFilterName}` : undefined}
         actions={uploadAction}
       />
 

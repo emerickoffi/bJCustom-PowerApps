@@ -62,7 +62,6 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
   return (
     <div className={pageLayout('workspace', 'gap-4 md:gap-4')}>
       <PageHeader
-        tone="section"
         title="Subcontract quotes"
         count={setupMissing || error ? undefined : { value: rows.length, noun: 'request' }}
         actions={

@@ -6,7 +6,7 @@ import { requireStaff } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/format'
-import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
+import { HeaderHelp, PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 import { RunWarrantyButton } from '@/components/warranty/run-warranty-button'
 import { WARRANTY_STAGE_LABELS, type WarrantyStage } from '@/components/warranty/stage'
 import { NextMilestone } from '@/components/warranty/next-milestone'
@@ -147,7 +147,12 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
     <div className={pageLayout('workspace')}>
       <PageHeader icon={ShieldCheckIcon}
         title="Warranty"
-        description="Warranties start automatically on the official completion date. Coverage periods run concurrently: Year 1 workmanship, Year 2 systems, Year 10 structural."
+        titleAddon={
+          <HeaderHelp label="How warranty coverage works">
+            Warranties start automatically on the official completion date. Coverage periods run concurrently: Year 1
+            workmanship, Year 2 systems, Year 10 structural.
+          </HeaderHelp>
+        }
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <WarrantyExportMenu />

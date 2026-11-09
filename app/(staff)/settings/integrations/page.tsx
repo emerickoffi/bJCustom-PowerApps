@@ -20,7 +20,6 @@ export default async function IntegrationsPage() {
         backHref="/settings"
         backLabel="Company settings"
         title="Integrations"
-        description="Connect outside services. Nothing is sent to another service until it is connected and authorized."
       />
 
       <section aria-labelledby="qbo-heading" className="surface flex flex-col gap-5 p-5 md:p-6">

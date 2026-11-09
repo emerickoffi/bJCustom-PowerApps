@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Archive, FileCheck2, FolderOpen, SearchX } from 'lucide-react'
+import { PageHeader } from '@/components/shared/page-header'
 import { canManage, requireStaff } from '@/lib/session'
 import { getOrgFeatures, requireFeature } from '@/lib/features'
 import { getSignatureSummaries } from '@/lib/esign/queries'
@@ -135,28 +136,20 @@ export default async function ProjectDocumentsPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 className="font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-2xl">
-            {archived ? 'Archived documents' : 'Documents'}
-          </h1>
-          {!archived && totalCount !== null && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="tabular-nums">{`${totalCount} document${totalCount === 1 ? '' : 's'}`}</span>
-              {showSigned && (
-                <>
-                  <span aria-hidden="true">{'·'}</span>
-                  <span className="inline-flex items-center gap-1 tabular-nums">
-                    <FileCheck2 className="size-3.5" aria-hidden="true" />
-                    {`${signedCount} signed`}
-                  </span>
-                </>
-              )}
-            </p>
-          )}
-        </div>
-        {canUpload && <DocumentUploadButton projectId={id} canShare={manager} openFromUrl />}
-      </div>
+      <PageHeader
+        icon={archived ? Archive : FolderOpen}
+        title={archived ? 'Archived documents' : 'Documents'}
+        count={!archived && totalCount !== null ? { value: totalCount, noun: 'document' } : undefined}
+        titleAddon={
+          !archived && totalCount !== null && showSigned ? (
+            <span className="inline-flex items-center gap-1 text-sm tabular-nums text-muted-foreground">
+              <FileCheck2 className="size-3.5" aria-hidden="true" />
+              {`${signedCount} signed`}
+            </span>
+          ) : undefined
+        }
+        actions={canUpload ? <DocumentUploadButton projectId={id} canShare={manager} openFromUrl /> : undefined}
+      />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5 tablet:flex-col">
         {counts && !archived && (

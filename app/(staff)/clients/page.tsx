@@ -178,7 +178,6 @@ export default async function ClientsPage({
     <div className={pageLayout('workspace')}>
       <PageHeader icon={UsersIcon}
         title="Clients"
-        description="Homeowners and prospects, with their contacts, projects, and communication history."
         actions={
           manager && (
             <Button size="lg" render={<Link href="/clients/new" />} nativeButton={false}>

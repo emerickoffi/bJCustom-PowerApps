@@ -30,7 +30,6 @@ export default async function EditSubcontractorPage({ params }: { params: Promis
         backHref={`/subcontractors/${company.id}`}
         backLabel={company.company_name}
         title={`Edit ${company.company_name}`}
-        description="Update company details, contact persons, and project assignments. Previous assignments are preserved for reference."
       />
       <SubcontractorForm
         action={updateSubcontractorAction.bind(null, company.id)}

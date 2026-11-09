@@ -38,7 +38,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
     <PageContainer width="detail">
       <PageHeader
         title={name}
-        description={person.specialty ?? 'Business contact'}
+        meta={person.specialty ?? 'Business contact'}
         avatar={
           <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-sage font-semibold text-primary ring-1 ring-inset ring-primary/10">
             {initials(person.first_name, person.last_name)}

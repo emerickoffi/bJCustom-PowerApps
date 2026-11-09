@@ -83,7 +83,6 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
         backLabel="Subcontractor work"
         title={title}
         titleAddon={<WorkStateBadge state={workStateFor(current.status)} audience="builder" />}
-        description={`${company?.company_name ?? 'Subcontractor'} · ${current.kind === 'work' ? 'Work completion' : 'Correction'}${current.cycle > 1 ? ` · Resubmission ${current.cycle}` : ''}`}
       />
 
       <Surface aria-labelledby="scope-heading" className="gap-3">

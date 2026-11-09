@@ -66,7 +66,7 @@ export default async function HomeownerSchedulePage({ params }: { params: Promis
         backHref="/portal"
         backLabel="Your home"
         title="Construction timeline"
-        description={project.name}
+        meta={project.name}
       />
 
       {items.length === 0 ? (

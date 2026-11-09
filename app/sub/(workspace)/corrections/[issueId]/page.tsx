@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { Wrench } from 'lucide-react'
+import { PageHeader } from '@/components/shared/page-header'
 import { requireSubcontractor } from '@/lib/subcontractor-session'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -59,21 +59,15 @@ export default async function SubCorrectionPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <Link href="/sub" className="flex min-h-11 items-center gap-1 self-start text-sm font-medium text-muted-foreground hover:text-primary">
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        All work
-      </Link>
+      <PageHeader
+        icon={Wrench}
+        title={issue.item_label || 'Punch list item'}
+        eyebrow={`${issue.project_name}${issue.category ? ` · ${issue.category}` : ''}`}
+        titleAddon={<WorkStateBadge state={state} />}
+        backHref="/sub"
+        backLabel="All work"
+      />
       <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {issue.project_name}
-              {issue.category ? ` · ${issue.category}` : ''}
-            </p>
-            <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">{issue.item_label || 'Punch list item'}</h1>
-          </div>
-          <WorkStateBadge state={state} />
-        </div>
         {issue.due_date && <p className="text-sm text-muted-foreground">Due {formatDate(issue.due_date)}</p>}
         <div className="flex flex-col gap-1">
           <h2 className="text-sm font-medium text-foreground">Corrective instructions</h2>

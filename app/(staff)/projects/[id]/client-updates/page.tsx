@@ -31,9 +31,7 @@ export default async function ClientUpdatesPage({ params, searchParams }: { para
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        tone="section"
         title="Client updates"
-        description={`Progress reports for the homeowners of ${project.name}. Nothing is shared until a manager publishes it, and publishing never sends email or texts.`}
         icon={Megaphone}
         actions={newButton}
       />

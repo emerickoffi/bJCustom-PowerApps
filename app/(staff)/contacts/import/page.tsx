@@ -13,7 +13,6 @@ export default async function ImportContactsPage() {
       <PageHeader
         icon={FileUp}
         title="Import contacts"
-        description="Upload a CSV, map its columns, review every row, then import. Nothing is saved until you confirm."
         backHref="/contacts?view=people"
         backLabel="Contacts"
       />

@@ -29,7 +29,7 @@ export default async function ClientUpdateEditorPage({
     <div className="flex flex-col gap-6">
       <PageHeader
         title={update.title}
-        description="Review every section before publishing. Homeowners only see published revisions; your drafts stay private."
+        meta="Review every section before publishing. Homeowners only see published revisions; your drafts stay private."
         icon={Megaphone}
         backHref={clientUpdatesPath(project.id)}
         backLabel="Client updates"

@@ -96,7 +96,6 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
           </span>
         }
         title={walkthrough.title}
-        description={WALKTHROUGH_TYPE_LABELS[walkthrough.walkthrough_type] ?? walkthrough.walkthrough_type}
         actions={
           canConduct ? (
             <ReportIssueAction

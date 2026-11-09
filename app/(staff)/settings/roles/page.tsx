@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
 import { requireAdmin } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
-import { PageHeader, pageLayout } from '@/components/shared/page-header'
+import { HeaderHelp, PageHeader, pageLayout } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
 import { PermissionsMatrix } from '@/components/settings/permissions-matrix'
 
@@ -18,7 +18,12 @@ export default async function RolesPermissionsPage() {
       <PageHeader
         icon={ShieldCheck}
         title="Roles & Permissions"
-        description="A read-only view of what each role can do today, based on the checks the server runs and the live database security policies. A module also has to be turned on in Feature management before anyone can use it."
+        titleAddon={
+          <HeaderHelp label="About roles and permissions">
+            A read-only view of what each role can do today, based on the checks the server runs and the live database
+            security policies. A module also has to be turned on in Feature management before anyone can use it.
+          </HeaderHelp>
+        }
         actions={
           <Button
             variant="outline"

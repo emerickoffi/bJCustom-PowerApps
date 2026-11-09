@@ -23,7 +23,6 @@ function UsersAccessHeader({ actions }: { actions?: React.ReactNode }) {
     <PageHeader
       icon={UsersRoundIcon}
       title="Users & Access"
-      description="Manage builder staff accounts and see which homeowners have portal access."
       actions={actions}
     />
   )

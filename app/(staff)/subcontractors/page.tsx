@@ -141,7 +141,6 @@ export default async function SubcontractorsPage({
             </span>
           ) : undefined
         }
-        description="Trade partners, their qualification, and where they are working. Visible to administrators and project managers."
         actions={!error && addButton}
       />
 

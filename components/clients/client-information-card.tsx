@@ -101,7 +101,7 @@ export function ClientInformationCard({ info, identity }: { info: ClientInformat
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">Client profile</p>
             <h1
               id="client-profile-heading"
-              className="text-balance break-words font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-3xl"
+              className="text-balance break-words font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]"
             >
               {identity.name}
             </h1>

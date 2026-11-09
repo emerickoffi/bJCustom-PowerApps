@@ -27,7 +27,6 @@ export default async function NewWalkthroughPage({ params }: { params: Promise<{
         backLabel={project.name}
         eyebrow={<span className="font-mono normal-case tracking-normal">{project.project_number}</span>}
         title="New homeowner walkthrough"
-        description="The homeowners linked to this project will complete the checklist from their portal."
       />
       <WalkthroughBuilder projectId={project.id} />
     </div>

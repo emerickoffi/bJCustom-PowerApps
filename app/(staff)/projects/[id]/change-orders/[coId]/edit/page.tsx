@@ -26,9 +26,8 @@ export default async function EditChangeOrderPage({ params }: { params: Promise<
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        tone="plain"
         title={`Edit ${co.co_number}`}
-        description={co.title}
+        meta={co.title}
         titleAddon={<ChangeOrderStatusBadge status={co.status} />}
         icon={FileDiff}
         backHref={detail}

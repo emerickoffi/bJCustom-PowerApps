@@ -209,7 +209,7 @@ export function EstimateWorkspaceHeader({
         </div>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 flex-col gap-0.5 lg:flex-1">
-            <h1 title={title} className="truncate font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">{title}</h1>
+            <h1 title={title} className="truncate font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">{title}</h1>
             {subtitle && <div className="hidden truncate text-sm text-muted-foreground sm:block">{subtitle}</div>}
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:flex-nowrap">

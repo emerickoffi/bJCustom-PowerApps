@@ -64,7 +64,7 @@ export default async function ConductWalkthroughPage({ params }: { params: Promi
         backLabel="Walkthrough details"
         eyebrow={<span className="font-mono normal-case tracking-normal">{project.project_number}</span>}
         title={walkthrough.title}
-        description={
+        meta={
           <span className="flex flex-col gap-1">
             <span>{`Builder-led inspection · ${project.name}`}</span>
             <span>Findings stay a draft until you submit. Submitting creates punch list items, labelled as builder observations.</span>

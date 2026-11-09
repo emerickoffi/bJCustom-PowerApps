@@ -13,7 +13,7 @@ export default async function ProfilePage() {
   const { data } = await supabase.from('profiles').select('full_name, phone').eq('id', session.userId).maybeSingle()
   return (
     <div className={pageLayout('form')}>
-      <PageHeader icon={UserCogIcon} title="Your profile" description="How your name appears to teammates and homeowners." />
+      <PageHeader icon={UserCogIcon} title="Your profile" />
       <ProfileForm fullName={data?.full_name ?? ''} phone={data?.phone ?? ''} email={session.email} />
     </div>
   )

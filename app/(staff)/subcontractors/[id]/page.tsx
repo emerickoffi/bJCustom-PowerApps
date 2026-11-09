@@ -96,7 +96,7 @@ export default async function SubcontractorDetailPage({
         backHref="/subcontractors"
         backLabel="Subcontractors"
         title={company.company_name}
-        description={
+        meta={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
             {company.trade && <span className="font-medium text-foreground/80">{company.trade}</span>}
             {company.trade && (

@@ -85,7 +85,6 @@ export default async function DailyLogsDirectoryPage({
     <div className={pageLayout('workspace')}>
       <PageHeader
         title="Daily logs"
-        description="Site activity across every project you have access to. Open a log to view or edit it inside its project."
         icon={ClipboardList}
         actions={
           canCreate && !setupRequired && (
