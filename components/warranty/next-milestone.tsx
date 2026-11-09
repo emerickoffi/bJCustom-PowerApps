@@ -1,5 +1,5 @@
-import { CalendarDays, CheckCircle2, Clock } from 'lucide-react'
-import { APP_TIME_ZONE } from '@/lib/format'
+import { CheckCircle2 } from 'lucide-react'
+import { APP_TIME_ZONE, formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 export type NextMilestoneData = {
@@ -23,19 +23,16 @@ export function calendarDaysUntil(isoDate: string): number {
 }
 
 function formatLongDate(isoDate: string): string {
-  return new Date(utcDay(isoDate)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+  return new Date(utcDay(isoDate)).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 }
 
-function countdown(days: number): { label: string; tone: string } {
-  if (days < 0) {
-    const n = Math.abs(days)
-    return { label: `${n} ${n === 1 ? 'day' : 'days'} overdue`, tone: 'bg-[#FBEAE9] text-[#BD302B]' }
-  }
-  if (days === 0) return { label: 'Due today', tone: 'bg-[#FBEAE9] text-[#BD302B]' }
-  const label = `${days} ${days === 1 ? 'day' : 'days'} remaining`
-  if (days <= 7) return { label, tone: 'bg-[#FBE7C6] text-[#7A440A]' }
-  if (days <= 30) return { label, tone: 'bg-[#FDF3E1] text-[#96570E]' }
-  return { label, tone: 'bg-interactive-soft text-primary' }
+/** Coverage periods are dates, not tasks: describe when they end rather than calling them due or overdue. */
+function remaining(days: number): { label: string; tone: string } {
+  const plural = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`
+  if (days < 0) return { label: `Ended ${plural(Math.abs(days))} ago`, tone: 'text-muted-foreground' }
+  if (days === 0) return { label: 'Ends today', tone: 'text-[#96570E]' }
+  if (days <= 30) return { label: `${plural(days)} left`, tone: 'text-[#96570E]' }
+  return { label: `${plural(days)} left`, tone: 'text-muted-foreground' }
 }
 
 export function NextMilestone({ milestone }: { milestone: NextMilestoneData | null }) {
@@ -48,22 +45,23 @@ export function NextMilestone({ milestone }: { milestone: NextMilestoneData | nu
     )
   }
 
-  const reached = Boolean(milestone.reached_at)
-  const status = reached ? { label: 'Reached', tone: 'bg-interactive-soft text-primary' } : countdown(calendarDaysUntil(milestone.due_on))
-  const StatusIcon = reached ? CheckCircle2 : Clock
+  const status = milestone.reached_at
+    ? { label: 'Period ended', tone: 'text-muted-foreground' }
+    : remaining(calendarDaysUntil(milestone.due_on))
 
   return (
-    <span className="flex min-w-0 flex-col items-start gap-1">
-      <span className="text-pretty font-medium text-foreground">{milestone.coverage_name}</span>
-      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <CalendarDays className="size-3.5 shrink-0" aria-hidden="true" />
-        <time dateTime={milestone.due_on} className="tabular-nums">
-          {formatLongDate(milestone.due_on)}
+    <span className="flex min-w-0 flex-col">
+      <span className="truncate font-medium text-foreground">{milestone.coverage_name}</span>
+      <span className="flex flex-wrap items-center gap-x-1.5 text-xs">
+        <time dateTime={milestone.due_on} title={formatLongDate(milestone.due_on)} className="tabular-nums text-muted-foreground">
+          {formatDate(milestone.due_on)}
         </time>
-      </span>
-      <span className={cn('inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-xs font-medium tabular-nums', status.tone)}>
-        <StatusIcon className="size-3 shrink-0" aria-hidden="true" />
-        {status.label}
+        <span aria-hidden="true" className="text-muted-foreground">
+          ·
+        </span>
+        <span className={cn('tabular-nums', status.tone, status.tone !== 'text-muted-foreground' && 'font-medium')}>
+          {status.label}
+        </span>
       </span>
     </span>
   )
