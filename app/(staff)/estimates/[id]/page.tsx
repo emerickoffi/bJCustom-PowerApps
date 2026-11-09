@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { GitCompare } from 'lucide-react'
+import { ChevronDown, GitCompare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { clientDisplayName, getEstimate, getEstimateFamily, getEstimateLineItems } from '@/lib/estimate-queries'
@@ -18,7 +18,7 @@ import { estimatesListHref, isWorkspaceTab, type WorkspaceTab } from '@/lib/esti
 import { formatDate, formatDateTime } from '@/lib/format'
 import { DetailList } from '@/components/shared/page-header'
 import { EstimateStatusBadge } from '@/components/estimates/estimate-status-badge'
-import { EstimateWorkflow } from '@/components/estimates/estimate-workflow'
+import { EstimateMoreMenu, EstimateReadiness } from '@/components/estimates/estimate-workflow'
 import { EstimateSheet } from '@/components/estimates/estimate-sheet'
 import { EstimateStatusStrip } from '@/components/estimates/estimate-status-strip'
 import { QuickBooksPanel } from '@/components/estimates/quickbooks-panel'
@@ -80,22 +80,6 @@ export default async function EstimateDetailPage({
   const list = estimatesListHref(query.from, ESTIMATE_STATUSES)
   const initialTab: WorkspaceTab = isWorkspaceTab(query.tab) ? query.tab : 'items'
 
-  const nextStep = !isLatest
-    ? 'This is an older revision. Open the latest revision to continue.'
-    : estimate.status === 'draft'
-      ? items.length === 0
-        ? 'Add cost items, then save the draft.'
-        : 'Check pricing and notes, then send for internal review or finalize for the client.'
-      : estimate.status === 'internal_review'
-        ? 'Finish the internal review, then finalize for the client.'
-        : estimate.status === 'submitted'
-          ? signing.summary?.status === 'completed'
-            ? 'The client signed. Record the approval to finalize.'
-            : 'Collect the client signature or record their decision.'
-          : estimate.status === 'approved'
-            ? 'Approved and locked. Create a revision if the scope changes.'
-            : 'Rejected and locked. Create a revision to rework the estimate.'
-
   const nextAction: NextAction | null = !isLatest
     ? latest
       ? { label: 'Open latest revision', href: `/estimates/${latest.id}` }
@@ -112,14 +96,14 @@ export default async function EstimateDetailPage({
     <section
       aria-labelledby="decision-heading"
       className={cn(
-        'flex flex-col gap-3 rounded-2xl border p-5',
+        'flex flex-col gap-2 rounded-lg border p-4',
         estimate.status === 'approved' ? 'border-primary/25 bg-primary/5' : 'border-destructive/20 bg-destructive/5',
       )}
     >
-      <h2 id="decision-heading" className="font-serif text-lg font-semibold text-foreground">
+      <h3 id="decision-heading" className="text-sm font-semibold text-foreground">
         {estimate.status === 'approved' ? 'Recorded approval' : 'Recorded rejection'}
-      </h2>
-      <dl className="grid gap-2 text-sm">
+      </h3>
+      <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">Decided by</dt>
           <dd className="font-medium">{estimate.decision_by_name}</dd>
@@ -140,29 +124,46 @@ export default async function EstimateDetailPage({
     </section>
   )
 
+  const collapsible = (label: string, body: React.ReactNode) => (
+    <details className="group border-t first:border-t-0">
+      <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-4 text-sm font-medium text-foreground hover:text-primary [&::-webkit-details-marker]:hidden">
+        {label}
+        <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <div className="px-4 pb-4 text-sm leading-relaxed text-foreground">{body}</div>
+    </details>
+  )
+
   const details = (
-    <section aria-labelledby="details-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
-      <h2 id="details-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
-        Saved estimate details
+    <section aria-labelledby="details-heading" className="surface flex flex-col overflow-hidden">
+      <h2 id="details-heading" className="border-b px-4 py-3 text-sm font-semibold text-foreground">
+        Estimate details
       </h2>
-      <DetailList
-        items={[
-          { label: 'Estimate date', value: formatDate(estimate.estimate_date) },
-          { label: 'Expires', value: formatDate(estimate.expiration_date) },
-          { label: 'Project number', value: estimate.project?.project_number ?? '—' },
-          { label: 'Client', value: clientName ?? 'No primary client' },
-          { label: 'Submitted', value: formatDateTime(estimate.submitted_at) },
-          { label: 'Last updated', value: formatDateTime(estimate.updated_at) },
-        ]}
-      />
-      {estimate.description && (
-        <p className="whitespace-pre-line border-t pt-5 text-sm leading-relaxed text-foreground">{estimate.description}</p>
+      {collapsible(
+        'More details',
+        <DetailList
+          items={[
+            { label: 'Project number', value: estimate.project?.project_number ?? '—' },
+            { label: 'Submitted', value: formatDateTime(estimate.submitted_at) },
+            { label: 'Last updated', value: formatDateTime(estimate.updated_at) },
+          ]}
+        />,
       )}
-      {estimate.notes && (
-        <div className="flex flex-col gap-1.5 rounded-xl bg-sage/50 p-4">
-          <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Notes</h3>
-          <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{estimate.notes}</p>
-        </div>
+      {collapsible(
+        'Scope',
+        estimate.description ? (
+          <p className="whitespace-pre-line">{estimate.description}</p>
+        ) : (
+          <p className="text-muted-foreground">No scope description. Add one in Pricing &amp; notes.</p>
+        ),
+      )}
+      {collapsible(
+        'Notes',
+        estimate.notes ? (
+          <p className="whitespace-pre-line">{estimate.notes}</p>
+        ) : (
+          <p className="text-muted-foreground">No notes. Add them in Pricing &amp; notes.</p>
+        ),
       )}
     </section>
   )
@@ -199,40 +200,44 @@ export default async function EstimateDetailPage({
       </div>
     ),
     review: (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         <EstimateUnsavedNotice />
         <EstimateStatusStrip
           status={estimate.status}
           submittedAt={estimate.submitted_at}
           decisionAt={estimate.decision_at}
           signature={signing.summary}
-          nextStep={nextStep}
         />
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <div className="flex min-w-0 flex-col gap-6">
-            {decision}
-            <EstimateWorkflow
-              estimateId={id}
-              status={estimate.status}
-              isLatest={isLatest}
-              hasOpenRevision={hasOpenRevision}
-              lineCount={items.length}
-              clientName={clientName ?? ''}
-              canManage={manager}
-              signing={
-                <EstimateSignaturePanel
-                  estimateId={id}
-                  projectId={estimate.project?.id ?? null}
-                  revision={estimate.revision}
-                  eligibility={signingEligibility}
-                  signing={signing}
-                  isAdmin={session.role === 'org_admin'}
-                  revisionNote={revisionNote}
-                />
-              }
-            />
-          </div>
-          <div className="flex min-w-0 flex-col gap-6">
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <EstimateReadiness
+            estimateId={id}
+            status={estimate.status}
+            revision={estimate.revision}
+            isLatest={isLatest}
+            latestHref={latest && latest.id !== id ? `/estimates/${latest.id}` : null}
+            hasOpenRevision={hasOpenRevision}
+            lineCount={items.length}
+            clientName={clientName}
+            totalCents={estimate.construction_total_cents}
+            estimateDate={estimate.estimate_date}
+            expirationDate={estimate.expiration_date}
+            editHref={editable ? `/estimates/${id}/edit` : null}
+            clientHref={manager && estimate.project ? `/projects/${estimate.project.id}?details=open` : null}
+            canManage={manager}
+            decision={decision}
+            signing={
+              <EstimateSignaturePanel
+                estimateId={id}
+                projectId={estimate.project?.id ?? null}
+                revision={estimate.revision}
+                eligibility={signingEligibility}
+                signing={signing}
+                isAdmin={session.role === 'org_admin'}
+                revisionNote={revisionNote}
+              />
+            }
+          />
+          <div className="flex min-w-0 flex-col gap-4">
             {details}
             {manager && (
               <QuickBooksPanel
@@ -289,7 +294,7 @@ export default async function EstimateDetailPage({
 
   return (
     <EstimateDraftProvider initialTab={initialTab}>
-      <div className="flex flex-col gap-6">
+      <div className="flex min-w-0 flex-col">
         <EstimateWorkspaceHeader
           backHref={list.href}
           backLabel="Estimates"
@@ -318,6 +323,7 @@ export default async function EstimateDetailPage({
           editHref={editable ? `/estimates/${id}/edit` : undefined}
           pdfHref={`/print/estimates/${id}`}
           nextAction={nextAction}
+          moreMenu={manager ? <EstimateMoreMenu estimateId={id} status={estimate.status} /> : undefined}
         />
         <EstimateWorkspaceBody panels={panels} serverTotals={estimate} editable={editable} />
       </div>

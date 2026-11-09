@@ -76,83 +76,79 @@ export function EstimateSignaturePanel({
     : blocked === null
   const label = pending ? 'Preparing signing copy...' : summary ? 'Manage signatures' : 'Request Signatures'
 
+  const showReason = blocked && !(snapshot && canOpen)
+  const hint = showReason
+    ? blocked.reason
+    : !snapshot && blocked === null
+      ? `Saves a locked PDF of Revision ${revision}, then you choose signers.`
+      : null
+
   return (
-    <div aria-labelledby="esign-heading" role="group" className="flex flex-col gap-3 border-t pt-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id="esign-heading" className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <FileSignature className="size-4 text-primary" aria-hidden="true" />
-          {setupRequired ? 'Electronic Signatures — Setup Required' : 'Electronic signatures'}
-        </h3>
-        {summary ? (
-          <SignatureBadge status={summary.status} signed={summary.signed} total={summary.total} className="shrink-0" />
-        ) : (
-          !setupRequired && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Not requested</span>
+    <div aria-labelledby="esign-heading" role="group" className="flex flex-col gap-2 border-t pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <h3 id="esign-heading" className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <FileSignature className="size-4 text-primary" aria-hidden="true" />
+            Electronic signature
+          </h3>
+          {summary ? (
+            <SignatureBadge status={summary.status} signed={summary.signed} total={summary.total} className="shrink-0" />
+          ) : (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              {setupRequired ? 'Setup required' : 'Not requested'}
+            </span>
+          )}
+          {hint && (
+            <span id="esign-reason" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              {showReason && <Info className="size-3.5 shrink-0" aria-hidden="true" />}
+              {hint}
+            </span>
+          )}
+        </div>
+        {setupRequired ? (
+          isAdmin && (
+            <Link href="/settings/features" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
+              <Settings2 data-icon="inline-start" />
+              Signature settings
+            </Link>
           )
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            onClick={open}
+            disabled={!canOpen || pending}
+            aria-describedby={hint ? 'esign-reason' : undefined}
+            variant={summary || !canOpen ? 'outline' : 'default'}
+          >
+            {pending ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <FileSignature data-icon="inline-start" />}
+            {label}
+          </Button>
         )}
       </div>
 
       {snapshot && (
-        <div className="flex items-start gap-3 rounded-xl border bg-card p-3">
-          <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="truncate text-sm font-medium text-foreground">{snapshot.name}</span>
-            <span className="text-xs text-muted-foreground">
-              {`Signing copy saved ${formatDateTime(snapshot.createdAt)}`}
-              {projectId && (
-                <>
-                  {' · '}
-                  <Link href={`/projects/${projectId}/documents?category=estimates`} className="text-primary hover:underline">
-                    View in Documents
-                  </Link>
-                </>
-              )}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {blocked && !(snapshot && canOpen) && (
-        <p id="esign-reason" className="flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-          <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          {blocked.reason}
+        <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+          <FileText className="size-3.5 shrink-0" aria-hidden="true" />
+          <span className="truncate">{`${snapshot.name} · saved ${formatDateTime(snapshot.createdAt)}`}</span>
+          {projectId && (
+            <Link
+              href={`/projects/${projectId}/documents?category=estimates`}
+              className="shrink-0 text-primary hover:underline"
+            >
+              View in Documents
+            </Link>
+          )}
         </p>
       )}
 
       {blocked && revisionNote && revisionNote !== blocked.reason && (
-        <p className="text-xs leading-relaxed text-muted-foreground">{revisionNote}</p>
+        <p className="text-xs text-muted-foreground">{revisionNote}</p>
       )}
 
       {error && (
         <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
-        </p>
-      )}
-
-      {!setupRequired && (
-        <Button
-          type="button"
-          onClick={open}
-          disabled={!canOpen || pending}
-          aria-describedby={canOpen ? undefined : 'esign-reason'}
-          variant={summary ? 'outline' : 'default'}
-          className="w-full"
-        >
-          {pending ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <FileSignature data-icon="inline-start" />}
-          {label}
-        </Button>
-      )}
-
-      {setupRequired && isAdmin && (
-        <Link href="/settings/features" className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}>
-          <Settings2 data-icon="inline-start" />
-          Open signature settings
-        </Link>
-      )}
-
-      {!snapshot && blocked === null && (
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          {`Saves a locked PDF of Revision ${revision} to Project Documents, then lets you choose signers. Retrying reuses the same copy.`}
         </p>
       )}
 
