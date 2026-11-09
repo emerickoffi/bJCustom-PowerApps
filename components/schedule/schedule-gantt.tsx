@@ -34,8 +34,10 @@ import {
   analyzeDependencies,
   chartRange,
   dayNumber,
+  fillRange,
   firstSaturdayOffset,
   fitZoom,
+  offChartReason,
   hasActiveFilters,
   headerTicks,
   isoFromDay,
@@ -53,6 +55,8 @@ import {
 const ROW_H = 44
 const HEADER_H = 48
 const UNSCHEDULED_PREVIEW = 5
+const NAME_MIN = 160
+const NAME_MAX = 480
 const ZOOM_LABELS: Record<Zoom, string> = { day: 'Day', week: 'Week', month: 'Month' }
 
 type Placed = Exclude<Placement, { kind: 'incomplete' }>
@@ -122,6 +126,9 @@ export function ScheduleGantt({
 }: ScheduleGanttProps) {
   const [showBaseline, setShowBaseline] = useState(false)
   const [showAllUnscheduled, setShowAllUnscheduled] = useState(false)
+  const [unscheduledOpen, setUnscheduledOpen] = useState(false)
+  const [timelineW, setTimelineW] = useState(0)
+  const [nameW, setNameW] = useState<number | null>(null)
   const baselineOn = showBaseline && !!baseline
   const uid = useId()
   const today = useMemo(() => todayInZone(timeZone), [timeZone])
@@ -195,7 +202,15 @@ export function ScheduleGantt({
     const missing: ScheduleDependency[] = []
     const cycles: ScheduleDependency[] = []
     let offChart = 0
+    const offReasons: Record<'filtered' | 'collapsed' | 'undated', number> = { filtered: 0, collapsed: 0, undated: 0 }
+    const undated = new Set([...placements].filter(([, p]) => p.kind === 'incomplete').map(([id]) => id))
     for (const { dep, state } of analysis) {
+      if (state !== 'missing' && state !== 'cycle' && state !== 'drawn') {
+        const reasons = new Set(
+          [dep.predecessor_id, dep.successor_id].filter((id) => !rowIndex.has(id)).map((id) => offChartReason(id, visibleIds, undated)),
+        )
+        for (const r of reasons) offReasons[r] += 1
+      }
       if (state === 'missing') missing.push(dep)
       else if (state === 'cycle') cycles.push(dep)
       else {
@@ -207,10 +222,10 @@ export function ScheduleGantt({
         if (state === 'hidden_successor') hiddenSuccs.set(dep.predecessor_id, (hiddenSuccs.get(dep.predecessor_id) ?? 0) + 1)
       }
     }
-    return { preds, succs, hiddenPreds, hiddenSuccs, drawn, missing, cycles, offChart }
-  }, [dependencies, byId, rowIndex])
+    return { preds, succs, hiddenPreds, hiddenSuccs, drawn, missing, cycles, offChart, offReasons }
+  }, [dependencies, byId, rowIndex, placements, visibleIds])
 
-  const range = useMemo(() => {
+  const baseRange = useMemo(() => {
     const days: number[] = []
     for (const p of placements.values()) {
       const s = placementStart(p)
@@ -225,6 +240,7 @@ export function ScheduleGantt({
     }
     return chartRange(days, todayDay)
   }, [placements, todayDay, baselineOn, baseline, activities])
+  const range = useMemo(() => fillRange(baseRange, timelineW, px), [baseRange, timelineW, px])
 
   const totalDays = range.end - range.start + 1
   const chartW = totalDays * px
@@ -260,10 +276,19 @@ export function ScheduleGantt({
   useEffect(() => {
     const el = scrollRef.current
     if (!el || typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => applyPending())
+    const observer = new ResizeObserver(() => {
+      setTimelineW(Math.max(0, el.clientWidth - (nameColRef.current?.offsetWidth ?? 256)))
+      applyPending()
+    })
     observer.observe(el)
+    if (nameColRef.current) observer.observe(nameColRef.current)
     return () => observer.disconnect()
-  }, [applyPending])
+  }, [applyPending, rows.length === 0])
+
+  const resizeNameCol = (next: number) => {
+    const max = Math.min(NAME_MAX, Math.max(NAME_MIN, (scrollRef.current?.clientWidth ?? 800) * 0.5))
+    setNameW(Math.round(Math.max(NAME_MIN, Math.min(max, next))))
+  }
 
   const centerDay = () => {
     const el = scrollRef.current
@@ -402,7 +427,7 @@ export function ScheduleGantt({
           </div>
           <Button variant="outline" className="min-h-11 sm:min-h-9" onClick={fit}>
             <Maximize2 data-icon="inline-start" />
-            Fit
+            Fit project
           </Button>
           {baseline && (
             <button
@@ -552,7 +577,46 @@ export function ScheduleGantt({
             }}
           >
             <div className="flex w-max">
-              <div ref={nameColRef} className="sticky left-0 z-20 w-44 shrink-0 border-r border-[#D6DDE5] bg-white sm:w-64">
+              <div
+                ref={nameColRef}
+                className={cn('sticky left-0 z-20 shrink-0 border-r border-[#D6DDE5] bg-white', nameW === null && 'w-44 sm:w-64')}
+                style={nameW === null ? undefined : { width: nameW }}
+              >
+                <div
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Resize activity column"
+                  aria-valuemin={NAME_MIN}
+                  aria-valuemax={NAME_MAX}
+                  aria-valuenow={nameW ?? nameColRef.current?.offsetWidth ?? 256}
+                  tabIndex={0}
+                  className="absolute inset-y-0 -right-1.5 z-30 w-3 cursor-col-resize touch-none after:absolute after:inset-y-0 after:left-1/2 after:w-0.5 after:-translate-x-1/2 after:bg-transparent hover:after:bg-interactive/60 focus-visible:outline-none focus-visible:after:bg-interactive"
+                  onPointerDown={(e) => {
+                    e.stopPropagation()
+                    e.currentTarget.setPointerCapture(e.pointerId)
+                    const startX = e.clientX
+                    const startW = nameColRef.current?.offsetWidth ?? 256
+                    const target = e.currentTarget
+                    const move = (ev: PointerEvent) => resizeNameCol(startW + ev.clientX - startX)
+                    const up = () => {
+                      target.removeEventListener('pointermove', move)
+                      target.removeEventListener('pointerup', up)
+                      target.removeEventListener('pointercancel', up)
+                    }
+                    target.addEventListener('pointermove', move)
+                    target.addEventListener('pointerup', up)
+                    target.addEventListener('pointercancel', up)
+                  }}
+                  onKeyDown={(e) => {
+                    const w = nameColRef.current?.offsetWidth ?? 256
+                    if (e.key === 'ArrowLeft') resizeNameCol(w - 16)
+                    else if (e.key === 'ArrowRight') resizeNameCol(w + 16)
+                    else if (e.key === 'Home') resizeNameCol(NAME_MIN)
+                    else if (e.key === 'End') resizeNameCol(NAME_MAX)
+                    else return
+                    e.preventDefault()
+                  }}
+                />
                 <div
                   className="sticky top-0 z-10 flex items-end border-b border-[#D6DDE5] bg-[#E9EDF2] px-3 pb-1.5 text-xs font-medium text-[#526173]"
                   style={{ height: HEADER_H }}
@@ -762,65 +826,69 @@ export function ScheduleGantt({
               </span>
             ))}
             <span className="hidden h-3 w-px bg-[#D6DDE5] sm:block" aria-hidden="true" />
-            <span className="flex items-center gap-1.5">
-              <span className="flex h-2.5 w-5 overflow-hidden rounded-sm border border-[#526173] bg-[#E9EDF2]">
-                <span className="w-1/2 bg-[#526173]" />
-              </span>
-              Progress
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rotate-45 rounded-[1px] border-2 border-[#526173] bg-white" />
-              Milestone
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-5 rounded-sm bg-[#526173]" />
-              Phase span
-            </span>
-            {baselineOn && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-1.5 w-5 rounded-sm bg-[#8B97A6]" />
-                {`Baseline v${baseline!.version}`}
-              </span>
+            <LegendItem swatch={<span className="size-2.5 rotate-45 rounded-[1px] border-2 border-[#526173] bg-white" />} label="Milestone" />
+            <LegendItem swatch={<span className="h-3 w-0.5 bg-interactive" />} label="Today" />
+            <LegendItem swatch={<span className="h-2.5 w-5 rounded-sm ring-2 ring-destructive" />} label="Past due" />
+            <details className="group relative">
+              <summary className="flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-md px-1.5 font-medium text-interactive-strong hover:bg-interactive-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interactive [&::-webkit-details-marker]:hidden">
+                Legend
+                <ChevronDown className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
+              </summary>
+              <div className="absolute bottom-full left-0 z-30 mb-2 flex w-64 flex-col gap-2 rounded-lg border border-[#D6DDE5] bg-white p-3 shadow-lg">
+                <LegendItem
+                  swatch={
+                    <span className="flex h-2.5 w-5 overflow-hidden rounded-sm border border-[#526173] bg-[#E9EDF2]">
+                      <span className="w-1/2 bg-[#526173]" />
+                    </span>
+                  }
+                  label="Progress (filled portion of a bar)"
+                />
+                <LegendItem swatch={<span className="h-1.5 w-5 rounded-sm bg-[#526173]" />} label="Phase span" />
+                {baselineOn && <LegendItem swatch={<span className="h-1.5 w-5 rounded-sm bg-[#8B97A6]" />} label={`Baseline v${baseline!.version}`} />}
+                {weekendShade && <LegendItem swatch={<span className="h-3 w-3 rounded-sm bg-[#17212B]/10" />} label="Weekend" />}
+                <LegendItem swatch={<span className="h-2.5 w-5 rounded-sm outline-2 outline-dashed outline-warning" />} label="Date conflict" />
+                <LegendItem swatch={<CornerDownRight className="size-3.5" aria-hidden="true" />} label="Predecessor not shown" />
+                <LegendItem swatch={<span className="h-0 w-5 border-t border-dashed border-[#526173]" />} label="Dependency drawn backward" />
+              </div>
+            </details>
+            {deps.offChart > 0 && (
+              <details className="group basis-full sm:ml-auto sm:basis-auto">
+                <summary className="flex min-h-8 cursor-pointer list-none items-center gap-1.5 rounded-md px-1.5 hover:bg-interactive-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interactive [&::-webkit-details-marker]:hidden">
+                  <Link2 className="size-3.5" aria-hidden="true" />
+                  {`${deps.offChart} ${deps.offChart === 1 ? 'dependency' : 'dependencies'} outside this view`}
+                  <ChevronDown className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
+                </summary>
+                <div className="mt-1.5 flex max-w-md flex-col gap-1.5 px-1.5 pb-1">
+                  <p>Dependencies are drawn only when both activities are on the chart. This is expected and isn&apos;t an error.</p>
+                  <ul className="flex flex-col gap-0.5">
+                    {deps.offReasons.filtered > 0 && <li>{`${deps.offReasons.filtered} involve activities hidden by filters`}</li>}
+                    {deps.offReasons.collapsed > 0 && <li>{`${deps.offReasons.collapsed} involve activities in collapsed phases`}</li>}
+                    {deps.offReasons.undated > 0 && <li>{`${deps.offReasons.undated} involve activities missing dates`}</li>}
+                  </ul>
+                  <p>Hover or focus an activity to see its predecessors and successors.</p>
+                </div>
+              </details>
             )}
-            <span className="flex items-center gap-1.5">
-              <span className="h-3 w-0.5 bg-interactive" />
-              Today
-            </span>
-            {weekendShade && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-sm bg-[#17212B]/10" />
-                Weekend
-              </span>
-            )}
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-5 rounded-sm ring-2 ring-destructive" />
-              Past due
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-5 rounded-sm outline-2 outline-dashed outline-warning" />
-              Date conflict
-            </span>
-            <span className="flex items-center gap-1.5">
-              <CornerDownRight className="size-3.5" aria-hidden="true" />
-              Predecessor not shown
-            </span>
           </div>
-          {deps.offChart > 0 && (
-            <p className="border-t border-[#E4E9EF] px-4 py-2 text-xs text-[#526173]">
-              {`${deps.offChart} ${deps.offChart === 1 ? 'dependency connects' : 'dependencies connect'} to activities hidden by filters, collapsed phases, or missing dates. Hover or focus an activity to see them.`}
-            </p>
-          )}
         </div>
       )}
 
       {unscheduled.length > 0 && (
         <section aria-labelledby={`${uid}-unscheduled`} className="rounded-xl border border-[#D6DDE5] bg-white">
-          <div className="flex flex-col gap-0.5 border-b border-[#E4E9EF] px-4 py-3">
-            <h3 id={`${uid}-unscheduled`} className="font-serif text-base font-semibold text-[#17212B]">
-              {`Unscheduled (${unscheduled.length})`}
-            </h3>
-            <p className="text-xs text-[#526173]">These activities don&apos;t have complete, valid planned dates, so they aren&apos;t drawn on the chart.</p>
-          </div>
+          <h3 id={`${uid}-unscheduled`} className="m-0">
+            <button
+              type="button"
+              aria-expanded={unscheduledOpen}
+              aria-controls={`${uid}-unscheduled-body`}
+              onClick={() => setUnscheduledOpen((v) => !v)}
+              className="flex min-h-11 w-full items-center gap-2 rounded-xl px-4 py-2 text-left hover:bg-interactive-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-interactive"
+            >
+              <ChevronDown className={cn('size-4 shrink-0 text-[#526173] transition-transform motion-reduce:transition-none', !unscheduledOpen && '-rotate-90')} aria-hidden="true" />
+              <span className="text-sm font-semibold text-[#17212B]">{`Unscheduled (${unscheduled.length})`}</span>
+              <span className="hidden truncate text-xs font-normal text-[#526173] sm:inline">Not drawn until planned dates are complete and valid</span>
+            </button>
+          </h3>
+          <div id={`${uid}-unscheduled-body`} hidden={!unscheduledOpen} className="border-t border-[#E4E9EF]">
           <ul id={`${uid}-unscheduled-list`} className="divide-y divide-[#E4E9EF]">
             {(showAllUnscheduled ? unscheduled : unscheduled.slice(0, UNSCHEDULED_PREVIEW)).map((a) => {
               const p = placements.get(a.id)!
@@ -866,9 +934,21 @@ export function ScheduleGantt({
               </Button>
             </div>
           )}
+          </div>
         </section>
       )}
     </section>
+  )
+}
+
+function LegendItem({ swatch, label }: { swatch: React.ReactNode; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="flex w-5 shrink-0 items-center justify-center" aria-hidden="true">
+        {swatch}
+      </span>
+      {label}
+    </span>
   )
 }
 
@@ -1079,14 +1159,6 @@ function BarRow({
           <span className="block h-full" style={{ width: `${pct}%`, backgroundColor: accent }} />
         </button>
       )}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 z-[2] -translate-y-1/2 whitespace-nowrap text-xs font-medium text-[#17212B]"
-        style={{ left: start + width + 8 }}
-      >
-        {a.name}
-        {p.kind === 'bar' && <span className="ml-1 font-normal tabular-nums text-[#526173]">{`${Math.round(pct)}%`}</span>}
-      </span>
     </div>
   )
 }
