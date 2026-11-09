@@ -10,29 +10,18 @@ import { DocumentUploadButton } from '@/components/documents/document-upload-but
 import { DocumentFiltersForm, DocumentPagination, browseHref, type BrowseParams } from '@/components/documents/document-browse'
 import { countArchivedDocuments, listDocumentProjects, listDocuments } from '@/lib/document-queries'
 import { getPeopleNames } from '@/lib/people'
-import { cn } from '@/lib/utils'
-import { underlineTabClass } from '@/lib/interaction-styles'
+import { cookies } from 'next/headers'
+import { WorksheetFilters, worksheetResultsClass, type WorksheetFilter } from '@/components/shared/worksheet-filters'
+import { RememberLibraryFilters } from '@/components/documents/remember-library-filters'
+import {
+  libraryFilterCookie,
+  parseLibraryFilters,
+  pickLibraryFilters,
+  serializeLibraryFilters,
+  type DocumentLibraryTab as Tab,
+} from '@/lib/document-library-filters'
 
 export const metadata: Metadata = { title: 'Documents' }
-
-type Tab = 'projects' | 'company'
-
-function TabLink({ href, active, icon: Icon, children }: { href: string; active: boolean; icon: typeof FolderKanban; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? 'page' : undefined}
-      className={cn(
-        '-mb-px flex items-center gap-2 border-b-2 px-1 pb-3 text-sm font-medium transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interactive/50',
-        underlineTabClass(active),
-      )}
-    >
-      <Icon className="size-4" aria-hidden="true" />
-      {children}
-    </Link>
-  )
-}
 
 export default async function CompanyDocumentsPage({ searchParams }: { searchParams: Promise<BrowseParams> }) {
   const session = await requireStaff()
@@ -72,6 +61,16 @@ export default async function CompanyDocumentsPage({ searchParams }: { searchPar
   const people = list.ok ? await getPeopleNames(list.rows.map((r) => r.current_version?.uploaded_by)) : {}
   const filtered = Boolean(sp.q || sp.category || (!isCompany && (sp.visibility || projectFilter)))
 
+  const cookieStore = await cookies()
+  const libraryHref = (target: Tab) =>
+    target === tab
+      ? browseHref(base, { ...pickLibraryFilters(tab, { ...sp, project: projectFilter }), page: sp.page }, target === 'company' ? { tab: 'company' } : {})
+      : browseHref(base, parseLibraryFilters(target, cookieStore.get(libraryFilterCookie(target))?.value), target === 'company' ? { tab: 'company' } : {})
+  const libraryTabs: WorksheetFilter[] = [
+    { key: 'projects', label: 'Project documents', href: libraryHref('projects'), active: !isCompany },
+    ...(manager ? [{ key: 'company', label: 'Company library', href: libraryHref('company'), active: isCompany }] : []),
+  ]
+
   const uploadAction = archived ? null : isCompany ? (
     <DocumentUploadButton scope="company" canShare={false} label="Upload company document" />
   ) : projectOptions.length > 0 ? (
@@ -92,89 +91,87 @@ export default async function CompanyDocumentsPage({ searchParams }: { searchPar
         actions={uploadAction}
       />
 
-      <nav aria-label="Document libraries" className="flex gap-6 border-b border-[#D6DDE5]">
-        <TabLink href={base} active={!isCompany} icon={FolderKanban}>
-          Project Documents
-        </TabLink>
-        {manager && (
-          <TabLink href={browseHref(base, {}, { tab: 'company' })} active={isCompany} icon={Building2}>
-            Company Library
-          </TabLink>
-        )}
-      </nav>
+      <RememberLibraryFilters tab={tab} query={serializeLibraryFilters(tab, { ...sp, project: projectFilter })} />
 
-      <DocumentFiltersForm
-        key={tab}
-        params={params}
-        scope={isCompany ? 'company' : 'project'}
-        showVisibility={!isCompany}
-        showArchived
-        projectOptions={isCompany ? undefined : projectOptions}
-      />
-      <div className="flex justify-end">
-        <Link
-          href={browseHref(base, { ...tabParams, project: projectFilter }, archived ? {} : { archived: '1' })}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
-        >
-          <Archive className="size-4" aria-hidden="true" />
-          {archived ? 'Back to active documents' : `Archived documents (${archivedCount})`}
-        </Link>
-      </div>
-
-      {!list.ok ? (
-        <div role="alert" className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <div className="flex flex-col gap-0.5">
-            <p className="font-medium">{"Documents couldn't be loaded"}</p>
-            <p>{list.error}</p>
+      <div className="flex flex-col">
+        <WorksheetFilters label="Document libraries" filters={libraryTabs} noun={{ one: 'document', many: 'documents' }} />
+        <div className={worksheetResultsClass(true, 'gap-4 p-3 sm:p-4')}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <DocumentFiltersForm
+              key={tab}
+              params={params}
+              scope={isCompany ? 'company' : 'project'}
+              showVisibility={!isCompany}
+              showArchived
+              projectOptions={isCompany ? undefined : projectOptions}
+              className="min-w-0 flex-1"
+            />
+            <Link
+              href={browseHref(base, { ...tabParams, project: projectFilter }, archived ? {} : { archived: '1' })}
+              className="flex shrink-0 items-center gap-1.5 self-end text-sm text-muted-foreground hover:text-primary lg:self-auto"
+            >
+              <Archive className="size-4" aria-hidden="true" />
+              {archived ? 'Back to active documents' : `Archived documents (${archivedCount})`}
+            </Link>
           </div>
+
+          {!list.ok ? (
+            <div role="alert" className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <div className="flex flex-col gap-0.5">
+                <p className="font-medium">{"Documents couldn't be loaded"}</p>
+                <p>{list.error}</p>
+              </div>
+            </div>
+          ) : list.rows.length === 0 ? (
+            filtered ? (
+              <EmptyState
+                icon={SearchX}
+                title="No matching documents"
+                description="Try a different search, project, or category."
+                action={
+                  <Button variant="outline" render={<Link href={browseHref(base, tabParams, archived ? { archived: '1' } : {})} />} nativeButton={false}>
+                    Clear filters
+                  </Button>
+                }
+              />
+            ) : archived ? (
+              <EmptyState icon={Archive} title="No archived documents" description="Archived documents will appear here and can be restored." />
+            ) : isCompany ? (
+              <EmptyState
+                icon={Building2}
+                title="No company documents yet."
+                description="Store company licenses, templates, policies, and other internal business files here."
+                action={<DocumentUploadButton scope="company" canShare={false} label="Upload company document" />}
+              />
+            ) : (
+              <EmptyState
+                icon={FolderKanban}
+                title="No project documents yet."
+                description="Open a project to upload plans, permits, reports, and construction files."
+                action={
+                  <Button variant="outline" render={<Link href="/projects" />} nativeButton={false}>
+                    Go to Projects
+                  </Button>
+                }
+              />
+            )
+          ) : (
+            <>
+              <DocumentLibrary
+                key={tab}
+                rows={list.rows}
+                mode={isCompany ? 'library' : 'company'}
+                canEdit={isCompany ? manager : true}
+                canManage={manager}
+                people={people}
+                archivedView={archived}
+              />
+              <DocumentPagination base={base} params={params} page={list.page} pageCount={list.pageCount} total={list.total} />
+            </>
+          )}
         </div>
-      ) : list.rows.length === 0 ? (
-        filtered ? (
-          <EmptyState
-            icon={SearchX}
-            title="No matching documents"
-            description="Try a different search, project, or category."
-            action={
-              <Button variant="outline" render={<Link href={browseHref(base, tabParams, archived ? { archived: '1' } : {})} />} nativeButton={false}>
-                Clear filters
-              </Button>
-            }
-          />
-        ) : archived ? (
-          <EmptyState icon={Archive} title="No archived documents" description="Archived documents will appear here and can be restored." />
-        ) : isCompany ? (
-          <EmptyState
-            icon={Building2}
-            title="No company documents yet."
-            description="Store company licenses, templates, policies, and other internal business files here."
-            action={<DocumentUploadButton scope="company" canShare={false} label="Upload company document" />}
-          />
-        ) : (
-          <EmptyState
-            icon={FolderKanban}
-            title="No project documents yet."
-            description="Open a project to upload plans, permits, reports, and construction files."
-            action={
-              <Button variant="outline" render={<Link href="/projects" />} nativeButton={false}>
-                Go to Projects
-              </Button>
-            }
-          />
-        )
-      ) : (
-        <>
-          <DocumentLibrary
-            rows={list.rows}
-            mode={isCompany ? 'library' : 'company'}
-            canEdit={isCompany ? manager : true}
-            canManage={manager}
-            people={people}
-            archivedView={archived}
-          />
-          <DocumentPagination base={base} params={params} page={list.page} pageCount={list.pageCount} total={list.total} />
-        </>
-      )}
+      </div>
     </div>
   )
 }
