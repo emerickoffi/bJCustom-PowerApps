@@ -7,11 +7,9 @@ import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { isSubWorkSetupError, workStateFor, type SubmissionStatus } from '@/lib/subcontractor-work'
-import { PageHeader, Surface } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { WorkStateBadge } from '@/components/subcontractor-work/work-state-badge'
 import { SubcontractsNav } from '@/components/subcontract-quotes/subcontracts-nav'
-import { SubWorkProjectSwitcher } from '@/components/subcontract-quotes/sub-work-project-switcher'
-import { loadSubWorkProjectOptions } from '@/lib/subcontract-project-options'
 
 export const metadata: Metadata = { title: 'Subcontractor work' }
 
@@ -40,7 +38,6 @@ export default async function SubcontractorWorkQueuePage({ params }: { params: P
   ])
   if (!project || !canViewInternal) notFound()
 
-  const projectOptionsPromise = loadSubWorkProjectOptions(supabase, session.organizationId, { id: project.id, name: project.name })
   const { data, error } = await supabase
     .from('subcontractor_work_submissions')
     .select(
@@ -55,19 +52,17 @@ export default async function SubcontractorWorkQueuePage({ params }: { params: P
     .order('submitted_at', { ascending: false })
     .limit(200)
 
-  const projectOptions = await projectOptionsPromise
   const rows = (data ?? []) as unknown as QueueRow[]
   const awaiting = rows.filter((r) => r.status === 'submitted').sort((a, b) => (a.submitted_at ?? '').localeCompare(b.submitted_at ?? ''))
   const reviewed = rows.filter((r) => r.status !== 'submitted')
 
   return (
-    <div className="flex w-full flex-col gap-5">
+    <div className={pageLayout('workspace', 'gap-4 md:gap-4')}>
       <PageHeader
         tone="section"
         icon={ClipboardCheck}
         title="Subcontractor work"
         description="Verify completion and correction submissions before work counts as accepted."
-        actions={<SubWorkProjectSwitcher projects={projectOptions} currentId={project.id} tab="work" />}
       />
       <SubcontractsNav projectId={id} active="work" />
 
@@ -114,9 +109,9 @@ function QueueSection({
   empty: string
 }) {
   return (
-    <Surface aria-labelledby={headingId} className="gap-4">
+    <section aria-labelledby={headingId} className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id={headingId} className="font-serif text-lg font-semibold tracking-tight text-foreground">
+        <h2 id={headingId} className="text-sm font-semibold text-foreground">
           {title}
         </h2>
         <span className="text-xs text-muted-foreground">
@@ -124,7 +119,7 @@ function QueueSection({
         </span>
       </div>
       {rows.length === 0 ? (
-        <p className="rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">{empty}</p>
+        <p className="rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">{empty}</p>
       ) : (
         <ul className="flex flex-col divide-y rounded-lg border">
           {rows.map((r) => (
@@ -160,7 +155,7 @@ function QueueSection({
           ))}
         </ul>
       )}
-    </Surface>
+    </section>
   )
 }
 

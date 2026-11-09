@@ -16,3 +16,17 @@ export const worksheetStripClass =
   'overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
 
 export const worksheetFillerClass = 'min-w-4 flex-1 self-stretch border-b border-border'
+
+/** Underlined secondary tabs that sit inside a worksheet, visibly subordinate to the worksheet tabs above. */
+export const sectionTabStripClass =
+  'overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+
+export const sectionTabListClass = 'flex min-w-max gap-1 shadow-[inset_0_-1px_0_var(--border)]'
+
+export function sectionTabClass(active: boolean) {
+  return cn(
+    'flex min-h-11 items-center gap-1.5 border-b-2 px-3 text-sm font-medium transition-colors sm:min-h-10',
+    'focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring',
+    active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+  )
+}
