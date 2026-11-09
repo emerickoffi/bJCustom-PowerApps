@@ -103,7 +103,7 @@ function ActionRow({ item, today }: { item: ActionItem; today: string }) {
       : null
   const meta = [item.projectName, ACTION_CATEGORY_LABELS[item.category]].filter(Boolean) as string[]
   return (
-    <li className="flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-[#F2FAFB]">
+    <li className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[#F2FAFB]">
       <span
         className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-[#FFF1E6] text-[#B54708]"
         aria-hidden="true"
@@ -345,7 +345,7 @@ export function ActionCenter({
 
   return (
     <section aria-labelledby="action-center-heading" className="surface flex flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-t-[inherit] border-b border-[#D6DDE5] bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-t-[inherit] border-b border-[#D6DDE5] bg-white px-4 py-4">
         <div className="flex min-w-0 items-center gap-3">
         <CardSectionIcon icon={ClipboardList} tone="teal" size="lg" />
         <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -353,7 +353,7 @@ export function ActionCenter({
             Action Center
           </Heading>
           {items.length > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-notification px-2 py-0.5 text-xs font-medium leading-4 text-notification-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full border border-[#FDBA74] bg-[#FFF1E6] px-2 py-0.5 text-xs font-medium leading-4 text-[#B54708]">
               <span className="font-bold tabular-nums">{countLabel}</span>
               {items.length === 1 && !totalIsLowerBound ? 'needs attention' : 'need attention'}
             </span>

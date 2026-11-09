@@ -3,7 +3,6 @@
 import { useOptimistic, useTransition } from 'react'
 import { Info } from 'lucide-react'
 import { setWorkScopeAction } from '@/app/actions/dashboard-preferences'
-import { segmentClass } from '@/lib/interaction-styles'
 import { cn } from '@/lib/utils'
 
 type WorkScope = 'all' | 'mine'
@@ -42,9 +41,10 @@ export function WorkScopeControl({ scope }: { scope: WorkScope }) {
             aria-checked={o.value === optimistic}
             onClick={() => choose(o.value)}
             className={cn(
-              'flex min-h-9 items-center justify-center rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              segmentClass(o.value === optimistic),
-              o.value === optimistic && 'shadow-sm',
+              'flex min-h-9 items-center justify-center rounded-md border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 motion-reduce:transition-none',
+              o.value === optimistic
+                ? 'border-[#007F8B] bg-[#007F8B] text-white shadow-sm hover:border-[#006773] hover:bg-[#006773]'
+                : 'border-transparent text-foreground hover:bg-background hover:text-[#006773]',
             )}
           >
             {o.label}
