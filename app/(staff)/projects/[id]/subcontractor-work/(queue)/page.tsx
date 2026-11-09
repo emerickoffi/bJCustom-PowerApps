@@ -1,15 +1,14 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { AlertTriangle, ChevronRight, ClipboardCheck } from 'lucide-react'
+import { AlertTriangle, ChevronRight } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { isSubWorkSetupError, workStateFor, type SubmissionStatus } from '@/lib/subcontractor-work'
-import { PageHeader, pageLayout } from '@/components/shared/page-header'
+import { SubWorkShell } from '@/components/subcontractor-work/sub-work-shell'
 import { WorkStateBadge } from '@/components/subcontractor-work/work-state-badge'
-import { SubcontractsNav } from '@/components/subcontract-quotes/subcontracts-nav'
 
 export const metadata: Metadata = { title: 'Subcontractor work' }
 
@@ -57,20 +56,21 @@ export default async function SubcontractorWorkQueuePage({ params }: { params: P
   const reviewed = rows.filter((r) => r.status !== 'submitted')
 
   return (
-    <div className={pageLayout('workspace', 'gap-4 md:gap-4')}>
-      <PageHeader
-        icon={ClipboardCheck}
-        title="Subcontractor work"
-      />
-      <SubcontractsNav projectId={id} active="work" />
-
+    <SubWorkShell projectId={id} active="work">
       {error ? (
-        <p className="flex items-start gap-2 rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
-          {isSubWorkSetupError(error)
-            ? 'Subcontractor work verification is not set up in this environment yet.'
-            : 'Submissions could not be loaded. Refresh the page to try again.'}
-        </p>
+        isSubWorkSetupError(error) ? (
+          <p className="flex items-start gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+            Subcontractor work verification is not set up in this environment yet.
+          </p>
+        ) : (
+          <p role="alert" className="flex items-start gap-2 text-sm text-destructive">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            Submissions could not be loaded. Refresh the page to try again.
+          </p>
+        )
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No work submissions yet.</p>
       ) : (
         <>
           <QueueSection
@@ -78,18 +78,12 @@ export default async function SubcontractorWorkQueuePage({ params }: { params: P
             title="Awaiting verification"
             rows={awaiting}
             projectId={id}
-            empty="Nothing is waiting on you. New submissions appear here as subcontractors send them."
+            empty="Nothing is waiting on you."
           />
-          <QueueSection
-            headingId="reviewed-heading"
-            title="Reviewed"
-            rows={reviewed}
-            projectId={id}
-            empty="No reviewed submissions yet."
-          />
+          <QueueSection headingId="reviewed-heading" title="Reviewed" rows={reviewed} projectId={id} empty="No reviewed submissions yet." />
         </>
       )}
-    </div>
+    </SubWorkShell>
   )
 }
 
@@ -108,16 +102,15 @@ function QueueSection({
 }) {
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 id={headingId} className="text-sm font-semibold text-foreground">
-          {title}
-        </h2>
-        <span className="text-xs text-muted-foreground">
-          {rows.length} {rows.length === 1 ? 'submission' : 'submissions'}
+      <h2 id={headingId} className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        {title}
+        <span className="rounded-badge bg-muted px-1.5 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+          {rows.length}
+          <span className="sr-only">{rows.length === 1 ? ' submission' : ' submissions'}</span>
         </span>
-      </div>
+      </h2>
       {rows.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">{empty}</p>
+        <p className="text-sm text-muted-foreground">{empty}</p>
       ) : (
         <ul className="flex flex-col divide-y rounded-lg border">
           {rows.map((r) => (

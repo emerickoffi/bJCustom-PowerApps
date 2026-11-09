@@ -1,6 +1,11 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { worksheetFillerClass, worksheetStripClass, worksheetTabClass } from '@/components/shared/worksheet-tabs'
+import {
+  worksheetFillerClass,
+  worksheetStripClass,
+  worksheetTabClass,
+  type WorksheetTabSize,
+} from '@/components/shared/worksheet-tabs'
 
 export type WorksheetFilter = {
   key: string
@@ -15,10 +20,17 @@ export function WorksheetFilters({
   label,
   filters,
   noun,
+  size = 'default',
+  current = 'true',
 }: {
   label: string
   filters: WorksheetFilter[]
-  noun: { one: string; many: string }
+  /** Read after each count by screen readers; only needed when filters carry counts. */
+  noun?: { one: string; many: string }
+  /** `compact` for a secondary row inside a worksheet that already has primary tabs. */
+  size?: WorksheetTabSize
+  /** `page` when each tab is its own route, `true` when the tabs filter one page. */
+  current?: 'page' | 'true'
 }) {
   return (
     <nav aria-label={label} className={worksheetStripClass}>
@@ -28,14 +40,14 @@ export function WorksheetFilters({
             <Link
               href={f.href}
               scroll={false}
-              aria-current={f.active ? 'true' : undefined}
-              className={worksheetTabClass(f.active, index === 0)}
+              aria-current={f.active ? current : undefined}
+              className={worksheetTabClass(f.active, index === 0, size)}
             >
               {f.label}
               {f.count !== undefined && (
                 <span className={cn('text-xs tabular-nums', f.active ? 'text-foreground/70' : 'text-muted-foreground')}>
                   {f.count}
-                  <span className="sr-only">{f.count === 1 ? ` ${noun.one}` : ` ${noun.many}`}</span>
+                  {noun && <span className="sr-only">{f.count === 1 ? ` ${noun.one}` : ` ${noun.many}`}</span>}
                 </span>
               )}
             </Link>
