@@ -80,23 +80,19 @@ function NavLink({
       aria-current={active ? 'page' : undefined}
       title={collapsed ? label : undefined}
       className={cn(
-        'group relative flex h-10 items-center gap-3 rounded-[0.625rem] px-3.5 text-sm font-medium transition-colors duration-150',
+        'group relative flex h-10 items-center gap-3 rounded-[0.375rem] px-3.5 text-sm transition-colors duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
         collapsed && 'justify-center px-0',
         active
-          ? 'bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-[inset_4px_0_0_0_var(--sidebar-active-border)]'
-          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+          ? 'bg-sidebar-selected font-semibold text-sidebar-selected-foreground'
+          : 'font-medium text-sidebar-foreground hover:bg-sidebar-hover',
         muted && !active && 'text-sidebar-muted',
       )}
     >
       <Icon
         className={cn(
           'size-[1.125rem] shrink-0',
-          active
-            ? 'text-sidebar-primary-foreground'
-            : muted
-              ? 'text-current'
-              : 'text-sidebar-icon group-hover:text-sidebar-accent-foreground',
+          active ? 'text-sidebar-selected-icon' : muted ? 'text-current' : 'text-sidebar-icon',
         )}
         aria-hidden="true"
       />
