@@ -23,6 +23,7 @@ export default async function ProjectWalkthroughsPage({ params }: { params: Prom
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
+        tone="section"
         title="Walkthroughs"
         description={`Walkthroughs, punch lists and open issues for ${project.name}.`}
         icon={ClipboardCheck}

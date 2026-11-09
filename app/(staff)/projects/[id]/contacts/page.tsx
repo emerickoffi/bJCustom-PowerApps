@@ -58,12 +58,16 @@ export default async function ProjectPeoplePage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <PageHeader title="People" description={`Everyone involved in ${project.name}: homeowners, your team, and outside companies.`} />
-        {directory?.availability === 'ready' && (
-          <PeopleAssignWorkspace projectId={project.id} projectName={project.name as string} rows={directory.rows} defaultOpen={add === '1'} />
-        )}
-      </div>
+      <PageHeader
+        tone="section"
+        title="People"
+        description={`Everyone involved in ${project.name}: homeowners, your team, and outside companies.`}
+        actions={
+          directory?.availability === 'ready' && (
+            <PeopleAssignWorkspace projectId={project.id} projectName={project.name as string} rows={directory.rows} defaultOpen={add === '1'} />
+          )
+        }
+      />
 
       <ProjectClientsPanel projectId={project.id} homeowners={homeowners} canEdit={manager} clientOptions={clientOptions} />
 

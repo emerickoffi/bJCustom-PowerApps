@@ -54,6 +54,7 @@ export default async function DailyLogsPage({
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
+        tone="section"
         title="Daily logs"
         description={`A dated record of site activity for ${project.name}. Finalized logs are permanent.`}
         icon={ClipboardList}

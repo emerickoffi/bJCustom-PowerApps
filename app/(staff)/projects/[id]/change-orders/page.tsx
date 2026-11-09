@@ -46,7 +46,7 @@ export default async function ChangeOrdersPage({ params }: { params: Promise<{ i
         title="Change orders"
         description={`Scope, cost and price changes for ${project.name}. Only approved change orders affect the budget.`}
         icon={FileDiff}
-        tone="plain"
+        tone="section"
         actions={<NewChangeOrderDrawer projectId={id} projectName={project.name} />}
       />
 

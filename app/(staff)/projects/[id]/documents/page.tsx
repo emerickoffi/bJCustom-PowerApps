@@ -160,7 +160,7 @@ export default async function ProjectDocumentsPage({
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5 tablet:flex-col">
         {counts && !archived && (
-          <aside className="hidden lg:sticky lg:top-36 lg:block lg:w-60 lg:shrink-0 tablet:hidden">
+          <aside className="hidden lg:sticky lg:top-[calc(var(--app-header-h,4rem)+4rem)] lg:block lg:w-60 lg:shrink-0 tablet:hidden">
             <CategoryNav base={base} params={sp} counts={counts} compact />
           </aside>
         )}

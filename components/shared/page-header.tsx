@@ -10,7 +10,8 @@ type PageHeaderProps = {
   backHref?: string
   backLabel?: string
   actions?: React.ReactNode
-  tone?: 'plain' | 'sage' | 'forest'
+  /** 'section' is the compact heading used inside the project workspace, beneath the project tabs. */
+  tone?: 'plain' | 'sage' | 'forest' | 'section'
   /** Replaces the icon tile, e.g. with a person's initials. */
   avatar?: React.ReactNode
   /** Rendered inline after the title, e.g. a status badge. */
@@ -40,6 +41,25 @@ export function PageHeader({
   actions,
   tone = 'sage',
 }: PageHeaderProps) {
+  if (tone === 'section') {
+    return (
+      <header className="flex min-w-0 flex-col gap-3 border-b border-border/70 pb-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="min-w-0 text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-2xl">
+              {title}
+            </h1>
+            {count && <CountChip {...count} />}
+            {titleAddonProp}
+          </div>
+          {description && <div className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground">{description}</div>}
+        </div>
+        {actions && (
+          <div className="flex shrink-0 flex-wrap items-center gap-2 max-md:[&>*]:min-h-11 md:justify-end">{actions}</div>
+        )}
+      </header>
+    )
+  }
   // The dark 'forest' banner was a legacy decorative treatment; it now renders as the standard white card.
   const sage = tone === 'sage' || tone === 'forest'
   const forest = false
