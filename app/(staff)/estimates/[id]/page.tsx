@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ChevronDown, GitCompare } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ChevronDown } from 'lucide-react'
 import { requireStaff, canManage } from '@/lib/session'
 import { clientDisplayName, getEstimate, getEstimateFamily, getEstimateLineItems } from '@/lib/estimate-queries'
 import { DECISION_METHOD_LABELS, ESTIMATE_STATUSES, centsToInput, formatCentsExact, isEditableStatus } from '@/lib/estimates'
@@ -27,7 +26,8 @@ import { getQuickBooksStatus } from '@/lib/quickbooks'
 import { cn } from '@/lib/utils'
 import { EstimateSignaturePanel } from '@/components/estimates/estimate-signature-panel'
 import { estimateSigningEligibility } from '@/lib/estimate-signing'
-import { getEstimateSigningState } from '@/lib/esign/queries'
+import { getEstimateSigningState, getFamilySigningCopies } from '@/lib/esign/queries'
+import { EstimateHistoryPanel } from '@/components/estimates/estimate-history-panel'
 import { getProviderConfig } from '@/lib/esign/dropbox-sign'
 
 export const metadata: Metadata = { title: 'Estimate' }
@@ -51,6 +51,7 @@ export default async function EstimateDetailPage({
     getOrgFeatures(session.organizationId),
     getEstimateSigningState(id),
   ])
+  const signingCopies = await getFamilySigningCopies(family.map((f) => f.id))
   const manager = canManage(session.role)
   const isLatest = family[0]?.id === estimate.id
   const signingInput = {
@@ -252,43 +253,14 @@ export default async function EstimateDetailPage({
       </div>
     ),
     history: (
-      <section aria-labelledby="revisions-heading" className="surface flex max-w-3xl flex-col gap-3 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="revisions-heading" className="font-serif text-lg font-semibold text-foreground">
-            Revision history
-          </h2>
-          {previous && (
-            <Button variant="outline" size="sm" render={<Link href={`/estimates/${id}/compare?with=${previous.id}`} />} nativeButton={false}>
-              <GitCompare data-icon="inline-start" />
-              Compare with previous
-            </Button>
-          )}
-        </div>
-        <ol className="flex flex-col divide-y">
-          {family.map((rev) => (
-            <li key={rev.id} className="flex items-center justify-between gap-3 py-2.5">
-              <div className="flex min-w-0 flex-col gap-1">
-                <Link
-                  href={`/estimates/${rev.id}${list.from ? `?from=${encodeURIComponent(list.from)}` : ''}`}
-                  aria-current={rev.id === id ? 'page' : undefined}
-                  className={cn('text-sm font-medium hover:text-primary', rev.id === id && 'text-primary')}
-                >
-                  {`Revision ${rev.revision}`}
-                </Link>
-                <EstimateStatusBadge status={rev.status} className="w-fit" />
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <span className="text-sm font-semibold tabular-nums">{formatCentsExact(rev.construction_total_cents)}</span>
-                {rev.id !== id && (
-                  <Link href={`/estimates/${id}/compare?with=${rev.id}`} className="text-xs text-primary hover:underline">
-                    Compare
-                  </Link>
-                )}
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
+      <EstimateHistoryPanel
+        currentId={id}
+        revisions={family}
+        previousId={previous?.id ?? null}
+        fromQuery={list.from ?? null}
+        files={signingCopies}
+        documentsHref={estimate.project ? `/projects/${estimate.project.id}/documents?category=estimates` : null}
+      />
     ),
   }
 

@@ -25,6 +25,38 @@ export async function getEstimateSigningState(estimateId: string): Promise<Estim
   }
 }
 
+export type EstimateSigningCopy = {
+  estimateId: string
+  documentId: string
+  name: string
+  createdAt: string | null
+  summary: SignatureSummary | null
+}
+
+/** Signing copies for every revision in an estimate family, each tied to the revision it was prepared from. Read through RLS. */
+export async function getFamilySigningCopies(estimateIds: string[]): Promise<EstimateSigningCopy[]> {
+  if (!estimateIds.length) return []
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('estimate_signing_snapshots')
+    .select('estimate_id, document_id, completed_at, project_documents:document_id(name)')
+    .in('estimate_id', estimateIds)
+    .not('document_id', 'is', null)
+  const rows = (data ?? []).filter((r): r is typeof r & { document_id: string } => Boolean(r.document_id))
+  if (!rows.length) return []
+  const summaries = await getSignatureSummaries(rows.map((r) => r.document_id))
+  return rows.map((r) => {
+    const doc = Array.isArray(r.project_documents) ? r.project_documents[0] : r.project_documents
+    return {
+      estimateId: r.estimate_id,
+      documentId: r.document_id,
+      name: (doc as { name?: string } | null)?.name ?? 'Estimate signing copy',
+      createdAt: r.completed_at,
+      summary: summaries[r.document_id] ?? null,
+    }
+  })
+}
+
 /** Latest signature request per document, read through RLS. */
 export async function getSignatureSummaries(documentIds: string[]): Promise<Record<string, SignatureSummary>> {
   if (!documentIds.length) return {}
