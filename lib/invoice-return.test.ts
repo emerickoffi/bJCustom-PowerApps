@@ -14,6 +14,15 @@ test('preserves a valid status filter from the global list', () => {
   assert.equal(invoiceReturnTarget('/invoices?status=bogus').href, '/invoices')
 })
 
+test('preserves search and page from the global list', () => {
+  assert.equal(
+    invoiceReturnTarget('/invoices?status=issued&q=smith+kitchen&page=3').href,
+    '/invoices?status=issued&q=smith+kitchen&page=3',
+  )
+  assert.equal(invoiceReturnTarget('/invoices?page=abc&q=').href, '/invoices')
+  assert.equal(invoiceReturnTarget('/invoices?page=1').href, '/invoices')
+})
+
 test('returns to the project invoices panel', () => {
   assert.deepEqual(invoiceReturnTarget(`/projects/${PID}`), {
     href: `/projects/${PID}#invoices-heading`,

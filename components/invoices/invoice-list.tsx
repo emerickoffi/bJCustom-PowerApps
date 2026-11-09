@@ -2,13 +2,20 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, Receipt } from 'lucide-react'
+import { AlertTriangle, FileText, FolderOpen, MoreHorizontal, Printer, Receipt } from 'lucide-react'
 import type { InvoiceRow } from '@/lib/invoice-queries'
 import { DRAW_MILESTONE_LABELS, INVOICE_STATUS_LABELS, balanceCents, isOverdue } from '@/lib/invoices'
 import { formatCentsExact } from '@/lib/estimates'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { invoiceDetailHref } from '@/lib/invoice-return'
+import { invoiceDetailHref, invoicePrintHref } from '@/lib/invoice-return'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status-badge'
 import { DetailList } from '@/components/shared/page-header'
 import { PanelSection, RecordPanel, isPlainClick } from '@/components/shared/record-panel'
@@ -137,69 +144,140 @@ function InvoiceSummary({ invoice: inv }: { invoice: InvoiceListRow }) {
 
 type OpenHandler = (e: React.MouseEvent, id: string) => void
 
+const PORTAL_HINT = 'Published to the homeowner portal. This does not confirm the homeowner has viewed it or received an email.'
+
+function daysPastDue(inv: InvoiceRow) {
+  if (!isOverdue(inv)) return 0
+  const today = Date.parse(new Date().toISOString().slice(0, 10))
+  return Math.max(1, Math.round((today - Date.parse(inv.due_date)) / 86_400_000))
+}
+
 function InvoiceTable({ invoices, from, onOpen }: { invoices: InvoiceListRow[]; from: string; onOpen: OpenHandler }) {
   return (
-    <div className="hidden overflow-x-auto lg:block">
-      <table className="w-full text-sm">
+    <div className="hidden overflow-x-auto overscroll-x-contain lg:block">
+      <table className="w-full min-w-[960px] table-fixed text-sm">
         <caption className="sr-only">Invoices</caption>
+        <colgroup>
+          <col className="w-[20%]" />
+          <col className="w-[26%]" />
+          <col className="w-[9.5rem]" />
+          <col className="w-[9.5rem]" />
+          <col className="w-[8.5rem]" />
+          <col className="w-[8.5rem]" />
+          <col className="w-[9rem]" />
+          <col className="w-[8.5rem]" />
+        </colgroup>
         <thead>
           <tr className="border-b border-[#D6DDE5] bg-table-head text-left text-xs text-[#526173]">
-            <th scope="col" className="px-5 py-3 font-medium">Invoice</th>
-            <th scope="col" className="px-4 py-3 font-medium">Project / homeowner</th>
-            <th scope="col" className="px-4 py-3 font-medium">Invoice date</th>
-            <th scope="col" className="px-4 py-3 font-medium">Due</th>
-            <th scope="col" className="px-4 py-3 text-right font-medium">Total</th>
-            <th scope="col" className="px-4 py-3 text-right font-medium">Balance</th>
-            <th scope="col" className="px-5 py-3 font-medium">Status</th>
+            <th scope="col" className="px-4 py-2.5 font-medium">Invoice</th>
+            <th scope="col" className="px-3 py-2.5 font-medium">Project / homeowner</th>
+            <th scope="col" className="px-3 py-2.5 font-medium">Invoice date</th>
+            <th scope="col" className="px-3 py-2.5 font-medium">Due</th>
+            <th scope="col" className="px-3 py-2.5 text-right font-medium">Total</th>
+            <th scope="col" className="px-3 py-2.5 text-right font-medium">Balance</th>
+            <th scope="col" className="px-3 py-2.5 font-medium">Status</th>
+            <th scope="col" className="px-4 py-2.5 text-right font-medium">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {invoices.map((inv) => (
-            <tr
-              key={inv.id}
-              className="border-b border-[#D6DDE5] bg-white transition-colors last:border-0 hover:bg-link-soft/60 has-[:focus-visible]:bg-link-soft/60"
-            >
-              <td className="px-5 py-3.5">
-                <Link
-                  href={invoiceDetailHref(inv.id, from)}
-                  onClick={(e) => onOpen(e, inv.id)}
-                  className="rounded-sm font-medium text-link hover:text-link-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
-                >
-                  {inv.invoice_number}
-                </Link>
-                <p className="line-clamp-1 text-xs text-muted-foreground">{inv.title}</p>
-              </td>
-              <td className="px-4 py-3.5">
-                <p className="line-clamp-1">{inv.project?.name ?? '—'}</p>
-                <p className="line-clamp-1 text-xs text-muted-foreground">{inv.clientName}</p>
-              </td>
-              <td className="whitespace-nowrap px-4 py-3.5 tabular-nums text-muted-foreground">{formatDate(inv.invoice_date)}</td>
-              <td className="whitespace-nowrap px-4 py-3.5 tabular-nums">{formatDate(inv.due_date)}</td>
-              <td className="whitespace-nowrap px-4 py-3.5 text-right tabular-nums">{formatCentsExact(inv.total_cents)}</td>
-              <td className="whitespace-nowrap px-4 py-3.5 text-right font-medium tabular-nums">
-                {inv.status === 'draft' ? '—' : formatCentsExact(balanceCents(inv))}
-              </td>
-              <td className="px-5 py-3.5">
-                <StatusCell invoice={inv} />
-              </td>
-            </tr>
-          ))}
+          {invoices.map((inv) => {
+            const late = daysPastDue(inv)
+            return (
+              <tr
+                key={inv.id}
+                className="border-b border-[#D6DDE5] bg-white transition-colors last:border-0 hover:bg-link-soft/40 has-[:focus-visible]:bg-link-soft/40"
+              >
+                <td className="px-4 py-2.5">
+                  <Link
+                    href={invoiceDetailHref(inv.id, from)}
+                    onClick={(e) => onOpen(e, inv.id)}
+                    className="rounded-sm font-medium text-link hover:text-link-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+                  >
+                    {inv.invoice_number}
+                  </Link>
+                  <p className="truncate text-xs text-muted-foreground" title={inv.title}>{inv.title}</p>
+                </td>
+                <td className="px-3 py-2.5">
+                  <p className="truncate" title={inv.project?.name}>{inv.project?.name ?? '—'}</p>
+                  <p className="truncate text-xs text-muted-foreground">{inv.clientName}</p>
+                </td>
+                <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-muted-foreground">{formatDate(inv.invoice_date)}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">
+                  <span className={late ? 'text-destructive' : undefined}>{formatDate(inv.due_date)}</span>
+                  {late > 0 && <p className="text-xs font-medium text-destructive">{`${late} day${late === 1 ? '' : 's'} late`}</p>}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">{formatCentsExact(inv.total_cents)}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-right font-medium tabular-nums">
+                  {inv.status === 'draft' ? '—' : formatCentsExact(balanceCents(inv))}
+                </td>
+                <td className="px-3 py-2.5">
+                  <StatusCell invoice={inv} />
+                </td>
+                <td className="px-4 py-2.5">
+                  <RowActions invoice={inv} from={from} onOpen={onOpen} />
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
   )
 }
 
-function InvoiceCard({ invoice: inv, from, onOpen }: { invoice: InvoiceListRow; from: string; onOpen: OpenHandler }) {
+function RowActions({ invoice: inv, from, onOpen }: { invoice: InvoiceListRow; from: string; onOpen: OpenHandler }) {
   return (
-    <Link
-      href={invoiceDetailHref(inv.id, from)}
-      onClick={(e) => onOpen(e, inv.id)}
-      className="flex flex-col gap-3 p-4 transition-colors hover:bg-link-soft/60 focus-visible:bg-link-soft/60 focus-visible:shadow-[inset_3px_0_0_var(--link)] focus-visible:outline-none md:px-5"
-    >
+    <div className="flex items-center justify-end gap-1">
+      <Button
+        variant="outline"
+        size="sm"
+        className="min-h-9 md:min-h-8"
+        render={<Link href={invoiceDetailHref(inv.id, from)} onClick={(e) => onOpen(e, inv.id)} />}
+        nativeButton={false}
+      >
+        Open
+        <span className="sr-only">{` invoice ${inv.invoice_number}`}</span>
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={<Button variant="ghost" size="icon" className="size-9 md:size-8" aria-label={`More actions for invoice ${inv.invoice_number}`} />}
+        >
+          <MoreHorizontal aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuItem render={<Link href={invoiceDetailHref(inv.id, from)} />}>
+            <FileText aria-hidden="true" />
+            Open full workspace
+          </DropdownMenuItem>
+          <DropdownMenuItem render={<Link href={invoicePrintHref(inv.id, from)} target="_blank" rel="noopener" />}>
+            <Printer aria-hidden="true" />
+            Print / save PDF
+          </DropdownMenuItem>
+          {inv.project_id && (
+            <DropdownMenuItem render={<Link href={`/projects/${inv.project_id}`} />}>
+              <FolderOpen aria-hidden="true" />
+              Go to project
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
+}
+
+function InvoiceCard({ invoice: inv, from, onOpen }: { invoice: InvoiceListRow; from: string; onOpen: OpenHandler }) {
+  const late = daysPastDue(inv)
+  return (
+    <div className="flex flex-col gap-3 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col">
-          <span className="font-medium text-link">{inv.invoice_number}</span>
+          <Link
+            href={invoiceDetailHref(inv.id, from)}
+            onClick={(e) => onOpen(e, inv.id)}
+            className="self-start rounded-sm font-medium text-link hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+          >
+            {inv.invoice_number}
+          </Link>
           <span className="truncate text-sm text-muted-foreground">{inv.title}</span>
         </div>
         <StatusCell invoice={inv} />
@@ -208,30 +286,47 @@ function InvoiceCard({ invoice: inv, from, onOpen }: { invoice: InvoiceListRow; 
         <span className="truncate text-foreground">{inv.project?.name ?? '—'}</span>
         <span className="truncate text-xs text-muted-foreground">{inv.clientName}</span>
       </div>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-[#F3F4F6] p-3 text-sm sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-md bg-[#F3F4F6] p-3 text-sm sm:grid-cols-4">
         <CardField label="Invoice date" value={formatDate(inv.invoice_date)} />
-        <CardField label="Due" value={formatDate(inv.due_date)} />
+        <CardField
+          label="Due"
+          value={late ? `${formatDate(inv.due_date)} · ${late}d late` : formatDate(inv.due_date)}
+          danger={late > 0}
+        />
         <CardField label="Total" value={formatCentsExact(inv.total_cents)} />
         <CardField label="Balance" value={inv.status === 'draft' ? '—' : formatCentsExact(balanceCents(inv))} strong />
       </dl>
-    </Link>
+      <RowActions invoice={inv} from={from} onOpen={onOpen} />
+    </div>
   )
 }
 
-function CardField({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function CardField({ label, value, strong, danger }: { label: string; value: string; strong?: boolean; danger?: boolean }) {
   return (
     <div className="flex min-w-0 flex-col">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className={cn('truncate tabular-nums', strong ? 'font-semibold text-foreground' : 'text-foreground')}>{value}</dd>
+      <dd
+        className={cn(
+          'truncate tabular-nums',
+          danger ? 'font-medium text-destructive' : strong ? 'font-semibold text-foreground' : 'text-foreground',
+        )}
+      >
+        {value}
+      </dd>
     </div>
   )
 }
 
 function StatusCell({ invoice: inv }: { invoice: InvoiceRow }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 lg:justify-start">
+    <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-1.5 gap-y-0.5 lg:justify-start">
       <InvoiceStatusBadge status={inv.status} dueDate={inv.due_date} />
-      {inv.portal_published && inv.status !== 'draft' && <span className="text-xs text-muted-foreground">In portal</span>}
+      {inv.portal_published && inv.status !== 'draft' && (
+        <span className="cursor-help text-xs text-muted-foreground underline decoration-dotted underline-offset-2" title={PORTAL_HINT}>
+          In portal
+          <span className="sr-only">{`. ${PORTAL_HINT}`}</span>
+        </span>
+      )}
     </div>
   )
 }

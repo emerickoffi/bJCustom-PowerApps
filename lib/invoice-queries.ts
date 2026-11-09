@@ -109,16 +109,28 @@ export async function listInvoices(
   return (data ?? []) as InvoiceRow[]
 }
 
-/** Same scope as listInvoices, but surfaces retrieval failures so callers never mistake them for "no invoices". */
+const INVOICE_BATCH = 1000
+
+/**
+ * Every invoice the user can read in the organization, fetched in batches so list counts and
+ * financial summaries cover the full dataset. Surfaces failures so they're never mistaken for "no invoices".
+ */
 export async function listInvoicesResult(organizationId: string) {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('invoices')
-    .select(INVOICE_SELECT)
-    .eq('organization_id', organizationId)
-    .order('created_at', { ascending: false })
-    .limit(300)
-  return { invoices: (data ?? []) as InvoiceRow[], failed: Boolean(error) }
+  const invoices: InvoiceRow[] = []
+  for (let from = 0; ; from += INVOICE_BATCH) {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select(INVOICE_SELECT)
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, from + INVOICE_BATCH - 1)
+    if (error) return { invoices: [] as InvoiceRow[], failed: true }
+    invoices.push(...((data ?? []) as InvoiceRow[]))
+    if (!data || data.length < INVOICE_BATCH) break
+  }
+  return { invoices, failed: false }
 }
 
 export async function getInvoice(id: string, organizationId?: string) {
