@@ -60,71 +60,35 @@ export function PageHeader({
       </header>
     )
   }
-  // The dark 'forest' banner was a legacy decorative treatment; it now renders as the standard white card.
-  const sage = tone === 'sage' || tone === 'forest'
-  const forest = false
-  const titleAddon =
-    count || titleAddonProp ? (
-      <>
-        {count && <CountChip {...count} />}
-        {titleAddonProp}
-      </>
-    ) : null
+  // Every top-level page uses one compact heading: back link, optional icon, title row, short description, and
+  // the primary action pinned to the right. The legacy 'sage'/'forest' intro cards and the 'plain' variant all
+  // render this same treatment so headings align and size identically across the app.
   return (
-    <header
-      className={cn(
-        'flex min-w-0 flex-col gap-3 md:gap-4',
-        sage && 'rounded-xl border border-border bg-card px-4 py-3.5 md:px-5 md:py-4',
-        forest && 'rounded-xl bg-brand-deep px-4 py-3.5 md:px-6 md:py-4',
-        tone === 'plain' && 'border-b border-border/70 pb-4 md:pb-6',
-      )}
-    >
+    <header className="flex min-w-0 flex-col gap-2">
       {backHref && <BackLink href={backHref} label={backLabel} />}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex min-w-0 items-start gap-3 md:gap-4">
+      <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
           {avatar}
           {!avatar && Icon && (
-            <span
-              className={cn(
-                'flex size-9 shrink-0 items-center justify-center rounded-lg text-primary ring-1 ring-inset md:size-10',
-                forest ? 'bg-white/10 text-white ring-white/15' : 'bg-sage ring-primary/10',
-              )}
-            >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary ring-1 ring-inset ring-primary/10">
               <Icon className="size-5" aria-hidden="true" />
             </span>
           )}
-          <div className="flex min-w-0 flex-col gap-1.5">
+          <div className="flex min-w-0 flex-col gap-0.5">
             {eyebrow && (
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 {eyebrow}
               </div>
             )}
-            {titleAddon ? (
-              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
-                <h1 className="min-w-0 text-balance font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-3xl">
-                  {title}
-                </h1>
-                {titleAddon}
-              </div>
-            ) : (
-              <h1
-                className={cn(
-                  'text-balance font-serif text-2xl font-semibold leading-tight tracking-tight md:text-3xl',
-                  forest ? 'text-white' : 'text-foreground',
-                )}
-              >
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+              <h1 className="min-w-0 text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-2xl">
                 {title}
               </h1>
-            )}
+              {count && <CountChip {...count} />}
+              {titleAddonProp}
+            </div>
             {description && (
-              <div
-                className={cn(
-                  'max-w-2xl text-pretty text-sm leading-relaxed md:text-[0.95rem]',
-                  forest ? 'text-[#E0ECE4]' : 'text-muted-foreground',
-                )}
-              >
-                {description}
-              </div>
+              <div className="max-w-3xl text-pretty text-sm leading-relaxed text-muted-foreground">{description}</div>
             )}
           </div>
         </div>
@@ -153,25 +117,50 @@ export function BackLink({ href, label, className }: { href: string; label?: str
   )
 }
 
+/**
+ * App-wide page width rules. Every variant is left-aligned to the same workspace gutter so headings line up
+ * from page to page; only the inner measure differs.
+ * - workspace: dashboards, lists, tables, schedules, libraries — the full width beside the sidebar.
+ * - detail: record pages and dense editors — full width, optionally split with <DetailLayout> supporting panel.
+ * - form: create/edit/settings forms — a readable measure so short inputs don't stretch across large monitors.
+ */
+export type PageWidth = 'workspace' | 'detail' | 'form'
+
+export function pageLayout(width: PageWidth = 'workspace', className?: string) {
+  return cn('flex w-full min-w-0 flex-col gap-5 md:gap-6', width === 'form' && 'max-w-4xl', className)
+}
+
 export function PageContainer({
-  width = 'default',
+  width = 'workspace',
   className,
   children,
 }: {
-  width?: 'default' | 'narrow' | 'form'
+  width?: PageWidth
   className?: string
   children: React.ReactNode
 }) {
+  return <div className={pageLayout(width, className)}>{children}</div>
+}
+
+/** Main content with an optional supporting panel; the panel stacks beneath the content below desktop width. */
+export function DetailLayout({
+  aside,
+  asideLabel,
+  className,
+  children,
+}: {
+  aside?: React.ReactNode
+  asideLabel?: string
+  className?: string
+  children: React.ReactNode
+}) {
+  if (!aside) return <div className={cn('flex min-w-0 flex-col gap-5 md:gap-6', className)}>{children}</div>
   return (
-    <div
-      className={cn(
-        'mx-auto flex w-full flex-col gap-8',
-        width === 'narrow' && 'max-w-5xl',
-        width === 'form' && 'max-w-4xl',
-        className,
-      )}
-    >
-      {children}
+    <div className={cn('grid min-w-0 gap-5 md:gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_24rem]', className)}>
+      <div className="flex min-w-0 flex-col gap-5 md:gap-6">{children}</div>
+      <aside aria-label={asideLabel} className="flex min-w-0 flex-col gap-5 md:gap-6">
+        {aside}
+      </aside>
     </div>
   )
 }

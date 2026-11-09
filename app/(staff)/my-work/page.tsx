@@ -8,7 +8,7 @@ import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
 import { todayIso, type ActivityStatus } from '@/lib/schedule'
 import { assignedProjectsFilter, splitAssignedActivities } from '@/lib/my-work'
-import { EmptyState, PageHeader, SectionHeading } from '@/components/shared/page-header'
+import { EmptyState, PageHeader, SectionHeading, pageLayout } from '@/components/shared/page-header'
 import { CompactProjectCard } from '@/components/dashboard/compact-project-card'
 import { WorkItemList, type WorkItem } from '@/components/my-work/work-item-list'
 import { ACTIVITY_STATUS_LABELS } from '@/lib/schedule'
@@ -122,7 +122,7 @@ export default async function MyWorkPage() {
   const showAttention = features.schedule || features.issues
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader
         icon={CalendarCheck2}
         title="My Work"

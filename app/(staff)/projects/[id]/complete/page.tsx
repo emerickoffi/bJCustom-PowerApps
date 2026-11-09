@@ -1,3 +1,4 @@
+import { pageLayout } from '@/components/shared/page-header'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
@@ -44,7 +45,7 @@ export default async function CompletionReviewPage({ params }: { params: Promise
     blockedReason = 'Resolve the outstanding requirements, or ask an administrator to approve completion with exceptions.'
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className={pageLayout('form')}>
       <Link href={`/projects/${id}`} className="flex items-center gap-1.5 self-start text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden="true" />
         Back to overview

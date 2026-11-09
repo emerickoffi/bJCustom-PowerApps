@@ -6,7 +6,7 @@ import { Plus, Users, Users as UsersIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader, EmptyState } from '@/components/shared/page-header'
+import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 import { ListFilters } from '@/components/shared/list-filters'
 import { DirectoryViews } from '@/components/shared/directory-views'
 import { DirectorySort } from '@/components/shared/directory-sort'
@@ -175,7 +175,7 @@ export default async function ClientsPage({
   const range = resultRange(page, clients.length, total)
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader icon={UsersIcon}
         title="Clients"
         description="Homeowners and prospects, with their contacts, projects, and communication history."

@@ -4,7 +4,7 @@ import { requireManager } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getClientOptions, getStaffMembers } from '@/lib/queries'
 import { signMediaPaths } from '@/lib/media'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { ProjectForm } from '@/components/projects/project-form'
 import { updateProjectAction } from '@/app/actions/projects'
 import { FolderPen as FolderPenIcon } from 'lucide-react'
@@ -33,7 +33,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   ])
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('form')}>
       <PageHeader icon={FolderPenIcon}
         backHref={`/projects/${project.id}`}
         backLabel={project.name}

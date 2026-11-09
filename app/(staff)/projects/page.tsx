@@ -23,7 +23,7 @@ import { FolderKanban, Home, Plus, UserRound, FolderKanban as FolderKanbanIcon }
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader, EmptyState } from '@/components/shared/page-header'
+import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 import { CompactProjectCard } from '@/components/dashboard/compact-project-card'
 import { getOrgFeatures } from '@/lib/features'
 import { getDashboardCardDetails } from '@/lib/dashboard-cards'
@@ -148,7 +148,7 @@ export default async function ProjectsPage({
   }))
 
   return (
-    <div data-page-width="wide" className="flex min-w-0 flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader icon={FolderKanbanIcon}
         title="Projects"
         description="Every custom home and renovation, from first consultation to final walkthrough."

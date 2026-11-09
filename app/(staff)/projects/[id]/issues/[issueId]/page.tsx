@@ -5,7 +5,7 @@ import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getProfileNames, getStaffMembers } from '@/lib/queries'
 import { signMediaPaths } from '@/lib/media'
-import { PageHeader, DetailList } from '@/components/shared/page-header'
+import { PageHeader, DetailList, pageLayout } from '@/components/shared/page-header'
 import { MediaGrid } from '@/components/walkthroughs/media-uploader'
 import { IssueStatusBadge, PriorityBadge, ValidationBadge } from '@/components/walkthroughs/badges'
 import { ApproveRepairButton, IssueNoteForm, IssueUpdateForm, MissingRepairPhotosReminder, RepairPhotoUploader, SupplementalEvidenceUploader } from '@/components/walkthroughs/issue-management'
@@ -231,7 +231,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('detail')}>
       <PageHeader icon={ListChecksIcon}
         backHref={walkthrough ? `/projects/${project.id}/walkthroughs/${walkthrough.id}` : `/projects/${project.id}`}
         backLabel={walkthrough ? walkthrough.title : project.name}

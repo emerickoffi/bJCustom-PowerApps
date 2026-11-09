@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { requireAdmin } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { OrganizationSettingsForm } from '@/components/settings/organization-settings-form'
 import { Settings as SettingsIcon } from 'lucide-react'
 
@@ -30,7 +30,7 @@ export default async function SettingsPage() {
   ])
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <div className={pageLayout('form')}>
       <PageHeader icon={SettingsIcon}
         title="Company settings"
         description="Your company identity appears throughout the app, the homeowner portal, and future documents."

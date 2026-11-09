@@ -9,7 +9,7 @@ import { formatDate } from '@/lib/format'
 import { workStateFor } from '@/lib/subcontractor-work'
 import { loadProfileNames, loadSubmissionCycles } from '@/lib/subcontractor-work-data'
 import { isUuid } from '@/lib/subcontractor-projects'
-import { PageHeader, Surface } from '@/components/shared/page-header'
+import { PageHeader, Surface, pageLayout } from '@/components/shared/page-header'
 import { WorkStateBadge } from '@/components/subcontractor-work/work-state-badge'
 import { SubmissionHistory } from '@/components/subcontractor-work/submission-history'
 import { ReviewForm, type LinkableIssue } from '@/components/subcontractor-work/review-form'
@@ -76,7 +76,7 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
   const awaiting = current.status === 'submitted'
 
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-5">
+    <div className={pageLayout('detail')}>
       <PageHeader
         icon={ClipboardCheck}
         backHref={`/projects/${id}/subcontractor-work`}

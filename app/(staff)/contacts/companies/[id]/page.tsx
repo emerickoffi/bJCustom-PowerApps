@@ -28,7 +28,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
   const linked = company.subcontractor_company_id
 
   return (
-    <PageContainer width="narrow">
+    <PageContainer width="detail">
       <PageHeader
         icon={linked ? HardHat : Building2}
         title={company.company_name}

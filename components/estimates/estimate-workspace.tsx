@@ -201,7 +201,7 @@ export function EstimateWorkspaceHeader({
   return (
     <div
       ref={ref}
-      className="sticky top-[var(--app-header-h,3.5rem)] z-20 -mx-4 -mt-5 border-b border-border bg-background/95 px-4 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:-mx-6 sm:-mt-8 sm:px-6 sm:pt-4 lg:-mt-10 xl:-mx-10 xl:px-10 tablet:-mt-6"
+      className="sticky top-[var(--app-header-h,3.5rem)] z-20 mx-[calc(var(--page-gutter-x)*-1)] mt-[calc(var(--page-gutter-top)*-1)] border-b border-border bg-background/95 px-(--page-gutter-x) pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:pt-4"
     >
       <div className="flex flex-col gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs">

@@ -269,6 +269,27 @@
   background-size: 48px 48px, 48px 48px, 12px 12px, 12px 12px;
 }
 
+/*
+ * Page gutters shared by the app header, <main>, and any full-bleed sticky bar that must cancel them.
+ * One breakpoint ladder for every shell: phone (<640px), tablet (640px+), desktop (1280px+).
+ */
+:root {
+  --page-gutter-x: 1rem;
+  --page-gutter-top: 1rem;
+}
+@media (min-width: 40rem) {
+  :root {
+    --page-gutter-x: 1.5rem;
+    --page-gutter-top: 1.25rem;
+  }
+}
+@media (min-width: 80rem) {
+  :root {
+    --page-gutter-x: 2.5rem;
+    --page-gutter-top: 1.5rem;
+  }
+}
+
 @utility tabular {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum', 'cv11';

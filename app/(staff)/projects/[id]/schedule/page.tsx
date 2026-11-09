@@ -164,7 +164,7 @@ export default async function SchedulePage({
       : null
 
   return (
-    <div data-page-width="wide" className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         tone="section"
         title="Construction schedule"

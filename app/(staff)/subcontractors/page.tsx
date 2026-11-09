@@ -8,7 +8,7 @@ import { loadDirectoryWork } from '@/lib/assignments-data'
 import { AssignedWorkCard } from '@/components/subcontractors/assigned-work-card'
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeSearch } from '@/lib/format'
-import { PageHeader, EmptyState } from '@/components/shared/page-header'
+import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 import { SubcontractorTable } from '@/components/subcontractors/subcontractor-table'
 import {
   SUBCONTRACTOR_COLUMNS,
@@ -129,7 +129,7 @@ export default async function SubcontractorsPage({
   )
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader
         icon={HardHat}
         title="Subcontractors"

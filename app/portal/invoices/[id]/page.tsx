@@ -18,7 +18,7 @@ export default async function PortalInvoicePage({ params }: { params: Promise<{ 
   if (!data || data.invoice.status === 'draft') notFound()
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6">
+    <div className="flex w-full min-w-0 flex-col gap-5 md:gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href="/portal/invoices" className="text-sm text-muted-foreground hover:text-primary">
           All invoices

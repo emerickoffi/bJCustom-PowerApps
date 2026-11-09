@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { Hammer, Blocks as BlocksIcon } from 'lucide-react'
 import { requireStaff } from '@/lib/session'
 import { GRADUATED_MODULE_ROUTES, PLANNED_MODULES } from '@/lib/navigation'
-import { PageHeader, EmptyState } from '@/components/shared/page-header'
+import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
@@ -19,7 +19,7 @@ export default async function PlannedModulePage({ params }: { params: Promise<{ 
   if (!mod) notFound()
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader icon={BlocksIcon} eyebrow={`Stage ${mod.stage}`} title={mod.label} description={mod.summary} />
       <EmptyState
         icon={Hammer}

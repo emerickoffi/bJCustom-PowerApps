@@ -10,7 +10,7 @@ import { qualificationSnapshot } from '@/lib/subcontract-quote-analysis-data'
 import { analysisResultSchema, outdatedReasons, type AiReviewState, type InputSnapshot } from '@/lib/ai/quote-analysis'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatDateTime } from '@/lib/format'
-import { PageHeader, Surface } from '@/components/shared/page-header'
+import { PageHeader, Surface, pageLayout } from '@/components/shared/page-header'
 import { RequestForm } from '@/components/subcontract-quotes/request-form'
 import { RequestControls, RevisionRequestButton } from '@/components/subcontract-quotes/request-controls'
 import { DecisionBadge, RequestStatusBadge, ResponseBadge } from '@/components/subcontract-quotes/status-badges'
@@ -158,7 +158,7 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
   if (request.status === 'draft') {
     const tz = request.deadline_timezone ?? 'America/Chicago'
     return (
-      <div className="flex w-full max-w-4xl flex-col gap-5">
+      <div className={pageLayout('detail')}>
         {back}
         <PageHeader icon={FileSpreadsheet} eyebrow={projectName} title={request.title} titleAddon={<RequestStatusBadge status="draft" />} description="Drafts are private to your team until sent." />
         <Surface>
@@ -310,7 +310,7 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
   const awardedRevision = award ? revisions.find((r) => r.id === award.revision_id) : undefined
 
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-5">
+    <div className={pageLayout('detail')}>
       {back}
       <PageHeader
         icon={FileSpreadsheet}

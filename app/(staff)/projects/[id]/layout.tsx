@@ -51,8 +51,8 @@ export default async function ProjectLayout({
   })
   return (
     // Every project tab shares this frame: identity row, worksheet tabs, and the connected workspace panel.
-    // `data-page-width="wide"` keeps the outer width identical on every tab so sections never jump sideways.
-    <div data-project-frame data-page-width="wide" className="flex min-w-0 flex-col">
+    // The shell gives every tab the same full workspace width, so sections never jump sideways.
+    <div data-project-frame className="flex min-w-0 flex-col">
       <ProjectQuickActionsScope projectName={project.name} actions={quickActions} />
       <AssistantProjectScope
         project={{

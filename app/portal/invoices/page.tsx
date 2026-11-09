@@ -28,7 +28,7 @@ export default async function PortalInvoicesPage() {
   const owed = invoices.reduce((sum, i) => sum + balanceCents(i), 0)
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="flex w-full min-w-0 flex-col gap-5 md:gap-6">
       <header className="flex flex-col gap-1">
         <Link href="/portal" className="text-sm text-muted-foreground hover:text-primary">
           Back to your home

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { requireAdmin } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { getQuickBooksStatus, quickBooksStatusLabel } from '@/lib/quickbooks'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 
 export const metadata: Metadata = { title: 'Integrations' }
 
@@ -14,7 +14,7 @@ export default async function IntegrationsPage() {
   const status = getQuickBooksStatus()
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <div className={pageLayout('form')}>
       <PageHeader
         icon={Plug}
         backHref="/settings"

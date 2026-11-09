@@ -5,7 +5,7 @@ import { ChevronRight, ClipboardCheck as ClipboardCheckIcon } from 'lucide-react
 import { canManage, requireStaff } from '@/lib/session'
 import { StaffReportsSection } from '@/components/reports/staff-reports-section'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader, DetailList } from '@/components/shared/page-header'
+import { PageHeader, DetailList, pageLayout } from '@/components/shared/page-header'
 import { IssueStatusBadge, ResponseBadge, WalkthroughStatusBadge } from '@/components/walkthroughs/badges'
 import { WALKTHROUGH_TYPE_LABELS, type IssuePriority, type IssueStatus, type ResponseValue, type WalkthroughStatus } from '@/lib/walkthroughs'
 import { withItemNumbers } from '@/lib/punch-list'
@@ -85,7 +85,7 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
   const canConduct = ['org_admin', 'project_manager', 'builder_staff'].includes(session.role)
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('detail')}>
       <PageHeader icon={ClipboardCheckIcon}
         backHref={`/projects/${project.id}`}
         backLabel={project.name}

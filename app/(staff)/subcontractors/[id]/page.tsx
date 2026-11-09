@@ -12,7 +12,7 @@ import { PROJECT_STATUS_LABELS, projectAcceptsDirectoryAssignments, type Project
 import { isUuid, splitProjectAssignments, type ProjectAssignmentRecord } from '@/lib/subcontractor-projects'
 import { companyInitials, projectCountLabel } from '@/lib/subcontractor-directory'
 import { loadProjectAssignments, loadSubcontractor } from '@/lib/subcontractor-detail-data'
-import { PageHeader, Surface } from '@/components/shared/page-header'
+import { PageHeader, Surface, pageLayout } from '@/components/shared/page-header'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { SubcontractorStatusButton } from '@/components/subcontractors/subcontractor-status-dialog'
 import { SubcontractorStatusBadge } from '@/components/subcontractors/subcontractor-status-badge'
@@ -91,7 +91,7 @@ export default async function SubcontractorDetailPage({
   const qualificationHref = detailTabHref(company.id, 'qualification')
 
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-5">
+    <div className={pageLayout('detail')}>
       <PageHeader
         backHref="/subcontractors"
         backLabel="Subcontractors"
