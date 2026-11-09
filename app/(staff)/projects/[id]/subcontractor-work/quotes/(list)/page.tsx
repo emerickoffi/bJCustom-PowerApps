@@ -5,8 +5,7 @@ import { AlertTriangle, ChevronRight, Plus } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader, pageLayout } from '@/components/shared/page-header'
-import { SubcontractsNav } from '@/components/subcontract-quotes/subcontracts-nav'
+import { SubWorkShell } from '@/components/subcontractor-work/sub-work-shell'
 import { NewQuoteRequestDrawer } from '@/components/subcontract-quotes/new-request-drawer'
 import { CurrencyNotice } from '@/components/subcontract-quotes/currency-notice'
 import { emptyRequestDraft, loadRequestFormOptions } from '@/lib/subcontract-quotes-data'
@@ -60,27 +59,25 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
   const canConfirmCurrency = Boolean(canViewInternal)
 
   return (
-    <div className={pageLayout('workspace', 'gap-4 md:gap-4')}>
-      <PageHeader
-        title="Subcontract quotes"
-        count={setupMissing || error ? undefined : { value: rows.length, noun: 'request' }}
-        actions={
-          setupMissing ? null : (
-            <NewQuoteRequestDrawer
-              key={id}
-              projectId={id}
-              projectName={project.name}
-              currency={currency}
-              initial={emptyRequestDraft()}
-              companies={options.companies}
-              documents={options.documents}
-              activities={options.activities}
-            />
-          )
-        }
-      />
-      <SubcontractsNav projectId={id} active="quotes" />
-
+    <SubWorkShell
+      projectId={id}
+      active="quotes"
+      count={setupMissing || error ? undefined : { value: rows.length, noun: 'request' }}
+      actions={
+        setupMissing ? null : (
+          <NewQuoteRequestDrawer
+            key={id}
+            projectId={id}
+            projectName={project.name}
+            currency={currency}
+            initial={emptyRequestDraft()}
+            companies={options.companies}
+            documents={options.documents}
+            activities={options.activities}
+          />
+        )
+      }
+    >
       {setupMissing ? (
         <p className="flex items-start gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
@@ -149,6 +146,6 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
           </section>
         </>
       )}
-    </div>
+    </SubWorkShell>
   )
 }
