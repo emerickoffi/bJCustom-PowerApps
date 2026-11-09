@@ -6,8 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
 /** Holds the less-frequent project metadata, status changes and history so the Overview stays scannable. */
-export function ProjectDetailsDrawer({ projectName, children }: { projectName: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false)
+export function ProjectDetailsDrawer({
+  projectName,
+  defaultOpen = false,
+  children,
+}: {
+  projectName: string
+  defaultOpen?: boolean
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>

@@ -46,7 +46,7 @@ export default async function ProjectDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ work?: string | string[] }>
+  searchParams: Promise<{ work?: string | string[]; details?: string | string[] }>
 }) {
   const session = await requireStaff()
   const [{ id }, query] = await Promise.all([params, searchParams])
@@ -330,6 +330,8 @@ export default async function ProjectDetailPage({
       setupAction={
         showsSetup && !setup.complete && setupDismissed ? (
           <ShowSetupChecklistButton projectId={project.id} remaining={setup.steps.length - setup.doneCount} />
+        ) : showsSetup && setup.complete ? (
+          <p className="text-sm text-muted-foreground">{`Project setup: ${setup.doneCount} of ${setup.steps.length} complete.`}</p>
         ) : null
       }
       history={history.map((h) => ({ ...h, byName: nameFor(h.changed_by) ?? 'System' }))}
@@ -385,7 +387,9 @@ export default async function ProjectDetailPage({
               projectLabel={`${project.project_number} · ${project.name}`}
               triggerVariant="outline"
             />
-            <ProjectDetailsDrawer projectName={project.name}>{details}</ProjectDetailsDrawer>
+            <ProjectDetailsDrawer projectName={project.name} defaultOpen={query.details === 'open'}>
+              {details}
+            </ProjectDetailsDrawer>
           </>
         }
       />
