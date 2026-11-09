@@ -1,40 +1,57 @@
 'use client'
 
-import { createContext, useContext, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import { JOB_SWITCH_EVENT } from '@/lib/route-job'
 
-type SelectionContext = { pending: boolean; select: (projectId: string) => void }
-
-const Ctx = createContext<SelectionContext | null>(null)
+/** The `?project=` value a /schedule URL points at, or null for any other route. */
+function scheduleTarget(href: string): string | null {
+  const url = new URL(href, window.location.origin)
+  if (url.pathname !== '/schedule') return null
+  return url.searchParams.get('project') ?? ''
+}
 
 /**
- * Shares one navigation transition between the project selector and the schedule body, so switching
- * projects hides the previous project's data immediately instead of leaving it on screen while loading.
- * Router navigations supersede each other, so a slow earlier response can never replace a newer selection.
+ * Hides the rendered schedule as soon as a navigation to a different project starts (top-bar selector,
+ * back/forward, or an in-page link), so the previous project's records never sit on screen while the next
+ * one loads. Router navigations supersede each other, so a slow earlier response can't replace a newer one.
  */
-export function ScheduleSelectionProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
-  const [pending, startTransition] = useTransition()
-  const select = (projectId: string) =>
-    startTransition(() => router.push(`/schedule?project=${encodeURIComponent(projectId)}`))
-  return <Ctx.Provider value={{ pending, select }}>{children}</Ctx.Provider>
-}
+export function ScheduleBody({ renderedFor, children }: { renderedFor: string; children: React.ReactNode }) {
+  const [target, setTarget] = useState<string | null>(null)
+  const [seen, setSeen] = useState(renderedFor)
+  if (seen !== renderedFor) {
+    setSeen(renderedFor)
+    setTarget(null)
+  }
 
-export function useScheduleSelection() {
-  const ctx = useContext(Ctx)
-  if (!ctx) throw new Error('useScheduleSelection must be used inside ScheduleSelectionProvider')
-  return ctx
-}
+  useEffect(() => {
+    const follow = (href: string) => {
+      const next = scheduleTarget(href)
+      if (next !== null) setTarget(next)
+    }
+    const onSwitch = (e: Event) => follow((e as CustomEvent<string>).detail)
+    const onPop = () => follow(window.location.href)
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+      const link = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null
+      if (link && !link.target) follow(link.href)
+    }
+    window.addEventListener(JOB_SWITCH_EVENT, onSwitch)
+    window.addEventListener('popstate', onPop)
+    document.addEventListener('click', onClick)
+    return () => {
+      window.removeEventListener(JOB_SWITCH_EVENT, onSwitch)
+      window.removeEventListener('popstate', onPop)
+      document.removeEventListener('click', onClick)
+    }
+  }, [])
 
-export function ScheduleBody({ children }: { children: React.ReactNode }) {
-  const { pending } = useScheduleSelection()
-  if (!pending) return <>{children}</>
+  if (target === null || target === renderedFor) return <>{children}</>
   return (
     <div
       role="status"
       aria-live="polite"
-      className="flex min-h-64 items-center justify-center gap-2 rounded-xl border border-[#D6DDE5] bg-white p-8 text-sm text-[#526173]"
+      className="flex items-center justify-center gap-2 rounded-xl border bg-card px-4 py-10 text-sm text-muted-foreground"
     >
       <Loader2 className="size-4 animate-spin" aria-hidden="true" />
       Loading schedule…

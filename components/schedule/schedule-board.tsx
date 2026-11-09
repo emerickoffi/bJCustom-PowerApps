@@ -72,12 +72,18 @@ export function ScheduleBoard({
   staffOptions,
   conflictIds,
   canManage,
+  filterKey,
+  emptyState,
 }: {
   mode: 'project' | 'all'
   groups: BoardGroup[]
   staffOptions: { value: string; label: string }[]
   conflictIds: string[]
   canManage: boolean
+  /** Active activity filter; switching to a narrowing filter expands everything so matches aren't hidden. */
+  filterKey?: string
+  /** Shown in place of the views when `groups` is empty. */
+  emptyState?: React.ReactNode
 }) {
   const router = useRouter()
   const [view, setView] = useState<View>('stages')
@@ -94,6 +100,12 @@ export function ScheduleBoard({
     }
     return initial
   })
+
+  const [seenFilter, setSeenFilter] = useState(filterKey)
+  if (filterKey !== seenFilter) {
+    setSeenFilter(filterKey)
+    if (filterKey && filterKey !== 'all') setCollapsed(new Set())
+  }
 
   const conflicts = useMemo(() => new Set(conflictIds), [conflictIds])
   const names = useMemo(() => new Map(staffOptions.map((s) => [s.value, s.label])), [staffOptions])
@@ -173,7 +185,9 @@ export function ScheduleBoard({
         </div>
       </div>
 
-      {view === 'stages' && (
+      {groups.length === 0 && emptyState}
+
+      {view === 'stages' && groups.length > 0 && (
         <div className="flex flex-col gap-3">
           {groups.map((g) =>
             mode === 'all' ? (
@@ -193,6 +207,7 @@ export function ScheduleBoard({
       )}
 
       {view === 'timeline' &&
+        groups.length > 0 &&
         (mode === 'project' && groups[0] ? (
           <ScheduleTimeline
             activities={groups[0].activities}
@@ -207,7 +222,7 @@ export function ScheduleBoard({
           </div>
         ))}
 
-      {view === 'list' && (
+      {view === 'list' && groups.length > 0 && (
         <ScheduleActivityList mode={mode} groups={groups} nameFor={nameFor} onSelect={open} today={today} canManage={canManage} />
       )}
     </section>

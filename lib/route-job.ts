@@ -6,6 +6,9 @@
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/** Dispatched on window with the destination href when the global selector starts a project switch. */
+export const JOB_SWITCH_EVENT = 'bateevo:job-switch'
+
 export const isProjectId = (value: string | null | undefined): value is string => Boolean(value && UUID.test(value))
 
 /** Company-wide pages whose content genuinely filters by `?project=`. */
