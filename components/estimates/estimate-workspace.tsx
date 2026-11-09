@@ -28,8 +28,8 @@ function useSaveState() {
         : dirty
           ? 'Unsaved changes'
           : 'All changes saved'
-  const tone = sheet?.saveError ? 'text-destructive' : dirty ? 'text-warning' : 'text-muted-foreground'
-  return { draft, sheet, dirty, busy, text, tone }
+  const failed = Boolean(sheet?.saveError) && !busy
+  return { draft, sheet, dirty, busy, failed, text }
 }
 
 function focusWorkflow() {
@@ -168,7 +168,7 @@ export function EstimateWorkspaceHeader({
   nextAction: NextAction | null
   moreMenu?: ReactNode
 }) {
-  const { draft, dirty, busy, text, tone } = useSaveState()
+  const { draft, dirty, busy, failed, text } = useSaveState()
   const onReview = draft?.tab === 'review'
   const ref = useRef<HTMLDivElement>(null)
 
@@ -213,33 +213,38 @@ export function EstimateWorkspaceHeader({
             {subtitle && <div className="hidden truncate text-sm text-muted-foreground sm:block">{subtitle}</div>}
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:flex-nowrap">
-            {editable && (
-              <span role="status" aria-live="polite" className={cn('mr-1 text-xs font-medium', tone)}>
-                {text}
+            {editable && <span role="status" aria-live="polite" className="sr-only">{text}</span>}
+            {editable && failed && (
+              <span className="mr-1 flex items-center gap-1 text-xs font-medium text-destructive" aria-hidden="true">
+                <TriangleAlert className="size-3.5" />
+                Save failed
               </span>
             )}
-            {editable && (
-              <Button
-                type="button"
-                onClick={() => void draft?.save()}
-                disabled={!dirty || busy}
-                variant={dirty ? 'default' : 'outline'}
-                title={
-                  dirty
-                    ? 'Saves cost items, pricing, land cost, description and notes together. Shortcut: Ctrl or Cmd + S.'
-                    : 'No unsaved changes'
-                }
-              >
-                {busy ? (
-                  <Loader2 data-icon="inline-start" className="animate-spin" />
-                ) : dirty ? (
-                  <Save data-icon="inline-start" />
-                ) : (
-                  <Check data-icon="inline-start" />
-                )}
-                {busy ? 'Saving...' : dirty ? 'Save draft' : 'Saved'}
-              </Button>
-            )}
+            {editable &&
+              (!dirty && !busy && !failed ? (
+                <span
+                  className="flex h-8 items-center gap-1.5 px-2 text-xs font-medium text-muted-foreground"
+                  title="No unsaved changes"
+                  aria-hidden="true"
+                >
+                  <Check className="size-3.5" />
+                  Saved
+                </span>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={() => void draft?.save()}
+                  disabled={busy}
+                  title="Saves cost items, pricing, land cost, description and notes together. Shortcut: Ctrl or Cmd + S."
+                >
+                  {busy ? (
+                    <Loader2 data-icon="inline-start" className="animate-spin" />
+                  ) : (
+                    <Save data-icon="inline-start" />
+                  )}
+                  {busy ? text : failed ? 'Retry save' : 'Save draft'}
+                </Button>
+              ))}
             {nextAction &&
               !(onReview && !nextAction.href) &&
               (nextAction.href ? (
