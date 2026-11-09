@@ -684,9 +684,9 @@ function SortablePhase({
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="font-mono text-xs font-medium tabular-nums text-brand-deep/65">{String(phase.number).padStart(2, '0')}</span>
                   <span className="font-serif text-base font-semibold text-brand-deep">{phase.name}</span>
-                  {isCurrent && <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-white">Current phase</span>}
+                  {isCurrent && <span className="rounded-badge bg-primary px-2 py-0.5 text-[11px] font-medium text-white">Current phase</span>}
                   {phase.complete && (
-                    <span className="rounded-full bg-[#E2F3E9] px-2 py-0.5 text-[11px] font-medium text-[#187542]">Complete</span>
+                    <span className="rounded-badge bg-[#E2F3E9] px-2 py-0.5 text-[11px] font-medium text-[#187542]">Complete</span>
                   )}
                 </span>
                 <span className="text-xs text-muted-foreground tabular-nums">

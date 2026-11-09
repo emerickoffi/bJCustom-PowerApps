@@ -187,7 +187,7 @@ function ActivityName({ activity, late }: { activity: ScheduleActivity; late: bo
       )}
       <span className="min-w-0 break-words text-[0.9375rem] font-semibold text-[#006B78] underline-offset-2 group-hover:underline">{activity.name}</span>
       {late && (
-        <span className="shrink-0 rounded-full bg-[#FDE8E7] px-1.5 py-px text-[11px] font-medium text-[#BD302B]">Overdue</span>
+        <span className="shrink-0 rounded-badge bg-[#FDE8E7] px-1.5 py-px text-[11px] font-medium text-[#BD302B]">Overdue</span>
       )}
     </span>
   )

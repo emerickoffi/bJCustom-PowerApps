@@ -102,13 +102,22 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* Semantic radius standard. */
+  --radius-surface: 8px; /* cards, panels, dialogs, exposed drawer corners */
+  --radius-panel: 6px; /* panels nested inside a surface */
+  --radius-control: 6px; /* buttons, inputs, selects, textareas */
+  --radius-menu: 6px; /* dropdown menus, popovers, tooltips */
+  --radius-nav: 6px; /* sidebar navigation items */
+  --radius-badge: 4px; /* status and count badges */
+  --radius-tab: 6px; /* worksheet tab top corners */
+  /* The generic scale is capped at the surface radius so legacy utilities cannot exceed it. */
+  --radius-sm: var(--radius-badge);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-surface);
+  --radius-xl: var(--radius-surface);
+  --radius-2xl: var(--radius-surface);
+  --radius-3xl: var(--radius-surface);
+  --radius-4xl: var(--radius-surface);
 }
 
 /*
@@ -195,7 +204,7 @@
   --chart-3: #a8dadf;
   --chart-4: #f58a3c;
   --chart-5: #526173;
-  --radius: 0.625rem;
+  --radius: 0.5rem;
   --sidebar: #e5f5f7;
   --sidebar-foreground: #17212b;
   --sidebar-muted: #526173;
@@ -294,7 +303,7 @@
 @utility surface {
   background-color: var(--card);
   border: 1px solid var(--surface-border, var(--border));
-  border-radius: calc(var(--radius) * 1.4);
+  border-radius: var(--radius-surface);
   box-shadow: var(--shadow-soft);
 }
 

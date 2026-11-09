@@ -369,7 +369,7 @@ function ContextBar({ project, module }: { project: AssistantProject | null; mod
         <span className="flex-1 text-sm font-medium text-foreground">All accessible projects</span>
       )}
       {pageLabel && (
-        <span className="shrink-0 rounded-full border border-primary/20 bg-card px-2 py-0.5 text-xs font-medium text-primary">
+        <span className="shrink-0 rounded-badge border border-primary/20 bg-card px-2 py-0.5 text-xs font-medium text-primary">
           <span className="sr-only">Current page: </span>
           {pageLabel}
         </span>
@@ -411,7 +411,7 @@ function WelcomeState({
                   type="button"
                   onClick={() => onSuggestion(s)}
                   disabled={!configured}
-                  className="rounded-full border bg-card px-3 py-1.5 text-left text-sm text-foreground shadow-xs transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-control border bg-card px-3 py-1.5 text-left text-sm text-foreground shadow-xs transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {s}
                 </button>
@@ -532,7 +532,7 @@ function MessageBubble({
               {message.health && (
                 <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                   <span>Project health for {message.health.project}:</span>
-                  <span className={cn('rounded-full border px-2 py-0.5 font-semibold', HEALTH_STYLES[message.health.indicator])}>
+                  <span className={cn('rounded-badge border px-2 py-0.5 font-semibold', HEALTH_STYLES[message.health.indicator])}>
                     {message.health.label}
                   </span>
                 </p>
@@ -547,7 +547,7 @@ function MessageBubble({
                       type="button"
                       onClick={() => onChooseProject(name)}
                       disabled={!actionable}
-                      className="rounded-full border bg-card px-3 py-1.5 text-left text-sm text-foreground shadow-xs transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-control border bg-card px-3 py-1.5 text-left text-sm text-foreground shadow-xs transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {name}
                     </button>

@@ -22,10 +22,10 @@ const TD = 'px-3 py-2.5 align-middle'
 
 function StatusPill({ contact }: { contact: ProjectContact }) {
   if (contact.status === 'ended') {
-    return <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">Ended</span>
+    return <span className="rounded-badge border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">Ended</span>
   }
   if (contact.person_status === 'inactive') {
-    return <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">Inactive contact</span>
+    return <span className="rounded-badge border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">Inactive contact</span>
   }
   return <ActiveStatusBadge />
 }

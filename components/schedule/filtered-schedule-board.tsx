@@ -72,7 +72,7 @@ export function FilteredScheduleBoard({
               aria-pressed={active}
               onClick={() => setFilter(f)}
               className={cn(
-                'inline-flex min-h-11 items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition-colors sm:min-h-9',
+                'inline-flex min-h-11 items-center gap-2 rounded-control border px-3.5 text-sm font-medium transition-colors sm:min-h-9',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
                 active
                   ? 'border-primary bg-primary/10 text-foreground'
@@ -82,7 +82,7 @@ export function FilteredScheduleBoard({
               {LABELS[f]}
               <span
                 className={cn(
-                  'rounded-full px-1.5 text-xs font-semibold tabular-nums',
+                  'rounded-badge px-1.5 text-xs font-semibold tabular-nums',
                   alert ? 'bg-[#FDE8E7] text-[#BD302B]' : active ? 'bg-primary/15 text-foreground' : 'bg-muted text-foreground',
                 )}
               >

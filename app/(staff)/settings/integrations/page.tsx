@@ -32,7 +32,7 @@ export default async function IntegrationsPage() {
               Send approved estimates to QuickBooks so your books match what homeowners approved.
             </p>
           </div>
-          <span className="w-fit shrink-0 rounded-full bg-champagne-soft px-2.5 py-1 text-xs font-medium text-warning">
+          <span className="w-fit shrink-0 rounded-badge bg-champagne-soft px-2.5 py-1 text-xs font-medium text-warning">
             {quickBooksStatusLabel(status)}
           </span>
         </div>

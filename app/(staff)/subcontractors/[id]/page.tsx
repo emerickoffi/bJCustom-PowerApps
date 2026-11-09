@@ -111,7 +111,7 @@ export default async function SubcontractorDetailPage({
                 href={qualificationHref}
                 scroll={false}
                 aria-label="Qualification status, open Qualification tab"
-                className="flex items-center gap-1.5 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="flex items-center gap-1.5 rounded-badge focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 <span className="text-xs font-medium text-muted-foreground">Qualification:</span>
                 <QualificationBadge summary={qualification.summary} />

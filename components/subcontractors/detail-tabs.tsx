@@ -40,7 +40,7 @@ export function DetailTabs({ companyId, active, counts }: { companyId: string; a
               >
                 {t.label}
                 {count ? (
-                  <span className="rounded-full bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">{count}</span>
+                  <span className="rounded-badge bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">{count}</span>
                 ) : null}
               </Link>
             </li>

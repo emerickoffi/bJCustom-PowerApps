@@ -216,7 +216,7 @@ function CategoryFilters({
   const count = (active: boolean, n: number) => (
     <span
       className={cn(
-        'rounded-full px-1.5 text-xs font-semibold tabular-nums',
+        'rounded-badge px-1.5 text-xs font-semibold tabular-nums',
         active ? 'bg-interactive text-white' : 'bg-secondary text-[#526173]',
       )}
     >
@@ -353,7 +353,7 @@ export function ActionCenter({
             Action Center
           </Heading>
           {items.length > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-[#FDBA74] bg-[#FFF1E6] px-2 py-0.5 text-xs font-medium leading-4 text-[#B54708]">
+            <span className="inline-flex items-center gap-1 rounded-badge border border-[#FDBA74] bg-[#FFF1E6] px-2 py-0.5 text-xs font-medium leading-4 text-[#B54708]">
               <span className="font-bold tabular-nums">{countLabel}</span>
               {items.length === 1 && !totalIsLowerBound ? 'needs attention' : 'need attention'}
             </span>

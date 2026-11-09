@@ -434,7 +434,7 @@ export function ScheduleGantt({
               type="button"
               aria-pressed={showBaseline}
               onClick={() => setShowBaseline((v) => !v)}
-              className={cn('min-h-11 rounded-full px-3 text-sm font-medium sm:min-h-9', pillClass(showBaseline))}
+              className={cn('min-h-11 rounded-control px-3 text-sm font-medium sm:min-h-9', pillClass(showBaseline))}
               title={baseline.name}
             >
               {`Baseline v${baseline.version}`}
@@ -682,7 +682,7 @@ export function ScheduleGantt({
                       </span>
                     ))}
                     <span
-                      className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-interactive px-1.5 py-px text-[10px] font-semibold text-white"
+                      className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-badge bg-interactive px-1.5 py-px text-[10px] font-semibold text-white"
                       style={{ left: x(todayDay) + px / 2 }}
                     >
                       Today
@@ -995,7 +995,7 @@ function FilterSelect({
 
 function Chip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <span className={cn('inline-flex min-h-8 items-center gap-1 rounded-full py-0.5 pl-2.5 pr-1 text-xs font-medium', pillClass(true))}>
+    <span className={cn('inline-flex min-h-8 items-center gap-1 rounded-control py-0.5 pl-2.5 pr-1 text-xs font-medium', pillClass(true))}>
       <span className="max-w-48 truncate">{label}</span>
       <button type="button" onClick={onClear} aria-label={`Remove filter ${label}`} className="flex size-6 items-center justify-center rounded-full hover:bg-white/20">
         <X className="size-3.5" aria-hidden="true" />

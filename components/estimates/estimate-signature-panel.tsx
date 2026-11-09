@@ -94,7 +94,7 @@ export function EstimateSignaturePanel({
           {summary ? (
             <SignatureBadge status={summary.status} signed={summary.signed} total={summary.total} className="shrink-0" />
           ) : (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            <span className="rounded-badge bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
               {setupRequired ? 'Setup required' : 'Not requested'}
             </span>
           )}

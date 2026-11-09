@@ -79,7 +79,7 @@ function VisibilityBadge({ visibility }: { visibility: DocumentRow['visibility']
   return (
     <span
       className={cn(
-        'inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
+        'inline-flex w-fit items-center gap-1 rounded-badge px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
         shared ? 'bg-interactive-soft text-primary ring-primary/15' : 'bg-[#F3F4F6] text-muted-foreground ring-[#D6DDE5]',
       )}
     >
@@ -277,7 +277,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
               <button
                 type="button"
                 onClick={() => setSigning(openSignatureState({ id: doc.id, name: doc.name }))}
-                className="w-fit rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="w-fit rounded-badge focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={`Signature status for ${doc.name}`}
               >
                 <SignatureBadge
@@ -339,7 +339,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
               <button
                 type="button"
                 onClick={() => setSigning(openSignatureState({ id: doc.id, name: doc.name }))}
-                className="w-fit rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="w-fit rounded-badge focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={`Signature status for ${doc.name}`}
               >
                 <SignatureBadge
@@ -772,7 +772,7 @@ function DocumentPanel({
           <div className="flex flex-wrap items-center gap-2">
             {showVisibility && <VisibilityBadge visibility={doc.visibility} />}
             {doc.archived_at && (
-              <span className="rounded-full bg-[#F3F4F6] px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-[#D6DDE5]">
+              <span className="rounded-badge bg-[#F3F4F6] px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-[#D6DDE5]">
                 Archived
               </span>
             )}
@@ -793,7 +793,7 @@ function DocumentPanel({
               <div className="flex flex-col gap-0.5 rounded-lg border border-primary/25 bg-interactive-soft/50 p-3">
                 <p className="flex items-center gap-2 text-sm font-medium text-foreground">
                   {`Version ${doc.current_version_number}`}
-                  <span className="rounded-full bg-interactive-soft px-2 py-0.5 text-xs font-medium text-primary">Current</span>
+                  <span className="rounded-badge bg-interactive-soft px-2 py-0.5 text-xs font-medium text-primary">Current</span>
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {`${version.original_filename} · ${fileTypeLabel(version.content_type)} · ${formatBytes(version.size_bytes)}`}
@@ -962,7 +962,7 @@ function HistoryBody({ request, currentVersion }: { request: Promise<HistoryResu
             <p className="flex items-center gap-2 text-sm font-medium">
               {`Version ${v.versionNumber}`}
               {v.versionNumber === currentVersion && (
-                <span className="rounded-full bg-interactive-soft px-2 py-0.5 text-xs font-medium text-primary">Current</span>
+                <span className="rounded-badge bg-interactive-soft px-2 py-0.5 text-xs font-medium text-primary">Current</span>
               )}
             </p>
             <p className="truncate text-xs text-muted-foreground">{`${v.originalFilename} · ${formatBytes(v.sizeBytes)}`}</p>

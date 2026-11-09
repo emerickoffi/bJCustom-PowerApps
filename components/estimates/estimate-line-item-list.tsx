@@ -193,8 +193,8 @@ function ItemRow({
         </p>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span className="tabular-nums sm:hidden">{`${qty} × ${formatCentsExact(math.unitCostCents)}`}</span>
-          {row.is_allowance && <span className="rounded-full bg-link-soft px-2 py-0.5 font-medium text-foreground">Allowance</span>}
-          {invalid && <span className="rounded-full bg-destructive/10 px-2 py-0.5 font-medium text-destructive">Needs attention</span>}
+          {row.is_allowance && <span className="rounded-badge bg-link-soft px-2 py-0.5 font-medium text-foreground">Allowance</span>}
+          {invalid && <span className="rounded-badge bg-destructive/10 px-2 py-0.5 font-medium text-destructive">Needs attention</span>}
           {row.notes.trim() && <span className="min-w-0 max-w-full truncate">{row.notes}</span>}
         </div>
       </td>

@@ -260,7 +260,7 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
               <ul className="flex flex-col gap-2">
                 {linkedIssues.map((i) => (
                   <li key={i.id}>
-                    <Link href={`/projects/${id}/issues/${i.id}`} className="flex flex-col gap-0.5 rounded-lg border p-3 text-sm hover:bg-muted/40">
+                    <Link href={`/projects/${id}/issues/${i.id}`} className="flex flex-col gap-0.5 rounded-panel border p-3 text-sm hover:bg-muted/40">
                       <span className="font-medium text-foreground">{i.item_label}</span>
                       <span className="text-xs text-muted-foreground">
                         {i.category}

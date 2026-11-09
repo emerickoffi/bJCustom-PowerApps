@@ -303,7 +303,7 @@ export default async function EstimateDetailPage({
               <span className="font-mono text-muted-foreground">{`${estimate.estimate_number} · Rev ${estimate.revision}`}</span>
               <EstimateStatusBadge status={estimate.status} />
               {estimate.is_demo && (
-                <span className="rounded-full bg-champagne-soft px-2 py-0.5 text-xs font-medium text-warning">Demo data</span>
+                <span className="rounded-badge bg-champagne-soft px-2 py-0.5 text-xs font-medium text-warning">Demo data</span>
               )}
             </span>
           }

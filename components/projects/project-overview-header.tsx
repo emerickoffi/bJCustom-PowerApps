@@ -71,8 +71,8 @@ export function HeaderBadge({ tone = 'neutral', children }: { tone?: 'neutral' |
     <span
       className={
         tone === 'warning'
-          ? 'inline-flex items-center gap-1 rounded-full bg-champagne-soft px-2.5 py-0.5 text-xs font-medium text-warning'
-          : 'inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-2.5 py-0.5 text-xs font-medium text-muted-foreground'
+          ? 'inline-flex items-center gap-1 rounded-badge bg-champagne-soft px-2.5 py-0.5 text-xs font-medium text-warning'
+          : 'inline-flex items-center gap-1 rounded-badge bg-[#F3F4F6] px-2.5 py-0.5 text-xs font-medium text-muted-foreground'
       }
     >
       {children}

@@ -77,7 +77,7 @@ export function HomeownerAccountList({
               key={f.value}
               href={filterHref(f.value, q)}
               aria-current={filter === f.value ? 'page' : undefined}
-              className={`rounded-full px-3 py-1 text-sm ${pillClass(filter === f.value)}`}
+              className={`rounded-control px-3 py-1 text-sm ${pillClass(filter === f.value)}`}
             >
               {f.label}
             </Link>

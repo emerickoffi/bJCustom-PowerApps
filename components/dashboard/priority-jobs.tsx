@@ -410,7 +410,7 @@ function DueGroupSection({ group, today }: { group: PriorityJobGroup; today: str
         <h3 id={headingId} className={cn('text-sm font-semibold', group.total ? meta.tone : 'text-muted-foreground')}>
           {meta.label}
         </h3>
-        <span className="tabular rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+        <span className="tabular rounded-badge bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
           {group.total}
           <span className="sr-only">{group.total === 1 ? ' project' : ' projects'}</span>
         </span>

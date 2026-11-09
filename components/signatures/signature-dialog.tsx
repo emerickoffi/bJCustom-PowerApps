@@ -189,7 +189,7 @@ function RequestCard({ request: r, canManage, onChanged }: { request: SignatureR
           </p>
         </div>
         <div className="flex items-center gap-1.5">
-          {r.testMode && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Test</span>}
+          {r.testMode && <span className="rounded-badge bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Test</span>}
           <SignatureBadge status={r.status} signed={signed} total={r.signers.length} />
         </div>
       </div>

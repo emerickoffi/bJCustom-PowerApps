@@ -39,7 +39,7 @@ export function ChangeOrderSection({
             <h2 id={id} className="text-sm font-semibold text-foreground">
               {title}
             </h2>
-            <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.7rem] font-medium ring-1 ring-inset', a.chip)}>
+            <span className={cn('inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-[0.7rem] font-medium ring-1 ring-inset', a.chip)}>
               <Icon className="size-3" aria-hidden="true" />
               {a.label}
             </span>

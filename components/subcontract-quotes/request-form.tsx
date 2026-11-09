@@ -318,7 +318,7 @@ export function RequestForm({ projectId, requestId, rowVersion, currency, initia
               </div>
               {companiesField}
               <details className="group rounded-lg border border-border">
-                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 text-sm font-medium text-foreground hover:bg-muted/60 [&::-webkit-details-marker]:hidden">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-panel px-3 text-sm font-medium text-foreground hover:bg-muted/60 [&::-webkit-details-marker]:hidden">
                   <span>
                     More details <span className="font-normal text-muted-foreground">(optional)</span>
                   </span>

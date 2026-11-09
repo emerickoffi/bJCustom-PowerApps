@@ -96,7 +96,7 @@ export default async function CompareRevisionsPage({
                     <option key={f.id} value={f.id}>{`Revision ${f.revision}`}</option>
                   ))}
               </select>
-              <button type="submit" className="h-10 rounded-lg border px-3 text-sm font-medium hover:bg-sage/50">
+              <button type="submit" className="h-10 rounded-control border px-3 text-sm font-medium hover:bg-sage/50">
                 Go
               </button>
             </form>

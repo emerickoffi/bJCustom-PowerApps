@@ -48,7 +48,7 @@ export function ReadinessChecklist({ items }: { items: ReadinessItem[] }) {
         return (
           <li key={item.key} className="border-b border-border/60 last:border-b-0 md:[&:nth-last-child(2):nth-child(odd)]:border-b-0">
             {item.href ? (
-              <Link href={item.href} className="-mx-2 flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring">
+              <Link href={item.href} className="-mx-2 flex items-start gap-3 rounded-panel px-2 py-2.5 transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring">
                 {body}
               </Link>
             ) : (
@@ -65,7 +65,7 @@ export function ReadinessCounts({ summary }: { summary: ReadinessSummary }) {
   const overall = OVERALL[summary.overall]
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-      <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', overall.className)}>{overall.label}</span>
+      <span className={cn('rounded-badge px-2.5 py-0.5 text-xs font-semibold', overall.className)}>{overall.label}</span>
       <span className="text-muted-foreground">
         <span className="font-semibold text-foreground">{`${summary.satisfiedCount}/${summary.applicableCount}`}</span> satisfied
       </span>

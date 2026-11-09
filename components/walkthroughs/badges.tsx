@@ -12,7 +12,7 @@ import {
   type WalkthroughStatus,
 } from '@/lib/walkthroughs'
 
-const base = 'inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium'
+const base = 'inline-flex items-center whitespace-nowrap rounded-badge px-2.5 py-0.5 text-xs font-medium'
 
 const WALKTHROUGH_TONE: Record<WalkthroughStatus, string> = {
   draft: 'bg-muted text-muted-foreground',

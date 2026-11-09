@@ -268,7 +268,7 @@ function ProjectSection({
             </span>
           </span>
           {overdue > 0 && (
-            <span className="ml-auto shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+            <span className="ml-auto shrink-0 rounded-badge bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
               {`${overdue} overdue`}
             </span>
           )}
@@ -348,7 +348,7 @@ function StageList({
                 <span className="text-xs text-[#526173]">{phaseDates(items)}</span>
               </span>
               {overdue > 0 && (
-                <span className="hidden shrink-0 rounded-full border border-[#F5C7C5] bg-[#FDE8E7] px-2 py-0.5 text-xs font-medium text-[#BD302B] sm:inline">
+                <span className="hidden shrink-0 rounded-badge border border-[#F5C7C5] bg-[#FDE8E7] px-2 py-0.5 text-xs font-medium text-[#BD302B] sm:inline">
                   {`${overdue} overdue`}
                 </span>
               )}
@@ -399,7 +399,7 @@ function StageList({
                           )}
                           <span className="min-w-0 break-words underline-offset-2 group-hover:underline">{a.name}</span>
                           {late && (
-                            <span className="shrink-0 rounded-full bg-[#FDE8E7] px-1.5 py-px text-[11px] font-medium text-[#BD302B]">Overdue</span>
+                            <span className="shrink-0 rounded-badge bg-[#FDE8E7] px-1.5 py-px text-[11px] font-medium text-[#BD302B]">Overdue</span>
                           )}
                         </span>
                         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#526173] md:contents">

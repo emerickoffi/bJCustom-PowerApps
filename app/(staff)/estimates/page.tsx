@@ -26,7 +26,7 @@ export const metadata: Metadata = { title: 'Estimates' }
 
 function DemoBadge() {
   return (
-    <span className="inline-flex items-center rounded-full border border-[#D8E0E8] bg-[#E9EDF2] px-1.5 py-px text-[11px] font-medium leading-4 text-[#526173]">
+    <span className="inline-flex items-center rounded-badge border border-[#D8E0E8] bg-[#E9EDF2] px-1.5 py-px text-[11px] font-medium leading-4 text-[#526173]">
       Demo data
     </span>
   )

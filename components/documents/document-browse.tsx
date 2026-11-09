@@ -165,7 +165,7 @@ export function CategoryNav({
                   <CategoryIcon category={item.key} active={active} />
                   <span className="whitespace-nowrap break-words lg:whitespace-normal">{item.label}</span>
                 </span>
-                <span className={cn('shrink-0 rounded-full px-1.5 text-xs tabular-nums', active ? 'bg-white text-primary' : 'bg-[#F3F4F6]')}>
+                <span className={cn('shrink-0 rounded-badge px-1.5 text-xs tabular-nums', active ? 'bg-white text-primary' : 'bg-[#F3F4F6]')}>
                   {item.count}
                 </span>
               </Link>

@@ -57,7 +57,7 @@ export function KpiCard({
   emphasis?: KpiEmphasis
 }) {
   return (
-    <div className="group relative flex h-full min-h-20 items-center gap-3 rounded-[10px] border border-border bg-card px-4 py-3.5 shadow-[0_1px_2px_rgb(23_33_43/0.04)] transition-[border-color,box-shadow] duration-200 hover:border-link-border hover:shadow-soft has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-offset-2">
+    <div className="group relative flex h-full min-h-20 items-center gap-3 rounded-surface border border-border bg-card px-4 py-3.5 shadow-[0_1px_2px_rgb(23_33_43/0.04)] transition-[border-color,box-shadow] duration-200 hover:border-link-border hover:shadow-soft has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-offset-2">
       <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', TONE_ICON[tone])} aria-hidden="true">
         <Icon className="size-[22px]" />
       </span>
@@ -65,7 +65,7 @@ export function KpiCard({
         <Link
           href={href}
           aria-label={`${label}: ${value}${note ? `. ${note}` : ''}. View details.`}
-          className="text-[13px] font-medium leading-tight text-muted-foreground outline-none after:absolute after:inset-0 after:rounded-[10px] after:content-['']"
+          className="text-[13px] font-medium leading-tight text-muted-foreground outline-none after:absolute after:inset-0 after:rounded-surface after:content-['']"
         >
           {label}
         </Link>

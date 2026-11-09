@@ -28,7 +28,7 @@ type PageHeaderProps = {
 
 export function CountChip({ value, noun, plural }: NonNullable<PageHeaderProps['count']>) {
   return (
-    <span className="inline-flex h-6 items-center rounded-full bg-interactive-soft px-2.5 text-xs font-semibold tabular-nums text-interactive-strong ring-1 ring-inset ring-interactive-border md:text-sm">
+    <span className="inline-flex h-6 items-center rounded-badge bg-interactive-soft px-2.5 text-xs font-semibold tabular-nums text-interactive-strong ring-1 ring-inset ring-interactive-border md:text-sm">
       {`${value.toLocaleString()} ${value === 1 ? noun : (plural ?? `${noun}s`)}`}
     </span>
   )
@@ -36,7 +36,7 @@ export function CountChip({ value, noun, plural }: NonNullable<PageHeaderProps['
 
 export function PageHeaderIcon({ icon: Icon }: { icon: IconComponent }) {
   return (
-    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-interactive-soft text-interactive ring-1 ring-inset ring-interactive-border">
+    <span className="flex size-9 shrink-0 items-center justify-center rounded-panel bg-interactive-soft text-interactive ring-1 ring-inset ring-interactive-border">
       <Icon className="size-5" aria-hidden="true" />
     </span>
   )
@@ -97,7 +97,7 @@ export function HeaderHelp({ label, children }: { label: string; children: React
         <Info className="size-4" aria-hidden="true" />
         <span className="sr-only">{label}</span>
       </summary>
-      <div className="absolute left-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-popover p-3 text-sm leading-relaxed text-popover-foreground shadow-lg">
+      <div className="absolute left-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-menu border border-border bg-popover p-3 text-sm leading-relaxed text-popover-foreground shadow-lg">
         {children}
       </div>
     </details>
@@ -217,8 +217,8 @@ export function EmptyState({
   action?: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-input bg-card px-6 py-12 text-center">
-      <div className="flex size-11 items-center justify-center rounded-xl bg-sage text-primary ring-1 ring-inset ring-primary/10">
+    <div className="flex flex-col items-center justify-center gap-4 rounded-surface border border-dashed border-input bg-card px-6 py-12 text-center">
+      <div className="flex size-11 items-center justify-center rounded-panel bg-sage text-primary ring-1 ring-inset ring-primary/10">
         <Icon className="size-5" aria-hidden="true" />
       </div>
       <div className="flex max-w-sm flex-col gap-1.5">
