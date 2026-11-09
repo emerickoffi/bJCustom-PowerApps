@@ -35,7 +35,7 @@ export default async function SubQuotesPage() {
     <>
       <div className="flex flex-col gap-1">
         <Link href="/sub" className="text-sm text-muted-foreground hover:text-foreground">Back to my work</Link>
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">Quote requests</h1>
+        <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">Quote requests</h1>
         <p className="text-sm text-muted-foreground">Price scopes of work the builder has invited your company to quote.</p>
       </div>
       {rows.length ? (

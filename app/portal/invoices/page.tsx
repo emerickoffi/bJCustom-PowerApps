@@ -33,7 +33,7 @@ export default async function PortalInvoicesPage() {
         <Link href="/portal" className="text-sm text-muted-foreground hover:text-primary">
           Back to your home
         </Link>
-        <h1 className="font-serif text-3xl">Invoices</h1>
+        <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">Invoices</h1>
         <p className="text-sm text-muted-foreground">
           Balance due across all invoices: <span className="font-semibold text-foreground">{formatCentsExact(owed)}</span>
         </p>

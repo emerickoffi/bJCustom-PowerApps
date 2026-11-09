@@ -97,7 +97,7 @@ export default async function SubWorkspacePage() {
   return (
     <>
       <div className="flex flex-col gap-1">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">
+        <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground md:text-2xl">
           Hi {session.fullName.split(' ')[0]}
         </h1>
         <p className="text-sm text-muted-foreground">Photograph finished work and send it to the builder for inspection.</p>
