@@ -61,8 +61,9 @@ export default async function SubcontractorWorkQueuePage({ params }: { params: P
   const reviewed = rows.filter((r) => r.status !== 'submitted')
 
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
       <PageHeader
+        tone="section"
         icon={ClipboardCheck}
         title="Subcontractor work"
         description="Verify completion and correction submissions before work counts as accepted."

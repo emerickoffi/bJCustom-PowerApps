@@ -115,6 +115,7 @@ export default async function ProjectWarrantyPage({
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
+        tone="section"
         icon={ShieldCheckIcon}
         title="Warranty"
         description={

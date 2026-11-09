@@ -6,9 +6,7 @@ import {
   CalendarRange,
   ListChecks,
   Lock,
-  MapPin,
   TrendingUp,
-  CalendarDays as CalendarDaysIcon,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -28,7 +26,7 @@ import {
   type ScheduleDependency,
   type SchedulePhase,
 } from '@/lib/schedule'
-import { formatAddress, formatDate } from '@/lib/format'
+import { formatDate } from '@/lib/format'
 import { RECENT_HISTORY_LIMIT, presentEvent } from '@/lib/activity-history'
 import { fetchRecentHistory, getOrgTimeZone } from '@/lib/activity-history-server'
 import { ActivityHistoryCard } from '@/components/schedule/activity-history-card'
@@ -153,7 +151,6 @@ export default async function SchedulePage({
     return d && (!max || d > max) ? d : max
   }, null)
 
-  const address = formatAddress(project)
   const latest = baselines[0]
   const baselineEnd = latest
     ? ((latest.snapshot as { planned_end: string | null }[]).reduce<string | null>(
@@ -169,22 +166,8 @@ export default async function SchedulePage({
   return (
     <div data-page-width="wide" className="flex flex-col gap-6">
       <PageHeader
-        icon={CalendarDaysIcon}
-        eyebrow={
-          <span className="flex min-w-0 flex-wrap items-center gap-x-2 normal-case tracking-normal">
-            <span className="truncate font-medium text-brand-deep">{project.name}</span>
-            {project.project_number && <span className="font-mono">{project.project_number}</span>}
-          </span>
-        }
-        title="Construction Schedule"
-        description={
-          address ? (
-            <span className="flex items-center gap-1.5">
-              <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
-              {address}
-            </span>
-          ) : undefined
-        }
+        tone="section"
+        title="Construction schedule"
         actions={manager && activities.length > 0 && <InitializeScheduleButton projectId={project.id} label="Add missing template activities" />}
       />
 

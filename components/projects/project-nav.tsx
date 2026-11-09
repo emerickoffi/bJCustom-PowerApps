@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { ChevronRight, Info, MapPin } from 'lucide-react'
+import { Info, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getActiveProjectNavKey, getSectionIdFromHref, type ProjectNavItem } from '@/lib/project-nav'
 import { scrollToProjectSection } from '@/components/projects/project-section-scroll'
@@ -145,9 +145,8 @@ export function ProjectNav({
     pendingRestore.current = y > 0 ? { key: item.key, y } : null
     handleSectionClick(event, href)
   }
+
   const activeTabRef = useRef<HTMLAnchorElement>(null)
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  const [stuck, setStuck] = useState(false)
   const stripRef = useRef<HTMLElement>(null)
   const [edges, setEdges] = useState({ left: false, right: false })
 
@@ -159,7 +158,7 @@ export function ProjectNav({
     setEdges((prev) => (prev.left === left && prev.right === right ? prev : { left, right }))
   }
 
-  // Fades hint at hidden tabs; recompute whenever the strip or its contents resize (rotation, sidebar toggle, sticky title).
+  // Fades hint at hidden tabs; recompute whenever the strip or its contents resize (rotation, sidebar toggle).
   useEffect(() => {
     const strip = stripRef.current
     if (!strip) return
@@ -173,47 +172,29 @@ export function ProjectNav({
   // On narrow screens the tab strip scrolls sideways; keep the selected tab visible without moving the page vertically.
   useEffect(() => {
     const tab = activeTabRef.current
-    const strip = tab?.closest('nav')
+    const strip = stripRef.current
     if (!tab || !strip || strip.scrollWidth <= strip.clientWidth) return
     const stripBox = strip.getBoundingClientRect()
     const tabBox = tab.getBoundingClientRect()
-    if (tabBox.left < stripBox.left || tabBox.right > stripBox.right) {
-      const target = strip.scrollLeft + (tabBox.left - stripBox.left) - 16
+    if (tabBox.left < stripBox.left + 24 || tabBox.right > stripBox.right - 24) {
+      const target = strip.scrollLeft + (tabBox.left - stripBox.left) - (stripBox.width - tabBox.width) / 2
       strip.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
     }
   }, [activeKey])
 
-  // The tab bar pins directly under the app header. Its height varies with breakpoint, safe-area inset and
-  // wrapping content, so it is measured instead of hard-coded; a fixed guess left a gap or overlap.
-  const [headerHeight, setHeaderHeight] = useState<number | null>(null)
+  // The tab strip pins directly under the app header. Its height varies with breakpoint and safe-area inset,
+  // so it is measured instead of hard-coded; a fixed guess left a gap or let the strip cover content.
   useEffect(() => {
     const header = document.querySelector<HTMLElement>('[data-app-header]')
     if (!header) return
-    const apply = () => {
-      const height = header.offsetHeight
-      document.documentElement.style.setProperty('--app-header-h', `${height}px`)
-      setHeaderHeight(height)
-    }
+    const apply = () => document.documentElement.style.setProperty('--app-header-h', `${header.offsetHeight}px`)
     apply()
     const observer = new ResizeObserver(apply)
     observer.observe(header)
     return () => observer.disconnect()
   }, [])
 
-  // The sentinel sits just above the sticky bar; once it passes under the app header the bar is pinned.
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel || headerHeight === null) return
-    const observer = new IntersectionObserver(
-      ([entry]) => setStuck(!entry.isIntersecting && entry.boundingClientRect.top < headerHeight),
-      { rootMargin: `-${headerHeight}px 0px 0px 0px` },
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [headerHeight])
-
   const overviewHref = items[0]?.href ?? `/projects/${projectId}`
-  const activeTab = items.find((item) => item.key === activeKey)
 
   // On the overview itself, scroll directly: a repeated hash click is otherwise a no-op in the router.
   // From other tabs the Link navigates and ProjectSectionScroll handles the hash after mount.
@@ -226,103 +207,55 @@ export function ProjectNav({
     window.history.replaceState(window.history.state, '', href)
   }
 
-  // On Documents, the global header breadcrumb (shown at lg outside tablet mode) is the only breadcrumb.
-  const deferToGlobalBreadcrumb = activeKey === 'documents'
-
-  const isOverview = activeKey === 'overview'
-
   return (
     <>
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-      <nav aria-label="Breadcrumb" className={cn('min-w-0', deferToGlobalBreadcrumb && 'lg:hidden tablet:block')}>
-        <ol className="flex min-w-0 flex-wrap items-center gap-1 text-sm text-muted-foreground">
-          <li>
-            <Link href="/projects" className="inline-flex min-h-11 items-center font-medium transition-colors hover:text-primary sm:min-h-0">
-              Projects
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 pb-3">
+        <div className="flex min-w-0 items-baseline gap-2">
+          {projectNumber && <span className="shrink-0 font-mono text-xs text-muted-foreground">{projectNumber}</span>}
+          {activeKey === 'overview' ? (
+            <span className="truncate font-serif text-base font-semibold text-foreground">{projectName}</span>
+          ) : (
+            <Link
+              href={overviewHref}
+              className="truncate font-serif text-base font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline"
+            >
+              {projectName}
             </Link>
-          </li>
-          <li aria-hidden="true">
-            <ChevronRight className="size-3.5" />
-          </li>
-          <li className="min-w-0">
-            {activeKey === 'overview' ? (
-              <span aria-current="page" className="block truncate font-medium text-foreground">
-                {projectName}
-              </span>
-            ) : (
-              <Link
-                href={overviewHref}
-                className="inline-flex min-h-11 min-w-0 items-center gap-1.5 font-medium transition-colors hover:text-primary sm:min-h-0"
-              >
-                {projectNumber && <span className="font-mono text-xs">{projectNumber}</span>}
-                <span className="truncate">{projectName}</span>
-              </Link>
-            )}
-          </li>
-          {activeTab && activeKey !== 'overview' && (
-            <>
-              <li aria-hidden="true">
-                <ChevronRight className="size-3.5" />
-              </li>
-              <li>
-                <span aria-current="page" className="font-medium text-foreground">
-                  {activeTab.label}
-                </span>
-              </li>
-            </>
           )}
-        </ol>
-      </nav>
-      {/* The Overview renders its own full project header; other sections get this compact identity row. */}
-      {!isOverview && (
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
-          <ProjectStatusBadge status={status} />
-          {address && (
-            <span className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
-              <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-              <span className="sr-only">Address:</span>
-              <span className="truncate">{address}</span>
-            </span>
-          )}
-          <Link
-            href={`${overviewHref}?details=open`}
-            className="ml-auto inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline sm:min-h-0"
-          >
-            <Info className="size-3.5" aria-hidden="true" />
-            Project details
-          </Link>
         </div>
-      )}
+        <ProjectStatusBadge status={status} />
+        {address && (
+          <span className="hidden min-w-0 items-center gap-1 text-sm text-muted-foreground md:flex">
+            <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+            <span className="sr-only">Address:</span>
+            <span className="truncate">{address}</span>
+          </span>
+        )}
+        <Link
+          href={`${overviewHref}?details=open`}
+          className="ml-auto inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline sm:min-h-0"
+        >
+          <Info className="size-3.5" aria-hidden="true" />
+          Project details
+        </Link>
       </div>
-
-      <div ref={sentinelRef} aria-hidden="true" className={cn('-mt-6 h-px', deferToGlobalBreadcrumb && 'lg:mt-0 tablet:-mt-6')} />
 
       <div
         data-project-tabs
-        className={cn(
-          deferToGlobalBreadcrumb && 'lg:-mt-6 tablet:-mt-3',
-          'sticky top-[var(--app-header-h,calc(4rem+env(safe-area-inset-top)))] z-20 -mx-4 -mt-3 border-b border-transparent bg-background px-4 py-2 transition-[border-color,box-shadow] sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10',
-          stuck && 'border-border shadow-[0_6px_12px_-10px_rgb(0_0_0/0.25)]',
-        )}
+        className="sticky top-[var(--app-header-h,calc(3.5rem+env(safe-area-inset-top)))] z-20 bg-background pt-1.5"
       >
-        <div className="flex min-w-0 items-center gap-3">
-          {stuck && (
-            <span aria-hidden="true" className="hidden max-w-56 shrink-0 truncate font-serif text-sm font-semibold text-foreground md:block">
-              {projectName}
-            </span>
-          )}
-          <div className="relative min-w-0 flex-1">
+        <div className="relative">
           <span
             aria-hidden="true"
             className={cn(
-              'pointer-events-none absolute inset-y-0 left-0 z-10 w-8 rounded-l-xl bg-gradient-to-r from-background to-transparent transition-opacity',
+              'pointer-events-none absolute bottom-px left-0 top-0 z-10 w-10 bg-gradient-to-r from-background to-transparent transition-opacity',
               edges.left ? 'opacity-100' : 'opacity-0',
             )}
           />
           <span
             aria-hidden="true"
             className={cn(
-              'pointer-events-none absolute inset-y-0 right-0 z-10 w-8 rounded-r-xl bg-gradient-to-l from-background to-transparent transition-opacity',
+              'pointer-events-none absolute bottom-px right-0 top-0 z-10 w-10 bg-gradient-to-l from-background to-transparent transition-opacity',
               edges.right ? 'opacity-100' : 'opacity-0',
             )}
           />
@@ -330,25 +263,26 @@ export function ProjectNav({
             ref={stripRef}
             onScroll={updateEdges}
             aria-label="Project sections"
-            className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            <ul className="flex w-max min-w-full gap-1 rounded-xl border bg-card p-1 shadow-xs md:min-w-0">
-              {items.map((item) => {
+            <ul className="flex w-max min-w-full items-end">
+              {items.map((item, index) => {
                 const active = item.key === activeKey
                 const href = hrefFor(item)
                 return (
-                  <li key={item.key} className="flex-1 md:flex-none">
+                  <li key={item.key} className="flex">
                     <Link
                       href={href}
                       ref={active ? activeTabRef : undefined}
                       onClick={(event) => handleTabClick(event, item, href)}
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'flex h-11 items-center justify-center whitespace-nowrap rounded-lg px-3.5 text-sm font-medium transition-colors sm:h-9',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                        'relative flex items-center whitespace-nowrap rounded-t-md border-r border-t border-border px-4 text-sm transition-colors',
+                        'focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40',
+                        index === 0 && 'border-l',
                         active
-                          ? 'bg-primary text-primary-foreground shadow-xs ring-1 ring-inset ring-link-border/50'
-                          : 'text-muted-foreground hover:bg-sage hover:text-primary',
+                          ? 'h-12 border-b border-b-card bg-card font-semibold text-foreground before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:rounded-t-md before:bg-primary sm:h-10'
+                          : 'h-11 border-b bg-muted/70 font-medium text-muted-foreground hover:bg-muted hover:text-foreground sm:h-9',
                       )}
                     >
                       {item.label}
@@ -356,9 +290,9 @@ export function ProjectNav({
                   </li>
                 )
               })}
+              <li aria-hidden="true" className="min-w-4 flex-1 self-stretch border-b border-border" />
             </ul>
           </nav>
-          </div>
         </div>
       </div>
     </>
