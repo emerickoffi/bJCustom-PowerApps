@@ -87,11 +87,69 @@ const EMPTY: DashboardCardDetails = {
 
 const OPEN_ESTIMATE_PRIORITY: Record<string, number> = { draft: 0, internal_review: 0, submitted: 1 }
 
+/** Projects per schedule request, so `ids × 120` rows stays under the API's default 1,000-row response cap. */
+const STAGE_CHUNK = 8
+
+/**
+ * The current-stage next step (same `summarizeStageActivities` selection the cards use) for every given project, fetched
+ * in small batches so no project's activities are silently truncated. `today` is the workspace's calendar date.
+ */
+export async function getStageNextSteps(
+  organizationId: string,
+  projects: { id: string; status: ProjectStatus }[],
+  scheduleEnabled: boolean,
+  today: string,
+): Promise<Map<string, StageActivities | null>> {
+  const result = new Map<string, StageActivities | null>(projects.map((p) => [p.id, null]))
+  const scheduled = projects.filter((p) => stagePhaseMatcher(p.status))
+  if (!scheduleEnabled || !scheduled.length) return result
+  const supabase = await createClient()
+  const chunks: (typeof scheduled)[] = []
+  for (let i = 0; i < scheduled.length; i += STAGE_CHUNK) chunks.push(scheduled.slice(i, i + STAGE_CHUNK))
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      const ids = chunk.map((p) => p.id)
+      const [activitiesRes, depsRes] = await Promise.all([
+        supabase
+          .from('schedule_activities')
+          .select('id, project_id, name, phase, activity_type, status, planned_end, sort_order')
+          .eq('organization_id', organizationId)
+          .in('project_id', ids)
+          .limit(ids.length * 120),
+        supabase
+          .from('schedule_dependencies')
+          .select('project_id, predecessor_id, successor_id')
+          .eq('organization_id', organizationId)
+          .in('project_id', ids),
+      ])
+      const failed = !!activitiesRes.error || !!depsRes.error
+      const activities = (activitiesRes.data ?? []) as ActivityRow[]
+      const deps = (depsRes.data ?? []) as DependencyRow[]
+      for (const p of chunk) {
+        result.set(
+          p.id,
+          failed
+            ? { state: 'unavailable' }
+            : summarizeStageActivities(
+                p.status,
+                activities.filter((a) => a.project_id === p.id),
+                deps.filter((d) => d.project_id === p.id),
+                today,
+              ),
+        )
+      }
+    }),
+  )
+  return result
+}
+
 /** Real per-project details for project cards and rows, fetched in batches for only the projects being shown. */
 export async function getDashboardCardDetails(
   organizationId: string,
   projects: { id: string; status: ProjectStatus }[],
   features: FeatureMap,
+  /** Workspace calendar date (YYYY-MM-DD); defaults to the server's local date for existing callers. */
+  todayOverride?: string,
 ): Promise<Map<string, DashboardCardDetails>> {
   const ids = projects.map((p) => p.id)
   const result = new Map<string, DashboardCardDetails>(
@@ -159,7 +217,7 @@ export async function getDashboardCardDetails(
       : Promise.resolve({ data: [] as EstimateRow[], error: null }),
   ])
 
-  const today = todayIso()
+  const today = todayOverride ?? todayIso()
   const byProject = new Map<string, ActivityRow[]>()
   for (const a of (activitiesRes.data ?? []) as ActivityRow[]) {
     const list = byProject.get(a.project_id) ?? []

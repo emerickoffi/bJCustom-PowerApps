@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: 'Dashboard' }
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ portfolio?: string; actions?: string; agenda?: string; project?: string }>
+  searchParams: Promise<{ portfolio?: string; actions?: string; agenda?: string; project?: string; jobs?: string }>
 }) {
   const session = await requireStaff()
   const [query, features] = await Promise.all([searchParams, getOrgFeatures(session.organizationId)])
