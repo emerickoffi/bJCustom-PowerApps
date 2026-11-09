@@ -55,7 +55,7 @@ function AgendaList({ entries, today, emptyText }: { entries: AgendaEntry[]; tod
               </div>
               <span
                 className={cn(
-                  'shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-medium',
+                  'shrink-0 rounded-badge px-2 py-0.5 text-[0.7rem] font-medium',
                   e.status === 'delayed'
                     ? 'bg-destructive/8 text-destructive'
                     : e.kind === 'due'

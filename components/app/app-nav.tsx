@@ -80,7 +80,7 @@ function NavLink({
       aria-current={active ? 'page' : undefined}
       title={collapsed ? label : undefined}
       className={cn(
-        'group relative flex h-10 items-center gap-3 rounded-[0.375rem] px-3.5 text-sm transition-colors duration-150',
+        'group relative flex h-10 items-center gap-3 rounded-nav px-3.5 text-sm transition-colors duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
         collapsed && 'justify-center px-0',
         active
@@ -98,7 +98,7 @@ function NavLink({
       />
       <span className={cn('truncate', collapsed && 'sr-only')}>{label}</span>
       {muted && !collapsed && (
-        <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
+        <span className="ml-auto rounded-badge bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
           Soon
         </span>
       )}

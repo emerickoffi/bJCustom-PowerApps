@@ -3,11 +3,11 @@ import { cn } from '@/lib/utils'
 /** Connected spreadsheet-style tabs shared by project and estimate workspaces. */
 export function worksheetTabClass(active: boolean, first: boolean) {
   return cn(
-    'relative flex shrink-0 items-center gap-2 whitespace-nowrap rounded-t-md border-r border-t border-border px-4 text-sm transition-colors',
+    'relative flex shrink-0 items-center gap-2 whitespace-nowrap rounded-t-tab border-r border-t border-border px-4 text-sm transition-colors',
     'focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus',
     first && 'border-l',
     active
-      ? 'h-12 border-b border-b-card bg-card font-semibold text-foreground before:absolute before:-inset-x-px before:top-[-1px] before:h-[3px] before:rounded-t-md before:bg-tab-accent sm:h-10'
+      ? 'h-12 border-b border-b-card bg-card font-semibold text-foreground before:absolute before:-inset-x-px before:top-[-1px] before:h-[3px] before:rounded-t-tab before:bg-tab-accent sm:h-10'
       : 'h-11 border-b bg-muted/70 font-medium text-muted-foreground hover:bg-muted hover:text-foreground sm:h-9',
   )
 }

@@ -27,7 +27,7 @@ export function QuickBooksPanel({
         <h2 id="qbo-panel-heading" className="text-sm font-semibold text-foreground">
           QuickBooks Online
         </h2>
-        <span className="rounded-full bg-champagne-soft px-2 py-0.5 text-xs font-medium text-warning">
+        <span className="rounded-badge bg-champagne-soft px-2 py-0.5 text-xs font-medium text-warning">
           {connected ? 'Connected' : 'Setup required'}
         </span>
       </div>

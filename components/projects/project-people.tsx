@@ -87,7 +87,7 @@ const PORTAL_TONE: Record<string, string> = {
 }
 
 function Pill({ className, children }: { className: string; children: React.ReactNode }) {
-  return <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', className)}>{children}</span>
+  return <span className={cn('rounded-badge px-2 py-0.5 text-[11px] font-medium', className)}>{children}</span>
 }
 
 function ContactLine({ contact }: { contact: HomeownerContact }) {

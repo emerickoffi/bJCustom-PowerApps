@@ -321,7 +321,7 @@ function CompactTotals({ serverTotals, editable }: { serverTotals: EstimateTotal
         </span>
         <span
           className={cn(
-            'rounded-full px-2 py-0.5 text-xs font-medium',
+            'rounded-badge px-2 py-0.5 text-xs font-medium',
             preview ? 'bg-champagne-soft text-warning' : 'bg-muted text-muted-foreground',
           )}
         >

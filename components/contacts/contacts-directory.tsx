@@ -525,7 +525,7 @@ export function ContactsDirectory({
               : `No matching ${noun}`
             : `Showing ${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length}`}
           {advancedChips.map((chip) => (
-            <span key={chip.key} className="ml-2 inline-flex items-center gap-1 rounded-full border border-primary/20 bg-sage py-0.5 pl-2.5 pr-1 text-xs font-medium text-foreground">
+            <span key={chip.key} className="ml-2 inline-flex items-center gap-1 rounded-badge border border-primary/20 bg-sage py-0.5 pl-2.5 pr-1 text-xs font-medium text-foreground">
               {chip.label}
               <button
                 type="button"
@@ -730,7 +730,7 @@ function CategoryChip({ active, onClick, label, count }: { active: boolean; onCl
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'inline-flex items-center gap-1.5 rounded-control border px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground/80 hover:border-primary/40 hover:text-foreground',
       )}
     >

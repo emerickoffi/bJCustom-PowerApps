@@ -33,7 +33,7 @@ function Section({ id, title, entries, empty }: { id: string; title: string; ent
     <section aria-labelledby={id} className="flex flex-col gap-3">
       <h2 id={id} className="flex items-center justify-between font-serif text-lg font-semibold text-foreground">
         {title}
-        <span className="rounded-full bg-sage/60 px-2 py-0.5 font-sans text-xs font-medium text-primary">{entries.length}</span>
+        <span className="rounded-badge bg-sage/60 px-2 py-0.5 font-sans text-xs font-medium text-primary">{entries.length}</span>
       </h2>
       {entries.length ? (
         <ul className="flex flex-col gap-2">

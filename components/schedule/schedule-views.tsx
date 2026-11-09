@@ -35,13 +35,13 @@ export function Flags({ activity, conflict, today }: { activity: ScheduleActivit
   return (
     <span className="flex flex-wrap gap-1">
       {overdue && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+        <span className="inline-flex items-center gap-1 rounded-badge bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
           <AlertTriangle className="size-3" aria-hidden="true" />
           Past due
         </span>
       )}
       {conflict && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning-foreground">
+        <span className="inline-flex items-center gap-1 rounded-badge bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning-foreground">
           <Link2 className="size-3" aria-hidden="true" />
           Date conflict
         </span>

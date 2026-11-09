@@ -79,7 +79,7 @@ export async function ProjectSchedulePanel({ projectId, canManage }: { projectId
       subtitle={activities.length ? 'Overdue, in-progress, and upcoming activities.' : 'Milestones and construction activities.'}
       meta={
         activities.length ? (
-          <span className="rounded-full bg-sage px-2 py-0.5 text-xs font-medium tabular-nums text-primary">
+          <span className="rounded-badge bg-sage px-2 py-0.5 text-xs font-medium tabular-nums text-primary">
             {`${completed} / ${activities.length} complete`}
           </span>
         ) : null

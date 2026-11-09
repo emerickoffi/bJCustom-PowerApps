@@ -189,7 +189,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
             href={f.value === 'all' ? '/warranty' : `/warranty?stage=${f.value}`}
             aria-current={filter === f.value ? 'page' : undefined}
             className={cn(
-              'flex min-h-11 items-center rounded-full px-3.5 text-sm font-medium md:min-h-0 md:py-1.5',
+              'flex min-h-11 items-center rounded-control px-3.5 text-sm font-medium md:min-h-0 md:py-1.5',
               pillClass(filter === f.value),
             )}
           >

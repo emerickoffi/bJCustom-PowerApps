@@ -17,7 +17,7 @@ export function WorkStateBadge({ state, audience = 'sub', className }: { state: 
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium',
+        'inline-flex shrink-0 items-center gap-1 rounded-badge border px-2 py-0.5 text-xs font-medium',
         STYLES[state],
         className,
       )}

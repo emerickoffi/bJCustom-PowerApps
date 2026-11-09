@@ -56,7 +56,7 @@ export function WarrantyRail({ overview }: { overview: WarrantyOverview }) {
                   )}
                 </div>
                 {w.openClaims > 0 && (
-                  <span className="shrink-0 rounded-full bg-champagne-soft px-2 py-0.5 text-[0.7rem] font-semibold text-warning">
+                  <span className="shrink-0 rounded-badge bg-champagne-soft px-2 py-0.5 text-[0.7rem] font-semibold text-warning">
                     {`${w.openClaims} open ${w.openClaims === 1 ? 'claim' : 'claims'}`}
                   </span>
                 )}

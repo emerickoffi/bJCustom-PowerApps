@@ -90,7 +90,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                   type="button"
                   aria-pressed={active}
                   onClick={() => setStateFilter(key)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${pillClass(active)}`}
+                  className={`rounded-control px-3 py-1 text-xs font-medium ${pillClass(active)}`}
                 >
                   {key === 'all' ? 'All states' : ACCESS_META[key].label}
                 </button>
@@ -100,7 +100,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
           <button
             type="button"
             onClick={toggleAll}
-            className="rounded-full px-3 py-1 text-xs font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="rounded-control px-3 py-1 text-xs font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             {allCollapsed ? 'Expand all' : 'Collapse all'}
           </button>
@@ -183,7 +183,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                         </button>
                         <span className="flex flex-wrap items-center gap-2 pl-6 text-xs font-normal">
                           {off && (
-                            <span className="rounded-full bg-[#F4F4F1] px-2 py-0.5 font-medium text-[#526173]">
+                            <span className="rounded-badge bg-[#F4F4F1] px-2 py-0.5 font-medium text-[#526173]">
                               Turned off for your company
                             </span>
                           )}

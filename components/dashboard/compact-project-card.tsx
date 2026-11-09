@@ -154,7 +154,7 @@ export function CompactProjectCard({
       <div className="flex flex-wrap items-center gap-1.5">
         <span
           className={cn(
-            'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+            'inline-flex items-center gap-1 rounded-badge px-2.5 py-0.5 text-xs font-semibold',
             status.className,
           )}
         >
@@ -162,7 +162,7 @@ export function CompactProjectCard({
           {PROJECT_STATUS_LABELS[project.status]}
         </span>
         {showHealth && (
-          <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
+          <span className="inline-flex items-center rounded-badge bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
             Overdue activity
           </span>
         )}

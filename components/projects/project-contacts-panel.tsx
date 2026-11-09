@@ -164,7 +164,7 @@ export function ProjectContactsPanel({
                   </p>
                 </div>
                 {c.person_status === 'inactive' && (
-                  <span className="shrink-0 rounded-full border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  <span className="shrink-0 rounded-badge border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                     Inactive
                   </span>
                 )}

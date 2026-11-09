@@ -57,7 +57,7 @@ export function WorkItemList({
                   </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
-                  <span className="rounded-full bg-sage px-2.5 py-0.5 text-xs font-medium text-primary">{item.status}</span>
+                  <span className="rounded-badge bg-sage px-2.5 py-0.5 text-xs font-medium text-primary">{item.status}</span>
                   <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                 </span>
               </Link>

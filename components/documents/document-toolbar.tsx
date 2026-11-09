@@ -147,7 +147,7 @@ export function DocumentToolbar({
               <span className="hidden sm:inline">Archived</span>
               <span className="sr-only sm:hidden">Archived documents</span>
               {archivedCount !== null && (
-                <span className="rounded-full bg-[#F3F4F6] px-1.5 text-xs tabular-nums">{archivedCount}</span>
+                <span className="rounded-badge bg-[#F3F4F6] px-1.5 text-xs tabular-nums">{archivedCount}</span>
               )}
             </>
           )}

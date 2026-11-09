@@ -55,7 +55,7 @@ export function AdditionalContactsSection({
           <div className="flex min-w-0 flex-col gap-0.5 pt-0.5">
             <h2 id="additional-contact-heading" className="flex items-center gap-2 text-sm font-semibold text-foreground">
               Additional contact
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Optional</span>
+              <span className="rounded-badge bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Optional</span>
             </h2>
             <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
               Optionally add a spouse, co-owner, or another authorized contact.

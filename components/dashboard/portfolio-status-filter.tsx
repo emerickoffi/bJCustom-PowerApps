@@ -11,7 +11,7 @@ function Chip({ href, label, count, active }: { href: string; label: string; cou
       scroll={false}
       aria-current={active ? 'true' : undefined}
       className={cn(
-        'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium',
+        'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control px-3.5 text-sm font-medium',
         pillClass(active),
       )}
     >

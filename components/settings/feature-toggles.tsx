@@ -96,7 +96,7 @@ function StatusBadge({ feature, enabled }: { feature: FeatureDefinition; enabled
     : enabled
       ? ['On', 'bg-primary/10 text-primary']
       : ['Off', 'bg-muted text-muted-foreground']
-  return <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', tone)}>{label}</span>
+  return <span className={cn('rounded-badge px-2 py-0.5 text-xs font-medium', tone)}>{label}</span>
 }
 
 function FeatureRow({
@@ -150,7 +150,7 @@ function FeatureRow({
           </label>
           <StatusBadge feature={feature} enabled={enabled} />
           {blockedReason && (
-            <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            <span className="flex items-center gap-1 rounded-badge bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
               <Lock className="size-3" aria-hidden="true" />
               Locked by dependency
             </span>

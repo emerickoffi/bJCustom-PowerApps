@@ -702,7 +702,7 @@ export function EstimateSheet({
                 </Button>
               </div>
             ) : (
-              <p className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+              <p className="flex items-center gap-1.5 rounded-badge bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
                 <Lock className="size-3.5" aria-hidden="true" />
                 {`Read-only · ${ESTIMATE_STATUS_LABELS[status]}`}
               </p>

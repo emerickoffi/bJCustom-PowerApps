@@ -86,7 +86,7 @@ export function HealthBadge({
           if (e.currentTarget.matches(':focus-visible')) setOpen(true)
         }}
         className={cn(
-          'relative z-10 inline-flex max-w-full cursor-help items-center gap-1.5 rounded-full px-2 py-0.5 text-[0.7rem] font-semibold leading-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 @2xl:whitespace-nowrap',
+          'relative z-10 inline-flex max-w-full cursor-help items-center gap-1.5 rounded-badge px-2 py-0.5 text-[0.7rem] font-semibold leading-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 @2xl:whitespace-nowrap',
           treatment.className,
         )}
       >

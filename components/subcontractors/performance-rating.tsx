@@ -225,7 +225,7 @@ function PerformancePanel({
                 {assessed.length > 0 && (
                   <ul className="flex flex-wrap gap-1.5" aria-label="Category ratings">
                     {assessed.map((c) => (
-                      <li key={c.key} className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground/80">
+                      <li key={c.key} className="rounded-badge bg-muted px-2 py-0.5 text-xs text-foreground/80">
                         {c.label} <span className="font-semibold tabular-nums text-foreground">{r[c.key]}</span>
                       </li>
                     ))}

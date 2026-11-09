@@ -100,7 +100,7 @@ export default async function HomeownerWarrantyPage({ params }: { params: Promis
                       <ShieldCheck className={cn('size-5', ended ? 'text-muted-foreground' : 'text-primary')} aria-hidden="true" />
                       <span
                         className={cn(
-                          'rounded-full px-2.5 py-0.5 text-xs font-medium',
+                          'rounded-badge px-2.5 py-0.5 text-xs font-medium',
                           ended ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary',
                         )}
                       >

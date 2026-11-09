@@ -80,7 +80,7 @@ export function Sidebar({
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               aria-expanded={!collapsed}
               className={cn(
-                'flex h-9 items-center gap-2 rounded-[0.375rem] px-3.5 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+                'flex h-9 items-center gap-2 rounded-nav px-3.5 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
                 collapsed ? 'w-9 justify-center px-0' : 'w-full',
               )}
             >

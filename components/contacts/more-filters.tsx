@@ -53,7 +53,7 @@ export function MoreFilters({
         <SlidersHorizontal data-icon="inline-start" />
         <span>More filters</span>
         {active > 0 && (
-          <span className="ml-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold tabular-nums text-primary-foreground">
+          <span className="ml-0.5 inline-flex min-w-5 items-center justify-center rounded-badge bg-primary px-1.5 text-xs font-semibold tabular-nums text-primary-foreground">
             {active}
           </span>
         )}

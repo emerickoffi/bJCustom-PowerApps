@@ -162,7 +162,7 @@ export async function ClaimList({
                   {audience === 'staff' && c.assigned_to && ` · Assigned to ${staffNames.get(c.assigned_to) ?? 'staff member'}`}
                 </p>
               </div>
-              <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', STATUS_TONE[c.status])}>{statusLabel}</span>
+              <span className={cn('rounded-badge px-2.5 py-1 text-xs font-medium', STATUS_TONE[c.status])}>{statusLabel}</span>
             </div>
 
             <ClaimProgress

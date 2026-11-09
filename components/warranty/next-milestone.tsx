@@ -61,7 +61,7 @@ export function NextMilestone({ milestone }: { milestone: NextMilestoneData | nu
           {formatLongDate(milestone.due_on)}
         </time>
       </span>
-      <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums', status.tone)}>
+      <span className={cn('inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-xs font-medium tabular-nums', status.tone)}>
         <StatusIcon className="size-3 shrink-0" aria-hidden="true" />
         {status.label}
       </span>

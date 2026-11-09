@@ -117,8 +117,8 @@ export function CompletedProjectPanel({
                   <span
                     className={
                       e.status === 'open'
-                        ? 'shrink-0 rounded-full bg-champagne-soft px-2 py-0.5 text-xs font-medium text-warning'
-                        : 'shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary'
+                        ? 'shrink-0 rounded-badge bg-champagne-soft px-2 py-0.5 text-xs font-medium text-warning'
+                        : 'shrink-0 rounded-badge bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary'
                     }
                   >
                     {e.status === 'open' ? 'Exception approved' : 'Resolved'}

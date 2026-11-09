@@ -130,7 +130,7 @@ export function PersonCompanies({
                     {r.company_name}
                   </Link>
                   {r.is_primary_contact && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF2DA] px-2 py-0.5 text-xs font-medium text-[#96570E]">
+                    <span className="inline-flex items-center gap-1 rounded-badge bg-[#FFF2DA] px-2 py-0.5 text-xs font-medium text-[#96570E]">
                       <Star className="size-3 fill-current" aria-hidden="true" />
                       Primary contact
                     </span>
@@ -183,7 +183,7 @@ export function PersonCompanies({
               <label htmlFor="rel-company" className="text-sm font-medium">
                 Company
               </label>
-              <select id="rel-company" name="company_id" defaultValue={v.company_id ?? ''} aria-invalid={fe.company_id ? true : undefined} className="h-10 rounded-lg border border-input bg-background px-2.5 text-sm">
+              <select id="rel-company" name="company_id" defaultValue={v.company_id ?? ''} aria-invalid={fe.company_id ? true : undefined} className="h-10 rounded-control border border-input bg-background px-2.5 text-sm">
                 <option value="" disabled>
                   {available.length ? 'Choose a company' : 'No other active companies'}
                 </option>
@@ -315,7 +315,7 @@ export function PersonProjects({
               <label htmlFor="pp-project" className="text-sm font-medium">
                 Project
               </label>
-              <select id="pp-project" name="project_id" defaultValue={v.project_id ?? ''} aria-invalid={fe.project_id ? true : undefined} className="h-10 rounded-lg border border-input bg-background px-2.5 text-sm">
+              <select id="pp-project" name="project_id" defaultValue={v.project_id ?? ''} aria-invalid={fe.project_id ? true : undefined} className="h-10 rounded-control border border-input bg-background px-2.5 text-sm">
                 <option value="" disabled>
                   {available.length ? 'Choose a project' : 'No available projects'}
                 </option>
@@ -334,7 +334,7 @@ export function PersonProjects({
                 <label htmlFor="pp-via" className="text-sm font-medium">
                   On behalf of
                 </label>
-                <select id="pp-via" name="person_company_id" defaultValue={v.person_company_id ?? ''} className="h-10 rounded-lg border border-input bg-background px-2.5 text-sm">
+                <select id="pp-via" name="person_company_id" defaultValue={v.person_company_id ?? ''} className="h-10 rounded-control border border-input bg-background px-2.5 text-sm">
                   <option value="">Independently</option>
                   {activeRels.map((r) => (
                     <option key={r.id} value={r.id}>

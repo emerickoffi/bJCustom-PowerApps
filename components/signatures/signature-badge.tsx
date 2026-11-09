@@ -17,7 +17,7 @@ export function SignatureBadge({ status, signed, total, className }: { status: S
   const { className: tone, Icon } = TONES[status]
   const progress = total && status !== 'completed' && (status === 'awaiting_signatures' || status === 'partially_signed') ? ` · ${signed ?? 0}/${total}` : ''
   return (
-    <span className={cn('inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset', tone, className)}>
+    <span className={cn('inline-flex w-fit items-center gap-1 rounded-badge px-2 py-0.5 text-xs font-medium ring-1 ring-inset', tone, className)}>
       <Icon className="size-3" aria-hidden="true" />
       {`${SIGNATURE_STATUS_LABELS[status]}${progress}`}
     </span>
