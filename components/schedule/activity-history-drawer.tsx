@@ -266,7 +266,7 @@ export function ActivityHistoryDrawer({
                     : 'Includes every recorded event for this project.'}
                 </p>
               </div>
-              <Button onClick={exportHistory} disabled={exporting || Boolean(dateError)} className="h-10 shrink-0 bg-primary text-white hover:bg-brand-deep">
+              <Button onClick={exportHistory} disabled={exporting || Boolean(dateError)} className="h-10 shrink-0">
                 {exporting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <FileSpreadsheet aria-hidden="true" />}
                 {exporting ? 'Preparing workbook…' : 'Export to Excel'}
               </Button>

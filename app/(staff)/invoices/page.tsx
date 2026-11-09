@@ -20,7 +20,8 @@ import { formatCentsExact } from '@/lib/estimates'
 import { cn } from '@/lib/utils'
 import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { DirectoryPagination } from '@/components/shared/directory-pagination'
-import { worksheetFillerClass, worksheetStripClass, worksheetTabClass } from '@/components/shared/worksheet-tabs'
+import { worksheetStripClass } from '@/components/shared/worksheet-tabs'
+import { pillClass } from '@/lib/interaction-styles'
 import { Button } from '@/components/ui/button'
 import { InvoiceList } from '@/components/invoices/invoice-list'
 import { InvoicesToolbar, RetryButton } from '@/components/invoices/invoices-toolbar'
@@ -117,14 +118,14 @@ async function InvoicesContent({ state }: { state: InvoiceListState }) {
 
       {!failed && all.length > 0 && <InvoicesToolbar status={state.status} query={state.q} />}
 
-      <section aria-labelledby="invoice-results-heading" className="flex min-w-0 flex-col">
+      <section aria-labelledby="invoice-results-heading" className="flex min-w-0 flex-col gap-2">
         <h2 id="invoice-results-heading" className="sr-only">
           {`${activeLabel} invoices`}
         </h2>
         {!failed && all.length > 0 && (
           <nav aria-label="Filter invoices by status" className={worksheetStripClass}>
-            <ul className="flex w-max min-w-full items-end">
-              {filters.map((f, index) => {
+            <ul className="flex w-max gap-1.5 py-0.5">
+              {filters.map((f) => {
                 const active = state.status === f.value
                 return (
                   <li key={f.label} className="flex">
@@ -132,13 +133,16 @@ async function InvoicesContent({ state }: { state: InvoiceListState }) {
                       href={invoiceListHref({ status: f.value, q: state.q })}
                       scroll={false}
                       aria-current={active ? 'true' : undefined}
-                      className={cn(worksheetTabClass(active, index === 0), 'gap-1.5 px-3.5')}
+                      className={cn(
+                        'inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium pointer-coarse:min-h-11',
+                        pillClass(active),
+                      )}
                     >
                       {f.label}
                       <span
                         className={cn(
-                          'rounded px-1.5 text-xs tabular-nums',
-                          active ? 'bg-sage text-foreground' : 'bg-background/80 text-muted-foreground',
+                          'rounded-full px-1.5 text-xs tabular-nums',
+                          active ? 'bg-card text-foreground' : 'bg-muted text-muted-foreground',
                         )}
                       >
                         {f.count}
@@ -148,17 +152,11 @@ async function InvoicesContent({ state }: { state: InvoiceListState }) {
                   </li>
                 )
               })}
-              <li aria-hidden="true" className={worksheetFillerClass} />
             </ul>
           </nav>
         )}
 
-        <div
-          className={cn(
-            'flex min-w-0 flex-col overflow-hidden border-border bg-card',
-            !failed && all.length > 0 ? 'rounded-b-lg border-x border-b' : 'rounded-lg border',
-          )}
-        >
+        <div className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
           {!failed && all.length > 0 && (
             <p className="border-b border-border px-4 py-2 text-xs tabular-nums text-muted-foreground" aria-live="polite">
               {filtered || pageCount > 1

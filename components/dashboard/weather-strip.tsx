@@ -413,7 +413,7 @@ export function WeatherStrip({
             {actions.editProjectId && canEditAddress && (
               <Link
                 href={`/projects/${actions.editProjectId}/edit`}
-                className="inline-flex h-10 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex h-10 items-center rounded-md border border-action-border bg-action font-semibold text-action-foreground hover:bg-action-hover active:bg-action-pressed px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
               >
                 Edit jobsite address
               </Link>

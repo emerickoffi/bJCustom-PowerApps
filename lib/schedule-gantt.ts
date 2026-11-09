@@ -174,6 +174,28 @@ export function chartRange(days: number[], today: number): { start: number; end:
   return { start: Math.min(...days, today) - 14, end: Math.max(...days, today) + 35 }
 }
 
+/**
+ * Extends the visible date range (never activity dates) so the grid reaches the right edge of
+ * a timeline viewport `viewportPx` wide. Ranges already wider than the viewport are unchanged.
+ */
+export function fillRange(range: { start: number; end: number }, viewportPx: number, px: number): { start: number; end: number } {
+  if (!(viewportPx > 0) || !(px > 0)) return range
+  const needed = Math.ceil(viewportPx / px)
+  return needed > range.end - range.start + 1 ? { start: range.start, end: range.start + needed - 1 } : range
+}
+
+export type OffChartReason = 'filtered' | 'collapsed' | 'undated'
+
+/**
+ * Why a dependency endpoint isn't on the chart. Filters win over missing dates because a filtered
+ * activity wouldn't be drawn either way; anything visible with dates must be in a collapsed phase.
+ */
+export function offChartReason(id: string, filteredIn: Set<string>, undated: Set<string>): OffChartReason {
+  if (!filteredIn.has(id)) return 'filtered'
+  if (undated.has(id)) return 'undated'
+  return 'collapsed'
+}
+
 /** The most detailed zoom at which `spanDays` fits inside `widthPx`. */
 export function fitZoom(spanDays: number, widthPx: number): Zoom {
   for (const z of ZOOMS) if (spanDays * ZOOM_PX[z] <= widthPx) return z
