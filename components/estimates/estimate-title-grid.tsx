@@ -13,7 +13,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { Check, Lock, PencilLine, TableProperties } from 'lucide-react'
+import { Check, Lock, PencilLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { updateEstimateTitleAction } from '@/app/actions/estimate-title'
@@ -160,28 +160,38 @@ export function EstimateTitleGridProvider({
 
   return (
     <Ctx.Provider value={value}>
-      {editableCount > 0 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <Button
-            type="button"
-            variant={editMode ? 'view' : 'edit'}
-            size="lg"
-            aria-pressed={editMode}
-            onClick={toggleEditMode}
-            className="h-11 sm:h-10"
-          >
-            {editMode ? <Check data-icon="inline-start" /> : <TableProperties data-icon="inline-start" />}
-            {editMode ? 'Done editing' : 'Edit grid'}
-          </Button>
-          <p className="text-xs text-muted-foreground" aria-live="polite">
-            {editMode
-              ? 'Select a draft title to rename it. Totals and line items stay in the estimate editor.'
-              : `${editableCount} ${editableCount === 1 ? 'draft title' : 'draft titles'} can be renamed here.`}
-          </p>
-        </div>
-      )}
-      {children}
+      <EditableCountCtx.Provider value={editableCount}>{children}</EditableCountCtx.Provider>
     </Ctx.Provider>
+  )
+}
+
+const EditableCountCtx = createContext(0)
+
+/** Toolbar toggle; renders nothing when no visible row is eligible for title editing. */
+export function EstimateTitleEditToggle() {
+  const { editMode, toggleEditMode } = useGrid()
+  const editableCount = useContext(EditableCountCtx)
+  if (editableCount === 0 && !editMode) return null
+  return (
+    <Button
+      type="button"
+      variant={editMode ? 'view' : 'edit'}
+      aria-pressed={editMode}
+      onClick={toggleEditMode}
+      className="h-11 md:h-9"
+    >
+      {editMode ? <Check data-icon="inline-start" /> : <PencilLine data-icon="inline-start" />}
+      {editMode ? 'Done editing' : 'Edit titles'}
+    </Button>
+  )
+}
+
+export function EstimateTitleEditHint() {
+  const { editMode } = useGrid()
+  return (
+    <p className="text-xs text-muted-foreground empty:hidden" aria-live="polite">
+      {editMode ? 'Select a draft title to rename it. Totals and line items stay in the estimate editor.' : ''}
+    </p>
   )
 }
 

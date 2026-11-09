@@ -20,6 +20,8 @@ export function estimatesListHref(from: string | undefined, statuses: readonly s
   const status = source.get('status')
   if (project && UUID.test(project)) kept.set('project', project)
   if (status && statuses.includes(status)) kept.set('status', status)
+  const search = source.get('q')?.trim().slice(0, 100)
+  if (search) kept.set('q', search)
   const qs = kept.toString()
   return { href: qs ? `/estimates?${qs}` : '/estimates', from: qs }
 }

@@ -106,7 +106,7 @@ export async function listEstimates(organizationId: string, filters: { projectId
     .order('created_at', { ascending: false })
     .limit(500)
   if (filters.projectId) query = query.eq('project_id', filters.projectId)
-  const { data } = await query
+  const { data, error } = await query
   const rows = (data ?? []).map(normalize)
 
   const latestByFamily = new Map<string, EstimateRecord>()
@@ -119,5 +119,5 @@ export async function listEstimates(organizationId: string, filters: { projectId
   const latest = [...latestByFamily.values()]
     .filter((r) => !filters.status || r.status === filters.status)
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
-  return { estimates: latest, revisionCount, all: rows }
+  return { estimates: latest, revisionCount, all: rows, failed: !!error }
 }
