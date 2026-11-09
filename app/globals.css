@@ -30,7 +30,10 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar-icon: var(--sidebar-icon);
-  --color-sidebar-active-border: var(--sidebar-active-border);
+  --color-sidebar-selected: var(--sidebar-selected);
+  --color-sidebar-selected-foreground: var(--sidebar-selected-foreground);
+  --color-sidebar-selected-icon: var(--sidebar-selected-icon);
+  --color-sidebar-hover: var(--sidebar-hover);
   --color-sidebar: var(--sidebar);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
@@ -203,7 +206,11 @@
   --sidebar-border: #d6dde5;
   --sidebar-ring: #007f95;
   --sidebar-icon: currentColor;
-  --sidebar-active-border: transparent;
+  /* Light-surface nav (tablet "More" sheet): orange fails contrast on pale aqua, so the icon uses deep teal. */
+  --sidebar-selected: #d2eef1;
+  --sidebar-selected-foreground: #005867;
+  --sidebar-selected-icon: #005867;
+  --sidebar-hover: #eef8f9;
   --shadow-soft: 0 1px 2px rgb(23 33 43 / 0.04), 0 2px 8px -4px rgb(23 33 43 / 0.06);
   --shadow-lift: 0 2px 4px rgb(23 33 43 / 0.05), 0 12px 24px -12px rgb(23 33 43 / 0.14);
 }
@@ -245,7 +252,11 @@
   --sidebar-accent: #006777;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgb(255 255 255 / 0.18);
-  --sidebar-active-border: #ffa500;
+  /* Selection is a lighter teal (white label 4.6:1); hover goes darker so the two never read alike. */
+  --sidebar-selected: #168093;
+  --sidebar-selected-foreground: #ffffff;
+  --sidebar-selected-icon: #ffa500;
+  --sidebar-hover: #006e81;
   --sidebar-ring: #ffffff;
 }
 
