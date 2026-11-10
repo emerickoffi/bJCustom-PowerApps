@@ -90,9 +90,9 @@ export function PageHeader({
 }
 
 /** Contextual help beside a page title: collapsed by default so it never reserves space under the heading. */
-export function HeaderHelp({ label, children }: { label: string; children: React.ReactNode }) {
+export function HeaderHelp({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
-    <details className="group relative">
+    <details className={cn('group relative', className)}>
       <summary className="flex size-7 cursor-pointer list-none items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-interactive-soft hover:text-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
         <Info className="size-4" aria-hidden="true" />
         <span className="sr-only">{label}</span>
@@ -171,21 +171,32 @@ export function SectionHeading({
   id,
   title,
   description,
+  help,
   action,
   className,
 }: {
   id?: string
   title: string
   description?: React.ReactNode
+  /** Explanation that is only needed on demand, shown from an info button beside the title. */
+  help?: { label: string; content: React.ReactNode }
   action?: React.ReactNode
   className?: string
 }) {
   return (
     <div className={cn('flex flex-wrap items-end justify-between gap-3', className)}>
       <div className="flex min-w-0 flex-col gap-1">
-        <h2 id={id} className="font-serif text-xl font-semibold tracking-tight text-foreground">
-          {title}
-        </h2>
+        {/* The popover anchors to this row, not the button, so it stays on screen at phone widths. */}
+        <div className="relative flex min-w-0 items-center gap-1.5">
+          <h2 id={id} className="font-serif text-xl font-semibold tracking-tight text-foreground">
+            {title}
+          </h2>
+          {help && (
+            <HeaderHelp label={help.label} className="static">
+              {help.content}
+            </HeaderHelp>
+          )}
+        </div>
         {description && <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>}
       </div>
       {action}

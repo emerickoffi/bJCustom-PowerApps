@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTransition } from 'react'
 import { Bell, ChevronRight, LayoutTemplate, LogOut, UserRound } from 'lucide-react'
-import { SearchInput } from '@/components/shared/search-input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,35 +56,30 @@ const PROJECT_SECTION_LABELS: Record<string, string> = {
 
 const ID_LIKE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i
 
-function useCrumbs(rootHref: string, rootLabel: string, labels?: Record<string, string>) {
+function useCrumbs(rootHref: string, rootLabel: string) {
   const pathname = usePathname()
   const parts = pathname.split('/').filter(Boolean)
+  // The header selector already names the open project, so its crumb gives way to the tool being viewed.
+  const inProject = parts[0] === 'projects' && ID_LIKE.test(parts[1] ?? '')
   const crumbs: { href: string; label: string }[] = []
   let href = ''
   for (const [index, part] of parts.entries()) {
     href += `/${part}`
     if (href === rootHref) continue
-    const projectSection = index === 2 && parts[0] === 'projects' ? PROJECT_SECTION_LABELS[part] : undefined
-    const label =
-      labels?.[part] ??
-      projectSection ??
-      (ID_LIKE.test(part) ? 'Details' : (SEGMENT_LABELS[part] ?? part.replace(/-/g, ' ')))
+    if (inProject && index === 1) {
+      if (parts.length === 2) crumbs.push({ href, label: 'Overview' })
+      continue
+    }
+    const projectSection = inProject && index === 2 ? PROJECT_SECTION_LABELS[part] : undefined
+    const label = projectSection ?? (ID_LIKE.test(part) ? 'Details' : (SEGMENT_LABELS[part] ?? part.replace(/-/g, ' ')))
     crumbs.push({ href, label })
   }
   return [{ href: rootHref, label: rootLabel }, ...crumbs]
 }
 
-/** `labels` maps known ids (e.g. the current job) to names; other ids fall back to "Details". */
-export function Breadcrumbs({
-  rootHref,
-  rootLabel,
-  labels,
-}: {
-  rootHref: string
-  rootLabel: string
-  labels?: Record<string, string>
-}) {
-  const crumbs = useCrumbs(rootHref, rootLabel, labels)
+/** Record ids deeper in a path read as "Details"; the page heading carries the record's own name. */
+export function Breadcrumbs({ rootHref, rootLabel }: { rootHref: string; rootLabel: string }) {
+  const crumbs = useCrumbs(rootHref, rootLabel)
   return (
     <nav aria-label="Breadcrumb" className="min-w-0">
       <ol className="flex min-w-0 items-center gap-1.5 text-sm">
@@ -111,20 +105,6 @@ export function Breadcrumbs({
         })}
       </ol>
     </nav>
-  )
-}
-
-export function HeaderSearch() {
-  return (
-    <form action="/projects" role="search" className="hidden w-full min-w-[10rem] max-w-[13rem] md:block xl:max-w-xs">
-      <SearchInput
-        id="global-search"
-        label="Search projects"
-        placeholder="Search projects, addresses..."
-        syncUrl={false}
-        inputClassName="rounded-xl border-transparent bg-white focus-visible:border-primary/30 focus-visible:bg-white focus-visible:ring-primary/10"
-      />
-    </form>
   )
 }
 

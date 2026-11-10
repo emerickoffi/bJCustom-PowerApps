@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { requireStaff } from '@/lib/session'
 import { QuickActionsProvider, QuickCreateMenu } from '@/components/app/quick-actions'
-import { JobSwitcher, RouteBreadcrumbs } from '@/components/app/job-switcher'
+import { JobSwitcher } from '@/components/app/job-switcher'
 import { buildGlobalQuickActions } from '@/lib/quick-actions'
 import { dashboardKeyForRole } from '@/lib/dashboard-layout'
 import type { ProjectFilterRoute } from '@/lib/route-job'
@@ -27,7 +27,7 @@ import { DraftScopeProvider } from '@/components/shared/draft-scope'
 import { NavigationGuard } from '@/components/app/navigation-guard'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import {
-  HeaderSearch,
+  Breadcrumbs,
   NotificationBell,
   ProfileMenu,
   type HeaderNotification,
@@ -144,25 +144,15 @@ export default async function StaffLayout({ children, modal }: { children: React
                 {logo}
               </Link>
               <div className="hidden min-w-0 flex-1 lg:block tablet:hidden">
-                <RouteBreadcrumbs
-                  organizationId={session.organizationId}
-                  filterRoutes={projectFilterRoutes}
-                  rootHref="/dashboard"
-                  rootLabel="Dashboard"
-                />
+                <Breadcrumbs rootHref="/dashboard" rootLabel="Dashboard" />
               </div>
               <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
-                <div
-                  role="group"
-                  aria-label="Project navigation"
-                  className="flex min-w-0 items-center gap-1.5 sm:gap-2 md:mr-2 md:rounded-surface md:bg-[#E8F3F5] md:p-1.5 lg:mr-3"
-                >
+                <div className="flex min-w-0 items-center md:mr-2 md:rounded-surface md:bg-[#E8F3F5] md:p-1.5 lg:mr-3">
                   <JobSwitcher
                     organizationId={session.organizationId}
                     filterRoutes={projectFilterRoutes}
                     tabletFilterRoutes={TABLET_FILTER_ROUTES}
                   />
-                  <HeaderSearch />
                 </div>
                 <QuickCreateMenu globalActions={globalQuickActions} jobScope={null} />
                 <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />

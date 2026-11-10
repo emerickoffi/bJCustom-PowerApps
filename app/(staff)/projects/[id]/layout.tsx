@@ -50,7 +50,7 @@ export default async function ProjectLayout({
     canViewInternal: Boolean(canViewInternal),
   })
   return (
-    // Every project tab shares this frame: identity row, worksheet tabs, and the connected workspace panel.
+    // Every project tab shares this frame: project facts row, worksheet tabs, and the connected workspace panel.
     // The shell gives every tab the same full workspace width, so sections never jump sideways.
     <div data-project-frame className="flex min-w-0 flex-col">
       <ProjectQuickActionsScope projectName={project.name} actions={quickActions} />
@@ -70,7 +70,6 @@ export default async function ProjectLayout({
       <ProjectNav
         userId={session.userId}
         projectId={project.id}
-        projectName={project.name}
         projectNumber={project.project_number ?? null}
         status={project.status as ProjectStatus}
         address={formatAddress(project)}

@@ -1,12 +1,14 @@
 import Link from 'next/link'
-import { Calculator, Plus, Wallet } from 'lucide-react'
+import { ArrowUpRight, Calculator, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/server'
 import { formatCentsExact, type EstimateStatus } from '@/lib/estimates'
 import { formatDate } from '@/lib/format'
 import { EstimateStatusBadge } from '@/components/estimates/estimate-status-badge'
-import { OverviewSection } from '@/components/projects/overview-section'
+import { PageHeader } from '@/components/shared/page-header'
 import { cn } from '@/lib/utils'
+
+const PREVIEW_LIMIT = 5
 
 type Row = {
   id: string
@@ -81,19 +83,39 @@ export async function ProjectEstimatesPanel({
     .select('id, family_id, revision, estimate_number, name, status, construction_total_cents, land_cost_cents, decision_at, created_at')
     .eq('project_id', projectId)
     .order('revision', { ascending: false })
-  const createAction = canManage ? (
-    <Button variant="outline" size="sm" render={<Link href={`/estimates/new?project=${projectId}`} />} nativeButton={false}>
-      <Plus data-icon="inline-start" />
-      Create estimate
-    </Button>
-  ) : null
+  // One heading and one Create estimate action in every state; the full list link appears once there is a list.
+  const header = (hasEstimates: boolean) => (
+    <PageHeader
+      title="Estimates"
+      icon={Calculator}
+      actions={
+        hasEstimates || canManage ? (
+          <>
+            {hasEstimates && (
+              <Button variant="outline" render={<Link href={`/estimates?project=${encodeURIComponent(projectId)}`} />} nativeButton={false}>
+                All estimates
+                <ArrowUpRight data-icon="inline-end" />
+              </Button>
+            )}
+            {canManage && (
+              <Button render={<Link href={`/estimates/new?project=${projectId}`} />} nativeButton={false}>
+                <Plus data-icon="inline-start" />
+                Create estimate
+              </Button>
+            )}
+          </>
+        ) : undefined
+      }
+    />
+  )
   if (error) {
     return (
-      <OverviewSection id="estimates-heading" icon={Wallet} title="Estimates & Budget">
+      <div className="flex flex-col gap-6">
+        {header(false)}
         <p role="status" className="text-sm text-warning">
           Estimates could not be loaded, so the approved amount and budget variance are unknown. Refresh the page to try again.
         </p>
-      </OverviewSection>
+      </div>
     )
   }
   const rows = (data ?? []) as Row[]
@@ -106,28 +128,8 @@ export async function ProjectEstimatesPanel({
   const variance = approved && hasBudget ? approved.construction_total_cents - budgetCents : null
 
   return (
-    <OverviewSection
-      id="estimates-heading"
-      icon={Wallet}
-      title="Estimates & Budget"
-      subtitle="Approved construction cost compared with the project budget."
-      actions={
-        estimates.length ? (
-          <>
-            <Button variant="outline" render={<Link href={`/estimates?project=${projectId}`} />} nativeButton={false}>
-              <Calculator data-icon="inline-start" />
-              All estimates
-            </Button>
-            {canManage ? (
-              <Button render={<Link href={`/estimates/new?project=${projectId}`} />} nativeButton={false}>
-                <Plus data-icon="inline-start" />
-                Create estimate
-              </Button>
-            ) : null}
-          </>
-        ) : null
-      }
-    >
+    <div className="flex flex-col gap-6">
+      {header(estimates.length > 0)}
       <dl className="grid gap-3 md:grid-cols-3">
         <SummaryCard label="Project budget" value={hasBudget ? formatCentsExact(budgetCents) : 'Not set'} unavailable={!hasBudget} />
         <SummaryCard
@@ -150,30 +152,34 @@ export async function ProjectEstimatesPanel({
       </dl>
 
       {estimates.length === 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed px-4 py-3">
-          <p className="text-sm text-muted-foreground">No estimates for this project yet.</p>
-          {createAction}
-        </div>
+        <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">No estimates for this project yet.</p>
       ) : (
-        <ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
-          {estimates.slice(0, 5).map((e) => (
-            <li key={e.id}>
-              <Link href={`/estimates/${e.id}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[#F3F4F6]">
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate text-sm font-medium text-foreground">{e.name}</span>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {e.estimate_number} · Rev {e.revision} · {formatDate(e.created_at)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium tabular-nums">{formatCentsExact(e.construction_total_cents)}</span>
-                  <EstimateStatusBadge status={e.status} />
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <div className="flex flex-col gap-2">
+          <ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
+            {estimates.slice(0, PREVIEW_LIMIT).map((e) => (
+              <li key={e.id}>
+                <Link href={`/estimates/${e.id}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[#F3F4F6]">
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="truncate text-sm font-medium text-foreground">{e.name}</span>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {e.estimate_number} · Rev {e.revision} · {formatDate(e.created_at)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium tabular-nums">{formatCentsExact(e.construction_total_cents)}</span>
+                    <EstimateStatusBadge status={e.status} />
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {estimates.length > PREVIEW_LIMIT && (
+            <p className="text-xs text-muted-foreground">
+              {`Showing the ${PREVIEW_LIMIT} most recent of ${estimates.length} estimates. All estimates lists the rest.`}
+            </p>
+          )}
+        </div>
       )}
-    </OverviewSection>
+    </div>
   )
 }

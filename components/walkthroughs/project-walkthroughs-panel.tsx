@@ -1,14 +1,13 @@
 import Link from 'next/link'
-import { ClipboardCheck, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/server'
 import { IssueStatusBadge, WalkthroughStatusBadge } from '@/components/walkthroughs/badges'
-import { OverviewSection } from '@/components/projects/overview-section'
 import { WALKTHROUGH_TYPE_LABELS, type IssueStatus, type WalkthroughStatus } from '@/lib/walkthroughs'
+import { PROJECT_SECTION_ANCHORS } from '@/lib/project-nav'
 import { formatDate } from '@/lib/format'
 
 const WALKTHROUGH_PREVIEW = 3
 const ISSUE_PREVIEW = 5
+const SECTION_HEADING = 'scroll-mt-36 font-serif text-lg font-semibold text-foreground'
 const ROW = 'flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[#F3F4F6]'
 
 function MoreToggle({ count, noun, children }: { count: number; noun: string; children: React.ReactNode }) {
@@ -23,7 +22,8 @@ function MoreToggle({ count, noun, children }: { count: number; noun: string; ch
   )
 }
 
-export async function ProjectWalkthroughsPanel({ projectId, canCreate }: { projectId: string; canCreate: boolean }) {
+/** Body of the project Walkthroughs tab; the page supplies the heading and the New walkthrough action. */
+export async function ProjectWalkthroughsPanel({ projectId }: { projectId: string }) {
   const supabase = await createClient()
   const [walkthroughsRes, issuesRes] = await Promise.all([
     supabase
@@ -43,13 +43,6 @@ export async function ProjectWalkthroughsPanel({ projectId, canCreate }: { proje
   const openIssues = issuesRes.data ?? []
   const openIssueCount = issuesRes.count ?? openIssues.length
   const failed = Boolean(walkthroughsRes.error || issuesRes.error)
-
-  const newAction = canCreate ? (
-    <Button variant="outline" size="sm" render={<Link href={`/projects/${projectId}/walkthroughs/new`} />} nativeButton={false}>
-      <Plus data-icon="inline-start" />
-      New walkthrough
-    </Button>
-  ) : null
 
   const walkthroughRow = (w: (typeof walkthroughs)[number]) => (
     <li key={w.id}>
@@ -85,13 +78,7 @@ export async function ProjectWalkthroughsPanel({ projectId, canCreate }: { proje
   const empty = !failed && walkthroughs.length === 0 && openIssues.length === 0
 
   return (
-    <OverviewSection
-      id="walkthroughs-heading"
-      icon={ClipboardCheck}
-      title="Walkthroughs & issues"
-      subtitle={empty ? undefined : `${walkthroughs.length} ${walkthroughs.length === 1 ? 'walkthrough' : 'walkthroughs'} · ${openIssueCount} open ${openIssueCount === 1 ? 'issue' : 'issues'}`}
-      actions={empty ? null : newAction}
-    >
+    <div className="flex flex-col gap-6">
       {failed && (
         <p role="status" className="text-sm text-warning">
           Some walkthroughs or issues could not be loaded. Refresh the page to try again.
@@ -99,15 +86,12 @@ export async function ProjectWalkthroughsPanel({ projectId, canCreate }: { proje
       )}
 
       {empty && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed px-4 py-3">
-          <p className="text-sm text-muted-foreground">No walkthroughs or open issues yet.</p>
-          {newAction}
-        </div>
+        <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">No walkthroughs or open issues yet.</p>
       )}
 
       {openIssues.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{`Open issues (${openIssueCount})`}</h3>
+        <section aria-labelledby="open-issues-heading" className="flex flex-col gap-2">
+          <h2 id="open-issues-heading" className={SECTION_HEADING}>{`Open issues (${openIssueCount})`}</h2>
           <ul className="flex flex-col divide-y overflow-hidden rounded-xl border">{openIssues.slice(0, ISSUE_PREVIEW).map(issueRow)}</ul>
           {openIssues.length > ISSUE_PREVIEW && (
             <MoreToggle count={openIssues.length - ISSUE_PREVIEW} noun="issues">
@@ -117,12 +101,12 @@ export async function ProjectWalkthroughsPanel({ projectId, canCreate }: { proje
           {openIssueCount > openIssues.length && (
             <p className="text-xs text-muted-foreground">{`Showing the ${openIssues.length} most recent open issues.`}</p>
           )}
-        </div>
+        </section>
       )}
 
       {walkthroughs.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Walkthroughs</h3>
+        <section aria-labelledby={PROJECT_SECTION_ANCHORS.walkthroughs} className="flex flex-col gap-2">
+          <h2 id={PROJECT_SECTION_ANCHORS.walkthroughs} className={SECTION_HEADING}>{`Walkthroughs (${walkthroughs.length})`}</h2>
           <ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
             {walkthroughs.slice(0, WALKTHROUGH_PREVIEW).map(walkthroughRow)}
           </ul>
@@ -133,8 +117,8 @@ export async function ProjectWalkthroughsPanel({ projectId, canCreate }: { proje
               </ul>
             </MoreToggle>
           )}
-        </div>
+        </section>
       )}
-    </OverviewSection>
+    </div>
   )
 }

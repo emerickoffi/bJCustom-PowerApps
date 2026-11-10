@@ -1,24 +1,22 @@
 import type { ReactNode } from 'react'
-import { CalendarClock, MapPin, UserRound, type LucideIcon } from 'lucide-react'
-import { ProjectStatusBadge } from '@/components/shared/status-badge'
+import { CalendarClock, UserRound, type LucideIcon } from 'lucide-react'
 import { CoverImage } from '@/components/projects/cover-image'
-import type { ProjectStatus } from '@/lib/domain'
 
-function HeaderFact({ icon: Icon, label, value, labelVisible = true }: { icon: LucideIcon; label: string; value: string; labelVisible?: boolean }) {
+function HeaderFact({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
     <div className="flex min-w-0 items-center gap-1.5">
       <Icon className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-      <dt className={labelVisible ? 'text-muted-foreground' : 'sr-only'}>{label}</dt>
+      <dt className="text-muted-foreground">{label}</dt>
       <dd className="min-w-0 break-words font-medium text-foreground">{value}</dd>
     </div>
   )
 }
 
+/**
+ * Overview's page heading. Project name, ID, status and address sit directly above every tab (header selector
+ * and project facts row), so this card carries only what they don't: photo, manager, key date, warnings, actions.
+ */
 export function ProjectOverviewHeader({
-  projectNumber,
-  name,
-  status,
-  address,
   managerName,
   dateLabel,
   dateValue,
@@ -26,10 +24,6 @@ export function ProjectOverviewHeader({
   badges,
   actions,
 }: {
-  projectNumber: string | null
-  name: string
-  status: ProjectStatus
-  address: string
   managerName: string | null
   dateLabel: string
   dateValue: string
@@ -39,23 +33,20 @@ export function ProjectOverviewHeader({
 }) {
   return (
     <section aria-labelledby="project-heading" className="surface flex flex-col gap-4 p-4 sm:p-5 xl:flex-row xl:items-center">
-      <div className="flex min-w-0 flex-1 items-start gap-4">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
         {cover && (
           <div className="relative hidden size-16 shrink-0 overflow-hidden rounded-xl bg-[#F3F4F6] ring-1 ring-[#D6DDE5] sm:block">
             <CoverImage src={cover.src} alt={cover.alt} className="absolute inset-0 size-full object-cover" fallback={null} priority />
           </div>
         )}
         <div className="flex min-w-0 flex-col gap-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            {projectNumber && <span className="font-mono text-xs text-muted-foreground">{projectNumber}</span>}
-            <ProjectStatusBadge status={status} />
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <h1 id="project-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
+              Overview
+            </h1>
             {badges}
           </div>
-          <h1 id="project-heading" className="text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
-            {name}
-          </h1>
           <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-            <HeaderFact icon={MapPin} label="Address" value={address} labelVisible={false} />
             <HeaderFact icon={UserRound} label="Project manager" value={managerName ?? 'Not assigned'} />
             <HeaderFact icon={CalendarClock} label={dateLabel} value={dateValue} />
           </dl>

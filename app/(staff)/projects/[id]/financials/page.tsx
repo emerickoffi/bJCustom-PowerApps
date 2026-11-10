@@ -76,7 +76,14 @@ export default async function ProjectFinancialsPage({ params }: { params: Promis
       <FinancialSummary summary={summary} showProfit={showProfit} />
 
       <section aria-labelledby="budget-heading" className="flex flex-col gap-3">
-        <SectionHeading id="budget-heading" title="Budget versus actual" description="Grouped by cost code. Estimate categories map to cost codes; historical labels are kept as recorded." />
+        <SectionHeading
+          id="budget-heading"
+          title="Budget versus actual"
+          help={{
+            label: 'How budget lines are grouped',
+            content: 'Grouped by cost code. Estimate categories map to cost codes; historical labels are kept as recorded.',
+          }}
+        />
         <BudgetTable summary={summary} />
       </section>
 

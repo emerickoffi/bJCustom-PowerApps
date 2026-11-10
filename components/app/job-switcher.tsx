@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, useTransition } from 'react'
+import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
-import { AlertCircle, Check, ChevronsUpDown, Layers, Loader2, Search } from 'lucide-react'
+import { AlertCircle, ArrowRight, Check, ChevronsUpDown, Layers, Loader2, Search } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { Breadcrumbs } from '@/components/app/top-bar'
 import { useTabletLayout } from '@/components/app/layout-mode'
 import { getJobAction, searchJobsAction } from '@/app/actions/job-context'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
@@ -50,26 +50,10 @@ function useRouteJob(organizationId: string, filterRoutes: readonly ProjectFilte
   }
 }
 
-/** Breadcrumbs that label the URL's project id with its verified name. */
-export function RouteBreadcrumbs({
-  organizationId,
-  filterRoutes,
-  rootHref,
-  rootLabel,
-}: {
-  organizationId: string
-  filterRoutes: readonly ProjectFilterRoute[]
-  rootHref: string
-  rootLabel: string
-}) {
-  const { job } = useRouteJob(organizationId, filterRoutes)
-  return <Breadcrumbs rootHref={rootHref} rootLabel={rootLabel} labels={job ? { [job.id]: job.name } : undefined} />
-}
-
 /**
- * Header project selector. It only reflects the URL: a project route or an explicit `?project=` filter shows
- * that project, every other page shows "All projects". Choosing a project navigates, so the URL stays the
- * single source of truth across refresh, back/forward, and direct links.
+ * Header project selector and the header's only project search. It only reflects the URL: a project route or
+ * an explicit `?project=` filter shows that project, every other page shows "All projects". Choosing a project
+ * navigates, so the URL stays the single source of truth across refresh, back/forward, and direct links.
  */
 export function JobSwitcher({
   organizationId,
@@ -167,7 +151,7 @@ export function JobSwitcher({
             ? 'min-w-0 max-w-[11rem] shrink sm:min-w-[7.5rem] sm:max-w-[13rem] md:max-w-[15rem] lg:w-[13rem] lg:max-w-[13rem] xl:w-[16.25rem] xl:max-w-[16.25rem]'
             : 'shrink-0',
         )}
-        aria-label={currentJob ? `Current project: ${currentJob.name}. Switch project` : `${label}. Choose a project`}
+        aria-label={currentJob ? `Current project: ${currentJob.name}. Search or switch project` : `${label}. Search or choose a project`}
       >
         {loading || navigating ? (
           <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
@@ -214,7 +198,7 @@ export function JobSwitcher({
                 setActive(0)
               }}
               onKeyDown={onKeyDown}
-              placeholder="Search projects by name, number, or city"
+              placeholder="Search by name, address, or project number"
               className="h-12 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
             {isLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />}
@@ -267,6 +251,19 @@ export function JobSwitcher({
               )
             })}
           </ul>
+          {/* The list above is capped; the Projects page carries the same search with every match and its filters. */}
+          {debounced && (
+            <div className="border-t p-1.5">
+              <Link
+                href={`/projects?q=${encodeURIComponent(debounced)}`}
+                onClick={close}
+                className="flex min-h-11 items-center justify-between gap-3 rounded-md px-2.5 py-2 text-sm font-medium text-primary transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+              >
+                View all matching projects
+                <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
+              </Link>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
