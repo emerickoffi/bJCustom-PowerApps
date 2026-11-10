@@ -4,7 +4,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { useSearchParams } from 'next/navigation'
 import { PREVIEW_PARAM } from '@/lib/project-preview'
 import { ProjectPreviewContext, findPreviewTrigger } from '@/components/projects/project-preview-trigger'
-import { ProjectPreviewDrawer, ProjectPreviewPanel, type PreviewListProject } from '@/components/projects/project-preview-panel'
+import {
+  ProjectPreviewDrawer,
+  ProjectPreviewPanel,
+  type PreviewLeaveGuard,
+  type PreviewListProject,
+} from '@/components/projects/project-preview-panel'
 
 const WIDE_QUERY = '(min-width: 1280px)'
 
@@ -83,24 +88,40 @@ export function ProjectPreviewLayout({ projects, children }: { projects: Preview
     if (Math.abs(shift) >= 1) window.scrollBy({ top: shift, behavior: 'instant' })
   }, [inlineOpen, selectedId])
 
+  // A view inside the preview can hold unsaved entries. Closing the preview or choosing another project asks that
+  // view first, and happens only once it has nothing to lose or the entries are discarded.
+  const leaveGuard = useRef<PreviewLeaveGuard | null>(null)
+  const whenClear = useCallback((proceed: () => void) => {
+    const guard = leaveGuard.current
+    if (!guard || guard(proceed)) proceed()
+  }, [])
+
   const select = useCallback(
     (projectId: string) => {
-      holdInPlace(projectId)
-      setPending({ id: projectId, from: urlId })
-      writePreviewParam(projectId)
+      if (projectId === selectedId) return
+      whenClear(() => {
+        holdInPlace(projectId)
+        setPending({ id: projectId, from: urlId })
+        writePreviewParam(projectId)
+      })
     },
-    [holdInPlace, urlId],
+    [holdInPlace, selectedId, urlId, whenClear],
   )
   const close = useCallback(() => {
-    setPending({ id: null, from: urlId })
-    writePreviewParam(null)
-  }, [urlId])
+    whenClear(() => {
+      setPending({ id: null, from: urlId })
+      writePreviewParam(null)
+    })
+  }, [urlId, whenClear])
   const closeInline = useCallback(() => {
-    const trigger = selectedId ? findPreviewTrigger(selectedId) : null
-    if (selectedId) holdInPlace(selectedId)
-    close()
-    trigger?.focus({ preventScroll: true })
-  }, [close, holdInPlace, selectedId])
+    whenClear(() => {
+      const trigger = selectedId ? findPreviewTrigger(selectedId) : null
+      if (selectedId) holdInPlace(selectedId)
+      setPending({ id: null, from: urlId })
+      writePreviewParam(null)
+      trigger?.focus({ preventScroll: true })
+    })
+  }, [holdInPlace, selectedId, urlId, whenClear])
 
   const context = useMemo(() => ({ selectedId, select }), [selectedId, select])
 
@@ -109,13 +130,19 @@ export function ProjectPreviewLayout({ projects, children }: { projects: Preview
       <div data-preview-open={selected ? '' : undefined} className="group/preview flex min-w-0 items-start gap-5">
         <div className="@container min-w-0 flex-1">{children}</div>
         {selected && isWide !== false && (
-          <ProjectPreviewPanel project={selected} onClose={closeInline} className={isWide === null ? 'hidden xl:flex' : 'flex'} />
+          <ProjectPreviewPanel
+            project={selected}
+            onClose={closeInline}
+            guardRef={leaveGuard}
+            className={isWide === null ? 'hidden xl:flex' : 'flex'}
+          />
         )}
       </div>
       {isWide === false && (
         <ProjectPreviewDrawer
           project={selected}
           onClose={close}
+          guardRef={leaveGuard}
           finalFocus={() => (lastSelectedId.current ? findPreviewTrigger(lastSelectedId.current) : null) ?? true}
         />
       )}

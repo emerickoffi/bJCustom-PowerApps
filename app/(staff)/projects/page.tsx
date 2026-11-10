@@ -7,7 +7,9 @@ import { DirectorySort } from '@/components/shared/directory-sort'
 import { DirectoryPagination } from '@/components/shared/directory-pagination'
 import { ProjectTable } from '@/components/projects/project-table'
 import { ProjectPreviewLayout } from '@/components/projects/project-preview-layout'
+import { ProjectColumns, ProjectColumnsMenu } from '@/components/projects/project-columns'
 import { PREVIEW_PARAM } from '@/lib/project-preview'
+import { PROJECT_COLUMNS_COOKIE, parseProjectColumns } from '@/lib/project-columns'
 import {
   DIRECTORY_VIEW_COOKIE,
   PROJECT_SORTS,
@@ -63,7 +65,9 @@ export default async function ProjectsPage({
   const sort = parseSort(params.sort, PROJECT_SORTS, 'updated')
   const page = parsePage(params.page)
   const urlView = parseView(params.view)
-  const initialView = urlView ?? parseView((await cookies()).get(DIRECTORY_VIEW_COOKIE.projects)?.value)
+  const cookieJar = await cookies()
+  const initialView = urlView ?? parseView(cookieJar.get(DIRECTORY_VIEW_COOKIE.projects)?.value)
+  const optionalColumns = parseProjectColumns(cookieJar.get(PROJECT_COLUMNS_COOKIE)?.value)
 
   const supabase = await createClient()
   const { data: locationRows } = await supabase
@@ -184,17 +188,21 @@ export default async function ProjectsPage({
         autoApply
         groupAdditional
       />
-      <ProjectPreviewLayout
-        projects={rows.map((p) => ({ id: p.id, name: p.name, project_number: p.project_number, status: p.status }))}
-      >
+      <ProjectPreviewLayout projects={rows.map((p) => ({ id: p.id, name: p.name, project_number: p.project_number }))}>
       {projects.length ? (
         <div className="flex flex-col gap-4">
+        <ProjectColumns initial={optionalColumns}>
         <DirectoryViews
           module="projects"
           initialView={initialView}
           desktopDefault="cards"
           summary={`Showing ${range.start}–${range.end} of ${total} ${total === 1 ? 'project' : 'projects'}`}
-          controls={<DirectorySort value={sort} options={sortOptions(PROJECT_SORTS)} />}
+          controls={
+            <>
+              <ProjectColumnsMenu />
+              <DirectorySort value={sort} options={sortOptions(PROJECT_SORTS)} />
+            </>
+          }
           table={<ProjectTable rows={rows} />}
           cards={
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 xl:group-data-preview-open/preview:grid-cols-1 xl:group-data-preview-open/preview:@2xl:grid-cols-2 xl:group-data-preview-open/preview:@5xl:grid-cols-3">
@@ -244,6 +252,7 @@ export default async function ProjectsPage({
         </div>
           }
         />
+        </ProjectColumns>
           <DirectoryPagination page={page} pageCount={pageCount} hrefFor={hrefFor} label="Projects pagination" />
         </div>
       ) : (

@@ -23,12 +23,15 @@ const TD = 'px-4 py-3 tablet:px-3'
 const OPEN_LINK =
   'inline-flex min-h-11 items-center gap-1 rounded-sm px-1 font-medium text-link underline-offset-4 outline-none hover:text-link-hover hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
 /**
- * While the preview column narrows the list, columns the preview already covers step aside so the rest stay readable.
+ * While the preview column narrows the list, the widest supporting columns step aside so the rest stay readable.
  * Widths are those of the list itself (a container query), so nothing changes unless the preview actually takes the room.
  */
-const PREVIEW_HIDE = 'xl:group-data-preview-open/preview:@max-[88rem]:hidden'
-const PREVIEW_HIDE_NARROW = 'xl:group-data-preview-open/preview:@max-3xl:hidden'
+const PREVIEW_HIDE_LOCATION = 'xl:group-data-preview-open/preview:@max-[72rem]:hidden'
+const PREVIEW_HIDE_ACTION = 'xl:group-data-preview-open/preview:@max-5xl:hidden'
 const PREVIEW_HIDE_NARROWEST = 'xl:group-data-preview-open/preview:@max-2xl:hidden'
+/** Optional columns are off until chosen in the Columns menu, and are the first to yield to the preview. */
+const OPTIONAL_PROGRESS = 'group-data-hide-progress/cols:hidden xl:group-data-preview-open/preview:@max-[88rem]:hidden'
+const OPTIONAL_MANAGER = 'group-data-hide-manager/cols:hidden xl:group-data-preview-open/preview:@max-[88rem]:hidden'
 
 const PANEL_TEXT = {
   neutral: 'text-foreground',
@@ -55,7 +58,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
       <div className="relative overflow-x-auto">
-        <table className="w-full min-w-[64rem] text-sm tablet:min-w-0 xl:group-data-preview-open/preview:@max-[88rem]:min-w-0">
+        <table className="w-full min-w-[var(--project-table-min,56rem)] text-sm tablet:min-w-0 xl:group-data-preview-open/preview:@max-[88rem]:min-w-0">
           <caption className="sr-only">Projects</caption>
           <thead className={DIRECTORY_THEAD_ROW}>
             <tr>
@@ -65,12 +68,12 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
               >
                 Project
               </th>
-              <th scope="col" className={`${TH} whitespace-nowrap tablet:hidden ${PREVIEW_HIDE}`}>Location</th>
+              <th scope="col" className={`${TH} whitespace-nowrap tablet:hidden ${PREVIEW_HIDE_LOCATION}`}>Location</th>
               <th scope="col" className={`${TH} whitespace-nowrap`}>Status</th>
-              <th scope="col" className={`${TH} whitespace-nowrap ${PREVIEW_HIDE_NARROW}`}>Progress</th>
-              <th scope="col" className={`${TH} whitespace-nowrap ${PREVIEW_HIDE}`}>Project manager</th>
+              <th scope="col" className={`${TH} whitespace-nowrap ${OPTIONAL_PROGRESS}`}>Progress</th>
+              <th scope="col" className={`${TH} whitespace-nowrap ${OPTIONAL_MANAGER}`}>Project manager</th>
               <th scope="col" className={`${TH} whitespace-nowrap ${PREVIEW_HIDE_NARROWEST}`}>Target / completion</th>
-              <th scope="col" className={`${TH} w-[30%] min-w-72 tablet:min-w-56 ${PREVIEW_HIDE}`}>Next action</th>
+              <th scope="col" className={`${TH} w-[30%] min-w-72 tablet:min-w-56 ${PREVIEW_HIDE_ACTION}`}>Next action</th>
               <th scope="col" className={`${TH} text-right`}>
                 <span className="sr-only">Actions</span>
               </th>
@@ -118,11 +121,11 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                       </div>
                     </div>
                   </td>
-                  <td className={`${TD} whitespace-nowrap text-muted-foreground tablet:hidden ${PREVIEW_HIDE}`}>{location}</td>
+                  <td className={`${TD} whitespace-nowrap text-muted-foreground tablet:hidden ${PREVIEW_HIDE_LOCATION}`}>{location}</td>
                   <td className={`${TD} whitespace-nowrap`}>
                     <ProjectStatusBadge status={p.status} />
                   </td>
-                  <td className={`${TD} w-36 tablet:w-36 ${PREVIEW_HIDE_NARROW}`}>
+                  <td className={`${TD} w-36 tablet:w-36 ${OPTIONAL_PROGRESS}`}>
                     {progress !== null ? (
                       <div className="flex items-center gap-2">
                         <ProgressBar value={progress} label={`${p.name} construction progress`} size="sm" className="flex-1" />
@@ -134,7 +137,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                       </span>
                     )}
                   </td>
-                  <td className={cn(TD, 'whitespace-nowrap', PREVIEW_HIDE, p.managerName ? 'text-foreground' : 'text-muted-foreground')}>
+                  <td className={cn(TD, 'whitespace-nowrap', OPTIONAL_MANAGER, p.managerName ? 'text-foreground' : 'text-muted-foreground')}>
                     {p.managerName ?? 'Unassigned'}
                   </td>
                   <td className={`${TD} whitespace-nowrap ${PREVIEW_HIDE_NARROWEST}`}>
@@ -143,7 +146,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                       <span className="text-foreground">{date.value}</span>
                     </div>
                   </td>
-                  <td className={`${TD} ${PREVIEW_HIDE}`}>
+                  <td className={`${TD} ${PREVIEW_HIDE_ACTION}`}>
                     <div className="flex min-w-0 items-start gap-2">
                       <panel.Icon
                         className={cn('mt-0.5 size-4 shrink-0', PANEL_ICON_TEXT[panel.tone])}

@@ -1,78 +1,39 @@
 'use client'
 
-import { useId, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
-import {
-  AlertTriangle,
-  ArrowRight,
-  CalendarCheck,
-  CalendarPlus,
-  CircleCheck,
-  ClipboardList,
-  ImageOff,
-  Loader2,
-  MapPin,
-  RefreshCw,
-  UserRound,
-  X,
-  type LucideIcon,
-} from 'lucide-react'
+import { AlertTriangle, ArrowRight, Loader2, MapPin, RefreshCw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { CoverImage } from '@/components/projects/cover-image'
-import { ActivityStatusBadge } from '@/components/schedule/schedule-badges'
-import { ProjectStatusBadge } from '@/components/shared/status-badge'
-import type { ProjectStatus } from '@/lib/domain'
-import type { NextActionTone } from '@/lib/next-actions'
+import type { FormPanelHandle } from '@/components/shared/form-overlay'
+import { AssignView } from '@/components/projects/project-preview-assign'
+import { PreviewRequestError, fetchPreviewJson } from '@/components/projects/project-preview-request'
 import {
-  PREVIEW_PANEL_ID,
-  previewApiPath,
-  previewErrorState,
-  type PreviewLatestUpdate,
-  type PreviewNextActivity,
-  type ProjectPreview,
-} from '@/lib/project-preview'
+  LatestUpdateSection,
+  PendingQuestionsSection,
+  PeopleSection,
+  UpcomingWorkSection,
+} from '@/components/projects/project-preview-sections'
+import { SubcontractorListView } from '@/components/projects/project-preview-subcontractors'
+import { PREVIEW_PANEL_ID, previewApiPath, previewErrorState, type ProjectPreview } from '@/lib/project-preview'
 import { cn } from '@/lib/utils'
 
-export type PreviewListProject = { id: string; name: string; project_number: string; status: ProjectStatus }
+export type PreviewListProject = { id: string; name: string; project_number: string }
 
-class PreviewRequestError extends Error {
-  constructor(readonly status: number | null) {
-    super('project_preview_failed')
-  }
-}
+/**
+ * Asked before the preview closes or shows another project. Returns true when that may happen now; otherwise the
+ * open view holds unsaved entries, asks about them, and runs `proceed` itself if they are discarded.
+ */
+export type PreviewLeaveGuard = (proceed: () => void) => boolean
 
-async function fetchPreview(url: string): Promise<ProjectPreview> {
-  let res: Response
-  try {
-    res = await fetch(url, { headers: { Accept: 'application/json' } })
-  } catch {
-    throw new PreviewRequestError(null)
-  }
-  // An expired session is redirected to the sign-in page rather than answered with JSON.
-  if (res.redirected) throw new PreviewRequestError(401)
-  if (!res.ok) throw new PreviewRequestError(res.status)
-  try {
-    return (await res.json()) as ProjectPreview
-  } catch {
-    throw new PreviewRequestError(null)
-  }
-}
+/** The summary, or one of the views that temporarily replaces it inside the same panel. */
+type PanelView = 'summary' | 'subcontractors' | 'assign'
 
 const MIN_PANEL_HEIGHT = 256
 const TITLE_CLASS = 'min-w-0 flex-1 text-pretty break-words font-serif text-lg font-semibold leading-snug text-foreground'
-const SECTION_CLASS = 'flex flex-col gap-2.5 px-4 py-3.5'
-const HEADING_CLASS = 'text-xs font-semibold uppercase tracking-wide text-muted-foreground'
-const LINK_CLASS =
-  'inline-flex items-center gap-1 self-start rounded-sm text-sm font-medium text-link outline-none hover:text-link-hover hover:underline focus-visible:ring-2 focus-visible:ring-ring'
-
-const ATTENTION_TONE: Record<NextActionTone, { icon: LucideIcon; className: string; label: string }> = {
-  critical: { icon: AlertTriangle, className: 'bg-destructive/10 text-destructive', label: 'Needs attention' },
-  review: { icon: ClipboardList, className: 'bg-sage text-primary', label: 'To review' },
-  // Planning steps stay neutral so they never read as a delay or a schedule risk.
-  setup: { icon: CalendarPlus, className: 'bg-muted text-muted-foreground', label: 'To plan' },
-}
+const SCROLL_CLASS = 'min-h-0 flex-1 overflow-y-auto overscroll-contain'
+const DRAWER_INSETS = 'pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]'
 
 function PreviewHeader({
   project,
@@ -101,204 +62,16 @@ function PreviewHeader({
         </Button>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="font-mono text-xs text-muted-foreground">
-            <span className="sr-only">Project ID </span>
-            {project.project_number}
-          </span>
-          <ProjectStatusBadge status={project.status} />
-        </div>
+        <span className="font-mono text-xs text-muted-foreground">
+          <span className="sr-only">Project ID </span>
+          {project.project_number}
+        </span>
         <Button variant="view" size="sm" render={<Link href={`/projects/${project.id}`} />} nativeButton={false}>
           Open project
           <ArrowRight data-icon="inline-end" />
         </Button>
       </div>
     </header>
-  )
-}
-
-function SummaryItem({ icon: Icon, label, value, missing }: { icon: LucideIcon; label: string; value: string | null; missing: string }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-        {label}
-      </dt>
-      <dd className={cn('break-words pl-5 text-sm', value ? 'text-foreground' : 'text-muted-foreground')}>{value ?? missing}</dd>
-    </div>
-  )
-}
-
-function AttentionSection({ attention, projectHref }: { attention: ProjectPreview['attention']; projectHref: string }) {
-  const headingId = useId()
-  const empty = attention.items.length === 0
-  return (
-    <section aria-labelledby={headingId} className={SECTION_CLASS}>
-      <h3 id={headingId} className={HEADING_CLASS}>
-        Needs attention
-      </h3>
-      {empty && !attention.incomplete && (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <CircleCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
-          No pending actions
-        </p>
-      )}
-      {!empty && (
-        <ul className="flex flex-col gap-1.5">
-          {attention.items.map((item) => {
-            const tone = ATTENTION_TONE[item.tone]
-            const Icon = tone.icon
-            return (
-              <li key={item.key}>
-                <Link
-                  href={item.href}
-                  className="group/item flex items-start gap-2.5 rounded-lg border border-[#D6DDE5] p-2.5 outline-none transition-colors hover:border-primary/40 hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-md', tone.className)}>
-                    <Icon className="size-3.5" aria-hidden="true" />
-                    <span className="sr-only">{`${tone.label}: `}</span>
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="break-words text-sm font-medium leading-snug text-foreground">{item.title}</span>
-                    <span className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{item.description}</span>
-                  </span>
-                  <ArrowRight
-                    className="mt-1 size-3.5 shrink-0 text-muted-foreground transition-transform group-hover/item:translate-x-0.5 motion-reduce:transition-none"
-                    aria-hidden="true"
-                  />
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-      {attention.hiddenCount > 0 && (
-        <Link href={projectHref} className={LINK_CLASS}>
-          {`${attention.hiddenCount} more on the project overview`}
-        </Link>
-      )}
-      {attention.incomplete && (
-        <p role="status" className="flex items-start gap-2 text-sm text-warning">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          {empty ? 'Pending actions could not be checked.' : 'Some checks could not load, so this list may be incomplete.'}
-        </p>
-      )}
-    </section>
-  )
-}
-
-const NEXT_ACTIVITY_MESSAGE: Record<Exclude<PreviewNextActivity['state'], 'ready' | 'off' | 'undated'>, string> = {
-  error: 'Schedule activities could not be loaded.',
-  empty: 'No schedule activities yet.',
-  complete: 'All activities complete.',
-}
-
-function undatedMessage(next: Extract<PreviewNextActivity, { state: 'undated' }>) {
-  if (!next.actionListed) return 'Open activities have no planned dates yet.'
-  return `${next.openCount} open ${next.openCount === 1 ? 'activity' : 'activities'}, none with planned dates yet.`
-}
-
-function NextActivitySection({ next }: { next: PreviewNextActivity }) {
-  const headingId = useId()
-  if (next.state === 'off') return null
-  // The planning step in Needs attention already links to the schedule; repeating it here would show the same action twice.
-  const linkToSchedule = !(next.state === 'undated' && next.actionListed)
-  return (
-    <section aria-labelledby={headingId} className={SECTION_CLASS}>
-      <h3 id={headingId} className={HEADING_CLASS}>
-        {next.state === 'ready' && next.milestone ? 'Next milestone' : 'Next activity'}
-      </h3>
-      {next.state === 'ready' ? (
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <Link href={next.href} className={cn(LINK_CLASS, 'break-words')}>
-            {next.name}
-          </Link>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <span>{next.plannedLabel}</span>
-            <ActivityStatusBadge status={next.status} />
-            {next.overdue && <span className="font-semibold text-destructive">Overdue</span>}
-          </div>
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
-            {next.assigneeName ? `Assigned to ${next.assigneeName}` : 'Unassigned'}
-          </p>
-        </div>
-      ) : (
-        <>
-          <p
-            role={next.state === 'error' ? 'status' : undefined}
-            className={cn('text-sm', next.state === 'error' ? 'text-warning' : 'text-muted-foreground')}
-          >
-            {next.state === 'undated' ? undatedMessage(next) : NEXT_ACTIVITY_MESSAGE[next.state]}
-          </p>
-          {linkToSchedule && (
-            <Link href={next.scheduleHref} className={LINK_CLASS}>
-              Open schedule
-              <ArrowRight className="size-3.5" aria-hidden="true" />
-            </Link>
-          )}
-        </>
-      )}
-    </section>
-  )
-}
-
-function LatestUpdateSection({ update }: { update: PreviewLatestUpdate }) {
-  const headingId = useId()
-  if (update.state === 'off') return null
-  return (
-    <section aria-labelledby={headingId} className={SECTION_CLASS}>
-      <h3 id={headingId} className={HEADING_CLASS}>
-        Latest update
-      </h3>
-      {update.state === 'error' && (
-        <p role="status" className="text-sm text-warning">
-          The latest daily log could not be loaded.
-        </p>
-      )}
-      {update.state === 'empty' && <p className="text-sm text-muted-foreground">No daily logs yet.</p>}
-      {update.state === 'ready' && (
-        <>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-foreground">{update.dateLabel}</span>
-            {update.draft && (
-              <span className="rounded-badge bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Draft</span>
-            )}
-          </div>
-          <p className={cn('line-clamp-3 break-words text-sm leading-relaxed', update.summary ? 'text-foreground' : 'text-muted-foreground')}>
-            {update.summary ?? 'No notes recorded yet.'}
-          </p>
-          {update.photos.length > 0 && (
-            <ul className="grid grid-cols-3 gap-2">
-              {update.photos.map((photo) => (
-                <li key={photo.id} className="relative aspect-[4/3] overflow-hidden rounded-md bg-muted">
-                  <CoverImage
-                    src={photo.url}
-                    alt={photo.alt}
-                    className="size-full object-cover"
-                    fallback={
-                      <span className="flex size-full items-center justify-center text-muted-foreground">
-                        <ImageOff className="size-4" aria-hidden="true" />
-                        <span className="sr-only">Photo unavailable</span>
-                      </span>
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-          {update.morePhotos > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {`${update.morePhotos} more ${update.morePhotos === 1 ? 'photo' : 'photos'} in this log`}
-            </p>
-          )}
-          <Link href={update.href} className={LINK_CLASS}>
-            View daily log
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </Link>
-        </>
-      )}
-    </section>
   )
 }
 
@@ -317,8 +90,16 @@ function PreviewSkeleton() {
   )
 }
 
-function PreviewBody({ project }: { project: PreviewListProject }) {
-  const { data, error, isValidating, mutate } = useSWR(previewApiPath(project.id), fetchPreview, {
+function PreviewBody({
+  project,
+  guardRef,
+  drawer = false,
+}: {
+  project: PreviewListProject
+  guardRef: React.RefObject<PreviewLeaveGuard | null>
+  drawer?: boolean
+}) {
+  const { data, error, isValidating, mutate } = useSWR(previewApiPath(project.id), fetchPreviewJson<ProjectPreview>, {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   })
@@ -326,15 +107,56 @@ function PreviewBody({ project }: { project: PreviewListProject }) {
   const preview = data?.id === project.id ? data : null
   const failure = error ? previewErrorState(error instanceof PreviewRequestError ? error.status : null) : null
 
-  if (failure && (!preview || !failure.retry)) {
-    return (
+  const [view, setView] = useState<PanelView>('summary')
+  const rootRef = useRef<HTMLDivElement>(null)
+  const formRef = useRef<FormPanelHandle>(null)
+  const focusAfterChange = useRef<string | null>(null)
+
+  useEffect(() => {
+    guardRef.current = (proceed) => formRef.current?.requestLeave(proceed) ?? true
+    return () => {
+      guardRef.current = null
+    }
+  }, [guardRef])
+
+  // Keyboard focus follows the view: into a view's Back control, and back out to the control that opened it.
+  const show = useCallback(
+    (next: PanelView) => {
+      focusAfterChange.current = next === 'summary' ? `[data-view-trigger="${view}"]` : '[data-view-focus]'
+      setView(next)
+    },
+    [view],
+  )
+  useEffect(() => {
+    const selector = focusAfterChange.current
+    const root = rootRef.current
+    if (!selector || !root) return
+    focusAfterChange.current = null
+    const target = root.querySelector<HTMLElement>(selector) ?? root.querySelector<HTMLElement>('[data-view-fallback]')
+    target?.focus()
+  }, [view])
+
+  const leaveAssignment = useCallback(() => {
+    show('summary')
+    // Whatever was assigned shows up in the list and its count; the rest of the summary stays in place meanwhile.
+    void mutate()
+  }, [show, mutate])
+
+  const blocked = failure && (!preview || !failure.retry)
+  const subcontractors = preview?.people.subcontractors
+  const assigning = view === 'assign' && Boolean(preview?.people.canAssign) && !blocked
+  const listing = view === 'subcontractors' && subcontractors?.state === 'ready' && !blocked
+
+  let content: React.ReactNode
+  if (blocked) {
+    content = (
       <div role="alert" className="flex flex-col items-start gap-3 px-4 py-4">
         <p className="flex items-start gap-2 text-sm text-warning">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           {failure.message}
         </p>
         {failure.retry && (
-          <Button type="button" variant="outline" size="sm" disabled={isValidating} onClick={() => mutate()}>
+          <Button type="button" variant="outline" size="sm" className="pointer-coarse:h-11" disabled={isValidating} onClick={() => mutate()}>
             {isValidating ? (
               <Loader2 data-icon="inline-start" className="animate-spin motion-reduce:animate-none" />
             ) : (
@@ -345,27 +167,49 @@ function PreviewBody({ project }: { project: PreviewListProject }) {
         )}
       </div>
     )
+  } else if (!preview) {
+    content = <PreviewSkeleton />
+  } else if (listing && subcontractors?.state === 'ready') {
+    content = <SubcontractorListView items={subcontractors.items} peopleHref={preview.people.peopleHref} onBack={() => show('summary')} />
+  } else {
+    content = (
+      <div className="flex flex-col divide-y divide-[#D6DDE5]/70">
+        {preview.address && (
+          <p className="flex items-start gap-1.5 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground">
+            <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+            <span className="break-words">
+              <span className="sr-only">Address: </span>
+              {preview.address}
+            </span>
+          </p>
+        )}
+        <PeopleSection
+          people={preview.people}
+          retrying={isValidating}
+          onRetry={() => mutate()}
+          onViewAll={() => show('subcontractors')}
+          onAssign={() => show('assign')}
+        />
+        <UpcomingWorkSection next={preview.nextActivity} />
+        <LatestUpdateSection update={preview.latestUpdate} />
+        <PendingQuestionsSection questions={preview.questions} />
+      </div>
+    )
   }
-  if (!preview) return <PreviewSkeleton />
 
-  const { summary } = preview
   return (
-    <div className="flex flex-col divide-y divide-[#D6DDE5]/70">
-      <section aria-label="Summary" className={SECTION_CLASS}>
-        <dl className="flex flex-col gap-2.5">
-          <SummaryItem icon={MapPin} label="Address" value={summary.address} missing="No address on file" />
-          <SummaryItem icon={UserRound} label="Project manager" value={summary.managerName} missing="Unassigned" />
-          <SummaryItem
-            icon={CalendarCheck}
-            label={summary.dateLabel}
-            value={summary.dateValue}
-            missing={summary.dateLabel === 'Completed' ? 'Not recorded' : 'Not set'}
-          />
-        </dl>
-      </section>
-      <AttentionSection attention={preview.attention} projectHref={`/projects/${project.id}`} />
-      <NextActivitySection next={preview.nextActivity} />
-      <LatestUpdateSection update={preview.latestUpdate} />
+    // The assignment view asks for the full height so the panel does not resize as its list is searched and filtered.
+    <div ref={rootRef} className={cn('flex min-h-0 flex-col', assigning ? 'grow basis-[100dvh]' : 'flex-1')}>
+      {assigning ? (
+        <AssignView
+          project={project}
+          handleRef={formRef}
+          onDone={leaveAssignment}
+          className={drawer ? 'pr-[env(safe-area-inset-right)]' : undefined}
+        />
+      ) : (
+        <div className={cn(SCROLL_CLASS, drawer && DRAWER_INSETS)}>{content}</div>
+      )}
     </div>
   )
 }
@@ -374,10 +218,12 @@ function PreviewBody({ project }: { project: PreviewListProject }) {
 export function ProjectPreviewPanel({
   project,
   onClose,
+  guardRef,
   className,
 }: {
   project: PreviewListProject
   onClose: () => void
+  guardRef: React.RefObject<PreviewLeaveGuard | null>
   className?: string
 }) {
   const ref = useRef<HTMLElement>(null)
@@ -426,9 +272,7 @@ export function ProjectPreviewPanel({
       )}
     >
       <PreviewHeader project={project} onClose={onClose} title={<h2 className={TITLE_CLASS}>{project.name}</h2>} />
-      <div key={project.id} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <PreviewBody project={project} />
-      </div>
+      <PreviewBody key={project.id} project={project} guardRef={guardRef} />
     </section>
   )
 }
@@ -437,10 +281,12 @@ export function ProjectPreviewPanel({
 export function ProjectPreviewDrawer({
   project,
   onClose,
+  guardRef,
   finalFocus,
 }: {
   project: PreviewListProject | null
   onClose: () => void
+  guardRef: React.RefObject<PreviewLeaveGuard | null>
   finalFocus?: React.ComponentProps<typeof DialogPrimitive.Popup>['finalFocus']
 }) {
   // The last project stays rendered through the closing transition.
@@ -465,12 +311,7 @@ export function ProjectPreviewDrawer({
                 className="pt-[max(0.875rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))]"
                 title={<DialogPrimitive.Title className={TITLE_CLASS}>{current.name}</DialogPrimitive.Title>}
               />
-              <div
-                key={current.id}
-                className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]"
-              >
-                <PreviewBody project={current} />
-              </div>
+              <PreviewBody key={current.id} project={current} guardRef={guardRef} drawer />
             </>
           )}
         </DialogPrimitive.Popup>
