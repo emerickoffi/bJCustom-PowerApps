@@ -19,7 +19,14 @@ export type PreviewActivityRow = {
 }
 
 export type PreviewNextActivity =
-  | { state: 'off' | 'error' | 'empty' | 'complete' | 'undated'; scheduleHref: string }
+  | { state: 'off' | 'error' | 'empty' | 'complete'; scheduleHref: string }
+  | {
+      state: 'undated'
+      scheduleHref: string
+      openCount: number
+      /** Needs attention already shows the planning step and its schedule link, so this section only adds context. */
+      actionListed: boolean
+    }
   | {
       state: 'ready'
       scheduleHref: string

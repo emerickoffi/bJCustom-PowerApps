@@ -1,6 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
-import { isOverdue, todayIso, type ActivityStatus } from '@/lib/schedule'
+import { isOverdue, todayIso, undatedOpenActivityCount, type ActivityStatus } from '@/lib/schedule'
 import type { FeatureMap } from '@/lib/feature-registry'
 import type { ProjectStatus } from '@/lib/domain'
 import { BUILDER_OWNED_STATUSES, OPEN_CLAIM_STATUSES, type ClaimStatus } from '@/lib/warranty-coverage'
@@ -34,8 +34,8 @@ export type DashboardCardDetails = {
   scheduleEnabled: boolean
   /** True only when the project has real schedule activities, so progress_percent is meaningful. */
   hasSchedule: boolean
-  /** Activities exist but none has a planned date or has moved past "not started". */
-  scheduleNotStarted: boolean
+  /** Open activities waiting for planned dates while none of the open work is dated; 0 otherwise. */
+  undatedOpenCount: number
   activityCount: number
   nextActivity: NextActivity | null
   /** Earliest open activity whose planned finish has passed. */
@@ -55,6 +55,7 @@ export type DashboardCardDetails = {
 }
 
 type ActivityRow = StageActivityRow & { status: ActivityStatus }
+type CardActivityRow = ActivityRow & { planned_start: string | null }
 type DependencyRow = { project_id: string; predecessor_id: string; successor_id: string }
 type ClaimRow = { id: string; project_id: string; title: string; status: ClaimStatus; reported_at: string }
 type EstimateRow = {
@@ -71,7 +72,7 @@ type EstimateRow = {
 const EMPTY: DashboardCardDetails = {
   scheduleEnabled: false,
   hasSchedule: false,
-  scheduleNotStarted: false,
+  undatedOpenCount: 0,
   activityCount: 0,
   nextActivity: null,
   overdueActivity: null,
@@ -166,11 +167,11 @@ export async function getDashboardCardDetails(
     features.schedule
       ? supabase
           .from('schedule_activities')
-          .select('id, project_id, name, phase, activity_type, status, planned_end, sort_order')
+          .select('id, project_id, name, phase, activity_type, status, planned_start, planned_end, sort_order')
           .eq('organization_id', organizationId)
           .in('project_id', ids)
           .limit(ids.length * 120)
-      : Promise.resolve({ data: [] as ActivityRow[], error: null }),
+      : Promise.resolve({ data: [] as CardActivityRow[], error: null }),
     features.schedule
       ? supabase
           .from('schedule_dependencies')
@@ -218,8 +219,8 @@ export async function getDashboardCardDetails(
   ])
 
   const today = todayOverride ?? todayIso()
-  const byProject = new Map<string, ActivityRow[]>()
-  for (const a of (activitiesRes.data ?? []) as ActivityRow[]) {
+  const byProject = new Map<string, CardActivityRow[]>()
+  for (const a of (activitiesRes.data ?? []) as CardActivityRow[]) {
     const list = byProject.get(a.project_id) ?? []
     list.push(a)
     byProject.set(a.project_id, list)
@@ -248,7 +249,7 @@ export async function getDashboardCardDetails(
     if (!details) continue
     details.hasSchedule = true
     details.activityCount = list.length
-    details.scheduleNotStarted = list.every((a) => !a.planned_end && a.status === 'not_started')
+    details.undatedOpenCount = undatedOpenActivityCount(list)
     const open = list
       .filter((a) => a.status !== 'completed' && a.status !== 'skipped')
       .sort((a, b) => {

@@ -45,6 +45,8 @@ export type CompactProjectCardData = {
   photoKind?: ProjectCover['kind']
   details: DashboardCardDetails
   warrantyEnabled: boolean
+  /** Whether this viewer plans the schedule; see `NextActionProject`. */
+  canPlanSchedule?: boolean
 }
 
 export type Panel = NextAction & { Icon: LucideIcon }

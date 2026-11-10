@@ -10,6 +10,7 @@ import {
   previewErrorState,
   type PreviewActivityRow,
 } from './project-preview.ts'
+import { undatedOpenActivityCount } from './schedule.ts'
 
 const activity = (over: Partial<PreviewActivityRow> = {}): PreviewActivityRow => ({
   id: 'a1',
@@ -39,6 +40,22 @@ test('next activity reports why nothing is next', () => {
   assert.equal(pickNextActivity([activity({ status: 'skipped' })]).state, 'empty')
   assert.equal(pickNextActivity([activity({ status: 'completed' })]).state, 'complete')
   assert.equal(pickNextActivity([activity({ status: 'completed' }), activity()]).state, 'undated')
+})
+
+test('schedule dates are needed exactly when the next activity is undated', () => {
+  const cases: PreviewActivityRow[][] = [
+    [],
+    [activity({ status: 'skipped' })],
+    [activity({ status: 'completed', planned_end: '2026-01-01' })],
+    [activity({ status: 'completed', planned_end: '2026-01-01' }), activity(), activity({ status: 'in_progress' })],
+    [activity(), activity({ planned_start: '2026-03-01' })],
+    [activity(), activity({ status: 'delayed', planned_end: '2026-03-01' })],
+    [activity({ status: 'skipped', planned_end: '2026-03-01' }), activity({ status: 'on_hold' })],
+  ]
+  assert.deepEqual(cases.map(undatedOpenActivityCount), [0, 0, 0, 2, 0, 0, 1])
+  for (const rows of cases) {
+    assert.equal(pickNextActivity(rows).state === 'undated', undatedOpenActivityCount(rows) > 0)
+  }
 })
 
 test('late activities are open work that is delayed or past its planned finish, most overdue first', () => {

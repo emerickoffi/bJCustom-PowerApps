@@ -43,6 +43,32 @@ test('setup tasks are not next actions; they live in the setup checklist', () =>
   assert.ok(!keys.includes('schedule-setup'))
 })
 
+test('undated open work is a planning step, listed after every review', () => {
+  const only = buildProjectNextActions(state({ status: 'under_construction', undatedOpenActivityCount: 3 }))
+  assert.deepEqual(only.items.map((a) => a.key), ['schedule-dates'])
+  assert.equal(only.items[0].title, 'Schedule dates needed')
+  assert.equal(only.items[0].tone, 'setup')
+  assert.equal(only.items[0].href, '/projects/p1/schedule')
+  assert.match(only.items[0].description, /^3 open activities have no planned dates/)
+
+  const busy = buildProjectNextActions(
+    state({ undatedOpenActivityCount: 1, lateActivityCount: 1, reviewEstimateIds: ['e1'], openIssueCount: 1, firstOpenIssueId: 'i1' }),
+  )
+  assert.deepEqual(busy.items.map((a) => a.key), ['late-activities', 'estimate-review', 'open-issues'])
+  assert.equal(busy.hiddenCount, 1)
+})
+
+test('schedule dates are not asked on closed projects, of non-managers, or with scheduling off', () => {
+  const undated = { undatedOpenActivityCount: 2 }
+  for (const status of ['completed', 'cancelled']) {
+    assert.deepEqual(buildProjectNextActions(state({ ...undated, status })).items, [])
+  }
+  assert.deepEqual(buildProjectNextActions(state({ ...undated, canManage: false })).items, [])
+  assert.deepEqual(buildProjectNextActions(state({ ...undated, features: { ...ALL, schedule: false } })).items, [])
+  assert.deepEqual(buildProjectNextActions(state({ ...undated, scope: 'mine', isProjectManager: false })).items, [])
+  assert.deepEqual(buildProjectNextActions(state({ undatedOpenActivityCount: 0 })).items, [])
+})
+
 test('management-only actions are hidden from staff who cannot manage', () => {
   const { items } = buildProjectNextActions(state({ canManage: false, reviewEstimateIds: ['e1'], openIssueCount: 3 }))
   assert.deepEqual(items.map((a) => a.key), ['open-issues'])
