@@ -13,8 +13,7 @@ import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { ProjectContactsTable } from '@/components/projects/project-contacts-table'
 import { ProjectClientsPanel } from '@/components/projects/project-people'
 import { ProjectTeamPanel } from '@/components/projects/project-team-panel'
-import { PeopleAssignWorkspace } from '@/components/projects/people-assign-workspace'
-import { AssignSubcontractors } from '@/components/projects/assign-subcontractors'
+import { AssignSubcontractors, AssignSubcontractorsLink } from '@/components/projects/assign-subcontractors'
 
 export const metadata: Metadata = { title: 'People' }
 
@@ -57,19 +56,11 @@ export default async function ProjectPeoplePage({
   }
   const members = (membersRes.data ?? []).map((m) => ({ ...m, name: nameFor(m.user_id) ?? 'Team member' }))
 
-  return (
+  const assignRows = directory?.availability === 'ready' ? directory.rows : null
+
+  const content = (
     <div className="flex flex-col gap-6">
-      {directory?.availability === 'ready' && (
-        <AssignSubcontractors projectId={project.id} projectName={project.name as string} rows={directory.rows} />
-      )}
-      <PageHeader
-        title="People"
-        actions={
-          directory?.availability === 'ready' && (
-            <PeopleAssignWorkspace projectId={project.id} projectName={project.name as string} rows={directory.rows} defaultOpen={add === '1'} />
-          )
-        }
-      />
+      <PageHeader title="People" />
 
       <ProjectClientsPanel projectId={project.id} homeowners={homeowners} canEdit={manager} clientOptions={clientOptions} />
 
@@ -97,9 +88,23 @@ export default async function ProjectPeoplePage({
             assignable={data.assignable}
             canEdit={manager && !project.archived_at}
             closedReason={closedReason}
+            emptyAction={assignRows ? <AssignSubcontractorsLink /> : null}
           />
         )}
       </section>
     </div>
+  )
+
+  if (!assignRows) return content
+  return (
+    <AssignSubcontractors
+      projectId={project.id}
+      projectName={project.name as string}
+      rows={assignRows}
+      canCreateCompany={!!features.subcontractors}
+      defaultOpen={add === '1'}
+    >
+      {content}
+    </AssignSubcontractors>
   )
 }

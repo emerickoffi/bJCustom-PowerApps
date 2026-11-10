@@ -32,7 +32,7 @@ function ManagerAvatar({ name }: { name: string | null }) {
   )
 }
 
-function ManagerRow({ name, membershipRole }: { name: string | null; membershipRole: string | null }) {
+function ManagerRow({ name, membershipRole, note }: { name: string | null; membershipRole: string | null; note?: string }) {
   return (
     <div className="flex items-center gap-3">
       <ManagerAvatar name={name} />
@@ -42,6 +42,7 @@ function ManagerRow({ name, membershipRole }: { name: string | null; membershipR
         {membershipRole && membershipRole !== 'project_manager' && (
           <span className="text-xs text-muted-foreground">{`Project role: ${roleLabel(membershipRole)}`}</span>
         )}
+        {note && <span className="text-xs text-muted-foreground">{note}</span>}
       </div>
     </div>
   )
@@ -142,22 +143,30 @@ export function ProjectTeamPanel({
 
   const confirmDiscard = () => !dirty || window.confirm(DISCARD_MESSAGE)
 
+  const unassigned = !managerName
+  const empty = unassigned && others.length === 0
+  const manageTeam = canEdit ? (
+    <Button variant="outline" size="sm" className="pointer-coarse:min-h-11" onClick={(e) => openFrom(e.currentTarget)}>
+      <Users className="size-3.5" aria-hidden="true" />
+      Manage team
+    </Button>
+  ) : undefined
+
   return (
-    <Panel
-      title="Builder team"
-      action={
-        canEdit ? (
-          <Button variant="outline" size="sm" onClick={(e) => openFrom(e.currentTarget)}>
-            <Users className="size-3.5" aria-hidden="true" />
-            Manage team
-          </Button>
-        ) : undefined
-      }
-    >
-      <div className="rounded-lg border border-[#D5E2D3] bg-interactive-soft/60 p-3">
-        <ManagerRow name={managerName} membershipRole={managerMembership?.project_role ?? null} />
-      </div>
-      {others.length > 0 ? (
+    <Panel title="Builder team" compact={empty} action={unassigned ? undefined : manageTeam}>
+      {unassigned ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-dashed border-[#D5E2D3] bg-interactive-soft/60 px-3 py-2">
+          <div className="min-w-0 flex-1 basis-48">
+            <ManagerRow name={null} membershipRole={null} note={empty ? 'No other team members assigned.' : undefined} />
+          </div>
+          {manageTeam}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-[#D5E2D3] bg-interactive-soft/60 p-3">
+          <ManagerRow name={managerName} membershipRole={managerMembership?.project_role ?? null} />
+        </div>
+      )}
+      {empty ? null : others.length > 0 ? (
         <ul className="flex flex-col gap-3">
           {visibleOthers.map((member) => (
             <li key={member.id} className="flex items-center gap-3">

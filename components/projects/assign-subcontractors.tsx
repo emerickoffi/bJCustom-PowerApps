@@ -19,13 +19,27 @@ type AssignContextValue = {
 const AssignContext = createContext<AssignContextValue | null>(null)
 
 /**
- * Floating "Assign subcontractors" action for one project, plus the bulk assignment overlay it opens.
+ * Floating "Assign subcontractors" action for one project, plus the assignment drawer it opens.
  * Render it only where the viewer may assign to this project; `AssignSubcontractorsLink` inside
- * `children` opens the same overlay.
+ * `children` opens the same drawer.
  */
-export function AssignSubcontractors({ projectId, projectName, rows, children }: Target & { children?: ReactNode }) {
-  const [target, setTarget] = useState<Target | null>(null)
-  const [open, setOpen] = useState(false)
+export function AssignSubcontractors({
+  projectId,
+  projectName,
+  rows,
+  canCreateCompany = false,
+  defaultOpen = false,
+  children,
+}: Target & {
+  /** Subcontractor management is on, so the drawer can create a company and assign it. */
+  canCreateCompany?: boolean
+  /** Opens the drawer on arrival, unfiltered, for links that ask to add people to the project. */
+  defaultOpen?: boolean
+  children?: ReactNode
+}) {
+  const [target, setTarget] = useState<Target | null>(defaultOpen ? { projectId, projectName, rows } : null)
+  const [open, setOpen] = useState(defaultOpen)
+  const [audience, setAudience] = useState<'all' | 'subcontractors'>(defaultOpen ? 'all' : 'subcontractors')
   const floatingRef = useRef<HTMLButtonElement>(null)
   const triggerRef = useRef<HTMLElement | null>(null)
 
@@ -33,6 +47,7 @@ export function AssignSubcontractors({ projectId, projectName, rows, children }:
     (trigger: HTMLElement) => {
       triggerRef.current = trigger
       setTarget({ projectId, projectName, rows })
+      setAudience('subcontractors')
       setOpen(true)
     },
     [projectId, projectName, rows],
@@ -77,7 +92,8 @@ export function AssignSubcontractors({ projectId, projectName, rows, children }:
           projectId={assigning.projectId}
           projectName={assigning.projectName}
           rows={assigning.rows}
-          audience="subcontractors"
+          audience={audience}
+          canCreateCompany={canCreateCompany}
           open={open}
           onOpenChange={setOpen}
           finalFocus={() => (triggerRef.current?.isConnected ? triggerRef.current : floatingRef.current)}

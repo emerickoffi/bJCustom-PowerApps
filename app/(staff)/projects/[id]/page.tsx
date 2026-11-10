@@ -442,7 +442,7 @@ export default async function ProjectDetailPage({
   )
 
   return assignRows ? (
-    <AssignSubcontractors projectId={project.id} projectName={project.name as string} rows={assignRows}>
+    <AssignSubcontractors projectId={project.id} projectName={project.name as string} rows={assignRows} canCreateCompany={!!features.subcontractors}>
       {overview}
     </AssignSubcontractors>
   ) : (
