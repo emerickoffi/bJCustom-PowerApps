@@ -4,6 +4,8 @@ import { COMMUNICATION_LABELS, CONTACT_RELATIONSHIP_LABELS, type ProjectStatus }
 export const CONTACT_PREVIEW_PARAM = 'previewContact'
 export const COMPANY_PREVIEW_PARAM = 'previewCompany'
 export const CLIENT_PREVIEW_PARAM = 'previewClient'
+/** Opens the client edit form over the Clients list. */
+export const CLIENT_EDIT_PARAM = 'editClient'
 export const CONTACT_PREVIEW_PANEL_ID = 'contact-preview'
 export const CLIENT_PREVIEW_PANEL_ID = 'client-preview'
 /** Rows shown before "View all" reveals the rest inside the panel. */

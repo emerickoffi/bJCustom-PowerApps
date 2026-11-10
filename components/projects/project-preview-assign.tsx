@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { FormPanel, useFormOverlay, type FormPanelHandle } from '@/components/shared/form-overlay'
 import { AssignTabs } from '@/components/projects/people-assign-workspace'
 import { PanelViewHeader } from '@/components/projects/project-preview-subcontractors'
-import { PreviewRequestError, fetchPreviewJson } from '@/components/projects/project-preview-request'
+import { PreviewRequestError, fetchPreviewJson } from '@/components/shared/preview-request'
 import type { AssignmentDirectory } from '@/lib/project-preview-data'
 import { assignmentDirectoryApiPath, assignmentDirectoryErrorState } from '@/lib/project-preview'
 

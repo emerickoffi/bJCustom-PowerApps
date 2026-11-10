@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { Plus, Users, Users as UsersIcon } from 'lucide-react'
+import { Users, Users as UsersIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -13,9 +13,14 @@ import { DirectorySort } from '@/components/shared/directory-sort'
 import { DirectoryPagination } from '@/components/shared/directory-pagination'
 import { ClientCard, type DirectoryContact } from '@/components/clients/client-card'
 import { ClientTable } from '@/components/clients/client-table'
+import { ClientPreviewLayout } from '@/components/clients/client-preview'
+import { ClientEditOverlay, type EditableClient } from '@/components/clients/client-edit-overlay'
+import { FloatingCreateAction } from '@/components/app/floating-create-action'
 import type { ClientProject } from '@/components/clients/client-projects-disclosure'
 import { CLIENT_STATUS_LABELS, type ClientStatus } from '@/lib/domain'
 import { sanitizeSearch } from '@/lib/format'
+import { CLIENT_EDIT_PARAM, CLIENT_PREVIEW_PARAM } from '@/lib/record-preview'
+import { isUuid } from '@/lib/subcontractor-projects'
 import type { ClientSummary } from '@/lib/queries'
 import {
   CLIENT_SORTS,
@@ -35,11 +40,33 @@ export const metadata: Metadata = { title: 'Clients' }
 const CLIENT_STATUSES = Object.keys(CLIENT_STATUS_LABELS) as ClientStatus[]
 const CLIENT_COLUMNS =
   'id, client_number, first_name, last_name, company_name, email, phone, city, state, status, portal_user_id, created_at'
+const CLIENT_EDIT_COLUMNS =
+  'id, client_number, first_name, middle_name, last_name, company_name, email, phone, alternate_phone, address_line1, address_line2, city, state, postal_code, country, preferred_communication, status, notes'
+
+type ClientsSearchParams = {
+  q?: string
+  status?: string
+  sort?: string
+  page?: string
+  view?: string
+  [CLIENT_PREVIEW_PARAM]?: string
+  [CLIENT_EDIT_PARAM]?: string
+}
+
+/** The same list, with its filters, page, and selection, minus the edit drawer. */
+function withoutEdit(params: ClientsSearchParams) {
+  const next = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === 'string' && key !== CLIENT_EDIT_PARAM) next.set(key, value)
+  }
+  const qs = next.toString()
+  return qs ? `/clients?${qs}` : '/clients'
+}
 
 export default async function ClientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; sort?: string; page?: string; view?: string }>
+  searchParams: Promise<ClientsSearchParams>
 }) {
   const session = await requireStaff()
   const params = await searchParams
@@ -94,6 +121,22 @@ export default async function ClientsPage({
 
   const clients = (data ?? []) as ClientSummary[]
   const manager = canManage(session.role)
+
+  // The edit drawer opens only for a manager and a client of this organization; anything else returns to the list.
+  const editId = params[CLIENT_EDIT_PARAM]
+  let editClient: EditableClient | null = null
+  if (editId !== undefined) {
+    if (manager && isUuid(editId)) {
+      const { data: found } = await supabase
+        .from('clients')
+        .select(CLIENT_EDIT_COLUMNS)
+        .eq('id', editId)
+        .eq('organization_id', session.organizationId)
+        .maybeSingle()
+      editClient = (found as EditableClient | null) ?? null
+    }
+    if (!editClient) redirect(withoutEdit(params))
+  }
   const filtered = Boolean(q || status)
 
   const clientIds = clients.map((c) => c.id)
@@ -176,17 +219,7 @@ export default async function ClientsPage({
 
   return (
     <div className={pageLayout('workspace')}>
-      <PageHeader icon={UsersIcon}
-        title="Clients"
-        actions={
-          manager && (
-            <Button size="lg" render={<Link href="/clients/new" />} nativeButton={false}>
-              <Plus data-icon="inline-start" />
-              New client
-            </Button>
-          )
-        }
-      />
+      <PageHeader icon={UsersIcon} title="Clients" />
       <ListFilters
         searchPlaceholder="Search clients or contacts by name, email, or phone"
         defaultQuery={q}
@@ -194,7 +227,13 @@ export default async function ClientsPage({
         statusOptions={CLIENT_STATUSES.map((s) => ({ value: s, label: CLIENT_STATUS_LABELS[s] }))}
         clearHref={filtered ? directoryHref('/clients', { sort: stateParams.sort, view: urlView }) : undefined}
         preserve={{ sort: stateParams.sort, view: urlView }}
+        carryParams={[CLIENT_PREVIEW_PARAM]}
       />
+      <ClientPreviewLayout
+        clients={clients.map((c) => ({ id: c.id, name: `${c.first_name} ${c.last_name}`, number: c.client_number }))}
+        canManage={manager}
+        editing={Boolean(editClient)}
+      >
       {clients.length ? (
         <div className="flex flex-col gap-4">
           <DirectoryViews
@@ -204,7 +243,9 @@ export default async function ClientsPage({
             summary={`Showing ${range.start}–${range.end} of ${total} ${total === 1 ? 'client' : 'clients'}`}
             controls={<DirectorySort value={sort} options={sortOptions(CLIENT_SORTS)} />}
             cards={
-              <ul className="grid gap-4 2xl:grid-cols-2" aria-label={`${clients.length} clients`}>
+              <ul
+                className="grid gap-4 2xl:grid-cols-2 xl:group-data-preview-open/preview:grid-cols-1 xl:group-data-preview-open/preview:@5xl:grid-cols-2"
+                aria-label={`${clients.length} clients`}>
                 {rows.map((row) => (
                   <li key={row.client.id} className="flex">
                     <div className="flex w-full flex-col [&>article]:flex-1">
@@ -257,6 +298,9 @@ export default async function ClientsPage({
           }
         />
       )}
+      </ClientPreviewLayout>
+      <ClientEditOverlay client={editClient} />
+      {manager && <FloatingCreateAction href="/clients/new" label="Add client" icon="client" />}
     </div>
   )
 }

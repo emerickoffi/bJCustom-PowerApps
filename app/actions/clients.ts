@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { canManage, getSession, requireManager, requireStaff } from '@/lib/session'
-import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
+import { OVERLAY_FIELD, fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { activitySchema, clientSchema, contactSchema } from '@/lib/validation'
 import { getOrgFeatures } from '@/lib/features'
 import { ADDITIONAL_CONTACT_PREFIX, MAX_ADDITIONAL_CONTACTS } from '@/lib/additional-contacts'
@@ -338,7 +338,8 @@ export async function updateClientAction(
 ): Promise<ActionState> {
   const session = await requireManager()
   if (!uuid.safeParse(clientId).success) return { error: 'Invalid client.' }
-  const parsed = clientSchema.safeParse(formValues(formData))
+  const values = formValues(formData)
+  const parsed = clientSchema.safeParse(values)
   if (!parsed.success) return fromZodError(parsed.error)
 
   const supabase = await createClient()
@@ -362,6 +363,8 @@ export async function updateClientAction(
 
   revalidatePath(`/clients/${clientId}`)
   revalidatePath('/clients')
+  // The Clients list edits in a drawer and stays on the list, so it gets the result back instead of a redirect.
+  if (values[OVERLAY_FIELD] === '1') return { savedId: clientId, success: 'Changes saved.' }
   redirect(`/clients/${clientId}`)
 }
 

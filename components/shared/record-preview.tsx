@@ -14,12 +14,14 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
+import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 import { AlertTriangle, Loader2, Mail, Phone, RefreshCw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PreviewRequestError, fetchPreviewJson } from '@/components/shared/preview-request'
+import { formatPhone } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 export type PreviewRecord = { id: string; name: string }
@@ -172,7 +174,6 @@ export function RecordPreviewLayout<T extends PreviewRecord>({
   param,
   panelId,
   label,
-  listPath,
   suspended = false,
   renderPreview,
   children,
@@ -184,18 +185,16 @@ export function RecordPreviewLayout<T extends PreviewRecord>({
   panelId: string
   /** Names the desktop region, for example "Project preview". */
   label: string
-  /**
-   * The list's own route. While another route is shown over the list (an intercepted form drawer), the selection is
-   * held rather than read from that route's URL.
-   */
-  listPath?: string
   /** A form overlay is open over the list. The preview drawer steps aside so two overlays never stack. */
   suspended?: boolean
   renderPreview: (record: T, options: { guardRef: React.RefObject<PreviewLeaveGuard | null>; drawer: boolean }) => React.ReactNode
   children: React.ReactNode
 }) {
+  // The list only ever mounts on its own route. While another route is shown over it (an intercepted form drawer),
+  // the selection is held rather than read from that route's URL.
   const pathname = usePathname()
-  const onList = !listPath || pathname === listPath
+  const [listPath] = useState(pathname)
+  const onList = pathname === listPath
   const liveId = useSearchParams().get(param)
   const [heldId, setHeldId] = useState(liveId)
   if (onList && heldId !== liveId) setHeldId(liveId)
@@ -623,6 +622,57 @@ export function PreviewList<T>({
         </button>
       )}
     </>
+  )
+}
+
+const INLINE_LINK_CLASS =
+  'rounded-sm underline-offset-4 outline-none hover:text-link-hover hover:underline focus-visible:ring-2 focus-visible:ring-ring'
+
+/** Compact label-and-value rows, for a record's own fields. */
+export function PreviewDetails({ children }: { children: React.ReactNode }) {
+  return <dl className="flex flex-col gap-1.5">{children}</dl>
+}
+
+export function PreviewDetail({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex min-w-0 items-baseline gap-3 text-sm">
+      <dt className="w-28 shrink-0 text-xs text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 flex-1 break-words text-foreground">{children}</dd>
+    </div>
+  )
+}
+
+export function PreviewPhone({ value }: { value: string }) {
+  const digits = value.replace(/[^0-9+]/g, '')
+  const shown = formatPhone(value) || value
+  if (digits.length < 7) return <>{shown}</>
+  return (
+    <a href={`tel:${digits}`} className={cn(INLINE_LINK_CLASS, 'tabular-nums')}>
+      {shown}
+    </a>
+  )
+}
+
+export function PreviewEmail({ value }: { value: string }) {
+  return (
+    <a href={`mailto:${value}`} className={cn(INLINE_LINK_CLASS, 'break-all')}>
+      {value}
+    </a>
+  )
+}
+
+/** A related record inside a list: its name opens it, with one line of supporting detail beneath. */
+export function PreviewRecordLink({ href, name, detail }: { href: string; name: string; detail?: string | null }) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col">
+      <Link
+        href={href}
+        className="max-w-full self-start truncate rounded-sm text-sm font-medium text-link outline-none hover:text-link-hover hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {name}
+      </Link>
+      {detail && <span className="break-words text-xs text-muted-foreground">{detail}</span>}
+    </div>
   )
 }
 
