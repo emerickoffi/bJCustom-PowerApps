@@ -18,12 +18,15 @@ function Group({
   title,
   entries,
   empty,
+  emptyAction,
   moreHref,
   footer,
 }: {
   title: string
   entries: Entry[]
   empty: string
+  /** Shown under the empty message only. */
+  emptyAction?: ReactNode
   moreHref: string
   footer?: ReactNode
 }) {
@@ -35,7 +38,10 @@ function Group({
         {title} <span className="tabular-nums">({entries.length})</span>
       </h3>
       {entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{empty}</p>
+        <div className="flex flex-col items-start">
+          <p className="text-sm text-muted-foreground">{empty}</p>
+          {emptyAction}
+        </div>
       ) : (
         <ul className="flex flex-col gap-1.5">
           {shown.map((e) => (
@@ -76,9 +82,9 @@ export function ProjectPeopleSummary({
   members: { id: string; name: string; project_role: string | null }[]
   contacts: ProjectContact[] | null
   companies: ProjectCompanyContacts[]
-  /** Opens the subcontractor assignment workspace; omitted when the viewer can't assign. */
+  /** Text link to the assignment overlay, shown while no subcontractors are assigned; omitted when the viewer can't assign. */
   assignAction?: ReactNode
-  /** Why assignment isn't available, shown to managers instead of the action. */
+  /** Why assignment isn't available, shown to managers instead of the link. */
   assignNote?: string | null
 }) {
   const peopleHref = `/projects/${projectId}/contacts`
@@ -126,15 +132,9 @@ export function ProjectPeopleSummary({
           title="Subcontractors & professionals"
           entries={outsideEntries}
           empty={contacts === null ? 'Directory contacts could not be loaded' : 'No subcontractors assigned'}
+          emptyAction={assignAction}
           moreHref={peopleHref}
-          footer={
-            assignAction || assignNote ? (
-              <div className="flex flex-col items-start gap-1.5 pt-1">
-                {assignAction}
-                {assignNote && <p className="text-xs text-muted-foreground">{assignNote}</p>}
-              </div>
-            ) : null
-          }
+          footer={assignNote ? <p className="pt-1 text-xs text-muted-foreground">{assignNote}</p> : null}
         />
       </div>
     </section>

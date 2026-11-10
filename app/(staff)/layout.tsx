@@ -22,6 +22,7 @@ import { readLayoutPreference } from '@/lib/dashboard-prefs'
 import { AssistantProvider } from '@/components/assistant/assistant-context'
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher'
 import { FloatingCameraProvider } from '@/components/camera/floating-camera'
+import { FloatingActionStack, FloatingActionsProvider } from '@/components/app/floating-actions'
 import { DraftScopeProvider } from '@/components/shared/draft-scope'
 import { NavigationGuard } from '@/components/app/navigation-guard'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
@@ -114,7 +115,8 @@ export default async function StaffLayout({ children, modal }: { children: React
       <DraftScopeProvider userId={session.userId} orgId={session.organizationId}>
       <AssistantProvider>
       <QuickActionsProvider>
-      <FloatingCameraProvider placement={showAssistant ? 'above-assistant' : 'corner'}>
+      <FloatingActionsProvider>
+      <FloatingCameraProvider>
       <LayoutModeProvider preference={layoutPreference}>
       <NavigationGuard />
       <div data-staff-shell className="flex min-h-svh bg-background">
@@ -176,17 +178,21 @@ export default async function StaffLayout({ children, modal }: { children: React
             </div>
           </header>
           {/* The workspace always uses the full width beside the sidebar; pages narrow themselves via PageContainer.
-              Bottom padding keeps the floating Quick Actions / Assistant buttons clear of the last controls. */}
-          <main className="w-full min-w-0 flex-1 px-(--page-gutter-x) pt-(--page-gutter-top) pb-[calc(9rem+env(safe-area-inset-bottom))] tablet:pb-[calc(11rem+env(safe-area-inset-bottom))]">
+              Bottom padding keeps the floating-action stack (two actions; globals.css extends it for a third) clear
+              of the last controls. The tablet shell adds the bottom navigation the stack sits above. */}
+          <main className="w-full min-w-0 flex-1 px-(--page-gutter-x) pt-(--page-gutter-top) pb-[calc(9rem+env(safe-area-inset-bottom))] tablet:pb-[calc(13rem+env(safe-area-inset-bottom))]">
             {children}
           </main>
         </div>
       </div>
       <TabletBottomNav items={items} homeHref={homeHref} closedGroups={closedGroups} />
+      <FloatingActionStack>
+        {showAssistant && <AssistantLauncher configured={getAssistantProviderConfig().configured} />}
+      </FloatingActionStack>
       </LayoutModeProvider>
       {modal}
-      {showAssistant && <AssistantLauncher configured={getAssistantProviderConfig().configured} />}
       </FloatingCameraProvider>
+      </FloatingActionsProvider>
       </QuickActionsProvider>
       </AssistantProvider>
       </DraftScopeProvider>

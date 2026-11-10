@@ -14,6 +14,7 @@ import { ProjectContactsTable } from '@/components/projects/project-contacts-tab
 import { ProjectClientsPanel } from '@/components/projects/project-people'
 import { ProjectTeamPanel } from '@/components/projects/project-team-panel'
 import { PeopleAssignWorkspace } from '@/components/projects/people-assign-workspace'
+import { AssignSubcontractors } from '@/components/projects/assign-subcontractors'
 
 export const metadata: Metadata = { title: 'People' }
 
@@ -58,6 +59,9 @@ export default async function ProjectPeoplePage({
 
   return (
     <div className="flex flex-col gap-6">
+      {directory?.availability === 'ready' && (
+        <AssignSubcontractors projectId={project.id} projectName={project.name as string} rows={directory.rows} />
+      )}
       <PageHeader
         title="People"
         actions={

@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useMemo, useState, useTransition } from 'react'
+import { Fragment, useMemo, useState, useTransition, type ComponentProps } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -37,6 +37,9 @@ export function PeopleAssignWorkspace({
   defaultOpen = false,
   audience = 'all',
   triggerLabel = 'Add people & companies',
+  open: controlledOpen,
+  onOpenChange,
+  finalFocus,
 }: {
   projectId: string
   projectName: string
@@ -45,9 +48,17 @@ export function PeopleAssignWorkspace({
   /** 'subcontractors' opens filtered to subcontractor people and companies; the filter can be turned off. */
   audience?: 'all' | 'subcontractors'
   triggerLabel?: string
+  /** Controlled mode for an external trigger such as the floating assignment action; no trigger button is rendered. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /** Where focus goes when the overlay closes. Defaults to the element focused before it opened. */
+  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus']
 }) {
   const router = useRouter()
-  const [open, setOpen] = useState(defaultOpen)
+  const [ownOpen, setOwnOpen] = useState(defaultOpen)
+  const controlled = controlledOpen !== undefined
+  const open = controlled ? controlledOpen : ownOpen
+  const setOpen = controlled ? (next: boolean) => onOpenChange?.(next) : setOwnOpen
   const [subsOnly, setSubsOnly] = useState(audience === 'subcontractors')
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<KindFilter>('all')
@@ -161,11 +172,13 @@ export function PeopleAssignWorkspace({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !pending && setOpen(next)}>
-      <Button size="sm" onClick={() => setOpen(true)}>
-        {audience === 'subcontractors' ? <Plus data-icon="inline-start" /> : <UserPlus data-icon="inline-start" />}
-        {triggerLabel}
-      </Button>
-      <DialogContent className="flex max-h-[90vh] w-[calc(100vw-2rem)] flex-col gap-0 p-0 sm:max-w-6xl">
+      {!controlled && (
+        <Button size="sm" onClick={() => setOpen(true)}>
+          {audience === 'subcontractors' ? <Plus data-icon="inline-start" /> : <UserPlus data-icon="inline-start" />}
+          {triggerLabel}
+        </Button>
+      )}
+      <DialogContent finalFocus={finalFocus} className="flex max-h-[90vh] w-[calc(100vw-2rem)] flex-col gap-0 p-0 sm:max-w-6xl">
         <DialogHeader className="border-b border-border px-5 py-4">
           <DialogTitle>{audience === 'subcontractors' ? 'Assign subcontractors' : 'Add people & companies'}</DialogTitle>
           <DialogDescription>

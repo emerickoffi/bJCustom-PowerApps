@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
@@ -15,7 +14,7 @@ import { ProjectStatusCard } from '@/components/projects/project-status-card'
 import { ReportIssueAction } from '@/components/issues/report-issue-action'
 import type { ProjectClientLink } from '@/components/projects/project-people'
 import { ProjectPeopleSummary } from '@/components/projects/project-people-summary'
-import { PeopleAssignWorkspace } from '@/components/projects/people-assign-workspace'
+import { AssignSubcontractors, AssignSubcontractorsLink } from '@/components/projects/assign-subcontractors'
 import { ProjectOverviewHeader, HeaderBadge } from '@/components/projects/project-overview-header'
 import { ProjectDetailsDrawer } from '@/components/projects/project-details-drawer'
 import { ProjectDetailsContent } from '@/components/projects/project-details-content'
@@ -260,23 +259,12 @@ export default async function ProjectDetailPage({
   const openExceptionCount = exceptionViews.filter((e) => e.status === 'open').length
   const completionDate = (project.completion_date as string | null) ?? null
 
-  let assignAction: ReactNode = null
-  let assignNote: string | null = null
-  if (manager) {
-    if (directoryClosed) assignNote = directoryClosed
-    else if (projectContacts.availability !== 'ready' || directory?.availability !== 'ready')
-      assignNote = 'The business directory isn’t set up for this organization yet.'
-    else
-      assignAction = (
-        <PeopleAssignWorkspace
-          projectId={project.id}
-          projectName={project.name as string}
-          rows={directory.rows}
-          audience="subcontractors"
-          triggerLabel="Assign subcontractors"
-        />
-      )
-  }
+  const assignRows =
+    manager && !directoryClosed && projectContacts.availability === 'ready' && directory?.availability === 'ready'
+      ? directory.rows
+      : null
+  const assignNote =
+    !manager || assignRows ? null : (directoryClosed ?? 'The business directory isn’t set up for this organization yet.')
 
   const financialsHref = manager && features.estimates ? `/projects/${project.id}/financials` : null
   const headerBadges = (
@@ -348,12 +336,12 @@ export default async function ProjectDetailPage({
       members={members}
       contacts={projectContacts.availability === 'ready' ? projectContacts.contacts : null}
       companies={projectContacts.availability === 'ready' ? projectContacts.companies : []}
-      assignAction={assignAction}
+      assignAction={assignRows ? <AssignSubcontractorsLink /> : null}
       assignNote={assignNote}
     />
   )
 
-  return (
+  const overview = (
     <div className="flex flex-col gap-6">
       <ProjectSectionScroll />
       <ProjectOverviewHeader
@@ -451,5 +439,13 @@ export default async function ProjectDetailPage({
         {people}
       </div>
     </div>
+  )
+
+  return assignRows ? (
+    <AssignSubcontractors projectId={project.id} projectName={project.name as string} rows={assignRows}>
+      {overview}
+    </AssignSubcontractors>
+  ) : (
+    overview
   )
 }
