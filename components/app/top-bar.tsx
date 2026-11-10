@@ -50,6 +50,11 @@ const SEGMENT_LABELS: Record<string, string> = {
   portal: 'Home',
 }
 
+/** Project tabs whose name differs from their route segment. The org-wide /contacts page keeps its own label. */
+const PROJECT_SECTION_LABELS: Record<string, string> = {
+  contacts: 'People',
+}
+
 const ID_LIKE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i
 
 function useCrumbs(rootHref: string, rootLabel: string, labels?: Record<string, string>) {
@@ -57,11 +62,14 @@ function useCrumbs(rootHref: string, rootLabel: string, labels?: Record<string, 
   const parts = pathname.split('/').filter(Boolean)
   const crumbs: { href: string; label: string }[] = []
   let href = ''
-  for (const part of parts) {
+  for (const [index, part] of parts.entries()) {
     href += `/${part}`
     if (href === rootHref) continue
+    const projectSection = index === 2 && parts[0] === 'projects' ? PROJECT_SECTION_LABELS[part] : undefined
     const label =
-      labels?.[part] ?? (ID_LIKE.test(part) ? 'Details' : (SEGMENT_LABELS[part] ?? part.replace(/-/g, ' ')))
+      labels?.[part] ??
+      projectSection ??
+      (ID_LIKE.test(part) ? 'Details' : (SEGMENT_LABELS[part] ?? part.replace(/-/g, ' ')))
     crumbs.push({ href, label })
   }
   return [{ href: rootHref, label: rootLabel }, ...crumbs]

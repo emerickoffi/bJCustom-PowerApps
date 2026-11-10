@@ -12,7 +12,7 @@ import { useFormDirty } from '@/components/shared/smart-form'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 
-export function NewChangeOrderDrawer({ projectId, projectName, size = 'default' }: { projectId: string; projectName: string; size?: 'default' | 'lg' }) {
+export function NewChangeOrderDrawer({ projectId, projectName }: { projectId: string; projectName: string }) {
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const dirtyRef = useRef(false)
@@ -43,7 +43,8 @@ export function NewChangeOrderDrawer({ projectId, projectName, size = 'default' 
 
   return (
     <Sheet open={open} onOpenChange={(next) => (next ? setOpen(true) : requestClose())}>
-      <SheetTrigger render={<Button size={size} />}>
+      {/* The trigger replaces the button's data-slot, so the page header's shared action height is set here. */}
+      <SheetTrigger render={<Button className="md:h-10" />}>
         <Plus className="size-4" aria-hidden="true" />
         New change order
       </SheetTrigger>
@@ -122,11 +123,14 @@ function DraftForm({
       </SheetHeader>
 
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">
-        <fieldset className="flex flex-col gap-5">
-          <legend className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+        <fieldset aria-describedby="new-co-homeowner-note" className="flex flex-col gap-5">
+          <legend className="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
             <Eye className="size-3.5" aria-hidden="true" />
-            Homeowner-visible
+            Homeowner sees
           </legend>
+          <p id="new-co-homeowner-note" className="text-xs leading-relaxed text-muted-foreground">
+            Title, description, price change and schedule impact.
+          </p>
           <TextField name="title" label="Title" required autoFocus defaultValue={v?.title} error={fe.title} maxLength={160} placeholder="e.g. Upgrade kitchen island to quartz" />
           <TextAreaField name="description" label="Description" defaultValue={v?.description} error={fe.description} maxLength={4000} rows={3} />
           <div className="grid gap-5 sm:grid-cols-2">
@@ -153,11 +157,14 @@ function DraftForm({
         </fieldset>
 
         <div className="border-t border-border/70 pt-6">
-          <fieldset className="flex flex-col gap-5">
-            <legend className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <fieldset aria-describedby="new-co-internal-note" className="flex flex-col gap-5">
+            <legend className="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Lock className="size-3.5" aria-hidden="true" />
               Internal only
             </legend>
+            <p id="new-co-internal-note" className="text-xs leading-relaxed text-muted-foreground">
+              Builder cost lines, margin and the reason for the change.
+            </p>
             <TextField name="requested_by" label="Requested by" defaultValue={v?.requested_by} error={fe.requested_by} maxLength={160} hint="Homeowner, architect, field condition, etc." />
             <TextAreaField name="reason" label="Reason for change" defaultValue={v?.reason} error={fe.reason} maxLength={2000} rows={3} />
           </fieldset>
