@@ -16,6 +16,7 @@ export function ListFilters({
   location,
   clearHref,
   preserve,
+  carryParams,
   autoApply = false,
 }: {
   searchPlaceholder: string
@@ -34,6 +35,8 @@ export function ListFilters({
   clearHref?: string
   /** Non-filter URL state (e.g. sort, view) carried through Apply; page is intentionally dropped. */
   preserve?: Record<string, string | null | undefined>
+  /** Client-set URL parameters kept through auto-applied filter changes (auto-apply only). */
+  carryParams?: readonly string[]
   /** Apply filters on change and debounce search, replacing the Apply button. */
   autoApply?: boolean
 }) {
@@ -97,7 +100,7 @@ export function ListFilters({
 
   if (autoApply) {
     return (
-      <AutoApplyForm clearHref={clearHref} className={FORM_CLASS}>
+      <AutoApplyForm clearHref={clearHref} carryParams={carryParams} className={FORM_CLASS}>
         {fields}
       </AutoApplyForm>
     )

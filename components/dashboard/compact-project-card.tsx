@@ -14,8 +14,10 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { ArchitecturalPlaceholder } from '@/components/projects/project-card'
 import { CoverImage } from '@/components/projects/cover-image'
+import { ProjectPreviewSurface, ProjectPreviewTrigger } from '@/components/projects/project-preview-trigger'
 import { ProjectTypeLabel } from '@/components/projects/project-type-label'
 import { PROJECT_STATUS_STYLES } from '@/components/shared/project-status-banner'
 import { ProgressBar } from '@/components/shared/progress'
@@ -85,10 +87,16 @@ export function CompactProjectCard({
   project,
   footer,
   showType = false,
+  preview = false,
 }: {
   project: CompactProjectCardData
   footer?: React.ReactNode
   showType?: boolean
+  /**
+   * Inside a ProjectPreviewLayout: the card body and title select the project for preview instead of navigating,
+   * and a separate "Open project" link goes to the workspace.
+   */
+  preview?: boolean
 }) {
   const status = PROJECT_STATUS_STYLES[project.status]
   const StatusIcon = status.icon
@@ -119,18 +127,29 @@ export function CompactProjectCard({
   )
   const panelClass = cn('flex items-start gap-2.5 rounded-xl px-3 py-2.5', PANEL_TONES[panel.tone])
 
-  return (
-    <article className="group relative flex flex-col gap-3.5 rounded-2xl border bg-card p-4 shadow-xs transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring/40">
+  const cardClass = 'group relative flex flex-col gap-3.5 rounded-2xl border bg-card p-4 shadow-xs transition-shadow hover:shadow-md'
+
+  const body = (
+    <>
       <div className="flex items-start gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="font-mono text-xs text-muted-foreground">{project.project_number}</span>
-          <h3 className="line-clamp-2 text-pretty break-words font-serif text-lg font-semibold leading-snug">
-            <Link
-              href={`/projects/${project.id}`}
-              className="outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']"
-            >
-              {project.name}
-            </Link>
+          <h3 className={cn('text-pretty break-words font-serif text-lg font-semibold leading-snug', !preview && 'line-clamp-2')}>
+            {preview ? (
+              <ProjectPreviewTrigger
+                projectId={project.id}
+                projectName={project.name}
+                className="block w-full hover:text-link"
+                labelClassName="line-clamp-2"
+              />
+            ) : (
+              <Link
+                href={`/projects/${project.id}`}
+                className="outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']"
+              >
+                {project.name}
+              </Link>
+            )}
           </h3>
           <span className="truncate text-xs text-muted-foreground">
             {project.locationLabel ?? formatLocation(project.city, project.state)}
@@ -165,6 +184,18 @@ export function CompactProjectCard({
           <span className="inline-flex items-center rounded-badge bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
             Overdue activity
           </span>
+        )}
+        {preview && (
+          <Button
+            variant="view"
+            size="sm"
+            className="ml-auto"
+            render={<Link href={`/projects/${project.id}`} aria-label={`Open project ${project.name}`} />}
+            nativeButton={false}
+          >
+            Open project
+            <ArrowRight data-icon="inline-end" />
+          </Button>
         )}
       </div>
 
@@ -203,6 +234,20 @@ export function CompactProjectCard({
         )}
       </div>
       {footer}
-    </article>
+    </>
+  )
+
+  return preview ? (
+    <ProjectPreviewSurface
+      projectId={project.id}
+      className={cn(
+        cardClass,
+        'scroll-mt-24 scroll-mb-4 data-selected:border-primary data-selected:bg-link-soft/50 data-selected:shadow-md data-selected:ring-1 data-selected:ring-primary',
+      )}
+    >
+      {body}
+    </ProjectPreviewSurface>
+  ) : (
+    <article className={cn(cardClass, 'focus-within:ring-2 focus-within:ring-ring/40')}>{body}</article>
   )
 }

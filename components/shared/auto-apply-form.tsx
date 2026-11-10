@@ -14,10 +14,13 @@ const SEARCH_DEBOUNCE_MS = 350
 export function AutoApplyForm({
   children,
   clearHref,
+  carryParams,
   className,
 }: {
   children: React.ReactNode
   clearHref?: string
+  /** URL parameters set on the client after render (so no hidden input knows them) that survive applying and clearing. */
+  carryParams?: readonly string[]
   className?: string
 }) {
   const router = useRouter()
@@ -37,6 +40,14 @@ export function AutoApplyForm({
     }
   }, [])
 
+  function carry(params: URLSearchParams) {
+    const current = new URLSearchParams(window.location.search)
+    for (const name of carryParams ?? []) {
+      const value = current.get(name)
+      if (value && !params.has(name)) params.set(name, value)
+    }
+  }
+
   function apply() {
     const form = formRef.current
     if (!form) return
@@ -44,6 +55,7 @@ export function AutoApplyForm({
     for (const [key, value] of new FormData(form)) {
       if (typeof value === 'string' && value.trim()) params.set(key, value.trim())
     }
+    carry(params)
     const query = params.toString()
     if (query === window.location.search.replace(/^\?/, '')) return
     startTransition(() => router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false }))
@@ -82,7 +94,9 @@ export function AutoApplyForm({
           onClick={() => {
             if (timer.current) clearTimeout(timer.current)
             setGeneration((g) => g + 1)
-            startTransition(() => router.replace(clearHref, { scroll: false }))
+            const target = new URL(clearHref, window.location.origin)
+            carry(target.searchParams)
+            startTransition(() => router.replace(`${target.pathname}${target.search}`, { scroll: false }))
           }}
         >
           Clear filters
