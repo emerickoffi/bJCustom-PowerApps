@@ -20,9 +20,9 @@ import { LayoutModeProvider } from '@/components/app/layout-mode'
 import { TabletBottomNav } from '@/components/app/tablet-bottom-nav'
 import { readLayoutPreference } from '@/lib/dashboard-prefs'
 import { AssistantProvider } from '@/components/assistant/assistant-context'
-import { AssistantLauncher } from '@/components/assistant/assistant-launcher'
+import { AssistantDock } from '@/components/app/assistant-dock'
 import { FloatingCameraProvider } from '@/components/camera/floating-camera'
-import { FloatingActionStack, FloatingActionsProvider } from '@/components/app/floating-actions'
+import { FloatingActionsProvider } from '@/components/app/floating-actions'
 import { DraftScopeProvider } from '@/components/shared/draft-scope'
 import { NavigationGuard } from '@/components/app/navigation-guard'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
@@ -168,17 +168,18 @@ export default async function StaffLayout({ children, modal }: { children: React
             </div>
           </header>
           {/* The workspace always uses the full width beside the sidebar; pages narrow themselves via PageContainer.
-              Bottom padding keeps the floating-action stack (two actions; globals.css extends it for a third) clear
-              of the last controls. The tablet shell adds the bottom navigation the stack sits above. */}
+              Bottom padding keeps the shared assistant launcher clear of the last controls. The tablet shell adds
+              the bottom navigation the launcher sits above. */}
           <main className="w-full min-w-0 flex-1 px-(--page-gutter-x) pt-(--page-gutter-top) pb-[calc(9rem+env(safe-area-inset-bottom))] tablet:pb-[calc(13rem+env(safe-area-inset-bottom))]">
             {children}
           </main>
         </div>
       </div>
       <TabletBottomNav items={items} homeHref={homeHref} closedGroups={closedGroups} />
-      <FloatingActionStack>
-        {showAssistant && <AssistantLauncher configured={getAssistantProviderConfig().configured} />}
-      </FloatingActionStack>
+      <AssistantDock
+        assistant={showAssistant ? { configured: getAssistantProviderConfig().configured } : null}
+        globalActions={globalQuickActions}
+      />
       </LayoutModeProvider>
       {modal}
       </FloatingCameraProvider>

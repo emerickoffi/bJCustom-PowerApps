@@ -116,45 +116,26 @@ function promptFor(key: QuickActionKey, project: AssistantProject | null) {
 let idCounter = 0
 const nextId = () => `m${++idCounter}`
 
-export function AssistantLauncher({ configured }: { configured: boolean }) {
-  const [open, setOpen] = useState(false)
-
+/** The AI chat drawer. The shared launcher (components/app/assistant-dock.tsx) opens it. */
+export function AssistantSheet({
+  configured,
+  open,
+  onOpenChange,
+}: {
+  configured: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   return (
-    <>
-      <div data-floating-control className="group relative order-last print:hidden">
-        <span
-          role="presentation"
-          className="pointer-events-none absolute right-full top-1/2 mr-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-brand-deep px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-has-[:focus-visible]:opacity-100"
-        >
-          Ask B &amp; J AI
-        </span>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Ask B & J AI"
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          className={cn(
-            'flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg ring-1 ring-black/5 transition-all',
-            'hover:-translate-y-0.5 hover:bg-brand-deep hover:shadow-xl',
-            'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30',
-            open && 'pointer-events-none scale-90 opacity-0',
-          )}
-        >
-          <Sparkles className="size-6" aria-hidden="true" />
-        </button>
-      </div>
-
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent
-          side="right"
-          showCloseButton={false}
-          className="gap-0 overflow-hidden border-l bg-background p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[420px]"
-        >
-          <AssistantPanel configured={configured} onClose={() => setOpen(false)} />
-        </SheetContent>
-      </Sheet>
-    </>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="gap-0 overflow-hidden border-l bg-background p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[420px]"
+      >
+        <AssistantPanel configured={configured} onClose={() => onOpenChange(false)} />
+      </SheetContent>
+    </Sheet>
   )
 }
 

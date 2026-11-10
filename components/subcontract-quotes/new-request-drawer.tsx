@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Plus, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { useLauncherAction } from '@/components/app/floating-actions'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { RequestForm } from '@/components/subcontract-quotes/request-form'
 import { CurrencyPanel } from '@/components/subcontract-quotes/currency-panel'
@@ -58,6 +59,8 @@ export function NewQuoteRequestDrawer({ projectId, projectName, currency, initia
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
   }, [open, dirty])
+
+  useLauncherAction({ id: 'quote-request', label: 'New quote request', icon: 'quote', onSelect: () => setOpen(true) })
 
   const onSent = useCallback(() => {
     close()
