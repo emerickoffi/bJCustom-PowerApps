@@ -46,7 +46,7 @@ export function ListFilters({
       )}
       <SearchInput
         // Auto-apply updates the URL while typing; remounting on each change would drop focus.
-        key={autoApply ? 'search' : defaultQuery}
+        key={autoApply ? 'search' : `search:${defaultQuery}`}
         id="q"
         label="Search"
         defaultValue={defaultQuery}
@@ -57,7 +57,7 @@ export function ListFilters({
       <label htmlFor="status" className="sr-only">
         Status
       </label>
-      <NativeSelect key={defaultStatus} id="status" name="status" defaultValue={defaultStatus} className="bg-card sm:w-56">
+      <NativeSelect key={`status:${defaultStatus}`} id="status" name="status" defaultValue={defaultStatus} className="bg-card sm:w-56">
         <option value="">All statuses</option>
         {statusOptions.map((option) => (
           <option key={option.value} value={option.value}>

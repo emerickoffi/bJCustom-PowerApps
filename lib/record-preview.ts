@@ -11,6 +11,17 @@ export const CLIENT_PREVIEW_PANEL_ID = 'client-preview'
 /** Rows shown before "View all" reveals the rest inside the panel. */
 export const PREVIEW_LIST_LIMIT = 3
 
+/**
+ * A link out of a preview, with the previewed record named in it. A preview opens before the router has caught up
+ * with the URL, so a link built from the router's parameters alone could drop or misname the selection.
+ */
+export function withPreviewParam(href: string, param: string, recordId: string) {
+  const [path, query = ''] = href.split('?')
+  const params = new URLSearchParams(query)
+  params.set(param, recordId)
+  return `${path}?${params.toString()}`
+}
+
 export function personPreviewApiPath(personId: string) {
   return `/api/contacts/people/${encodeURIComponent(personId)}/preview`
 }

@@ -23,11 +23,14 @@ import {
   RecordPreviewHeader,
 } from '@/components/shared/record-preview'
 import {
+  COMPANY_PREVIEW_PARAM,
+  CONTACT_PREVIEW_PARAM,
   PREVIEW_LIST_LIMIT,
   companyPreviewApiPath,
   companyProjectDetail,
   personPreviewApiPath,
   recordPreviewErrorState,
+  withPreviewParam,
   type CompanyPreview,
   type PersonAccess,
   type PersonPreview,
@@ -42,6 +45,11 @@ export function ContactPreview({ record }: { record: ContactPreviewRecord }) {
   const overlayHref = useOverlayHref()
   const person = record.kind === 'person'
   const openHref = person ? `/contacts/people/${record.id}` : `/contacts/companies/${record.id}`
+  const editHref = withPreviewParam(
+    overlayHref(person ? { edit: record.id } : { editCompany: record.id }),
+    person ? CONTACT_PREVIEW_PARAM : COMPANY_PREVIEW_PARAM,
+    record.id,
+  )
 
   return (
     <>
@@ -54,7 +62,7 @@ export function ContactPreview({ record }: { record: ContactPreviewRecord }) {
             <Button
               variant="outline"
               size="sm"
-              render={<Link href={overlayHref(person ? { edit: record.id } : { editCompany: record.id })} scroll={false} replace />}
+              render={<Link href={editHref} scroll={false} replace />}
               nativeButton={false}
             >
               <Pencil data-icon="inline-start" />

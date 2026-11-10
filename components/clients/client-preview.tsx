@@ -51,6 +51,8 @@ export function ClientPreviewLayout({
   const searchParams = useSearchParams()
   const editHref = (clientId: string) => {
     const params = new URLSearchParams(searchParams.toString())
+    // The preview opens before the router has caught up with the URL, so the link names the previewed client itself.
+    params.set(CLIENT_PREVIEW_PARAM, clientId)
     params.set(CLIENT_EDIT_PARAM, clientId)
     return `${pathname}?${params.toString()}`
   }

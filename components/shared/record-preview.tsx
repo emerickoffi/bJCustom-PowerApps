@@ -361,7 +361,9 @@ function RecordPreviewPanel({
       }}
       className={cn(
         // The max-height here is the first-paint value for the stuck position; the effect above refines it.
-        'sticky top-[calc(5rem+env(safe-area-inset-top))] max-h-[calc(100dvh-10.5rem-env(safe-area-inset-top))] w-[25rem] shrink-0 flex-col overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-xs animate-in fade-in-0 slide-in-from-right-2 duration-200 motion-reduce:animate-none',
+        // `duration-200` times the entrance animation but also enables a transition on every property, so transitions
+        // are turned off: an eased max-height would let the panel run under the floating actions on each refit.
+        'sticky top-[calc(5rem+env(safe-area-inset-top))] max-h-[calc(100dvh-10.5rem-env(safe-area-inset-top))] w-[25rem] shrink-0 flex-col overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-xs transition-none animate-in fade-in-0 slide-in-from-right-2 duration-200 motion-reduce:animate-none',
         className,
       )}
     >
