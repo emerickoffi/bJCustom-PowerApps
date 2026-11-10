@@ -3,9 +3,8 @@
 import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Building2, Plus, Search, UserPlus } from 'lucide-react'
+import { Building2, Search, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/shared/form-field'
 import { formatDate, formatPhone } from '@/lib/format'
@@ -15,17 +14,15 @@ import { AssignDialog, type Prefill } from '@/components/projects/project-contac
 import { segmentClass } from '@/lib/interaction-styles'
 import { ActiveStatusBadge } from '@/components/shared/semantic-badge'
 
-type DialogState = { prefill: Prefill; mode: 'existing' | 'new' } | null
-
 const TH = 'px-3 py-2.5 text-left text-xs font-medium text-muted-foreground'
 const TD = 'px-3 py-2.5 align-middle'
 
 function StatusPill({ contact }: { contact: ProjectContact }) {
   if (contact.status === 'ended') {
-    return <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">Ended</span>
+    return <span className="rounded-badge border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">Ended</span>
   }
   if (contact.person_status === 'inactive') {
-    return <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">Inactive contact</span>
+    return <span className="rounded-badge border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">Inactive contact</span>
   }
   return <ActiveStatusBadge />
 }
@@ -40,20 +37,24 @@ export function ProjectContactsTable({
   companies,
   assignable,
   canEdit,
-  acceptsAssignments,
+  closedReason,
+  emptyAction,
 }: {
   projectId: string
   contacts: ProjectContact[]
   companies: ProjectCompanyContacts[]
   assignable: AssignablePerson[]
   canEdit: boolean
-  acceptsAssignments: boolean
+  /** Why new people and companies can't be added, or null when the project is open. */
+  closedReason: string | null
+  /** Shown under the "nothing assigned yet" message for people who can assign, e.g. a link to the assignment drawer. */
+  emptyAction?: React.ReactNode
 }) {
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [showHistory, setShowHistory] = useState(false)
-  const [dialog, setDialog] = useState<DialogState>(null)
+  const [prefill, setPrefill] = useState<Prefill>(null)
   const [endingId, setEndingId] = useState<string | null>(null)
   const [, startEnd] = useTransition()
 
@@ -75,7 +76,7 @@ export function ProjectContactsTable({
       )
       .sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name))
   }, [contacts, query, roleFilter, showHistory])
-  const canAssign = canEdit && acceptsAssignments
+  const canAssign = canEdit && !closedReason
 
   function end(id: string, name: string) {
     if (!window.confirm(`End ${name}'s association with this project? It stays in the project history.`)) return
@@ -112,34 +113,20 @@ export function ProjectContactsTable({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <section aria-labelledby="pc-table-heading" className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 id="pc-table-heading" className="text-sm font-semibold text-foreground">
-              Assigned people
-            </h2>
-            <p className="mt-0.5 text-xs text-muted-foreground" aria-live="polite">
-              {showHistory
-                ? `${visible.length} of ${endedCount} past ${endedCount === 1 ? 'association' : 'associations'}`
-                : `${visible.length} of ${activeCount} active ${activeCount === 1 ? 'contact' : 'contacts'}`}
-            </p>
-          </div>
-          {canAssign && (
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => setDialog({ prefill: null, mode: 'new' })}>
-                <UserPlus data-icon="inline-start" />
-                Create and assign
-              </Button>
-              <Button size="sm" onClick={() => setDialog({ prefill: null, mode: 'existing' })}>
-                <Plus data-icon="inline-start" />
-                Add existing contact
-              </Button>
-            </div>
-          )}
+    <div className="flex min-w-0 flex-col gap-4">
+      <section aria-labelledby="pc-table-heading" className="flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-card p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h2 id="pc-table-heading" className="font-serif text-lg font-semibold text-foreground">
+            Subcontractors &amp; professionals
+          </h2>
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {showHistory
+              ? `${visible.length} of ${endedCount} past ${endedCount === 1 ? 'association' : 'associations'}`
+              : `${visible.length} of ${activeCount} active ${activeCount === 1 ? 'contact' : 'contacts'}`}
+          </p>
         </div>
-        {canEdit && !acceptsAssignments && (
-          <p className="text-xs text-muted-foreground">This project is closed to new assignments. Existing associations remain visible.</p>
+        {closedReason && (
+          <p className="text-xs text-muted-foreground">{closedReason} Existing associations remain visible.</p>
         )}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -168,7 +155,7 @@ export function ProjectContactsTable({
               </option>
             ))}
           </NativeSelect>
-          <div role="group" aria-label="Association status" className="inline-flex h-9 rounded-lg border border-border p-0.5">
+          <div role="group" aria-label="Association status" className="inline-flex h-9 shrink-0 rounded-lg border border-border p-0.5">
             {[
               { v: false, l: `Active (${activeCount})` },
               { v: true, l: `History (${endedCount})` },
@@ -178,7 +165,7 @@ export function ProjectContactsTable({
                 type="button"
                 aria-pressed={showHistory === o.v}
                 onClick={() => setShowHistory(o.v)}
-                className={`flex-1 rounded-md px-3 text-xs font-medium ${segmentClass(showHistory === o.v)}`}
+                className={`flex-1 whitespace-nowrap rounded-md px-3 text-xs font-medium ${segmentClass(showHistory === o.v)}`}
               >
                 {o.l}
               </button>
@@ -187,13 +174,18 @@ export function ProjectContactsTable({
         </div>
 
         {visible.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border px-3 py-8 text-center text-sm text-muted-foreground">
-            {contacts.length === 0
-              ? 'No directory contacts are assigned to this project yet.'
-              : showHistory
-                ? 'No past associations match these filters.'
-                : 'No active contacts match these filters.'}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
+            <p>
+              {contacts.length === 0
+                ? companies.length === 0
+                  ? 'No subcontractors or professionals assigned yet.'
+                  : 'No people assigned yet.'
+                : showHistory
+                  ? 'No past associations match these filters.'
+                  : 'No active contacts match these filters.'}
+            </p>
+            {contacts.length === 0 && canAssign && emptyAction}
+          </div>
         ) : (
           <>
             <div className="hidden overflow-x-auto rounded-lg border border-border md:block">
@@ -342,9 +334,7 @@ export function ProjectContactsTable({
                         ) : canAssign ? (
                           <button
                             type="button"
-                            onClick={() =>
-                              setDialog({ mode: 'existing', prefill: { personId: p.person_id, relationshipId: p.relationship_id, role: p.role ?? '' } })
-                            }
+                            onClick={() => setPrefill({ personId: p.person_id, relationshipId: p.relationship_id, role: p.role ?? '' })}
                             className="inline-flex shrink-0 items-center gap-1 font-medium text-primary hover:underline"
                           >
                             <UserPlus className="size-3" aria-hidden="true" />
@@ -361,17 +351,16 @@ export function ProjectContactsTable({
         </section>
       )}
 
-      {dialog && (
+      {prefill && (
         <AssignDialog
-          key={`${dialog.mode}-${dialog.prefill?.personId ?? 'new'}`}
+          key={prefill.personId}
           projectId={projectId}
           assignable={assignable}
           excluded={activePersonIds}
-          prefill={dialog.prefill}
-          initialMode={dialog.mode}
-          onClose={() => setDialog(null)}
+          prefill={prefill}
+          onClose={() => setPrefill(null)}
           onDone={() => {
-            setDialog(null)
+            setPrefill(null)
             router.refresh()
           }}
         />

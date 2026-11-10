@@ -23,8 +23,9 @@ import { ChangeOrderStatusBadge } from '@/components/change-orders/change-order-
 import { ChangeOrderStepper } from '@/components/change-orders/change-order-stepper'
 import { ChangeOrderSection } from '@/components/change-orders/change-order-section'
 import { ChangeOrderWorkflow } from '@/components/change-orders/change-order-workflow'
+import { DeleteDraftButton } from '@/components/change-orders/delete-draft-button'
 import { deleteDraftChangeOrderAction } from '@/app/actions/change-orders'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Change order' }
@@ -63,6 +64,13 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
           .is('archived_at', null)
       : Promise.resolve({ count: null }),
   ])
+  const { data: issueLinks } = await supabase
+    .from('project_issue_change_orders')
+    .select('created_from_issue, project_issues(id, category, item_label)')
+    .eq('change_order_id', coId)
+  const linkedIssues = ((issueLinks ?? []) as unknown as { created_from_issue: boolean; project_issues: { id: string; category: string; item_label: string } | null }[])
+    .filter((l) => l.project_issues)
+    .map((l) => ({ ...l.project_issues!, created_from_issue: l.created_from_issue }))
   const events = (rawEvents ?? []) as Event[]
   const people = await getPeopleNames([...events.map((e) => e.actor), co.created_by])
   const todayIso = (today as string | null) ?? new Date().toISOString().slice(0, 10)
@@ -81,7 +89,6 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        tone="plain"
         title={co.title}
         eyebrow={
           <span className="tabular-nums">
@@ -142,7 +149,9 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
               <Detail label="Description" value={co.description} className="sm:col-span-2" />
               <div>
                 <dt className="text-xs font-medium text-muted-foreground">Price change</dt>
-                <dd className="mt-1 text-2xl font-semibold tabular-nums text-primary">{formatMoney(co.price_adjustment_cents, { signed: true })}</dd>
+                <dd className="mt-1 text-2xl font-semibold tabular-nums text-primary">
+                  {co.price_pending ? <span className="text-warning-foreground">Price pending</span> : formatMoney(co.price_adjustment_cents, { signed: true })}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs font-medium text-muted-foreground">Schedule impact</dt>
@@ -222,7 +231,10 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
             </div>
             <div className="flex flex-col gap-1 bg-sage/40 px-5 py-4">
               <span className="text-xs font-medium text-muted-foreground">Homeowner price change</span>
-              <span className="text-2xl font-semibold tabular-nums text-primary">{formatMoney(co.price_adjustment_cents, { signed: true })}</span>
+              <span className="text-2xl font-semibold tabular-nums text-primary">
+                {co.price_pending ? <span className="text-warning-foreground">Price pending</span> : formatMoney(co.price_adjustment_cents, { signed: true })}
+              </span>
+              {co.price_pending && <span className="text-xs text-muted-foreground">Set a price before submitting for review.</span>}
             </div>
             <dl className="flex flex-col gap-3 px-5 py-4 text-sm">
               <SummaryRow label="Schedule impact" value={formatScheduleDays(co.schedule_impact_days, 'long')} />
@@ -243,6 +255,25 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
             </p>
           </section>
 
+          {linkedIssues.length > 0 && (
+            <Surface aria-labelledby="co-issues" className="p-5 md:p-5">
+              <SectionHeading id="co-issues" title="Related issues" />
+              <ul className="flex flex-col gap-2">
+                {linkedIssues.map((i) => (
+                  <li key={i.id}>
+                    <Link href={`/projects/${id}/issues/${i.id}`} className="flex flex-col gap-0.5 rounded-panel border p-3 text-sm hover:bg-muted/40">
+                      <span className="font-medium text-foreground">{i.item_label}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {i.category}
+                        {i.created_from_issue ? ' · Drafted from this issue' : ''}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Surface>
+          )}
+
           {features.documents && (
             <Surface aria-labelledby="co-docs" className="p-5 md:p-5">
               <SectionHeading id="co-docs" title="Documents" />
@@ -262,9 +293,7 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
             <form action={deleteDraftChangeOrderAction} className="flex">
               <input type="hidden" name="project_id" value={id} />
               <input type="hidden" name="id" value={co.id} />
-              <Button type="submit" variant="ghost" className="text-destructive">
-                Delete draft
-              </Button>
+              <DeleteDraftButton />
             </form>
           )}
         </aside>

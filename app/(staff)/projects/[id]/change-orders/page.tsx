@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { Eye, FileDiff, Lock } from 'lucide-react'
+import { FileDiff } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
@@ -44,9 +44,7 @@ export default async function ChangeOrdersPage({ params }: { params: Promise<{ i
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Change orders"
-        description={`Scope, cost and price changes for ${project.name}. Only approved change orders affect the budget.`}
         icon={FileDiff}
-        tone="plain"
         actions={<NewChangeOrderDrawer projectId={id} projectName={project.name} />}
       />
 
@@ -55,7 +53,7 @@ export default async function ChangeOrdersPage({ params }: { params: Promise<{ i
           <p className="text-sm text-destructive">Change orders could not be loaded. Try again shortly.</p>
         </Surface>
       ) : list.length === 0 ? (
-        <ChangeOrdersEmpty projectId={id} projectName={project.name} />
+        <ChangeOrdersEmpty />
       ) : (
         <>
           <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -99,41 +97,19 @@ function Stat({ label, value, detail, emphasis }: { label: string; value: string
   )
 }
 
-function ChangeOrdersEmpty({ projectId, projectName }: { projectId: string; projectName: string }) {
+function ChangeOrdersEmpty() {
   return (
-    <section aria-labelledby="co-empty-heading" className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs">
-      <div className="grid gap-6 p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:items-center md:gap-10 md:p-8">
-        <div className="flex flex-col items-start gap-3">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-sage text-primary ring-1 ring-inset ring-primary/10" aria-hidden="true">
-            <FileDiff className="size-5" />
-          </span>
-          <h2 id="co-empty-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
-            No change orders yet
-          </h2>
-          <p className="max-w-md text-pretty text-sm leading-relaxed text-muted-foreground">
-            A change order records a change to the agreed scope, with its price and schedule effect, and the homeowner&apos;s decision. Only approved change
-            orders update the project budget.
-          </p>
-          <div className="pt-1">
-            <NewChangeOrderDrawer projectId={projectId} projectName={projectName} size="lg" />
-          </div>
-        </div>
-        <dl className="grid gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-2 rounded-lg border border-primary/15 bg-sage/50 p-4">
-            <dt className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
-              <Eye className="size-3.5" aria-hidden="true" />
-              Homeowner sees
-            </dt>
-            <dd className="text-sm leading-relaxed text-foreground">Title, description, price change and schedule impact.</dd>
-          </div>
-          <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/50 p-4">
-            <dt className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <Lock className="size-3.5" aria-hidden="true" />
-              Internal only
-            </dt>
-            <dd className="text-sm leading-relaxed text-foreground">Builder cost lines, margin and the reason for the change.</dd>
-          </div>
-        </dl>
+    <section aria-labelledby="co-empty-heading" className="flex items-start gap-3 rounded-xl border border-border/80 bg-card p-4 sm:items-center">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sage text-primary ring-1 ring-inset ring-primary/10" aria-hidden="true">
+        <FileDiff className="size-5" />
+      </span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <h2 id="co-empty-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+          No change orders yet
+        </h2>
+        <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+          Track changes to scope, price, and schedule. Only approved change orders update the project budget.
+        </p>
       </div>
     </section>
   )

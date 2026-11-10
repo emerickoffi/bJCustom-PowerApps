@@ -21,11 +21,16 @@ export function invoiceReturnTarget(from: string | string[] | undefined): Invoic
   }
 
   if (url.pathname === INVOICE_LIST_HREF) {
+    const kept = new URLSearchParams()
     const status = url.searchParams.get('status')
-    if (status && INVOICE_LIST_STATUSES.has(status)) {
-      return { href: `${INVOICE_LIST_HREF}?status=${status}`, label: 'Back to invoices' }
-    }
-    return fallback
+    if (status && INVOICE_LIST_STATUSES.has(status)) kept.set('status', status)
+    if (url.searchParams.get('overdue') === '1') kept.set('overdue', '1')
+    const q = url.searchParams.get('q')?.trim().slice(0, 100)
+    if (q) kept.set('q', q)
+    const page = url.searchParams.get('page')
+    if (page && /^\d{1,4}$/.test(page) && Number(page) > 1) kept.set('page', page)
+    const qs = kept.toString()
+    return { href: qs ? `${INVOICE_LIST_HREF}?${qs}` : INVOICE_LIST_HREF, label: 'Back to invoices' }
   }
 
   const project = url.pathname.match(/^\/projects\/([^/]+)$/)

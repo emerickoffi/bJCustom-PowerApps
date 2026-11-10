@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { KeyRound, Mail, Phone, Users } from 'lucide-react'
+import { KeyRound, Mail, Phone, UserRound, Users } from 'lucide-react'
 import { removeProjectClientAction } from '@/app/actions/projects'
 import { CONTACT_RELATIONSHIP_LABELS, PROJECT_CLIENT_RELATIONSHIP_LABELS } from '@/lib/domain'
 import { HOMEOWNER_PORTAL_STATUS } from '@/lib/project-homeowners'
@@ -50,14 +50,17 @@ export function Avatar({ name, tone = 'sage' }: { name: string; tone?: 'sage' | 
 export function Panel({
   title,
   action,
+  compact = false,
   children,
 }: {
   title: string
   action?: React.ReactNode
+  /** Tighter spacing for a panel that only holds an empty-state row. */
+  compact?: boolean
   children: React.ReactNode
 }) {
   return (
-    <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
+    <section className={cn('flex min-w-0 flex-col rounded-xl border bg-card', compact ? 'gap-2 px-4 py-3' : 'gap-3 p-4')}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-serif text-lg font-semibold text-foreground">{title}</h2>
         {action}
@@ -87,7 +90,7 @@ const PORTAL_TONE: Record<string, string> = {
 }
 
 function Pill({ className, children }: { className: string; children: React.ReactNode }) {
-  return <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', className)}>{children}</span>
+  return <span className={cn('rounded-badge px-2 py-0.5 text-[11px] font-medium', className)}>{children}</span>
 }
 
 function ContactLine({ contact }: { contact: HomeownerContact }) {
@@ -147,6 +150,7 @@ export function ProjectClientsPanel({
   return (
     <Panel
       title="Homeowners"
+      compact={!primaryClientId && groups.length === 0}
       action={
         primaryClientId ? (
           <div className="flex items-center gap-1">
@@ -159,14 +163,20 @@ export function ProjectClientsPanel({
       }
     >
       {!primaryClientId && (
-        <div className="flex flex-col gap-3 rounded-lg border border-dashed bg-[#F3F4F6] p-4">
-          <div className="flex flex-col gap-0.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span
+            aria-hidden="true"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full border border-dashed border-primary/40 text-primary"
+          >
+            <UserRound className="size-4" />
+          </span>
+          <div className="flex min-w-0 flex-1 basis-48 flex-col">
             <span className="text-sm font-medium text-foreground">Primary client: Unassigned</span>
             <span className="text-xs text-muted-foreground">
               Assign a homeowner to enable portal access and client communication for this project.
             </span>
           </div>
-          {assign && <div>{assign}</div>}
+          {assign}
         </div>
       )}
       {groups.length === 0 ? (

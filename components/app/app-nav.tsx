@@ -24,6 +24,7 @@ import {
   UsersRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   NAV_GROUPS,
   NAV_GROUPS_COOKIE,
@@ -73,40 +74,45 @@ function NavLink({
   onNavigate?: () => void
 }) {
   const Icon = ICONS[icon] ?? LayoutDashboard
-  return (
+  const link = (
     <Link
       href={href}
       onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
-      title={collapsed ? label : undefined}
       className={cn(
-        'group relative flex h-10 items-center gap-3 rounded-[0.625rem] px-3.5 text-sm font-medium transition-colors duration-150',
+        'group relative flex h-11 items-center gap-3 rounded-nav px-3.5 text-sm transition-colors duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
         collapsed && 'justify-center px-0',
         active
-          ? 'bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-[inset_3px_0_0_0_var(--sidebar-active-border)]'
-          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+          ? 'bg-sidebar-selected font-semibold text-sidebar-selected-foreground'
+          : 'font-medium text-sidebar-foreground hover:bg-sidebar-hover',
         muted && !active && 'text-sidebar-muted',
       )}
     >
       <Icon
         className={cn(
           'size-[1.125rem] shrink-0',
-          active
-            ? 'text-sidebar-primary-foreground'
-            : muted
-              ? 'text-current'
-              : 'text-sidebar-icon group-hover:text-sidebar-accent-foreground',
+          active ? 'text-sidebar-selected-icon' : muted ? 'text-current' : 'text-sidebar-icon',
         )}
         aria-hidden="true"
       />
       <span className={cn('truncate', collapsed && 'sr-only')}>{label}</span>
       {muted && !collapsed && (
-        <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
+        <span className="ml-auto rounded-badge bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
           Soon
         </span>
       )}
     </Link>
+  )
+  if (!collapsed) return link
+  // The label stays in the link as sr-only text; the tooltip shows it on hover and keyboard focus.
+  return (
+    <Tooltip>
+      <TooltipTrigger render={link} />
+      <TooltipContent side="right" sideOffset={8}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

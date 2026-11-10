@@ -14,7 +14,6 @@ export default async function NewCompanyPage() {
       <PageHeader
         icon={Building2}
         title="Add company"
-        description="Vendors, suppliers, design firms, and other businesses. Add subcontractors from the Subcontractors page."
         backHref="/contacts?view=companies"
         backLabel="Contacts"
       />

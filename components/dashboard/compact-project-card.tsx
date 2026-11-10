@@ -1,15 +1,32 @@
 import Link from 'next/link'
-import { ArrowRight, CalendarPlus, CircleArrowRight, CircleCheck, PauseCircle, ShieldCheck } from 'lucide-react'
+import {
+  ArrowRight,
+  CalendarPlus,
+  CircleAlert,
+  CircleArrowRight,
+  CircleCheck,
+  CircleDashed,
+  CircleOff,
+  FileText,
+  Hourglass,
+  PauseCircle,
+  ShieldCheck,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { ArchitecturalPlaceholder } from '@/components/projects/project-card'
 import { CoverImage } from '@/components/projects/cover-image'
+import { ProjectPreviewSurface, ProjectPreviewTrigger } from '@/components/projects/project-preview-trigger'
 import { ProjectTypeLabel } from '@/components/projects/project-type-label'
 import { PROJECT_STATUS_STYLES } from '@/components/shared/project-status-banner'
 import { ProgressBar } from '@/components/shared/progress'
-import { WARRANTY_STAGE_LABELS, type WarrantyStage } from '@/components/warranty/stage'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
 import type { DashboardCardDetails } from '@/lib/dashboard-cards'
+import { buildNextAction, type NextAction, type NextActionIcon, type NextActionTone } from '@/lib/project-next-action'
 import { formatDate } from '@/lib/format'
 import { coverAlt, type ProjectCover } from '@/lib/project-cover'
+import { formatLocation } from '@/lib/location-display'
 import { cn } from '@/lib/utils'
 
 export type CompactProjectCardData = {
@@ -20,99 +37,68 @@ export type CompactProjectCardData = {
   project_type?: string | null
   city: string
   state: string
+  /** Normalized "City, ST" for display; falls back to the stored values when absent. */
+  locationLabel?: string
   progress_percent: number | null
   completion_date: string | null
   photoUrl: string | null
   photoKind?: ProjectCover['kind']
   details: DashboardCardDetails
   warrantyEnabled: boolean
+  /** Whether this viewer plans the schedule; see `NextActionProject`. */
+  canPlanSchedule?: boolean
 }
 
-export type Panel = {
-  icon: typeof CircleArrowRight
-  title: string
-  meta: string | null
-  href?: string
-  tone: 'neutral' | 'danger' | 'success'
+export type Panel = NextAction & { Icon: LucideIcon }
+
+export const PANEL_ICONS: Record<NextActionIcon, LucideIcon> = {
+  hold: PauseCircle,
+  overdue: CircleAlert,
+  next: CircleArrowRight,
+  blocked: Hourglass,
+  schedule: CalendarPlus,
+  estimate: FileText,
+  claim: Wrench,
+  warranty: ShieldCheck,
+  completed: CircleCheck,
+  none: CircleDashed,
+  error: CircleOff,
 }
 
+/** Cards, table rows and dashboards all derive the next action from the same rules in `lib/project-next-action`. */
 export function buildPanel(p: CompactProjectCardData): Panel {
-  const { details } = p
-  if (p.status === 'on_hold') {
-    return {
-      icon: PauseCircle,
-      title: 'On hold',
-      meta: details.holdReason ?? 'No hold reason recorded',
-      tone: 'danger',
-    }
-  }
-  if (p.status === 'completed') {
-    const w = details.warranty
-    if (w) {
-      const stage = WARRANTY_STAGE_LABELS[w.stage as WarrantyStage] ?? w.stage
-      return {
-        icon: ShieldCheck,
-        title: w.milestoneLabel ? `Warranty: ${w.milestoneLabel}` : `Warranty: ${stage}`,
-        meta: w.milestoneDueOn ? `Due ${formatDate(w.milestoneDueOn)}` : stage,
-        href: `/projects/${p.id}/warranty`,
-        tone: 'success',
-      }
-    }
-    return {
-      icon: CircleCheck,
-      title: 'Project completed',
-      meta: p.warrantyEnabled ? 'Warranty not yet activated' : null,
-      href: p.warrantyEnabled ? `/projects/${p.id}/warranty` : undefined,
-      tone: 'success',
-    }
-  }
-  if (details.scheduleNotStarted) {
-    return {
-      icon: CalendarPlus,
-      title: 'Set up construction schedule',
-      meta: `${details.activityCount} ${details.activityCount === 1 ? 'activity' : 'activities'} · no dates planned yet`,
-      href: `/projects/${p.id}/schedule`,
-      tone: 'neutral',
-    }
-  }
-  const next = details.nextActivity
-  if (next) {
-    return {
-      icon: CircleArrowRight,
-      title: `Next: ${next.name}`,
-      meta: next.dueOn ? `${next.overdue ? 'Overdue since' : 'Due'} ${formatDate(next.dueOn)}` : 'No due date set',
-      href: `/projects/${p.id}/schedule`,
-      tone: next.overdue ? 'danger' : 'neutral',
-    }
-  }
-  return {
-    icon: CircleArrowRight,
-    title: details.hasSchedule ? 'All scheduled activities complete' : 'No schedule activities yet',
-    meta: null,
-    tone: 'neutral',
-  }
+  const action = buildNextAction(p, p.details)
+  return { ...action, Icon: PANEL_ICONS[action.icon] }
 }
 
-const PANEL_TONES: Record<Panel['tone'], string> = {
+const PANEL_TONES: Record<NextActionTone, string> = {
   neutral: 'bg-muted/70 text-foreground',
   danger: 'bg-red-50 text-red-900',
   success: 'bg-green-50 text-green-950',
+  muted: 'border border-dashed border-[#D6DDE5] bg-transparent text-muted-foreground',
 }
 
-const ICON_TONES: Record<Panel['tone'], string> = {
+const ICON_TONES: Record<NextActionTone, string> = {
   neutral: 'text-primary',
   danger: 'text-red-600',
   success: 'text-green-700',
+  muted: 'text-muted-foreground',
 }
 
 export function CompactProjectCard({
   project,
   footer,
   showType = false,
+  preview = false,
 }: {
   project: CompactProjectCardData
   footer?: React.ReactNode
   showType?: boolean
+  /**
+   * Inside a ProjectPreviewLayout: the card body and title select the project for preview instead of navigating,
+   * and a separate "Open project" link goes to the workspace.
+   */
+  preview?: boolean
 }) {
   const status = PROJECT_STATUS_STYLES[project.status]
   const StatusIcon = status.icon
@@ -121,16 +107,19 @@ export function CompactProjectCard({
   const progress = showProgress ? Math.round(Number(project.progress_percent)) : null
   const showHealth = project.details.behindSchedule && project.status !== 'completed' && project.status !== 'on_hold'
   const panel = buildPanel(project)
-  const PanelIcon = panel.icon
+  const PanelIcon = panel.Icon
 
   const panelBody = (
     <>
       <PanelIcon className={cn('mt-0.5 size-4 shrink-0', ICON_TONES[panel.tone])} aria-hidden="true" />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="line-clamp-2 text-sm font-medium leading-snug">{panel.title}</span>
+        <span className="sr-only">{panel.kind === 'action' ? 'Next action: ' : 'Status: '}</span>
+        <span className={cn('line-clamp-2 text-sm leading-snug', panel.kind === 'action' ? 'font-medium' : 'font-normal')}>
+          {panel.title}
+        </span>
         {panel.meta && <span className="line-clamp-2 text-xs leading-relaxed opacity-75">{panel.meta}</span>}
       </span>
-      {panel.href && (
+      {panel.href && panel.kind === 'action' && (
         <ArrowRight
           className="mt-0.5 size-4 shrink-0 opacity-60 transition-transform group-hover/next:translate-x-0.5"
           aria-hidden="true"
@@ -140,20 +129,33 @@ export function CompactProjectCard({
   )
   const panelClass = cn('flex items-start gap-2.5 rounded-xl px-3 py-2.5', PANEL_TONES[panel.tone])
 
-  return (
-    <article className="group relative flex flex-col gap-3.5 rounded-2xl border bg-card p-4 shadow-xs transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring/40">
+  const cardClass = 'group relative flex flex-col gap-3.5 rounded-2xl border bg-card p-4 shadow-xs transition-shadow hover:shadow-md'
+
+  const body = (
+    <>
       <div className="flex items-start gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="font-mono text-xs text-muted-foreground">{project.project_number}</span>
-          <h3 className="line-clamp-2 text-pretty break-words font-serif text-lg font-semibold leading-snug">
-            <Link
-              href={`/projects/${project.id}`}
-              className="outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']"
-            >
-              {project.name}
-            </Link>
+          <h3 className={cn('text-pretty break-words font-serif text-lg font-semibold leading-snug', !preview && 'line-clamp-2')}>
+            {preview ? (
+              <ProjectPreviewTrigger
+                projectId={project.id}
+                projectName={project.name}
+                className="block w-full hover:text-link"
+                labelClassName="line-clamp-2"
+              />
+            ) : (
+              <Link
+                href={`/projects/${project.id}`}
+                className="outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']"
+              >
+                {project.name}
+              </Link>
+            )}
           </h3>
-          <span className="truncate text-xs text-muted-foreground">{`${project.city}, ${project.state}`}</span>
+          <span className="truncate text-xs text-muted-foreground">
+            {project.locationLabel ?? formatLocation(project.city, project.state)}
+          </span>
           {showType && <ProjectTypeLabel type={project.project_type} className="mt-0.5" />}
         </div>
         <div className="relative aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-xl bg-muted sm:w-28">
@@ -173,7 +175,7 @@ export function CompactProjectCard({
       <div className="flex flex-wrap items-center gap-1.5">
         <span
           className={cn(
-            'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+            'inline-flex items-center gap-1 rounded-badge px-2.5 py-0.5 text-xs font-semibold',
             status.className,
           )}
         >
@@ -181,9 +183,21 @@ export function CompactProjectCard({
           {PROJECT_STATUS_LABELS[project.status]}
         </span>
         {showHealth && (
-          <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
-            Behind schedule
+          <span className="inline-flex items-center rounded-badge bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
+            Overdue activity
           </span>
+        )}
+        {preview && (
+          <Button
+            variant="view"
+            size="sm"
+            className="ml-auto"
+            render={<Link href={`/projects/${project.id}`} aria-label={`Open project ${project.name}`} />}
+            nativeButton={false}
+          >
+            Open project
+            <ArrowRight data-icon="inline-end" />
+          </Button>
         )}
       </div>
 
@@ -222,6 +236,20 @@ export function CompactProjectCard({
         )}
       </div>
       {footer}
-    </article>
+    </>
+  )
+
+  return preview ? (
+    <ProjectPreviewSurface
+      projectId={project.id}
+      className={cn(
+        cardClass,
+        'scroll-mt-24 scroll-mb-4 data-selected:border-primary data-selected:bg-link-soft/50 data-selected:shadow-md data-selected:ring-1 data-selected:ring-primary',
+      )}
+    >
+      {body}
+    </ProjectPreviewSurface>
+  ) : (
+    <article className={cn(cardClass, 'focus-within:ring-2 focus-within:ring-ring/40')}>{body}</article>
   )
 }

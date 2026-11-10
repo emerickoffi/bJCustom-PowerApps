@@ -5,14 +5,26 @@ import Link from 'next/link'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AppNav } from '@/components/app/app-nav'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { NavGroup, NavItem } from '@/lib/navigation'
 import { SIDEBAR_COOKIE, type SidebarMode } from '@/lib/sidebar'
 
 const DESKTOP_QUERY = '(min-width: 80rem)'
 
+/** "B & J Custom Homes" -> "BJ": a compact mark for the rail, since no square logo asset exists. */
+function monogram(name: string) {
+  const letters = name
+    .split(/\s+/)
+    .map((word) => word.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase())
+  return letters.slice(0, 2).join('') || name.slice(0, 1).toUpperCase()
+}
+
 export function Sidebar({
   items,
   logo,
+  brandName,
   homeLabel,
   homeHref = '/dashboard',
   defaultMode,
@@ -20,6 +32,7 @@ export function Sidebar({
 }: {
   items: NavItem[]
   logo: React.ReactNode
+  brandName: string
   homeLabel: string
   homeHref?: string
   defaultMode: SidebarMode
@@ -45,9 +58,14 @@ export function Sidebar({
 
   return (
     <aside
+      data-sidebar
       className={cn(
-        'sticky top-0 hidden h-svh shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-out lg:flex',
-        mode === 'auto' ? 'w-[4.75rem] xl:w-[17rem]' : mode === 'collapsed' ? 'w-[4.75rem]' : 'w-[17rem]',
+        'sticky top-0 hidden h-svh shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex',
+        mode === 'auto'
+          ? 'w-(--sidebar-width-collapsed) xl:w-(--sidebar-width)'
+          : mode === 'collapsed'
+            ? 'w-(--sidebar-width-collapsed)'
+            : 'w-(--sidebar-width)',
       )}
     >
       {variants.map(({ collapsed, className }) => (
@@ -55,44 +73,64 @@ export function Sidebar({
           <div
             className={cn(
               'flex h-24 shrink-0 items-center border-b border-[#D6DDE5] bg-white',
-              collapsed ? 'justify-center px-2' : 'px-7',
+              collapsed ? 'justify-center px-2' : 'px-4',
             )}
           >
-            {/* No compact logo asset exists, so the collapsed rail contains the original logo at a smaller width. */}
             <Link
               href={homeHref}
               aria-label={homeLabel}
               className={cn(
                 'block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-                collapsed ? 'w-14' : 'w-44',
-              )}
-            >
-              {logo}
-            </Link>
-          </div>
-          <div className={cn('flex-1 overflow-y-auto py-6', collapsed ? 'px-3' : 'px-4')}>
-            <AppNav items={items} collapsed={collapsed} closedGroups={closedGroups} />
-          </div>
-          <div className={cn('border-t border-sidebar-border p-3', collapsed && 'flex justify-center')}>
-            <button
-              type="button"
-              onClick={toggle}
-              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              aria-expanded={!collapsed}
-              className={cn(
-                'flex h-9 items-center gap-2 rounded-[0.625rem] px-3.5 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
-                collapsed ? 'w-9 justify-center px-0' : 'w-full',
+                !collapsed && 'w-48 max-w-full',
               )}
             >
               {collapsed ? (
-                <PanelLeftOpen className="size-4" aria-hidden="true" />
+                <span
+                  className="flex size-11 items-center justify-center rounded-nav bg-(--brand-primary) text-sm font-bold tracking-wide text-white"
+                  aria-hidden="true"
+                >
+                  {monogram(brandName)}
+                </span>
               ) : (
-                <>
-                  <PanelLeftClose className="size-4" aria-hidden="true" />
-                  Collapse
-                </>
+                logo
               )}
-            </button>
+            </Link>
+          </div>
+          <div className={cn('flex-1 overflow-y-auto overflow-x-hidden py-6', collapsed ? 'px-3' : 'px-4')}>
+            <AppNav items={items} collapsed={collapsed} closedGroups={closedGroups} />
+          </div>
+          <div className={cn('border-t border-sidebar-border', collapsed ? 'flex justify-center px-3 py-3' : 'p-4 py-3')}>
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      onClick={toggle}
+                      aria-label="Expand sidebar"
+                      aria-expanded={false}
+                      className="flex size-11 items-center justify-center rounded-nav text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                    />
+                  }
+                >
+                  <PanelLeftOpen className="size-4" aria-hidden="true" />
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  Expand sidebar
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                type="button"
+                onClick={toggle}
+                aria-label="Collapse sidebar"
+                aria-expanded
+                className="flex h-11 w-full items-center gap-3 rounded-nav px-3.5 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+              >
+                <PanelLeftClose className="size-4" aria-hidden="true" />
+                Collapse
+              </button>
+            )}
           </div>
         </div>
       ))}

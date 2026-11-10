@@ -22,7 +22,6 @@ import { ArrowUpRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
-import { FLOATING_CORNER_BOTTOM, FLOATING_CORNER_RIGHT } from '@/lib/floating-actions'
 import {
   ASSISTANT_MODULE_LABELS,
   isSafeAppPath,
@@ -117,45 +116,26 @@ function promptFor(key: QuickActionKey, project: AssistantProject | null) {
 let idCounter = 0
 const nextId = () => `m${++idCounter}`
 
-export function AssistantLauncher({ configured }: { configured: boolean }) {
-  const [open, setOpen] = useState(false)
-
+/** The AI chat drawer. The shared launcher (components/app/assistant-dock.tsx) opens it. */
+export function AssistantSheet({
+  configured,
+  open,
+  onOpenChange,
+}: {
+  configured: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   return (
-    <>
-      <div data-floating-control className={cn('group fixed z-40 print:hidden', FLOATING_CORNER_BOTTOM, FLOATING_CORNER_RIGHT)}>
-        <span
-          role="presentation"
-          className="pointer-events-none absolute right-full top-1/2 mr-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-brand-deep px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-has-[:focus-visible]:opacity-100"
-        >
-          Ask B &amp; J AI
-        </span>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Ask B & J AI"
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          className={cn(
-            'flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg ring-1 ring-black/5 transition-all',
-            'hover:-translate-y-0.5 hover:bg-brand-deep hover:shadow-xl',
-            'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30',
-            open && 'pointer-events-none scale-90 opacity-0',
-          )}
-        >
-          <Sparkles className="size-6" aria-hidden="true" />
-        </button>
-      </div>
-
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent
-          side="right"
-          showCloseButton={false}
-          className="gap-0 overflow-hidden border-l bg-background p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[420px]"
-        >
-          <AssistantPanel configured={configured} onClose={() => setOpen(false)} />
-        </SheetContent>
-      </Sheet>
-    </>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="gap-0 overflow-hidden border-l bg-background p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[420px]"
+      >
+        <AssistantPanel configured={configured} onClose={() => onOpenChange(false)} />
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -369,7 +349,7 @@ function ContextBar({ project, module }: { project: AssistantProject | null; mod
         <span className="flex-1 text-sm font-medium text-foreground">All accessible projects</span>
       )}
       {pageLabel && (
-        <span className="shrink-0 rounded-full border border-primary/20 bg-card px-2 py-0.5 text-xs font-medium text-primary">
+        <span className="shrink-0 rounded-badge border border-primary/20 bg-card px-2 py-0.5 text-xs font-medium text-primary">
           <span className="sr-only">Current page: </span>
           {pageLabel}
         </span>
@@ -411,7 +391,7 @@ function WelcomeState({
                   type="button"
                   onClick={() => onSuggestion(s)}
                   disabled={!configured}
-                  className="rounded-full border bg-card px-3 py-1.5 text-left text-sm text-foreground shadow-xs transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-control border bg-card px-3 py-1.5 text-left text-sm text-foreground shadow-xs transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {s}
                 </button>
@@ -532,7 +512,7 @@ function MessageBubble({
               {message.health && (
                 <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                   <span>Project health for {message.health.project}:</span>
-                  <span className={cn('rounded-full border px-2 py-0.5 font-semibold', HEALTH_STYLES[message.health.indicator])}>
+                  <span className={cn('rounded-badge border px-2 py-0.5 font-semibold', HEALTH_STYLES[message.health.indicator])}>
                     {message.health.label}
                   </span>
                 </p>
@@ -547,7 +527,7 @@ function MessageBubble({
                       type="button"
                       onClick={() => onChooseProject(name)}
                       disabled={!actionable}
-                      className="rounded-full border bg-card px-3 py-1.5 text-left text-sm text-foreground shadow-xs transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-control border bg-card px-3 py-1.5 text-left text-sm text-foreground shadow-xs transition-colors hover:border-primary/40 hover:bg-sage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {name}
                     </button>

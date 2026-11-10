@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, FileText } from 'lucide-react'
+import { PageHeader } from '@/components/shared/page-header'
 import { z } from 'zod'
 import { requireSubcontractor } from '@/lib/subcontractor-session'
 import { createClient } from '@/lib/supabase/server'
@@ -58,17 +58,19 @@ export default async function SubQuotePage({ params }: { params: Promise<{ reque
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href="/sub/quotes" className="text-sm text-muted-foreground hover:text-foreground">All quote requests</Link>
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">{row.title}</h1>
-        <p className="text-sm text-muted-foreground">{row.project_name}{row.trade ? ` · ${row.trade}` : ''}</p>
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <ResponseBadge state={state} />
-          <span className="text-xs text-muted-foreground">
+      <PageHeader
+        icon={FileText}
+        title={row.title}
+        eyebrow={`${row.project_name}${row.trade ? ` · ${row.trade}` : ''}`}
+        titleAddon={<ResponseBadge state={state} />}
+        backHref="/sub/quotes"
+        backLabel="All quote requests"
+        meta={
+          <span>
             {row.status === 'open' ? `Due ${formatDeadline(row.response_deadline, row.deadline_timezone)}` : row.status === 'closed' ? 'Closed to responses' : 'Cancelled by builder'}
           </span>
-        </div>
-      </div>
+        }
+      />
 
       {decision === 'selected' ? (
         <p className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-foreground">

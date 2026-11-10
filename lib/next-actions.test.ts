@@ -9,8 +9,6 @@ function state(partial: Partial<ProjectActionState> = {}): ProjectActionState {
     projectId: 'p1',
     canManage: true,
     features: ALL,
-    hasProjectManager: true,
-    activityCount: 10,
     lateActivityCount: 0,
     reviewEstimateIds: [],
     signatureRequests: [],
@@ -28,23 +26,53 @@ test('actions are prioritized and limited to three', () => {
   const { items, hiddenCount } = buildProjectNextActions(
     state({
       lateActivityCount: 2,
-      hasProjectManager: false,
       reviewEstimateIds: ['e1'],
       openIssueCount: 1,
       firstOpenIssueId: 'i1',
+      signatureRequests: [{ document_id: 'd1', status: 'awaiting_signatures', created_at: '2026-10-01' }],
     }),
   )
-  assert.deepEqual(items.map((a) => a.key), ['late-activities', 'assign-manager', 'estimate-review'])
+  assert.deepEqual(items.map((a) => a.key), ['late-activities', 'estimate-review', 'open-issues'])
   assert.equal(hiddenCount, 1)
-  assert.equal(items[2].href, '/estimates/e1')
+  assert.equal(items[1].href, '/estimates/e1')
+})
+
+test('setup tasks are not next actions; they live in the setup checklist', () => {
+  const keys = buildProjectNextActions(state({ status: 'preconstruction' })).items.map((a) => a.key)
+  assert.ok(!keys.includes('assign-manager'))
+  assert.ok(!keys.includes('schedule-setup'))
+})
+
+test('undated open work is a planning step, listed after every review', () => {
+  const only = buildProjectNextActions(state({ status: 'under_construction', undatedOpenActivityCount: 3 }))
+  assert.deepEqual(only.items.map((a) => a.key), ['schedule-dates'])
+  assert.equal(only.items[0].title, 'Schedule dates needed')
+  assert.equal(only.items[0].tone, 'setup')
+  assert.equal(only.items[0].href, '/projects/p1/schedule')
+  assert.match(only.items[0].description, /^3 open activities have no planned dates/)
+
+  const busy = buildProjectNextActions(
+    state({ undatedOpenActivityCount: 1, lateActivityCount: 1, reviewEstimateIds: ['e1'], openIssueCount: 1, firstOpenIssueId: 'i1' }),
+  )
+  assert.deepEqual(busy.items.map((a) => a.key), ['late-activities', 'estimate-review', 'open-issues'])
+  assert.equal(busy.hiddenCount, 1)
+})
+
+test('schedule dates are not asked on closed projects, of non-managers, or with scheduling off', () => {
+  const undated = { undatedOpenActivityCount: 2 }
+  for (const status of ['completed', 'cancelled']) {
+    assert.deepEqual(buildProjectNextActions(state({ ...undated, status })).items, [])
+  }
+  assert.deepEqual(buildProjectNextActions(state({ ...undated, canManage: false })).items, [])
+  assert.deepEqual(buildProjectNextActions(state({ ...undated, features: { ...ALL, schedule: false } })).items, [])
+  assert.deepEqual(buildProjectNextActions(state({ ...undated, scope: 'mine', isProjectManager: false })).items, [])
+  assert.deepEqual(buildProjectNextActions(state({ undatedOpenActivityCount: 0 })).items, [])
 })
 
 test('management-only actions are hidden from staff who cannot manage', () => {
-  const { items } = buildProjectNextActions(
-    state({ canManage: false, hasProjectManager: false, reviewEstimateIds: ['e1'], activityCount: 0, openIssueCount: 3 }),
-  )
+  const { items } = buildProjectNextActions(state({ canManage: false, reviewEstimateIds: ['e1'], openIssueCount: 3 }))
   assert.deepEqual(items.map((a) => a.key), ['open-issues'])
-  assert.equal(items[0].href, '/projects/p1#walkthroughs-heading')
+  assert.equal(items[0].href, '/projects/p1/walkthroughs')
 })
 
 test('disabled features suppress their actions', () => {
@@ -100,12 +128,18 @@ test('homeowner actions respect disabled features', () => {
   assert.deepEqual(actions, [])
 })
 
-test('schedule setup is a readiness step only for approved, active jobs', () => {
-  const keys = (status: string) => buildProjectNextActions(state({ activityCount: 0, status })).items.map((a) => a.key)
-  assert.ok(keys('preconstruction').includes('schedule-setup'))
-  assert.ok(!keys('lead').includes('schedule-setup'))
-  assert.ok(!keys('consultation').includes('schedule-setup'))
-  assert.ok(!keys('completed').includes('schedule-setup'))
+test('my work hides project-wide reviews unless the viewer manages the project', () => {
+  const shared = {
+    scope: 'mine' as const,
+    reviewEstimateIds: ['e1'],
+    signatureRequests: [{ document_id: 'd1', status: 'declined', created_at: '2026-10-01' }],
+    openIssueCount: 1,
+    firstOpenIssueId: 'i1',
+  }
+  const other = buildProjectNextActions(state({ ...shared, isProjectManager: false }))
+  assert.deepEqual(other.items.map((a) => a.key), ['open-issues'])
+  const pm = buildProjectNextActions(state({ ...shared, isProjectManager: true }))
+  assert.deepEqual(pm.items.map((a) => a.key), ['signature-problems', 'estimate-review', 'open-issues'])
 })
 
 test('completed jobs point to warranty only when the warranty module is on', () => {

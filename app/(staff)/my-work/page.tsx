@@ -8,7 +8,7 @@ import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
 import { todayIso, type ActivityStatus } from '@/lib/schedule'
 import { assignedProjectsFilter, splitAssignedActivities } from '@/lib/my-work'
-import { EmptyState, PageHeader, SectionHeading } from '@/components/shared/page-header'
+import { EmptyState, PageHeader, SectionHeading, pageLayout } from '@/components/shared/page-header'
 import { CompactProjectCard } from '@/components/dashboard/compact-project-card'
 import { WorkItemList, type WorkItem } from '@/components/my-work/work-item-list'
 import { ACTIVITY_STATUS_LABELS } from '@/lib/schedule'
@@ -69,7 +69,7 @@ export default async function MyWorkPage() {
           .order('planned_end', { ascending: true, nullsFirst: false })
           .limit(60)
       : Promise.resolve({ data: [] as ActivityRow[] }),
-    features.walkthroughs && features.issues
+    features.issues
       ? supabase
           .from('project_issues')
           .select('id, project_id, item_label, category, status, reported_at, projects(name, project_number)')
@@ -119,14 +119,13 @@ export default async function MyWorkPage() {
   ]
   const upcomingItems = upcoming.map((a) => activityItem(a, false))
   const showActivities = features.schedule
-  const showAttention = features.schedule || (features.walkthroughs && features.issues)
+  const showAttention = features.schedule || features.issues
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader
         icon={CalendarCheck2}
         title="My Work"
-        description="Your assigned projects, upcoming activities, and items needing attention."
       />
 
       <section aria-labelledby="my-projects" className="flex flex-col gap-4">

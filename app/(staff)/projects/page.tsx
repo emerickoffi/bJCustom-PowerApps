@@ -6,6 +6,10 @@ import { DirectoryViews } from '@/components/shared/directory-views'
 import { DirectorySort } from '@/components/shared/directory-sort'
 import { DirectoryPagination } from '@/components/shared/directory-pagination'
 import { ProjectTable } from '@/components/projects/project-table'
+import { ProjectPreviewLayout } from '@/components/projects/project-preview-layout'
+import { ProjectColumns, ProjectColumnsMenu } from '@/components/projects/project-columns'
+import { PREVIEW_PARAM } from '@/lib/project-preview'
+import { PROJECT_COLUMNS_COOKIE, parseProjectColumns } from '@/lib/project-columns'
 import {
   DIRECTORY_VIEW_COOKIE,
   PROJECT_SORTS,
@@ -23,7 +27,7 @@ import { FolderKanban, Home, Plus, UserRound, FolderKanban as FolderKanbanIcon }
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader, EmptyState } from '@/components/shared/page-header'
+import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 import { CompactProjectCard } from '@/components/dashboard/compact-project-card'
 import { getOrgFeatures } from '@/lib/features'
 import { getDashboardCardDetails } from '@/lib/dashboard-cards'
@@ -31,6 +35,7 @@ import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { ListFilters } from '@/components/shared/list-filters'
 import { ALL_PROJECT_STATUSES, PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, type ProjectStatus } from '@/lib/domain'
 import { sanitizeSearch } from '@/lib/format'
+import { canonicalCityLabels, formatLocation } from '@/lib/location-display'
 import { cn } from '@/lib/utils'
 import { PROJECT_SUMMARY_COLUMNS, getProfileNames, type ProjectSummary } from '@/lib/queries'
 
@@ -60,7 +65,9 @@ export default async function ProjectsPage({
   const sort = parseSort(params.sort, PROJECT_SORTS, 'updated')
   const page = parsePage(params.page)
   const urlView = parseView(params.view)
-  const initialView = urlView ?? parseView((await cookies()).get(DIRECTORY_VIEW_COOKIE.projects)?.value)
+  const cookieJar = await cookies()
+  const initialView = urlView ?? parseView(cookieJar.get(DIRECTORY_VIEW_COOKIE.projects)?.value)
+  const optionalColumns = parseProjectColumns(cookieJar.get(PROJECT_COLUMNS_COOKIE)?.value)
 
   const supabase = await createClient()
   const { data: locationRows } = await supabase
@@ -81,6 +88,7 @@ export default async function ProjectsPage({
     if (!locationMap.has(key)) locationMap.set(key, { city, state })
   }
   const locations = [...locationMap.values()]
+  const cityLabels = canonicalCityLabels(locationRows ?? [])
   const stateFilter = stateNames.get(params.state?.trim().toLowerCase() ?? '') ?? ''
   const cityFilter =
     locations.find(
@@ -141,14 +149,15 @@ export default async function ProjectsPage({
     photoKind: photos.get(p.id)?.kind ?? null,
     details: cardDetails.get(p.id)!,
     warrantyEnabled: features.warranty,
+    canPlanSchedule: manager,
     managerName: p.project_manager_id ? (managerNames.get(p.project_manager_id) ?? null) : null,
+    locationLabel: formatLocation(p.city, p.state, cityLabels),
   }))
 
   return (
-    <div data-page-width="wide" className="flex min-w-0 flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader icon={FolderKanbanIcon}
         title="Projects"
-        description="Every custom home and renovation, from first consultation to final walkthrough."
         actions={
           manager && (
             <Button size="lg" render={<Link href="/projects/new" />} nativeButton={false}>
@@ -175,18 +184,28 @@ export default async function ProjectsPage({
         location={{ options: locations, defaultState: stateFilter, defaultCity: cityFilter }}
         clearHref={filtered ? directoryHref('/projects', { sort: stateParams.sort, view: urlView }) : undefined}
         preserve={{ sort: stateParams.sort, view: urlView }}
+        carryParams={[PREVIEW_PARAM]}
+        autoApply
+        groupAdditional
       />
+      <ProjectPreviewLayout projects={rows.map((p) => ({ id: p.id, name: p.name, project_number: p.project_number }))}>
       {projects.length ? (
         <div className="flex flex-col gap-4">
+        <ProjectColumns initial={optionalColumns}>
         <DirectoryViews
           module="projects"
           initialView={initialView}
           desktopDefault="cards"
           summary={`Showing ${range.start}–${range.end} of ${total} ${total === 1 ? 'project' : 'projects'}`}
-          controls={<DirectorySort value={sort} options={sortOptions(PROJECT_SORTS)} />}
+          controls={
+            <>
+              <ProjectColumnsMenu />
+              <DirectorySort value={sort} options={sortOptions(PROJECT_SORTS)} />
+            </>
+          }
           table={<ProjectTable rows={rows} />}
           cards={
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 xl:group-data-preview-open/preview:grid-cols-1 xl:group-data-preview-open/preview:@2xl:grid-cols-2 xl:group-data-preview-open/preview:@5xl:grid-cols-3">
           {rows.map((row) => {
             const p = row
             const clientName = p.primary_client
@@ -198,6 +217,7 @@ export default async function ProjectsPage({
                 key={p.id}
                 project={row}
                 showType
+                preview
                 footer={
                   <dl className="grid grid-cols-2 gap-4 border-t pt-3">
                     <div className="flex min-w-0 flex-col gap-0.5">
@@ -232,6 +252,7 @@ export default async function ProjectsPage({
         </div>
           }
         />
+        </ProjectColumns>
           <DirectoryPagination page={page} pageCount={pageCount} hrefFor={hrefFor} label="Projects pagination" />
         </div>
       ) : (
@@ -260,6 +281,7 @@ export default async function ProjectsPage({
           }
         />
       )}
+      </ProjectPreviewLayout>
     </div>
   )
 }

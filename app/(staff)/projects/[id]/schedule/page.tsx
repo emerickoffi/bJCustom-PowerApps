@@ -6,9 +6,7 @@ import {
   CalendarRange,
   ListChecks,
   Lock,
-  MapPin,
   TrendingUp,
-  CalendarDays as CalendarDaysIcon,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -23,11 +21,12 @@ import {
   ACTIVITY_COLUMNS,
   findDateConflicts,
   isOverdue,
+  type RelatedIssueLink,
   type ScheduleActivity,
   type ScheduleDependency,
   type SchedulePhase,
 } from '@/lib/schedule'
-import { formatAddress, formatDate } from '@/lib/format'
+import { formatDate } from '@/lib/format'
 import { RECENT_HISTORY_LIMIT, presentEvent } from '@/lib/activity-history'
 import { fetchRecentHistory, getOrgTimeZone } from '@/lib/activity-history-server'
 import { ActivityHistoryCard } from '@/components/schedule/activity-history-card'
@@ -126,6 +125,15 @@ export default async function SchedulePage({
   const activities = (activitiesRes.data ?? []) as ScheduleActivity[]
   const dependencies = (depsRes.data ?? []) as ScheduleDependency[]
   const phases = (phasesRes.data ?? []) as SchedulePhase[]
+  const { data: issueLinks } = await supabase
+    .from('project_issue_schedule_activities')
+    .select('activity_id, project_issues(id, category, item_label)')
+    .eq('project_id', id)
+  const relatedIssues: Record<string, RelatedIssueLink[]> = {}
+  for (const link of (issueLinks ?? []) as unknown as { activity_id: string; project_issues: { id: string; category: string; item_label: string } | null }[]) {
+    if (!link.project_issues) continue
+    ;(relatedIssues[link.activity_id] ??= []).push({ id: link.project_issues.id, label: link.project_issues.item_label, category: link.project_issues.category })
+  }
   const baselines = baselinesRes.data ?? []
   const staffOptions = staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))
   const nameFor = (uid: string | null) => {
@@ -143,7 +151,6 @@ export default async function SchedulePage({
     return d && (!max || d > max) ? d : max
   }, null)
 
-  const address = formatAddress(project)
   const latest = baselines[0]
   const baselineEnd = latest
     ? ((latest.snapshot as { planned_end: string | null }[]).reduce<string | null>(
@@ -157,24 +164,9 @@ export default async function SchedulePage({
       : null
 
   return (
-    <div data-page-width="wide" className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
-        icon={CalendarDaysIcon}
-        eyebrow={
-          <span className="flex min-w-0 flex-wrap items-center gap-x-2 normal-case tracking-normal">
-            <span className="truncate font-medium text-brand-deep">{project.name}</span>
-            {project.project_number && <span className="font-mono">{project.project_number}</span>}
-          </span>
-        }
-        title="Construction Schedule"
-        description={
-          address ? (
-            <span className="flex items-center gap-1.5">
-              <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
-              {address}
-            </span>
-          ) : undefined
-        }
+        title="Construction schedule"
         actions={manager && activities.length > 0 && <InitializeScheduleButton projectId={project.id} label="Add missing template activities" />}
       />
 
@@ -281,6 +273,7 @@ export default async function SchedulePage({
             canManage={manager}
             assignmentAvailability={assignmentData.availability}
             assignments={assignmentData.assignments}
+            relatedIssues={relatedIssues}
             companies={assignmentData.companies}
             acceptsNewAssignments={assignmentData.acceptsNew}
             initialActivityId={typeof focusActivity === 'string' ? focusActivity : null}

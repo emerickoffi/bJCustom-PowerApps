@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUnassignedProjectOptions } from '@/lib/project-client-assignment'
 import { loadNewProjectFormData } from '@/lib/project-form-data'
 import { createClientAction } from '@/app/actions/clients'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { ClientForm } from '@/components/clients/client-form'
 import { UserRoundPlus as UserRoundPlusIcon } from 'lucide-react'
 
@@ -21,12 +21,11 @@ export default async function NewClientPage() {
       ])
     : [null, undefined, null]
   return (
-    <div className="flex w-full max-w-4xl flex-col gap-6">
+    <div className={pageLayout('form')}>
       <PageHeader icon={UserRoundPlusIcon}
         backHref="/clients"
         backLabel="Clients"
         title="Create client"
-        description="Add the homeowner's contact details and mailing address. A client number is assigned automatically when you save."
       />
       <ClientForm
         action={createClientAction}

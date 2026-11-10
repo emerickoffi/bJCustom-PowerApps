@@ -9,11 +9,10 @@ export const metadata: Metadata = { title: 'Import contacts' }
 export default async function ImportContactsPage() {
   await requireManager()
   return (
-    <PageContainer width="narrow">
+    <PageContainer width="form">
       <PageHeader
         icon={FileUp}
         title="Import contacts"
-        description="Upload a CSV, map its columns, review every row, then import. Nothing is saved until you confirm."
         backHref="/contacts?view=people"
         backLabel="Contacts"
       />

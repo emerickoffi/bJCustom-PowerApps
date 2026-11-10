@@ -4,7 +4,7 @@ import { requireManager } from '@/lib/session'
 import { clientDisplayName, getEstimate, getEstimateFamily } from '@/lib/estimate-queries'
 import { updateEstimateAction } from '@/app/actions/estimates'
 import { centsToInput, isEditableStatus } from '@/lib/estimates'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { EstimateForm } from '@/components/estimates/estimate-form'
 import { FilePen as FilePenIcon } from 'lucide-react'
 
@@ -20,12 +20,12 @@ export default async function EditEstimatePage({ params }: { params: Promise<{ i
   if (!isEditableStatus(estimate.status) || family[0]?.id !== estimate.id) redirect(`/estimates/${id}`)
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('detail')}>
       <PageHeader icon={FilePenIcon}
         backHref={`/estimates/${id}`}
         backLabel="Estimate"
         title={`Edit ${estimate.estimate_number} · Rev ${estimate.revision}`}
-        description={`${estimate.project?.name ?? 'Project'}${clientDisplayName(estimate.client) ? ` · ${clientDisplayName(estimate.client)}` : ''}`}
+        meta={`${estimate.project?.name ?? 'Project'}${clientDisplayName(estimate.client) ? ` · ${clientDisplayName(estimate.client)}` : ''}`}
       />
       <EstimateForm
         action={updateEstimateAction.bind(null, id)}

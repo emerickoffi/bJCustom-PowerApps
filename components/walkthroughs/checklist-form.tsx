@@ -235,7 +235,7 @@ export function ChecklistForm({
                   </span>
                   <span className="flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground">
                     {issues > 0 && (
-                      <span className="rounded-full bg-warning/15 px-1.5 py-0.5 font-medium text-warning-foreground">{issues}</span>
+                      <span className="rounded-badge bg-warning/15 px-1.5 py-0.5 font-medium text-warning-foreground">{issues}</span>
                     )}
                     {`${done}/${c.items.length}`}
                   </span>

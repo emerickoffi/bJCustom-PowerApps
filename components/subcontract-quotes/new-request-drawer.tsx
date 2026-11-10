@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Plus, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { useLauncherAction } from '@/components/app/floating-actions'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { RequestForm } from '@/components/subcontract-quotes/request-form'
 import { CurrencyPanel } from '@/components/subcontract-quotes/currency-panel'
@@ -59,6 +60,8 @@ export function NewQuoteRequestDrawer({ projectId, projectName, currency, initia
     return () => window.removeEventListener('beforeunload', warn)
   }, [open, dirty])
 
+  useLauncherAction({ id: 'quote-request', label: 'New quote request', icon: 'quote', onSelect: () => setOpen(true) })
+
   const onSent = useCallback(() => {
     close()
     toast.success('Quote request sent.')
@@ -76,7 +79,7 @@ export function NewQuoteRequestDrawer({ projectId, projectName, currency, initia
           e.preventDefault()
           setOpen(true)
         }}
-        className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        className="inline-flex h-9 items-center gap-2 rounded-md border border-action-border bg-action font-semibold text-action-foreground hover:bg-action-hover active:bg-action-pressed px-4 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <Plus className="size-4" aria-hidden="true" />
         New quote request

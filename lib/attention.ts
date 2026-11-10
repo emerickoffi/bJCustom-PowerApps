@@ -58,6 +58,7 @@ type FeatureFlags = {
   e_signatures: boolean
   daily_logs?: boolean
   subcontractors?: boolean
+  rfis?: boolean
 }
 
 function clip(text: string, max = 140): string {
@@ -85,19 +86,24 @@ export function notificationFeatureEnabled(kind: string, features: FeatureFlags)
   if (WARRANTY_KINDS.has(kind)) return features.warranty
   if (kind === 'signature_request') return features.documents && features.e_signatures
   if (kind === QUALIFICATION_KIND) return features.subcontractors !== false
+  // Questions (RFIs) are off unless the organization turned them on, so their notices hide with the feature.
+  if (kind === RFI_KIND) return features.rfis === true
   return true
 }
 
 const QUALIFICATION_KIND = 'subcontractor_qualification'
+const RFI_KIND = 'rfi'
 
 function issueTypeFor(kind: string): string {
   if (WARRANTY_KINDS.has(kind)) return 'Warranty'
   if (kind === 'signature_request') return 'Documents'
   if (kind === QUALIFICATION_KIND) return 'Qualification'
+  if (kind === RFI_KIND) return 'Question (RFI)'
   return 'Task'
 }
 
 function actionLabelFor(n: AttentionNotification): string {
+  if (n.kind === RFI_KIND) return 'Open question'
   if (n.kind === QUALIFICATION_KIND) return 'Review qualification'
   if (n.kind === 'warranty_claim') return 'Review claim'
   if (WARRANTY_KINDS.has(n.kind)) return 'Open warranty'

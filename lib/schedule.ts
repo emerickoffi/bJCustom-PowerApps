@@ -44,6 +44,7 @@ export type ScheduleActivity = {
 }
 
 export type ScheduleDependency = { id: string; predecessor_id: string; successor_id: string }
+export type RelatedIssueLink = { id: string; label: string; category: string }
 
 /**
  * Activities a builder may include per project. They are intentionally not schedule template rows,
@@ -77,6 +78,20 @@ export function todayIso(): string {
 /** An activity is late when its planned finish has passed without being completed. */
 export function isOverdue(a: Pick<ScheduleActivity, 'status' | 'planned_end'>, today = todayIso()): boolean {
   return !!a.planned_end && a.planned_end < today && a.status !== 'completed' && a.status !== 'skipped'
+}
+
+/** One label for the planning step in the project list and its preview, matching the wording of the Overview schedule snapshot. */
+export const SCHEDULE_DATES_NEEDED = 'Schedule dates needed'
+
+/**
+ * Open activities waiting for planned dates, counted only while none of the open work is dated.
+ * A partly dated schedule returns 0: it already has a next activity, so its gaps are not a planning blocker.
+ */
+export function undatedOpenActivityCount(
+  activities: readonly { status: string; planned_start: string | null; planned_end: string | null }[],
+): number {
+  const open = activities.filter((a) => a.status !== 'completed' && a.status !== 'skipped')
+  return open.some((a) => a.planned_start || a.planned_end) ? 0 : open.length
 }
 
 export type DependencyConflict = { predecessor: ScheduleActivity; successor: ScheduleActivity }

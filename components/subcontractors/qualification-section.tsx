@@ -275,7 +275,7 @@ export function QualificationSection(props: Props) {
                             {approved}/{g.items.length} approved
                           </span>
                           {attention > 0 && (
-                            <span className="rounded-full bg-warning/15 px-2 py-0.5 font-medium text-warning-foreground tabular-nums">
+                            <span className="rounded-badge bg-warning/15 px-2 py-0.5 font-medium text-warning-foreground tabular-nums">
                               {attention} need attention
                             </span>
                           )}
@@ -399,7 +399,7 @@ function ChecklistRow({
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-foreground">{item.title}</span>
-          <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', style.className)}>{style.label}</span>
+          <span className={cn('rounded-badge px-2 py-0.5 text-[11px] font-medium', style.className)}>{style.label}</span>
           <span className="text-[11px] text-muted-foreground">{APPLICABILITY_LABELS[item.applicability]}</span>
           {item.restricted && (
             <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">

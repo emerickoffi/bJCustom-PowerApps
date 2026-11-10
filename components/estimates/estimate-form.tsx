@@ -240,7 +240,7 @@ export function EstimateForm({
             {isNew && <p className="text-xs text-muted-foreground sm:col-span-2">Estimate number assigned when saved.</p>}
             {!isNew && defaults.is_demo && (
               <p className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2">
-                <span className="rounded-full bg-champagne-soft px-2 py-0.5 font-medium text-warning">Demo data</span>
+                <span className="rounded-badge bg-champagne-soft px-2 py-0.5 font-medium text-warning">Demo data</span>
                 This estimate stays labeled as demo / sample data.
               </p>
             )}

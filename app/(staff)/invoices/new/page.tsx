@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { requireManager } from '@/lib/session'
 import { getInvoiceAccess } from '@/lib/invoice-access'
 import { getInvoiceFormOptions } from '@/lib/invoice-form-data'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { InvoiceForm } from '@/components/invoices/invoice-form'
 
 export const metadata: Metadata = { title: 'New invoice' }
@@ -23,11 +23,10 @@ export default async function NewInvoicePage({
   const back = preselected ? `/projects/${preselected}` : '/invoices'
 
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-8">
+    <div className={pageLayout('form')}>
       <PageHeader
         icon={Receipt}
         title="New invoice"
-        description="Saved as a draft. Homeowners see it only after you issue and share it."
         backHref={back}
         backLabel={preselected ? 'Back to project' : 'Back to invoices'}
       />

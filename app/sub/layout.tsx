@@ -17,7 +17,7 @@ export default async function SubLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <header className="sticky top-0 z-30 border-b border-border/70 bg-card/90 backdrop-blur-md">
-        <div className="mx-auto flex h-16 w-full max-w-2xl items-center justify-between gap-3 px-4">
+        <div className="mx-auto flex h-14 w-full max-w-4xl items-center justify-between gap-3 px-(--page-gutter-x) sm:h-16">
           <Link href="/sub" className="flex min-w-0 items-center gap-2">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <HardHat className="size-5" aria-hidden="true" />
@@ -38,8 +38,8 @@ export default async function SubLayout({ children }: { children: React.ReactNod
           </form>
         </div>
       </header>
-      <FloatingCameraProvider placement="corner">
-        <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-6">{children}</main>
+      <FloatingCameraProvider>
+        <main className="mx-auto flex w-full min-w-0 max-w-4xl flex-1 flex-col gap-5 px-(--page-gutter-x) pb-[calc(5rem+env(safe-area-inset-bottom))] pt-(--page-gutter-top) md:gap-6">{children}</main>
       </FloatingCameraProvider>
     </div>
   )

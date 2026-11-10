@@ -8,7 +8,7 @@ import {
   type ResponseState,
 } from '@/lib/subcontract-quotes'
 
-const pill = 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium'
+const pill = 'inline-flex items-center rounded-badge px-2 py-0.5 text-xs font-medium'
 
 const REQUEST_TONES: Record<RequestStatus, string> = {
   draft: 'bg-muted text-muted-foreground',

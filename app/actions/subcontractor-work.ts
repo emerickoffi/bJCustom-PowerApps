@@ -157,5 +157,9 @@ export async function assignIssueSubcontractorAction(_prev: ActionState, formDat
   if (error) return { error: dbError(error) }
   if (!data?.length) return { error: 'This issue could not be updated.' }
   revalidatePath(`/projects/${projectId}/issues/${issueId}`)
-  return { success: companyId ? 'Subcontractor assigned and notified.' : 'Subcontractor removed.' }
+  return {
+    success: companyId
+      ? 'Subcontractor assigned. People at this company with portal access see it under Correction Requests.'
+      : 'Subcontractor removed.',
+  }
 }

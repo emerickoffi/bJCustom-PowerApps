@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, FileText } from 'lucide-react'
+import { PageHeader } from '@/components/shared/page-header'
 import { requireSubcontractor } from '@/lib/subcontractor-session'
 import { createClient } from '@/lib/supabase/server'
 import { ResponseBadge } from '@/components/subcontract-quotes/status-badges'
@@ -33,18 +34,20 @@ export default async function SubQuotesPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href="/sub" className="text-sm text-muted-foreground hover:text-foreground">Back to my work</Link>
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">Quote requests</h1>
-        <p className="text-sm text-muted-foreground">Price scopes of work the builder has invited your company to quote.</p>
-      </div>
+      <PageHeader
+        icon={FileText}
+        title="Quote requests"
+        count={{ value: rows.length, noun: 'request' }}
+        backHref="/sub"
+        backLabel="All work"
+      />
       {rows.length ? (
         <ul className="flex flex-col gap-2">
           {rows.map((r) => {
             const state = responseState(r.invitation_status, r.revision_requested_at, r.last_submitted_at)
             return (
               <li key={r.invitation_id}>
-                <Link href={`/sub/quotes/${r.request_id}`} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:bg-sage/30">
+                <Link href={`/sub/quotes/${r.request_id}`} className="flex items-center gap-3 rounded-surface border border-border bg-card px-4 py-3 hover:bg-sage/30">
                   <span className="flex min-w-0 flex-1 flex-col gap-1">
                     <span className="font-medium text-foreground">{r.title}</span>
                     <span className="text-xs text-muted-foreground">{r.project_name}{r.trade ? ` · ${r.trade}` : ''}</span>

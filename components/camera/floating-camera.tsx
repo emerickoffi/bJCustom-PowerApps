@@ -12,7 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { FLOATING_ABOVE_ASSISTANT, FLOATING_CORNER_SECONDARY, type FloatingPlacement } from '@/lib/floating-actions'
+import { useLauncherAction, useLauncherRegistry } from '@/components/app/floating-actions'
+import { FLOATING_CORNER_BOTTOM, FLOATING_CORNER_RIGHT } from '@/lib/floating-actions'
 
 /**
  * A photo destination owned by an existing module uploader. The floating camera never
@@ -49,7 +50,7 @@ type Registry = { upsert: (target: CameraTarget) => void; remove: (id: string) =
 
 const FloatingCameraContext = createContext<Registry | null>(null)
 
-export function FloatingCameraProvider({ placement, children }: { placement: FloatingPlacement; children: React.ReactNode }) {
+export function FloatingCameraProvider({ children }: { children: React.ReactNode }) {
   const [targets, setTargets] = useState<CameraTarget[]>([])
   const upsert = useCallback((target: CameraTarget) => {
     setTargets((prev) => {
@@ -66,7 +67,7 @@ export function FloatingCameraProvider({ placement, children }: { placement: Flo
   return (
     <FloatingCameraContext.Provider value={registry}>
       {children}
-      <FloatingCameraButton targets={targets} placement={placement} />
+      <FloatingCameraButton targets={targets} />
     </FloatingCameraContext.Provider>
   )
 }
@@ -156,10 +157,39 @@ function useInlineControlsInView(targets: CameraTarget[]) {
   return inView
 }
 
-function FloatingCameraButton({ targets, placement }: { targets: CameraTarget[]; placement: FloatingPlacement }) {
-  const [open, setOpen] = useState(false)
+/**
+ * In the staff shell the camera offers its photo actions as pills on the shared launcher, for the most recent
+ * destination and only while that uploader's own inline controls are off screen. Elsewhere (the subcontractor
+ * portal) it keeps its own corner button.
+ */
+function FloatingCameraButton({ targets }: { targets: CameraTarget[] }) {
+  const launcher = useLauncherRegistry()
   const inView = useInlineControlsInView(targets)
   const inlineVisible = targets.some((t) => inView.has(t.id))
+  const target = launcher && !inlineVisible ? targets.findLast((t) => !t.disabled) : undefined
+
+  useLauncherAction(
+    target?.kind === 'capture'
+      ? { id: 'camera-take', label: 'Take photo', icon: 'camera', priority: 10, onSelect: () => target.camera.current?.click() }
+      : null,
+  )
+  useLauncherAction(
+    target?.kind === 'capture'
+      ? { id: 'camera-upload', label: 'Upload photos', icon: 'gallery', priority: 11, onSelect: () => target.gallery.current?.click() }
+      : null,
+  )
+  useLauncherAction(
+    target?.kind === 'save-first'
+      ? { id: 'camera-save-first', label: target.actionLabel, icon: 'save', priority: 10, onSelect: target.onSelect }
+      : null,
+  )
+
+  if (launcher) return null
+  return <CornerCameraButton targets={targets} inlineVisible={inlineVisible} />
+}
+
+function CornerCameraButton({ targets, inlineVisible }: { targets: CameraTarget[]; inlineVisible: boolean }) {
+  const [open, setOpen] = useState(false)
 
   if (!targets.length) return null
 
@@ -174,7 +204,8 @@ function FloatingCameraButton({ targets, placement }: { targets: CameraTarget[];
       aria-hidden={stepAside || undefined}
       className={cn(
         'group fixed z-40 transition-opacity duration-150 print:hidden',
-        placement === 'above-assistant' ? FLOATING_ABOVE_ASSISTANT : FLOATING_CORNER_SECONDARY,
+        FLOATING_CORNER_BOTTOM,
+        FLOATING_CORNER_RIGHT,
         stepAside && 'pointer-events-none opacity-0',
       )}
     >

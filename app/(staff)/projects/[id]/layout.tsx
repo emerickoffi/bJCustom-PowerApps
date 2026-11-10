@@ -4,10 +4,11 @@ import { ProjectQuickActionsScope } from '@/components/app/quick-actions'
 import { buildProjectQuickActions } from '@/lib/quick-actions'
 import { createClient } from '@/lib/supabase/server'
 import { getOrgFeatures } from '@/lib/features'
-import { getProjectNavItems } from '@/lib/project-nav'
+import { getProjectMoreItems, getProjectNavItems } from '@/lib/project-nav'
 import { ProjectNav } from '@/components/projects/project-nav'
 import { AssistantProjectScope } from '@/components/assistant/assistant-context'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
+import { formatAddress } from '@/lib/format'
 
 export default async function ProjectLayout({
   children,
@@ -23,7 +24,7 @@ export default async function ProjectLayout({
   const [{ data: project }, { data: canViewInternal }, features] = await Promise.all([
     supabase
       .from('projects')
-      .select('id, name, project_number, status, archived_at')
+      .select('id, name, project_number, status, archived_at, address_line1, address_line2, city, state, postal_code')
       .eq('id', id)
       .eq('organization_id', session.organizationId)
       .maybeSingle(),
@@ -32,12 +33,14 @@ export default async function ProjectLayout({
   ])
   if (!project) notFound()
 
-  const items = getProjectNavItems(project.id, {
+  const navAccess = {
     features,
     projectStatus: project.status,
     canViewInternal: Boolean(canViewInternal),
     canViewFinancials: canManage(session.role),
-  })
+  }
+  const items = getProjectNavItems(project.id, navAccess)
+  const moreItems = getProjectMoreItems(project.id, navAccess)
 
   // Each action mirrors the guard on its destination page, so only workflows the user can complete are offered.
   const quickActions = buildProjectQuickActions({
@@ -49,8 +52,10 @@ export default async function ProjectLayout({
     canViewInternal: Boolean(canViewInternal),
   })
   return (
-    <div className="flex flex-col gap-6">
-      <ProjectQuickActionsScope projectName={project.name} actions={quickActions} />
+    // Every project tab shares this frame: project facts row, worksheet tabs, and the connected workspace panel.
+    // The shell gives every tab the same full workspace width, so sections never jump sideways.
+    <div data-project-frame className="flex min-w-0 flex-col">
+      <ProjectQuickActionsScope projectId={project.id} projectName={project.name} actions={quickActions} />
       <AssistantProjectScope
         project={{
           id: project.id,
@@ -64,8 +69,21 @@ export default async function ProjectLayout({
           },
         }}
       />
-      <ProjectNav projectId={project.id} projectName={project.name} projectNumber={project.project_number ?? null} items={items} />
-      {children}
+      <ProjectNav
+        userId={session.userId}
+        projectId={project.id}
+        projectNumber={project.project_number ?? null}
+        status={project.status as ProjectStatus}
+        address={formatAddress(project)}
+        items={items}
+        moreItems={moreItems}
+      />
+      <div
+        data-project-workspace
+        className="flex min-w-0 flex-col overflow-x-clip rounded-b-xl border border-t-0 border-border bg-card p-4 sm:p-6"
+      >
+        {children}
+      </div>
     </div>
   )
 }

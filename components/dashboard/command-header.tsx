@@ -44,12 +44,9 @@ export function CommandHeader({
               {formatShortDate(today)}
             </time>
           </p>
-          <h1 className="text-balance font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-[1.75rem]">
+          <h1 className="text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
             {hello}
           </h1>
-          <p className="text-pretty text-sm text-muted-foreground">
-            {'Here\u2019s what\u2019s happening across your projects today.'}
-          </p>
         </div>
         {(weather || attentionSummary) && (
           <div className="flex min-w-0 flex-col items-start gap-2 md:items-end">
@@ -80,16 +77,11 @@ export function CommandHeader({
         <h1
           className={cn(
             'text-balance font-serif font-semibold leading-tight tracking-tight text-foreground',
-            compact ? 'text-xl' : 'text-2xl md:text-[1.75rem]',
+            compact ? 'text-xl' : 'text-xl md:text-[26px]',
           )}
         >
           {hello}
         </h1>
-        {!compact && (
-          <p className="text-pretty text-sm text-muted-foreground">
-            {'Here\u2019s what\u2019s happening across your projects today.'}
-          </p>
-        )}
         {weather && <div className="mt-1.5 self-start">{weather}</div>}
       </div>
 

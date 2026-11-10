@@ -1,5 +1,6 @@
 'use server'
 
+import { createHash } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -93,46 +94,6 @@ const settingsSchema = z.object({
   land_cost: optionalMoney,
   notes: optionalText(5000),
 })
-
-/** Updates only the pricing settings and notes edited beside the cost items; core fields are untouched. */
-export async function updateEstimateSettingsAction(estimateId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  const session = await requireManager()
-  if (!uuid.safeParse(estimateId).success) return { error: 'Estimate not found.' }
-  const values = formValues(formData)
-  const parsed = settingsSchema.safeParse(values)
-  if (!parsed.success) return { ...fromZodError(parsed.error), values }
-
-  const supabase = await createClient()
-  const { data: current } = await supabase
-    .from('estimates')
-    .select('id, project_id, family_id, revision, status')
-    .eq('id', estimateId)
-    .eq('organization_id', session.organizationId)
-    .maybeSingle()
-  if (!current) return { error: 'Estimate not found.', values }
-
-  const { count } = await supabase
-    .from('estimates')
-    .select('id', { count: 'exact', head: true })
-    .eq('family_id', current.family_id)
-    .gt('revision', current.revision)
-  if ((count ?? 0) > 0) return { error: 'This is an older revision. Open the latest revision to change its settings.', values }
-
-  const { land_cost, ...rest } = parsed.data
-  const { data, error } = await supabase
-    .from('estimates')
-    .update({ ...rest, land_cost_cents: land_cost, updated_by: session.userId })
-    .eq('id', estimateId)
-    .eq('organization_id', session.organizationId)
-    .in('status', EDITABLE_ESTIMATE_STATUSES)
-    .select('id')
-    .maybeSingle()
-  if (error) return { error: friendlyDbError(error), values }
-  if (!data) return { error: 'This estimate is locked for editing. Reload to see its latest status.', values }
-
-  revalidateEstimate(estimateId, current.project_id)
-  return { success: 'Pricing settings saved.', savedId: estimateId }
-}
 
 function toEstimateRow(d: z.infer<typeof estimateSchema>) {
   const { land_cost, ...rest } = d
@@ -365,19 +326,28 @@ const sheetItemSchema = z.object({
 })
 const sheetSchema = z.array(sheetItemSchema).max(1000, 'An estimate can have at most 1,000 line items')
 
-export type SaveSheetResult = { ok: true; updatedAt: string } | { ok: false; error: string; rowIndex?: number }
+export type SaveDraftResult =
+  | { ok: true; updatedAt: string }
+  | { ok: false; error: string; rowIndex?: number; fieldErrors?: Record<string, string>; conflict?: boolean }
 
-/** Saves the whole line-item grid in one transaction (see save_estimate_line_items). */
-export async function saveEstimateLineItemsAction(
+/**
+ * Saves line items and pricing settings/notes together in one transaction (save_estimate_draft_tracked).
+ * The request id makes a retry of the same payload return the committed save instead of re-applying it.
+ */
+export async function saveEstimateDraftAction(
   estimateId: string,
   expectedUpdatedAt: string,
+  requestId: string,
   items: unknown,
-): Promise<SaveSheetResult> {
+  settings: Record<string, string>,
+): Promise<SaveDraftResult> {
   await requireManager()
   if (!uuid.safeParse(estimateId).success) return { ok: false, error: 'Invalid estimate.' }
-  const parsed = sheetSchema.safeParse(items)
-  if (!parsed.success) {
-    const issue = parsed.error.issues[0]
+  if (!uuid.safeParse(requestId).success) return { ok: false, error: 'Invalid save request. Reload and try again.' }
+
+  const parsedItems = sheetSchema.safeParse(items)
+  if (!parsedItems.success) {
+    const issue = parsedItems.error.issues[0]
     const rowIndex = typeof issue?.path[0] === 'number' ? issue.path[0] : undefined
     return {
       ok: false,
@@ -385,17 +355,39 @@ export async function saveEstimateLineItemsAction(
       rowIndex,
     }
   }
+  const parsedSettings = settingsSchema.safeParse(settings ?? {})
+  if (!parsedSettings.success) {
+    const { fieldErrors } = fromZodError(parsedSettings.error)
+    return { ok: false, error: 'Fix the highlighted pricing settings, then save again.', fieldErrors }
+  }
+
+  const { land_cost, ...rest } = parsedSettings.data
+  const settingsRow = { ...rest, land_cost_cents: land_cost }
+  const hash = createHash('sha256')
+    .update(JSON.stringify([estimateId, expectedUpdatedAt, parsedItems.data, settingsRow]))
+    .digest('hex')
 
   const supabase = await createClient()
-  const { data, error } = await supabase.rpc('save_estimate_line_items', {
-    p_estimate: estimateId,
-    p_items: parsed.data,
-    p_expected_updated_at: expectedUpdatedAt,
+  const { error, conflict } = await runTrackedSave({
+    supabase,
+    req: { id: requestId, hash, resilient: false, expectedUser: null },
+    kind: 'estimate',
+    tracked: (id) =>
+      supabase.rpc('save_estimate_draft_tracked', {
+        p_request: id,
+        p_hash: hash,
+        p_estimate: estimateId,
+        p_expected_updated_at: expectedUpdatedAt,
+        p_items: parsedItems.data,
+        p_settings: settingsRow,
+      }),
+    untracked: async () => ({ data: null, error: { message: 'A save request id is required.' } }),
   })
-  if (error) return { ok: false, error: friendlyDbError(error) }
+  if (error) return { ok: false, error: friendlyDbError(error), conflict }
 
-  revalidateEstimate(estimateId)
-  return { ok: true, updatedAt: String(data) }
+  const { data: fresh } = await supabase.from('estimates').select('updated_at, project_id').eq('id', estimateId).maybeSingle()
+  revalidateEstimate(estimateId, fresh?.project_id)
+  return { ok: true, updatedAt: String(fresh?.updated_at ?? expectedUpdatedAt) }
 }
 
 const simpleTransitions = ['draft', 'internal_review', 'submitted'] as const

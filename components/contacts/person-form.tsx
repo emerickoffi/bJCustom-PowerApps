@@ -90,9 +90,13 @@ export function PersonForm({
   })
   const [newCompany, setNewCompany] = useState<{ key: number; name: string } | null>(null)
 
+  const setOverlayDirty = overlay?.setDirty
   useEffect(() => {
-    if (state.savedId) onSaved?.(state)
-  }, [state, onSaved])
+    if (!state.savedId) return
+    // The saved values are no longer a draft, so the overlay must not ask about discarding them next time.
+    setOverlayDirty?.(false)
+    onSaved?.(state)
+  }, [state, onSaved, setOverlayDirty])
 
   const linkedIds = useMemo(() => new Set(currentCompanies.map((c) => c.company_id)), [currentCompanies])
   const pickable = useMemo(() => {
@@ -163,7 +167,7 @@ export function PersonForm({
                   <Building2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <span className="min-w-0 flex-1 truncate">{c.company_name}</span>
                   {c.role && <span className="shrink-0 text-muted-foreground">{c.role}</span>}
-                  {c.is_primary_contact && <span className="shrink-0 rounded-full bg-sage px-2 py-0.5 text-xs font-medium text-primary">Primary</span>}
+                  {c.is_primary_contact && <span className="shrink-0 rounded-badge bg-sage px-2 py-0.5 text-xs font-medium text-primary">Primary</span>}
                 </li>
               ))}
             </ul>

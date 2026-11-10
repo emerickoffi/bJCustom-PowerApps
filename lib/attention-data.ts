@@ -21,13 +21,14 @@ import {
   type ActionIssue,
   type ActionItem,
   type ActionProject,
+  type ActionRfi,
   type ActionSignedArtifact,
   type ActionWarrantyClaim,
 } from '@/lib/action-items'
 import { signedDocumentIds } from '@/lib/esign/signed-artifacts'
 import { buildQualificationAttention, type QualificationAttention } from '@/lib/subcontractor-qualification'
 import { loadQualificationSummaries } from '@/lib/subcontractor-qualification-data'
-import { projectAcceptsNewAssignments } from '@/lib/domain'
+import { projectAcceptsDirectoryAssignments } from '@/lib/domain'
 
 type ProjectRef = { name: string; archived_at?: string | null } | { name: string; archived_at?: string | null }[] | null
 const projectOf = (p: ProjectRef) => (Array.isArray(p) ? p[0] : p) ?? null
@@ -85,6 +86,10 @@ export async function getActionItems(
       () => undefined,
     )
   }
+  // Independent of the source reads below, so it runs alongside them rather than after them.
+  const qualificationPromise =
+    manager && features.subcontractors ? loadQualification(supabase, orgId, today) : Promise.resolve(null)
+  qualificationPromise.catch(() => undefined)
 
   const empty = Promise.resolve({ data: [] as never[], error: null, count: 0 })
   const signatureSource = manager && features.e_signatures && features.documents
@@ -111,7 +116,22 @@ export async function getActionItems(
     return q.order('reported_at', { ascending: true }).limit(SOURCE_LIMIT)
   }
 
-  const [notificationsRes, activitiesRes, logDelaysRes, signaturesRes, projectsRes, invoicesRes, issuesRes, claimsRes, changeOrdersRes] =
+  // Row-level security already limits this to questions the person works on; non-managers only owe something
+  // on the ones they asked or were assigned.
+  const rfiQuery = () => {
+    const q = supabase
+      .from('project_rfis')
+      .select(
+        'id, project_id, rfi_number, subject, status, due_date, responder_user_id, responder_name, created_by, sent_at, answered_at, projects(name, archived_at)',
+      )
+      .eq('organization_id', orgId)
+      .in('status', ['open', 'answered'])
+    return (manager ? q : q.or(`responder_user_id.eq.${userId},created_by.eq.${userId}`))
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .limit(SOURCE_LIMIT)
+  }
+
+  const [notificationsRes, activitiesRes, logDelaysRes, signaturesRes, projectsRes, invoicesRes, issuesRes, claimsRes, changeOrdersRes, rfisRes] =
     await Promise.all([
       supabase
         .from('notifications')
@@ -182,6 +202,7 @@ export async function getActionItems(
             .order('review_started_at', { ascending: true, nullsFirst: false })
             .limit(SOURCE_LIMIT)
         : empty,
+      features.rfis ? rfiQuery() : empty,
     ])
 
   const check = <T,>(res: { data: T[] | null; error: unknown }, module: string, limit: number): T[] => {
@@ -205,6 +226,7 @@ export async function getActionItems(
   const changeOrderRows = check(changeOrdersRes, 'Change Orders', SOURCE_LIMIT).filter(
     (r) => !isArchived(r.projects as ProjectRef),
   )
+  const rfiRows = check(rfisRes, 'Questions (RFIs)', SOURCE_LIMIT).filter((r) => !isArchived(r.projects as ProjectRef))
 
   const startCandidates = features.schedule
     ? projectRows.filter(
@@ -217,6 +239,10 @@ export async function getActionItems(
   const activityIds = activityRows.map((a) => a.id)
   const documentIds = [...new Set(signatureRows.flatMap((r) => (r.document_id ? [r.document_id] : [])))]
   const signedDocByRequest = new Map(signatureRows.map((r) => [r.id, signedDocumentIds(r.id).documentId] as const))
+  const assigneeNamesPromise = getProfileNames(
+    activityRows.map((a) => (a as { assigned_to?: string | null }).assigned_to),
+  )
+  assigneeNamesPromise.catch(() => undefined)
 
   const [assignmentsRes, scheduledRes, snapshotsRes, filedRes, qualification] = await Promise.all([
     features.subcontractors && activityIds.length
@@ -249,7 +275,7 @@ export async function getActionItems(
           .in('id', [...signedDocByRequest.values()])
           .not('current_version_id', 'is', null)
       : empty,
-    manager && features.subcontractors ? loadQualification(supabase, orgId, today) : Promise.resolve(null),
+    qualificationPromise,
   ])
 
   const companiesByActivity = new Map<string, string[]>()
@@ -339,7 +365,7 @@ export async function getActionItems(
     project_id: n.project_id,
     projectName: projectName(n.projects as ProjectRef),
   }))
-  const assigneeNames = await getProfileNames(activityRows.map((a) => (a as { assigned_to?: string | null }).assigned_to))
+  const assigneeNames = await assigneeNamesPromise
   const activities: AttentionActivity[] = activityRows.map((a) => {
     const assignedTo = (a as { assigned_to?: string | null }).assigned_to ?? null
     return {
@@ -414,8 +440,31 @@ export async function getActionItems(
     reviewStartedAt: r.review_started_at,
   }))
 
+  const rfis: ActionRfi[] = rfiRows.flatMap((r) =>
+    r.rfi_number && (r.status === 'open' || r.status === 'answered')
+      ? [
+          {
+            id: r.id,
+            projectId: r.project_id,
+            projectName: projectName(r.projects as ProjectRef),
+            rfiNumber: Number(r.rfi_number),
+            subject: r.subject,
+            status: r.status,
+            dueDate: r.due_date,
+            responderUserId: r.responder_user_id,
+            responderName: r.responder_name,
+            createdBy: r.created_by,
+            sentAt: r.sent_at,
+            answeredAt: r.answered_at,
+          },
+        ]
+      : [],
+  )
+
   const authoritative = new Set<ActionEntityType>()
   if (manager && features.warranty && !claimsRes.error && claimRows.length < SOURCE_LIMIT) authoritative.add('warranty_claim')
+  // The live question decides: a notice about one that was since answered, reassigned, or closed stops resurfacing.
+  if (features.rfis && !rfisRes.error && (rfisRes.data ?? []).length < SOURCE_LIMIT) authoritative.add('rfi')
   if (qualification?.state === 'ready') authoritative.add('subcontractor')
 
   const items = buildActionItems(
@@ -431,6 +480,7 @@ export async function getActionItems(
       issues,
       warrantyClaims,
       changeOrders,
+      rfis,
       authoritative,
     },
     { today, userId, manager, features },
@@ -473,7 +523,7 @@ async function loadQualification(
   const currentProjects = new Map<string, number>()
   for (const a of assignmentsRes.data ?? []) {
     const p = (Array.isArray(a.projects) ? a.projects[0] : a.projects) as { status: string; archived_at: string | null } | null
-    if (!p || p.archived_at || !projectAcceptsNewAssignments(p.status)) continue
+    if (!p || !projectAcceptsDirectoryAssignments(p.status, p.archived_at)) continue
     currentProjects.set(a.subcontractor_company_id, (currentProjects.get(a.subcontractor_company_id) ?? 0) + 1)
   }
   const rows = (companiesRes.data ?? []).flatMap((c) => {

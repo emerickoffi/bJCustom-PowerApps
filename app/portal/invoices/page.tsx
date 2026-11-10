@@ -8,6 +8,8 @@ import { balanceCents } from '@/lib/invoices'
 import { formatCentsExact } from '@/lib/estimates'
 import { formatDate } from '@/lib/format'
 import { InvoiceStatusBadge } from '@/components/invoices/invoice-status-badge'
+import { PageHeader } from '@/components/shared/page-header'
+import { Receipt } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'Invoices' }
 
@@ -28,16 +30,19 @@ export default async function PortalInvoicesPage() {
   const owed = invoices.reduce((sum, i) => sum + balanceCents(i), 0)
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <Link href="/portal" className="text-sm text-muted-foreground hover:text-primary">
-          Back to your home
-        </Link>
-        <h1 className="font-serif text-3xl">Invoices</h1>
-        <p className="text-sm text-muted-foreground">
-          Balance due across all invoices: <span className="font-semibold text-foreground">{formatCentsExact(owed)}</span>
-        </p>
-      </header>
+    <div className="flex w-full min-w-0 flex-col gap-5 md:gap-6">
+      <PageHeader
+        icon={Receipt}
+        title="Invoices"
+        count={{ value: invoices.length, noun: 'invoice' }}
+        backHref="/portal"
+        backLabel="Your home"
+        meta={
+          <span>
+            Balance due across all invoices: <span className="font-semibold text-foreground">{formatCentsExact(owed)}</span>
+          </span>
+        }
+      />
       {invoices.length === 0 ? (
         <p className="surface p-6 text-sm text-muted-foreground">Your builder has not shared any invoices yet.</p>
       ) : (

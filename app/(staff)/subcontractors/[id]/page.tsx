@@ -8,11 +8,11 @@ import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/format'
-import { PROJECT_STATUS_LABELS, projectAcceptsNewAssignments, type ProjectStatus } from '@/lib/domain'
+import { PROJECT_STATUS_LABELS, projectAcceptsDirectoryAssignments, type ProjectStatus } from '@/lib/domain'
 import { isUuid, splitProjectAssignments, type ProjectAssignmentRecord } from '@/lib/subcontractor-projects'
 import { companyInitials, projectCountLabel } from '@/lib/subcontractor-directory'
 import { loadProjectAssignments, loadSubcontractor } from '@/lib/subcontractor-detail-data'
-import { PageHeader, Surface } from '@/components/shared/page-header'
+import { PageHeader, Surface, pageLayout } from '@/components/shared/page-header'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { SubcontractorStatusButton } from '@/components/subcontractors/subcontractor-status-dialog'
 import { SubcontractorStatusBadge } from '@/components/subcontractors/subcontractor-status-badge'
@@ -80,7 +80,7 @@ export default async function SubcontractorDetailPage({
         email: a.email as string,
         status: a.status as 'active' | 'revoked',
       }))
-  const { current, history } = splitProjectAssignments(records, projectAcceptsNewAssignments)
+  const { current, history } = splitProjectAssignments(records, projectAcceptsDirectoryAssignments)
   const addedProjects = Number.parseInt(sp.projects ?? '', 10)
   const editHref = `/subcontractors/${company.id}/edit`
   const tab = parseDetailTab(sp.tab)
@@ -91,12 +91,12 @@ export default async function SubcontractorDetailPage({
   const qualificationHref = detailTabHref(company.id, 'qualification')
 
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-5">
+    <div className={pageLayout('detail')}>
       <PageHeader
         backHref="/subcontractors"
         backLabel="Subcontractors"
         title={company.company_name}
-        description={
+        meta={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
             {company.trade && <span className="font-medium text-foreground/80">{company.trade}</span>}
             {company.trade && (
@@ -111,7 +111,7 @@ export default async function SubcontractorDetailPage({
                 href={qualificationHref}
                 scroll={false}
                 aria-label="Qualification status, open Qualification tab"
-                className="flex items-center gap-1.5 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="flex items-center gap-1.5 rounded-badge focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 <span className="text-xs font-medium text-muted-foreground">Qualification:</span>
                 <QualificationBadge summary={qualification.summary} />

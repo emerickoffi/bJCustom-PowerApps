@@ -1,11 +1,14 @@
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, HardHat } from 'lucide-react'
+import { PageHeader } from '@/components/shared/page-header'
 import { requireSubcontractor } from '@/lib/subcontractor-session'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, APP_TIME_ZONE } from '@/lib/format'
 import { todayIn } from '@/lib/subcontractor-qualification'
 import { isOverdue, isSubWorkSetupError, workStateFor, type WorkState } from '@/lib/subcontractor-work'
 import { WorkCard } from '@/components/subcontractor-work/work-card'
+import { responseState } from '@/lib/subcontract-quotes'
+import type { SubQuoteRow } from './quotes/page'
 
 type WorkRow = {
   assignment_id: string
@@ -32,7 +35,7 @@ function Section({ id, title, entries, empty }: { id: string; title: string; ent
     <section aria-labelledby={id} className="flex flex-col gap-3">
       <h2 id={id} className="flex items-center justify-between font-serif text-lg font-semibold text-foreground">
         {title}
-        <span className="rounded-full bg-sage/60 px-2 py-0.5 font-sans text-xs font-medium text-primary">{entries.length}</span>
+        <span className="rounded-badge bg-sage/60 px-2 py-0.5 font-sans text-xs font-medium text-primary">{entries.length}</span>
       </h2>
       {entries.length ? (
         <ul className="flex flex-col gap-2">
@@ -50,7 +53,18 @@ function Section({ id, title, entries, empty }: { id: string; title: string; ent
 export default async function SubWorkspacePage() {
   const session = await requireSubcontractor()
   const supabase = await createClient()
-  const [work, corrections] = await Promise.all([supabase.rpc('sub_assigned_work'), supabase.rpc('sub_correction_requests')])
+  const [work, corrections, quotes] = await Promise.all([
+    supabase.rpc('sub_assigned_work'),
+    supabase.rpc('sub_correction_requests'),
+    supabase.rpc('sub_quote_requests'),
+  ])
+  // Quote requests are optional here: if they cannot be loaded, the link still works and simply shows no count.
+  const quotesToAnswer = quotes.error
+    ? 0
+    : ((quotes.data ?? []) as SubQuoteRow[]).filter((q) => {
+        const response = responseState(q.invitation_status, q.revision_requested_at, q.last_submitted_at)
+        return q.status === 'open' && (response === 'awaiting' || response === 'revision_requested')
+      }).length
   if (isSubWorkSetupError(work.error) || isSubWorkSetupError(corrections.error)) {
     return <p className="text-sm text-muted-foreground">The subcontractor workspace is not available yet.</p>
   }
@@ -96,19 +110,21 @@ export default async function SubWorkspacePage() {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">
-          Hi {session.fullName.split(' ')[0]}
-        </h1>
-        <p className="text-sm text-muted-foreground">Photograph finished work and send it to the builder for inspection.</p>
-      </div>
+      <PageHeader icon={HardHat} title={`Hi ${session.fullName.split(' ')[0]}`} />
 
       <Link
         href="/sub/quotes"
         className="flex min-h-11 items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:bg-sage/30"
       >
         Quote requests
-        <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+        <span className="flex shrink-0 items-center gap-2">
+          {quotesToAnswer > 0 && (
+            <span className="rounded-badge border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">
+              {quotesToAnswer === 1 ? '1 needs a response' : `${quotesToAnswer} need a response`}
+            </span>
+          )}
+          <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+        </span>
       </Link>
 
       <section aria-labelledby="projects-heading" className="flex flex-col gap-3">

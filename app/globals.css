@@ -19,6 +19,9 @@
 }
 
 @theme inline {
+  --animate-floating-enter: floating-enter 250ms ease-out;
+  /* Starts as the 250ms entrance ends, pulses twice, and holds its transparent last frame. */
+  --animate-floating-halo: floating-halo 1s ease-out 250ms 2 forwards;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -30,7 +33,10 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar-icon: var(--sidebar-icon);
-  --color-sidebar-active-border: var(--sidebar-active-border);
+  --color-sidebar-selected: var(--sidebar-selected);
+  --color-sidebar-selected-foreground: var(--sidebar-selected-foreground);
+  --color-sidebar-selected-icon: var(--sidebar-selected-icon);
+  --color-sidebar-hover: var(--sidebar-hover);
   --color-sidebar: var(--sidebar);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
@@ -51,6 +57,17 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-pressed: var(--primary-pressed);
+  --color-action: var(--action);
+  --color-action-foreground: var(--action-foreground);
+  --color-action-hover: var(--action-hover);
+  --color-action-pressed: var(--action-pressed);
+  --color-action-border: var(--action-border);
+  --color-action-strong: var(--action-strong);
+  --color-action-soft: var(--action-soft);
+  --color-tab-accent: var(--tab-accent);
+  --color-selected: var(--selected);
+  --color-selected-border: var(--selected-border);
+  --color-focus: var(--focus);
   --color-attention: var(--attention);
   --color-attention-soft: var(--attention-soft);
   --color-attention-foreground: var(--attention-foreground);
@@ -88,13 +105,22 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* Semantic radius standard. */
+  --radius-surface: 8px; /* cards, panels, dialogs, exposed drawer corners */
+  --radius-panel: 6px; /* panels nested inside a surface */
+  --radius-control: 6px; /* buttons, inputs, selects, textareas */
+  --radius-menu: 6px; /* dropdown menus, popovers, tooltips */
+  --radius-nav: 6px; /* sidebar navigation items */
+  --radius-badge: 4px; /* status and count badges */
+  --radius-tab: 6px; /* worksheet tab top corners */
+  /* The generic scale is capped at the surface radius so legacy utilities cannot exceed it. */
+  --radius-sm: var(--radius-badge);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-surface);
+  --radius-xl: var(--radius-surface);
+  --radius-2xl: var(--radius-surface);
+  --radius-3xl: var(--radius-surface);
+  --radius-4xl: var(--radius-surface);
 }
 
 /*
@@ -115,6 +141,23 @@
   --primary-hover: #006b7e;
   --primary-pressed: #005867;
   --brand-deep: #005867;
+  /*
+   * Bateevo orange (#ffa500) marks the one primary action per context, active tabs, sidebar selection,
+   * selected rows, and keyboard focus. Teal stays for navigation, links, and supporting actions.
+   * #17212b on #ffa500 is 9.3:1, on hover #f29400 8.2:1, on pressed #e08600 7.1:1.
+   * #c27a00 borders are 3.4:1 on white; #a35c00 focus/text is 5.1:1 on white and 4.7:1 on the gray page.
+   */
+  --action: #ffa500;
+  --action-foreground: #17212b;
+  --action-hover: #f29400;
+  --action-pressed: #e08600;
+  --action-border: #c27a00;
+  --action-strong: #a35c00;
+  --action-soft: #fff4de;
+  --tab-accent: #ffa500;
+  --selected: #fff7e8;
+  --selected-border: #c27a00;
+  --focus: #a35c00;
   /* Legacy names kept so existing classes resolve; both are now the soft-aqua tile tone. */
   --soft-green: #e5f5f7;
   --sage: #e5f5f7;
@@ -158,13 +201,13 @@
   --info: #2171b5;
   --border: #d6dde5;
   --input: #c5ced9;
-  --ring: #007f95;
+  --ring: var(--focus);
   --chart-1: #007f95;
   --chart-2: #2171b5;
   --chart-3: #a8dadf;
   --chart-4: #f58a3c;
   --chart-5: #526173;
-  --radius: 0.625rem;
+  --radius: 0.5rem;
   --sidebar: #e5f5f7;
   --sidebar-foreground: #17212b;
   --sidebar-muted: #526173;
@@ -175,7 +218,11 @@
   --sidebar-border: #d6dde5;
   --sidebar-ring: #007f95;
   --sidebar-icon: currentColor;
-  --sidebar-active-border: transparent;
+  /* Light-surface nav (tablet "More" sheet): orange fails contrast on pale aqua, so the icon uses deep teal. */
+  --sidebar-selected: #d2eef1;
+  --sidebar-selected-foreground: #005867;
+  --sidebar-selected-icon: #005867;
+  --sidebar-hover: #eef8f9;
   --shadow-soft: 0 1px 2px rgb(23 33 43 / 0.04), 0 2px 8px -4px rgb(23 33 43 / 0.06);
   --shadow-lift: 0 2px 4px rgb(23 33 43 / 0.05), 0 12px 24px -12px rgb(23 33 43 / 0.14);
 }
@@ -217,7 +264,11 @@
   --sidebar-accent: #006777;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgb(255 255 255 / 0.18);
-  --sidebar-active-border: #f58a3c;
+  /* Selection is a lighter teal (white label 4.6:1); hover goes darker so the two never read alike. */
+  --sidebar-selected: #168093;
+  --sidebar-selected-foreground: #ffffff;
+  --sidebar-selected-icon: #ffa500;
+  --sidebar-hover: #006e81;
   --sidebar-ring: #ffffff;
 }
 
@@ -255,7 +306,7 @@
 @utility surface {
   background-color: var(--card);
   border: 1px solid var(--surface-border, var(--border));
-  border-radius: calc(var(--radius) * 1.4);
+  border-radius: var(--radius-surface);
   box-shadow: var(--shadow-soft);
 }
 
@@ -267,6 +318,30 @@
     linear-gradient(rgb(255 255 255 / 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px);
   background-size: 48px 48px, 48px 48px, 12px 12px, 12px 12px;
+}
+
+/*
+ * Page gutters shared by the app header, <main>, and any full-bleed sticky bar that must cancel them.
+ * One breakpoint ladder for every shell: phone (<640px), tablet (640px+), desktop (1280px+).
+ */
+:root {
+  --page-gutter-x: 1rem;
+  --page-gutter-top: 1rem;
+  /* Desktop sidebar widths (248px / 68px). The shell is a flex row, so the header and <main> take the rest. */
+  --sidebar-width: 15.5rem;
+  --sidebar-width-collapsed: 4.25rem;
+}
+@media (min-width: 40rem) {
+  :root {
+    --page-gutter-x: 1.5rem;
+    --page-gutter-top: 1.25rem;
+  }
+}
+@media (min-width: 80rem) {
+  :root {
+    --page-gutter-x: 2.5rem;
+    --page-gutter-top: 1.5rem;
+  }
 }
 
 @utility tabular {
@@ -289,6 +364,35 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Floating actions marked `data-yields-to-overlay` step aside while a blocking dialog or drawer covers the page.
+ * They stay focusable so the overlay can hand focus back to them as it closes.
+ */
+body:has([data-slot='dialog-overlay'], [data-slot='sheet-overlay'], [data-slot='form-overlay']) [data-yields-to-overlay] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* First appearance of a floating action: it fades in while rising 6px into its resting place. */
+@keyframes floating-enter {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+
+/* One pulse of the halo behind a floating action. Its 7px spread and 4px blur stay inside the stack's 12px gap. */
+@keyframes floating-halo {
+  from {
+    opacity: 0.6;
+    box-shadow: 0 0 4px 0 var(--action);
+  }
+  to {
+    opacity: 0;
+    box-shadow: 0 0 4px 7px var(--action);
   }
 }
 

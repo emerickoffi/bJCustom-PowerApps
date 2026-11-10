@@ -53,9 +53,9 @@ export function OptionalActivitiesPanel({ projectId, includedKeys }: { projectId
               <div className="flex min-w-0 flex-col gap-0.5">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-foreground">{o.name}</span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{o.phase}</span>
+                  <span className="rounded-badge bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{o.phase}</span>
                   {included && (
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Included</span>
+                    <span className="rounded-badge bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Included</span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">{o.description}</p>

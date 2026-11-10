@@ -32,6 +32,8 @@ export function IssueUpdateForm({
   canApprove = false,
   builderApproved = false,
   repairPhotoCount = 0,
+  fieldIssue = false,
+  updatedAt,
 }: {
   projectId: string
   issueId: string
@@ -44,6 +46,8 @@ export function IssueUpdateForm({
   canApprove?: boolean
   builderApproved?: boolean
   repairPhotoCount?: number
+  fieldIssue?: boolean
+  updatedAt?: string
 }) {
   const [savedStatus, setSavedStatus] = useState<string | null>(null)
   const [state, formAction] = useActionState(async (prev: ActionState, formData: FormData) => {
@@ -58,13 +62,21 @@ export function IssueUpdateForm({
       <RepairApprovalPrompt projectId={projectId} issueId={issueId} repairPhotoCount={repairPhotoCount} />
     )}
     <form action={formAction} className="flex flex-col gap-4">
+      {updatedAt && <input type="hidden" name="expected_updated_at" value={updatedAt} />}
       <SelectField
         name="status"
         label="Issue status"
         required
         defaultValue={status === 'closed' ? 'resolved' : status}
-        options={STAFF_SETTABLE_ISSUE_STATUSES.map((s) => ({ value: s, label: ISSUE_STATUS_LABELS[s] }))}
-        hint="Issues close automatically once the homeowner confirms the repair."
+        options={STAFF_SETTABLE_ISSUE_STATUSES.map((s) => ({
+          value: s,
+          label: fieldIssue && s === 'resolved' ? 'Ready for verification' : ISSUE_STATUS_LABELS[s],
+        }))}
+        hint={
+          fieldIssue
+            ? 'Mark Ready for verification when the work is done. A project manager or administrator closes it.'
+            : 'Issues close automatically once the homeowner confirms the repair.'
+        }
       />
       <SelectField
         name="responsible_user_id"
@@ -85,11 +97,15 @@ export function IssueUpdateForm({
       </div>
       <TextAreaField
         name="corrective_action"
-        label="Corrective action"
+        label={fieldIssue ? 'Resolution notes' : 'Corrective action'}
         defaultValue={correctiveAction ?? ''}
         maxLength={5000}
         rows={4}
-        hint="Visible to the homeowner. Describe the planned or completed repair."
+        hint={
+          fieldIssue
+            ? 'Builder team only. Describe the work done. Earlier resolutions stay in the history.'
+            : 'Visible to the homeowner. Describe the planned or completed repair.'
+        }
       />
       <FormMessage state={state} />
       <SubmitButton pendingLabel="Saving..." className="w-full">

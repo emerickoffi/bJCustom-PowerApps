@@ -8,7 +8,7 @@ import { INVOICE_EVENT_LABELS, balanceCents } from '@/lib/invoices'
 import { formatCentsExact } from '@/lib/estimates'
 import { formatDate } from '@/lib/format'
 import { invoiceReturnTarget } from '@/lib/invoice-return'
-import { BackLink, PageHeader } from '@/components/shared/page-header'
+import { BackLink, PageHeader, pageLayout } from '@/components/shared/page-header'
 import { InvoiceDocument } from '@/components/invoices/invoice-document'
 import { InvoiceActions } from '@/components/invoices/invoice-actions'
 import { InvoicePayments } from '@/components/invoices/invoice-payments'
@@ -33,7 +33,7 @@ export default async function InvoicePage({
   const { canWrite: manager } = await getInvoiceAccess(session)
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('detail')}>
       <nav aria-label="Breadcrumb" className="-mb-6 print:hidden">
         <BackLink href={back.href} label={back.label} className="min-h-11 px-1 -mx-1 text-link hover:text-link-hover" />
       </nav>
@@ -41,7 +41,7 @@ export default async function InvoicePage({
         icon={Receipt}
         eyebrow={invoice.project?.name}
         title={`Invoice ${invoice.invoice_number}`}
-        description={
+        meta={
           invoice.status === 'draft'
             ? 'Draft — not visible to the homeowner.'
             : invoice.portal_published

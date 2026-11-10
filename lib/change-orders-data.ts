@@ -12,6 +12,7 @@ export type ChangeOrderDetail = {
   requested_by: string | null
   schedule_impact_days: number | null
   price_adjustment_cents: number
+  price_pending: boolean
   cost_adjustment_cents: number
   status: ChangeOrderStatus
   version: number
@@ -50,7 +51,7 @@ export async function loadChangeOrder(projectId: string, id: string) {
   ])
   if (!co || !isChangeOrderStatus(co.status)) return null
   return {
-    co: { ...co, price_adjustment_cents: Number(co.price_adjustment_cents), cost_adjustment_cents: Number(co.cost_adjustment_cents) } as ChangeOrderDetail,
+    co: { ...co, price_adjustment_cents: Number(co.price_adjustment_cents), price_pending: co.price_pending === true, cost_adjustment_cents: Number(co.cost_adjustment_cents) } as ChangeOrderDetail,
     lines: ((lines ?? []) as ChangeOrderLine[]).map((l) => ({
       ...l,
       quantity: Number(l.quantity),

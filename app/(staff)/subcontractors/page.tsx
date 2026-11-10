@@ -8,7 +8,7 @@ import { loadDirectoryWork } from '@/lib/assignments-data'
 import { AssignedWorkCard } from '@/components/subcontractors/assigned-work-card'
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeSearch } from '@/lib/format'
-import { PageHeader, EmptyState } from '@/components/shared/page-header'
+import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 import { SubcontractorTable } from '@/components/subcontractors/subcontractor-table'
 import {
   SUBCONTRACTOR_COLUMNS,
@@ -129,19 +129,18 @@ export default async function SubcontractorsPage({
   )
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader
         icon={HardHat}
         title="Subcontractors"
         titleAddon={
           !error && summary.total > 0 ? (
-            <span className="rounded-full bg-white px-2.5 py-0.5 text-sm font-medium tabular-nums text-muted-foreground ring-1 ring-inset ring-primary/12">
+            <span className="rounded-badge bg-white px-2.5 py-0.5 text-sm font-medium tabular-nums text-muted-foreground ring-1 ring-inset ring-primary/12">
               <span className="sr-only">Total: </span>
               {summary.total}
             </span>
           ) : undefined
         }
-        description="Trade partners, their qualification, and where they are working. Visible to administrators and project managers."
         actions={!error && addButton}
       />
 

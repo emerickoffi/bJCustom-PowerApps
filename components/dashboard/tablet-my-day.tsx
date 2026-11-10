@@ -54,7 +54,7 @@ export function TabletMyDay({
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="truncate text-sm font-medium text-foreground group-hover:text-link">{e.title}</span>
                     {e.tentative && (
-                      <span className="shrink-0 rounded-full border border-champagne/50 bg-champagne-soft px-2 py-0.5 text-[11px] font-medium text-champagne-foreground">
+                      <span className="shrink-0 rounded-badge border border-champagne/50 bg-champagne-soft px-2 py-0.5 text-[11px] font-medium text-champagne-foreground">
                         Tentative
                       </span>
                     )}

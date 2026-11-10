@@ -258,12 +258,12 @@ function ContactRow({
               {c.name}
             </Link>
             {c.is_primary_contact && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF2DA] px-2 py-0.5 text-xs font-medium text-[#96570E]">
+              <span className="inline-flex items-center gap-1 rounded-badge bg-[#FFF2DA] px-2 py-0.5 text-xs font-medium text-[#96570E]">
                 <Star className="size-3 fill-current" aria-hidden="true" />
                 Primary
               </span>
             )}
-            {c.person_status === 'inactive' && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Inactive</span>}
+            {c.person_status === 'inactive' && <span className="rounded-badge bg-muted px-2 py-0.5 text-xs text-muted-foreground">Inactive</span>}
           </div>
           <p className="text-sm font-medium text-foreground/80">{c.role ?? <span className="font-normal text-muted-foreground">No role set</span>}</p>
           <div className="flex flex-col gap-1 text-sm text-muted-foreground">

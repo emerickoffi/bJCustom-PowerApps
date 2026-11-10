@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { requireManager } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { WalkthroughBuilder } from '@/components/walkthroughs/walkthrough-builder'
 import { ClipboardPlus as ClipboardPlusIcon } from 'lucide-react'
 
@@ -21,13 +21,12 @@ export default async function NewWalkthroughPage({ params }: { params: Promise<{
   if (!project) notFound()
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('form')}>
       <PageHeader icon={ClipboardPlusIcon}
         backHref={`/projects/${project.id}`}
         backLabel={project.name}
         eyebrow={<span className="font-mono normal-case tracking-normal">{project.project_number}</span>}
         title="New homeowner walkthrough"
-        description="The homeowners linked to this project will complete the checklist from their portal."
       />
       <WalkthroughBuilder projectId={project.id} />
     </div>

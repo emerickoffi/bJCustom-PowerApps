@@ -106,7 +106,8 @@ export function DirectoryViews({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    // `data-view` lets a control that only applies to one view (such as a column picker) hide itself in the other.
+    <div data-view={active} className="group/views flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground" aria-live="polite">
           {summary}

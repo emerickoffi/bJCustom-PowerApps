@@ -6,7 +6,7 @@ import { requireManager } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { createEstimateAction } from '@/app/actions/estimates'
 import { loadEstimateProjects } from '@/lib/estimate-form-data'
-import { PageHeader, EmptyState } from '@/components/shared/page-header'
+import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 import { EstimateForm } from '@/components/estimates/estimate-form'
 
 export const metadata: Metadata = { title: 'Create estimate' }
@@ -28,12 +28,11 @@ export default async function NewEstimatePage({ searchParams }: { searchParams: 
   const today = new Date().toISOString().slice(0, 10)
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('detail')}>
       <PageHeader icon={FilePlus2Icon}
         backHref={preselected ? `/projects/${preselected}` : '/estimates'}
         backLabel={preselected ? 'Project' : 'Estimates'}
         title="Create estimate"
-        description="Name it and choose the project. Add cost items next."
       />
       {projects.length === 0 ? (
         <EmptyState

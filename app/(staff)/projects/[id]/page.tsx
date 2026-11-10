@@ -1,53 +1,37 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import {
-  AlertTriangle,
-  ArrowRight,
-  CalendarClock,
-  CalendarRange,
-  CircleCheck,
-  ClipboardCheck,
-  FolderOpen,
-  Hammer,
-  History,
-  House,
-  LandPlot,
-  MapPin,
-  Pencil,
-  Trees,
-  UserRound,
-  Wallet,
-} from 'lucide-react'
-import { OverviewSection } from '@/components/projects/overview-section'
+import { cookies } from 'next/headers'
+import { AlertTriangle, Calculator } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getOrgFeatures } from '@/lib/features'
-import { getClientOptions, getStaffMembers } from '@/lib/queries'
+import { getStaffMembers } from '@/lib/queries'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
-import { coverAlt, coverDesignBadge } from '@/lib/project-cover'
-import { CoverImage } from '@/components/projects/cover-image'
-import type { ReactNode } from 'react'
-import { ProjectStatusBadge } from '@/components/shared/status-badge'
-import { ProgressRing } from '@/components/shared/progress'
-import { StatusChanger } from '@/components/projects/status-changer'
-import { AssistantProjectScope } from '@/components/assistant/assistant-context'
-import { ProjectWalkthroughsPanel } from '@/components/walkthroughs/project-walkthroughs-panel'
-import { ProjectEstimatesPanel } from '@/components/estimates/project-estimates-panel'
-import { ProjectSchedulePanel } from '@/components/schedule/project-schedule-panel'
-import { ProjectInvoicesPanel } from '@/components/invoices/project-invoices-panel'
-import { ProjectClientsPanel, type ProjectClientLink } from '@/components/projects/project-people'
-import { ProjectTeamPanel } from '@/components/projects/project-team-panel'
-import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS, projectAcceptsNewAssignments, type ProjectStatus } from '@/lib/domain'
+import { coverAlt } from '@/lib/project-cover'
+import { ProjectStatusCard } from '@/components/projects/project-status-card'
+import { ReportIssueAction } from '@/components/issues/report-issue-action'
+import type { ProjectClientLink } from '@/components/projects/project-people'
+import { ProjectPeopleSummary } from '@/components/projects/project-people-summary'
+import { AssignSubcontractors, AssignSubcontractorsLink } from '@/components/projects/assign-subcontractors'
+import { ProjectOverviewHeader, HeaderBadge } from '@/components/projects/project-overview-header'
+import { ProjectDetailsDrawer } from '@/components/projects/project-details-drawer'
+import { ProjectDetailsContent } from '@/components/projects/project-details-content'
+import { ProjectFinanceStrip } from '@/components/projects/project-finance-strip'
+import { ProjectScheduleSnapshot, type SnapshotActivity } from '@/components/projects/project-schedule-snapshot'
+import { PROJECT_TYPE_LABELS, directoryClosedReason, type ProjectStatus } from '@/lib/domain'
 import { loadProjectContacts } from '@/lib/project-contacts-data'
 import { loadProjectHomeowners } from '@/lib/project-homeowners-data'
-import { ProjectContactsPanel } from '@/components/projects/project-contacts-panel'
-import { formatAddress, formatCents, formatDate, formatDateTime } from '@/lib/format'
+import { loadDirectoryForAssignment } from '@/lib/directory-assignment-data'
+import { formatCents, formatDate } from '@/lib/format'
 import { PROJECT_SECTION_ANCHORS } from '@/lib/project-nav'
 import { ProjectSectionScroll } from '@/components/projects/project-section-scroll'
-import { ProjectNextActions } from '@/components/projects/next-actions'
+import { ProjectNextActions, type WorkScope } from '@/components/projects/next-actions'
 import { buildProjectNextActions } from '@/lib/next-actions'
+import { buildProjectSetup, setupDismissCookie } from '@/lib/project-setup'
+import { ProjectSetupChecklist, ShowSetupChecklistButton } from '@/components/projects/project-setup-checklist'
+import { lifecycleGroup } from '@/lib/project-lifecycle'
 import { todayIso } from '@/lib/schedule'
 import { showsCompletionReadiness } from '@/lib/completion-readiness'
 import { loadCompletionReadiness, loadCompletionRecord } from '@/lib/completion-readiness-data'
@@ -56,50 +40,16 @@ import { CompletedProjectPanel, type CompletedExceptionView } from '@/components
 
 export const metadata: Metadata = { title: 'Project' }
 
-function Fact({ icon: Icon, label, value }: { icon: typeof Wallet; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-link-border">
-        <Icon className="size-4" aria-hidden="true" />
-      </span>
-      <div className="flex min-w-0 flex-col">
-        <span className="text-xs text-white/60">{label}</span>
-        <span className="break-words text-sm font-medium text-white">{value}</span>
-      </div>
-    </div>
-  )
-}
-
-function DetailField({
-  icon: Icon,
-  label,
-  value,
-  empty = 'Not provided',
-  action,
+export default async function ProjectDetailPage({
+  params,
+  searchParams,
 }: {
-  icon: typeof Wallet
-  label: string
-  value: string | null
-  empty?: string
-  action?: ReactNode
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ work?: string | string[] }>
 }) {
-  return (
-    <div className="flex min-w-0 items-start gap-3">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#F3F4F6] text-primary ring-1 ring-inset ring-[#D6DDE5]">
-        <Icon className="size-4" aria-hidden="true" />
-      </span>
-      <div className="flex min-w-0 flex-col gap-0.5 pt-px">
-        <dt className="text-xs text-muted-foreground">{label}</dt>
-        <dd className={value ? 'break-words text-sm font-medium text-foreground' : 'text-sm text-muted-foreground'}>{value ?? empty}</dd>
-        {action}
-      </div>
-    </div>
-  )
-}
-
-export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireStaff()
-  const { id } = await params
+  const [{ id }, query] = await Promise.all([params, searchParams])
+  const scope: WorkScope = query.work === 'mine' ? 'mine' : 'all'
   const supabase = await createClient()
 
   const { data: project } = await supabase
@@ -113,6 +63,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const manager = canManage(session.role)
   const features = await getOrgFeatures(session.organizationId)
   const signing = features.documents && features.e_signatures
+  const directoryClosed = directoryClosedReason(project.status, project.archived_at)
   const projectContactsPromise = loadProjectContacts(supabase, session.organizationId, id)
   const [linksRes, membersRes, historyRes, staff, homeowners, activitiesRes, openIssuesRes, photos, reviewEstimatesRes, signaturesRes] = await Promise.all([
     supabase
@@ -131,12 +82,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     loadProjectHomeowners(supabase, session.organizationId, id),
     supabase
       .from('schedule_activities')
-      .select('name, status, planned_start, planned_end, sort_order')
+      .select('id, name, status, planned_start, planned_end, sort_order, assigned_to, activity_type')
       .eq('project_id', id)
       .order('sort_order'),
     supabase
       .from('project_issues')
-      .select('id', { count: 'exact' })
+      .select('id, item_label', { count: 'exact' })
       .eq('project_id', id)
       .neq('status', 'closed')
       .order('reported_at', { ascending: true })
@@ -144,7 +95,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     getProjectCoverPhotos([id]),
     features.estimates && manager
       ? supabase.from('estimates').select('id').eq('project_id', id).eq('status', 'internal_review').order('created_at')
-      : Promise.resolve({ data: [] as { id: string }[] }),
+      : Promise.resolve({ data: [] as { id: string }[], error: null }),
     signing
       ? supabase
           .from('signature_requests')
@@ -152,11 +103,29 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           .eq('project_id', id)
           .order('created_at', { ascending: false })
           .limit(200)
-      : Promise.resolve({ data: [] as { document_id: string; status: string; created_at: string }[] }),
+      : Promise.resolve({ data: [] as { document_id: string; status: string; created_at: string }[], error: null }),
   ])
-  const [projectContacts, clientOptions] = await Promise.all([
+  const noCount = Promise.resolve({ count: null as number | null, error: null })
+  const [projectContacts, myIssuesRes, documentsRes, estimatesRes, cookieJar, directory] = await Promise.all([
     projectContactsPromise,
-    manager ? getClientOptions(session.organizationId) : Promise.resolve(undefined),
+    supabase
+      .from('project_issues')
+      .select('id, item_label', { count: 'exact' })
+      .eq('project_id', id)
+      .eq('responsible_user_id', session.userId)
+      .neq('status', 'closed')
+      .order('reported_at', { ascending: true })
+      .limit(1),
+    manager && features.documents
+      ? supabase.from('project_documents').select('id', { count: 'exact', head: true }).eq('project_id', id).is('archived_at', null)
+      : noCount,
+    manager && features.estimates
+      ? supabase.from('estimates').select('id', { count: 'exact', head: true }).eq('project_id', id)
+      : noCount,
+    cookies(),
+    manager && !directoryClosed
+      ? loadDirectoryForAssignment(supabase, session.organizationId, id, !!features.subcontractors)
+      : Promise.resolve(null),
   ])
   const isCompleted = project.status === 'completed'
   const [readiness, completionRecord, warrantyRes] = await Promise.all([
@@ -178,23 +147,25 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const status = project.status as ProjectStatus
   const progress = project.progress_percent === null ? null : Number(project.progress_percent)
   const cover = photos.get(id)
-  const heroPlaceholder = (
-    <div className="blueprint absolute inset-0 flex items-end p-6" aria-hidden="true">
-      <span className="text-xs text-white/50">Site photos from walkthroughs will appear here</span>
-    </div>
-  )
 
-  const activities = activitiesRes.data ?? []
+  const activities = (activitiesRes.data ?? []) as unknown as (SnapshotActivity & { sort_order: number; assigned_to: string | null })[]
   const counted = activities.filter((a) => a.status !== 'skipped')
-  const completed = counted.filter((a) => a.status === 'completed').length
-  const delayed = counted.filter((a) => a.status === 'delayed').length
-  const nextUp = counted.find((a) => a.status !== 'completed')
-  const openIssues = openIssuesRes.count ?? 0
+  /** `null` when the lookup failed, so the header never shows an unavailable count as zero. */
+  const openIssues = openIssuesRes.error ? null : (openIssuesRes.count ?? 0)
   const today = todayIso()
-  const lateActivityCount = counted.filter(
-    (a) => a.status !== 'completed' && (a.status === 'delayed' || (!!a.planned_end && a.planned_end < today)),
-  ).length
-  const nextActions = buildProjectNextActions({
+  const lateActivities = counted
+    .filter((a) => a.status !== 'completed' && (a.status === 'delayed' || (!!a.planned_end && a.planned_end < today)))
+    .sort((a, b) => (a.planned_end ?? '9999-12-31').localeCompare(b.planned_end ?? '9999-12-31'))
+  const nextActionsIncomplete = Boolean(
+    activitiesRes.error || openIssuesRes.error || myIssuesRes.error || reviewEstimatesRes.error || signaturesRes.error,
+  )
+  const lateSummary = (list: typeof lateActivities) => ({
+    lateActivityCount: list.length,
+    firstLateActivity: list[0]
+      ? { name: list[0].name, dueLabel: list[0].planned_end ? `Due ${formatDate(list[0].planned_end)}` : null }
+      : null,
+  })
+  const sharedActionState = {
     projectId: project.id,
     canManage: manager,
     features: {
@@ -206,14 +177,53 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       warranty: features.warranty,
     },
     status: project.status,
-    hasProjectManager: Boolean(project.project_manager_id),
-    activityCount: activities.length,
-    lateActivityCount,
+    isProjectManager: project.project_manager_id === session.userId,
     reviewEstimateIds: (reviewEstimatesRes.data ?? []).map((e) => e.id),
     signatureRequests: signaturesRes.data ?? [],
-    openIssueCount: openIssues,
-    firstOpenIssueId: openIssuesRes.data?.[0]?.id ?? null,
+  }
+  const actionsByScope = {
+    all: buildProjectNextActions({
+      ...sharedActionState,
+      scope: 'all',
+      ...lateSummary(lateActivities),
+      openIssueCount: openIssues ?? 0,
+      firstOpenIssueId: openIssuesRes.data?.[0]?.id ?? null,
+      firstOpenIssueLabel: openIssuesRes.data?.[0]?.item_label ?? null,
+    }),
+    mine: buildProjectNextActions({
+      ...sharedActionState,
+      scope: 'mine',
+      ...lateSummary(lateActivities.filter((a) => a.assigned_to === session.userId)),
+      openIssueCount: myIssuesRes.error ? 0 : (myIssuesRes.count ?? 0),
+      firstOpenIssueId: myIssuesRes.data?.[0]?.id ?? null,
+      firstOpenIssueLabel: myIssuesRes.data?.[0]?.item_label ?? null,
+    }),
+  }
+  const nextActions = actionsByScope[scope]
+  const scopeTotal = (s: WorkScope) => actionsByScope[s].items.length + actionsByScope[s].hiddenCount
+  const scopeHref = (s: WorkScope) => (s === 'mine' ? `/projects/${project.id}?work=mine` : `/projects/${project.id}`)
+  const contactsActiveCount =
+    projectContacts.availability === 'ready' ? projectContacts.contacts.filter((c) => c.status === 'active').length : null
+
+  const showsSetup = manager && !isCompleted && lifecycleGroup(project.status) !== 'closed'
+  const setup = buildProjectSetup({
+    projectId: project.id,
+    features: { schedule: features.schedule, documents: features.documents, estimates: features.estimates },
+    hasProjectManager: Boolean(project.project_manager_id),
+    hasHomeowner: linksRes.error ? null : (linksRes.data?.length ?? 0) > 0,
+    hasTeam:
+      (membersRes.data?.length ?? 0) > 0 || (contactsActiveCount ?? 0) > 0
+        ? true
+        : membersRes.error || contactsActiveCount === null
+          ? null
+          : false,
+    hasSchedule: activitiesRes.error ? null : activities.length > 0,
+    hasDocuments: documentsRes.error || documentsRes.count === null ? null : documentsRes.count > 0,
+    hasEstimate: estimatesRes.error || estimatesRes.count === null ? null : estimatesRes.count > 0,
+    teamAnchor: PROJECT_SECTION_ANCHORS.team,
   })
+  const setupDismissed = cookieJar.get(setupDismissCookie(project.id))?.value === '1'
+  const history = historyRes.data ?? []
   const primaryClient = links[0]?.client
   const managerName = nameFor(project.project_manager_id)
   const lotBlockPhase =
@@ -249,174 +259,135 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const openExceptionCount = exceptionViews.filter((e) => e.status === 'open').length
   const completionDate = (project.completion_date as string | null) ?? null
 
-  return (
-    <div className="flex flex-col gap-8">
-      <ProjectSectionScroll />
-      <section aria-labelledby="project-heading" className="overflow-hidden rounded-3xl bg-brand-deep text-white shadow-lift">
-        <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,15rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,19rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-          <div className="flex flex-col gap-5 p-5 sm:p-6 xl:px-8 xl:py-7">
-            <div className="flex flex-col gap-2.5">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="font-mono text-xs text-white/60">{project.project_number}</span>
-                <ProjectStatusBadge status={status} />
-              </div>
-              <h1 id="project-heading" className="text-balance font-serif text-2xl font-semibold leading-tight md:text-3xl">
-                {project.name}
-              </h1>
-              <p className="flex items-start gap-2 text-sm text-white/70">
-                <MapPin className="mt-0.5 size-4 shrink-0 text-link-border" aria-hidden="true" />
-                {formatAddress(project)}
-              </p>
-            </div>
-            {isCompleted ? (
-              <div className="flex flex-col gap-2">
-                <span className="flex items-center gap-2 text-sm font-medium">
-                  <CircleCheck className="size-4 text-link-border" aria-hidden="true" />
-                  {completionDate ? `Completed ${formatDate(completionDate)}` : 'Completed · date not recorded'}
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {features.warranty && (
-                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/85">
-                      {warrantyStart ? `Warranty phase since ${formatDate(warrantyStart)}` : 'Warranty not set up'}
-                    </span>
-                  )}
-                  {openExceptionCount > 0 && (
-                    <span className="flex items-center gap-1 rounded-full bg-champagne/20 px-2.5 py-0.5 text-xs font-medium text-champagne">
-                      <AlertTriangle className="size-3" aria-hidden="true" />
-                      {`${openExceptionCount} open completion ${openExceptionCount === 1 ? 'exception' : 'exceptions'}`}
-                    </span>
-                  )}
-                  {openIssues > 0 && (
-                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/85">
-                      {`${openIssues} open ${openIssues === 1 ? 'issue' : 'issues'}`}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ) : (
-            <div className="flex flex-wrap items-center gap-4">
-              {progress === null ? (
-                <span className="flex size-[72px] shrink-0 items-center justify-center rounded-full border-[6px] border-white/15 px-1.5 text-center text-[0.65rem] font-medium leading-tight text-white/70">
-                  Not configured
-                </span>
-              ) : (
-                <ProgressRing value={progress} label="Construction progress" tone="light" size={72} stroke={6} />
-              )}
-              <div className="flex min-w-0 flex-col gap-1">
-                <span className="text-sm font-medium">
-                  {progress === null
-                    ? 'Construction progress not configured'
-                    : `${completed} of ${counted.length} schedule steps complete`}
-                </span>
-                {progress === null && (
-                  <span className="max-w-sm text-xs text-white/65">
-                    Progress is calculated from weighted schedule milestones. Initialize the construction schedule to begin tracking.
-                  </span>
-                )}
-                {nextUp && <span className="text-sm text-white/65">{`Next: ${nextUp.name}`}</span>}
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {delayed > 0 && (
-                    <span className="flex items-center gap-1 rounded-full bg-champagne/20 px-2.5 py-0.5 text-xs font-medium text-champagne">
-                      <AlertTriangle className="size-3" aria-hidden="true" />
-                      {`${delayed} delayed`}
-                    </span>
-                  )}
-                  {openIssues > 0 && (
-                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/85">
-                      {`${openIssues} open ${openIssues === 1 ? 'issue' : 'issues'}`}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            )}
-            <div className="grid gap-x-4 gap-y-3 border-t border-white/10 pt-4 sm:grid-cols-2 2xl:grid-cols-4">
-              <Fact icon={Wallet} label="Estimated budget" value={formatCents(project.estimated_budget_cents)} />
-              <Fact icon={CalendarRange} label="Proposed start" value={formatDate(project.proposed_start_date)} />
-              {isCompleted ? (
-                <Fact icon={CalendarClock} label="Completed" value={completionDate ? formatDate(completionDate) : 'Not recorded'} />
-              ) : (
-                <Fact icon={CalendarClock} label="Target completion" value={formatDate(project.target_completion_date)} />
-              )}
-              <Fact
-                icon={ClipboardCheck}
-                label="Homeowner"
-                value={primaryClient ? `${primaryClient.first_name} ${primaryClient.last_name}` : 'Not linked'}
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {features.schedule && (
-                <Button
-                  size="lg"
-                  render={<Link href={`/projects/${project.id}/schedule`} />}
-                  nativeButton={false}
-                  className="bg-link text-white hover:bg-link-hover focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-deep"
-                >
-                  <CalendarRange data-icon="inline-start" />
-                  Open schedule
-                </Button>
-              )}
-              {features.documents && (
-                <Button
-                  size="lg"
-                  variant="outline"
-                  render={<Link href={`/projects/${project.id}/documents`} />}
-                  nativeButton={false}
-                  className="border-white/25 bg-white/5 text-white hover:bg-white/15 hover:text-white"
-                >
-                  <FolderOpen data-icon="inline-start" />
-                  Documents
-                </Button>
-              )}
-              {features.warranty && project.status === 'completed' && (
-                <Button
-                  size="lg"
-                  variant="outline"
-                  render={<Link href={`/projects/${project.id}/warranty`} />}
-                  nativeButton={false}
-                  className="border-white/25 bg-white/5 text-white hover:bg-white/15 hover:text-white"
-                >
-                  Warranty
-                </Button>
-              )}
-              {manager && (
-                <Button
-                  size="lg"
-                  variant="outline"
-                  render={<Link href={`/projects/${project.id}/edit`} />}
-                  nativeButton={false}
-                  className="border-white/25 bg-white/5 text-white hover:bg-white/15 hover:text-white"
-                >
-                  <Pencil data-icon="inline-start" />
-                  Edit project
-                </Button>
-              )}
-            </div>
-          </div>
-          <div className="relative min-h-48 sm:min-h-56 md:min-h-full">
-            {cover ? (
-              <CoverImage
-                src={cover.url}
-                alt={coverAlt(cover.kind, project.name)}
-                className="absolute inset-0 size-full object-cover object-center"
-                priority
-                fallback={heroPlaceholder}
-                overlay={
-                  coverDesignBadge(cover.kind) && (
-                    <span className="absolute bottom-3 right-3 rounded-full bg-brand-deep/75 px-2.5 py-1 text-[0.7rem] font-medium text-white backdrop-blur-sm">
-                      {coverDesignBadge(cover.kind)}
-                    </span>
-                  )
-                }
-              />
-            ) : (
-              heroPlaceholder
-            )}
-          </div>
-        </div>
-      </section>
+  const assignRows =
+    manager && !directoryClosed && projectContacts.availability === 'ready' && directory?.availability === 'ready'
+      ? directory.rows
+      : null
+  const assignNote =
+    !manager || assignRows ? null : (directoryClosed ?? 'The business directory isn’t set up for this organization yet.')
 
-      <ProjectNextActions items={nextActions.items} hiddenCount={nextActions.hiddenCount} />
+  const financialsHref = manager && features.estimates ? `/projects/${project.id}/financials` : null
+  const headerBadges = (
+    <>
+      {isCompleted && features.warranty && (
+        <HeaderBadge>{warrantyStart ? `Warranty since ${formatDate(warrantyStart)}` : 'Warranty not set up'}</HeaderBadge>
+      )}
+      {openExceptionCount > 0 && (
+        <HeaderBadge tone="warning">
+          <AlertTriangle className="size-3" aria-hidden="true" />
+          {`${openExceptionCount} open completion ${openExceptionCount === 1 ? 'exception' : 'exceptions'}`}
+        </HeaderBadge>
+      )}
+      {openIssues === null ? (
+        <HeaderBadge>Issues unavailable</HeaderBadge>
+      ) : (
+        openIssues > 0 && <HeaderBadge tone="warning">{`${openIssues} open ${openIssues === 1 ? 'issue' : 'issues'}`}</HeaderBadge>
+      )}
+    </>
+  )
+
+  const details = (
+    <ProjectDetailsContent
+      statusCard={
+        manager ? (
+          <ProjectStatusCard
+            projectId={project.id}
+            projectName={project.name}
+            status={status}
+            lastUpdatedLabel={history[0] ? formatDate(history[0].created_at) : formatDate(project.updated_at ?? project.created_at)}
+            dateLabel={project.completion_date ? 'Completed' : 'Target completion'}
+            dateValue={formatDate(project.completion_date ?? project.target_completion_date)}
+          />
+        ) : null
+      }
+      editHref={manager ? `/projects/${project.id}/edit` : null}
+      facts={[
+        { label: 'Project type', value: PROJECT_TYPE_LABELS[project.project_type] ?? project.project_type ?? null },
+        { label: 'Homeowner', value: primaryClient ? `${primaryClient.first_name} ${primaryClient.last_name}` : null },
+        { label: 'Community', value: project.community || null },
+        { label: 'Lot / Block / Phase', value: lotBlockPhase },
+        { label: 'Estimated budget', value: project.estimated_budget_cents === null ? null : formatCents(project.estimated_budget_cents) },
+        { label: 'Proposed start', value: project.proposed_start_date ? formatDate(project.proposed_start_date) : null },
+        isCompleted
+          ? { label: 'Completed', value: completionDate ? formatDate(completionDate) : null }
+          : { label: 'Target completion', value: project.target_completion_date ? formatDate(project.target_completion_date) : null },
+      ]}
+      description={project.description || null}
+      legalDescription={project.legal_description || null}
+      internalNotes={project.internal_notes || null}
+      setupAction={
+        showsSetup && !setup.complete && setupDismissed ? (
+          <ShowSetupChecklistButton projectId={project.id} remaining={setup.steps.length - setup.doneCount} />
+        ) : showsSetup && setup.complete ? (
+          <p className="text-sm text-muted-foreground">{`Project setup: ${setup.doneCount} of ${setup.steps.length} complete.`}</p>
+        ) : null
+      }
+      history={history.map((h) => ({ ...h, byName: nameFor(h.changed_by) ?? 'System' }))}
+      historyError={Boolean(historyRes.error)}
+    />
+  )
+
+  const people = (
+    <ProjectPeopleSummary
+      id={PROJECT_SECTION_ANCHORS.team}
+      projectId={project.id}
+      homeowners={homeowners}
+      managerName={managerName}
+      members={members}
+      contacts={projectContacts.availability === 'ready' ? projectContacts.contacts : null}
+      companies={projectContacts.availability === 'ready' ? projectContacts.companies : []}
+      assignAction={assignRows ? <AssignSubcontractorsLink /> : null}
+      assignNote={assignNote}
+    />
+  )
+
+  const overview = (
+    <div className="flex flex-col gap-6">
+      <ProjectSectionScroll />
+      <ProjectOverviewHeader
+        managerName={managerName}
+        dateLabel={isCompleted ? 'Completed' : 'Target'}
+        dateValue={
+          isCompleted
+            ? completionDate
+              ? formatDate(completionDate)
+              : 'Not recorded'
+            : project.target_completion_date
+              ? formatDate(project.target_completion_date)
+              : 'Not set'
+        }
+        cover={cover ? { src: cover.url, alt: coverAlt(cover.kind, project.name) } : null}
+        badges={headerBadges}
+        actions={
+          <>
+            {manager && features.estimates && !isCompleted && (
+              <Button variant="outline" render={<Link href={`/estimates/new?project=${project.id}`} />} nativeButton={false}>
+                <Calculator data-icon="inline-start" />
+                Create estimate
+              </Button>
+            )}
+            <ReportIssueAction
+              projectId={project.id}
+              projectLabel={`${project.project_number} · ${project.name}`}
+              triggerVariant="outline"
+            />
+          </>
+        }
+      />
+      <ProjectDetailsDrawer projectName={project.name}>{details}</ProjectDetailsDrawer>
+
+      {showsSetup && !setup.complete && !setupDismissed && (
+        <ProjectSetupChecklist projectId={project.id} steps={setup.steps} doneCount={setup.doneCount} />
+      )}
+
+      <ProjectNextActions
+        items={nextActions.items}
+        hiddenCount={nextActions.hiddenCount}
+        incomplete={nextActionsIncomplete}
+        scope={scope}
+        scopeTotals={{ mine: scopeTotal('mine'), all: scopeTotal('all') }}
+        scopeHrefs={{ mine: scopeHref('mine'), all: scopeHref('all') }}
+      />
 
       {readiness && <CompletionReadinessPanel summary={readiness} projectId={project.id} canReview={manager} />}
       {isCompleted && (
@@ -440,180 +411,35 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         />
       )}
 
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="flex flex-col gap-8">
-          <OverviewSection
-            id="overview-heading"
-            icon={House}
-            title="Project details"
-            subtitle="Property and construction information."
-            variant="identity"
-          >
-            <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-              <DetailField
-                icon={Hammer}
-                label="Project type"
-                value={PROJECT_TYPE_LABELS[project.project_type] ?? project.project_type ?? null}
-              />
-              <DetailField
-                icon={UserRound}
-                label="Project manager"
-                value={managerName}
-                empty="Not assigned"
-                action={
-                  !managerName && manager ? (
-                    <Link href={`/projects/${project.id}/edit`} className="text-xs font-medium text-primary underline-offset-4 hover:underline">
-                      Assign manager
-                    </Link>
-                  ) : null
-                }
-              />
-              <DetailField icon={Trees} label="Community" value={project.community || null} />
-              <DetailField icon={LandPlot} label="Lot / Block / Phase" value={lotBlockPhase} />
-            </dl>
-            {project.description && (
-              <div className="flex flex-col gap-1.5 border-t pt-5">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Description</h3>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{project.description}</p>
-              </div>
-            )}
-            {project.legal_description && (
-              <div className="flex flex-col gap-1.5 border-t pt-5">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Legal description</h3>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{project.legal_description}</p>
-              </div>
-            )}
-            {project.internal_notes && (
-              <div className="flex flex-col gap-1.5 rounded-xl bg-champagne-soft p-4">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-warning">Internal notes · staff only</h3>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{project.internal_notes}</p>
-              </div>
-            )}
-          </OverviewSection>
+      {manager && (
+        <ProjectFinanceStrip
+          projectId={project.id}
+          budgetCents={project.estimated_budget_cents ?? null}
+          showEstimates={Boolean(features.estimates)}
+          showInvoices={Boolean(features.invoices)}
+          financialsHref={financialsHref}
+        />
+      )}
 
-          {features.schedule && <ProjectSchedulePanel projectId={project.id} canManage={manager} progressPercent={progress} />}
-
-          {features.estimates && (
-            <ProjectEstimatesPanel
-              projectId={project.id}
-              budgetCents={project.estimated_budget_cents ?? null}
-              canManage={manager}
-            />
-          )}
-
-          {features.invoices && canManage(session.role) && (
-            <ProjectInvoicesPanel projectId={project.id} canManage={manager} />
-          )}
-
-          {features.walkthroughs && <ProjectWalkthroughsPanel projectId={project.id} canCreate={manager} />}
-
-          <OverviewSection
-            id="history-heading"
-            icon={History}
-            title="Status history"
-            subtitle="Project lifecycle changes and recorded transitions."
-          >
-            {(historyRes.data ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">No status changes recorded yet.</p>
-            ) : (
-              <ol className="relative flex flex-col gap-5 before:absolute before:bottom-4 before:left-[0.4375rem] before:top-4 before:w-px before:bg-[#D6DDE5]">
-                {(historyRes.data ?? []).map((entry, index) => (
-                  <li key={entry.id} className="relative flex flex-col gap-1.5 pl-8">
-                    <span
-                      className={
-                        index === 0
-                          ? 'absolute left-0 top-1 size-3.5 rounded-full border-[3px] border-card bg-primary ring-1 ring-primary/30'
-                          : 'absolute left-0.5 top-1.5 size-2.5 rounded-full border-2 border-card bg-muted-foreground/40 ring-1 ring-border'
-                      }
-                      aria-hidden="true"
-                    />
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                      <p className="flex flex-wrap items-center gap-1.5 text-sm font-semibold leading-5 text-foreground">
-                        {entry.from_status ? (
-                          <>
-                            <span className="text-muted-foreground">{PROJECT_STATUS_LABELS[entry.from_status as ProjectStatus]}</span>
-                            <ArrowRight className="size-3.5 text-muted-foreground" aria-label="to" />
-                            <span>{PROJECT_STATUS_LABELS[entry.to_status as ProjectStatus]}</span>
-                          </>
-                        ) : (
-                          `Created as ${PROJECT_STATUS_LABELS[entry.to_status as ProjectStatus]}`
-                        )}
-                      </p>
-                      <time
-                        dateTime={entry.created_at}
-                        className="shrink-0 text-xs leading-5 tabular-nums text-muted-foreground sm:min-w-36 sm:text-right"
-                      >
-                        {formatDateTime(entry.created_at)}
-                      </time>
-                    </div>
-                    {entry.note && (
-                      <p className="rounded-lg bg-[#F3F4F6] px-3 py-2 text-sm leading-relaxed text-foreground/80">{entry.note}</p>
-                    )}
-                    <span className="text-xs text-muted-foreground">{`By ${nameFor(entry.changed_by) ?? 'System'}`}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </OverviewSection>
-        </div>
-
-        <aside className="flex flex-col gap-6">
-          {manager && (
-            <section aria-labelledby="status-heading" className="surface flex flex-col gap-4 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <h2 id="status-heading" className="font-serif text-lg font-semibold text-foreground">
-                  Project status
-                </h2>
-                <ProjectStatusBadge status={status} />
-              </div>
-              <dl className="grid grid-cols-2 gap-3 rounded-lg bg-[#F3F4F6] p-3 text-sm">
-                <div className="flex flex-col gap-0.5">
-                  <dt className="text-xs text-muted-foreground">Last updated</dt>
-                  <dd className="font-medium tabular-nums text-foreground">
-                    {historyRes.data?.[0] ? formatDate(historyRes.data[0].created_at) : formatDate(project.updated_at ?? project.created_at)}
-                  </dd>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <dt className="text-xs text-muted-foreground">{project.completion_date ? 'Completed' : 'Target completion'}</dt>
-                  <dd className="font-medium tabular-nums text-foreground">
-                    {formatDate(project.completion_date ?? project.target_completion_date)}
-                  </dd>
-                </div>
-              </dl>
-              <StatusChanger projectId={project.id} status={status} />
-              <a
-                href="#history-heading"
-                className="inline-flex items-center gap-1.5 self-start text-sm font-medium text-primary underline-offset-4 hover:underline"
-              >
-                <History className="size-3.5" aria-hidden="true" />
-                View status history
-              </a>
-            </section>
-          )}
-          <ProjectClientsPanel projectId={project.id} homeowners={homeowners} canEdit={manager} clientOptions={clientOptions} />
-          <div id={PROJECT_SECTION_ANCHORS.team} className="scroll-mt-24">
-            <ProjectTeamPanel
-              projectId={project.id}
-              projectName={project.name}
-              managerId={project.project_manager_id ?? null}
-              managerName={nameFor(project.project_manager_id)}
-              members={members}
-              staffOptions={staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))}
-              canEdit={manager}
-            />
-          </div>
-          {projectContacts.availability === 'ready' && (
-            <ProjectContactsPanel
-              projectId={project.id}
-              contacts={projectContacts.contacts}
-              companies={projectContacts.companies}
-              assignable={projectContacts.assignable}
-              canEdit={manager}
-              acceptsAssignments={projectAcceptsNewAssignments(project.status as string)}
-            />
-          )}
-        </aside>
+      <div className={features.schedule ? 'grid items-start gap-6 lg:grid-cols-2' : 'grid gap-6'}>
+        {features.schedule && (
+          <ProjectScheduleSnapshot
+            projectId={project.id}
+            activities={activities}
+            loadError={Boolean(activitiesRes.error)}
+            progress={progress}
+          />
+        )}
+        {people}
       </div>
     </div>
+  )
+
+  return assignRows ? (
+    <AssignSubcontractors projectId={project.id} projectName={project.name as string} rows={assignRows} canCreateCompany={!!features.subcontractors}>
+      {overview}
+    </AssignSubcontractors>
+  ) : (
+    overview
   )
 }

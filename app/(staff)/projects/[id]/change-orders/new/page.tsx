@@ -21,7 +21,7 @@ export default async function NewChangeOrderPage({ params }: { params: Promise<{
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="New change order" description={project.name} icon={FileDiff} backHref={back} backLabel="Change orders" />
+      <PageHeader title="New change order" meta={project.name} icon={FileDiff} backHref={back} backLabel="Change orders" />
       <ChangeOrderForm
         projectId={id}
         cancelHref={back}

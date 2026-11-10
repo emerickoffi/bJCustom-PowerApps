@@ -84,7 +84,7 @@ export async function FieldDashboard({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <p className="text-sm text-muted-foreground">{session.brand.displayName}</p>
-          <h1 className="font-serif text-2xl font-semibold md:text-3xl">
+          <h1 className="text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
             {firstName ? `${greeting()}, ${firstName}.` : `${greeting()}.`}
           </h1>
         </div>
@@ -149,7 +149,7 @@ function Panel({ id, title, icon, action, children }: { id: string; title: strin
 
 function StageBadge({ status }: { status: FieldDashboardData['assignedJobs'][number]['status'] }) {
   return (
-    <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', stageColor(status).badgeClass)}>
+    <span className={cn('rounded-badge px-2.5 py-0.5 text-xs font-medium', stageColor(status).badgeClass)}>
       {PROJECT_STATUS_LABELS[status] ?? status}
     </span>
   )
@@ -232,7 +232,7 @@ function FocusCard({ data }: { data: FieldDashboardData }) {
         <span className="uppercase tracking-wide text-link-border">Focus</span>
         <span
           className={cn(
-            'rounded-full px-2.5 py-0.5',
+            'rounded-badge px-2.5 py-0.5',
             focus.severity === 'critical' || overdue ? 'bg-red-50 text-red-800' : 'bg-white/15 text-white',
           )}
         >
@@ -370,7 +370,7 @@ function AssignedJobs({ data }: { data: FieldDashboardData }) {
                 </span>
                 <StageBadge status={j.status} />
                 {j.openActions > 0 && (
-                  <span className="rounded-full bg-link-soft px-2 py-0.5 text-xs font-medium text-link">
+                  <span className="rounded-badge bg-link-soft px-2 py-0.5 text-xs font-medium text-link">
                     {j.openActions}
                     <span className="sr-only"> open actions</span>
                   </span>
@@ -393,7 +393,7 @@ function UpcomingWork({ data }: { data: FieldDashboardData }) {
         <ul className="-mx-2 flex flex-col">
           {data.upcoming.map((u) => (
             <li key={u.key}>
-              <Link href={u.href} className="flex min-h-12 items-center gap-3 rounded-xl px-2 py-2 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Link href={u.href} className="flex min-h-12 items-center gap-3 rounded-panel px-2 py-2 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 {u.kind === 'punch' ? (
                   <ListChecks className="size-4 shrink-0 text-muted-foreground" aria-label="Punch item" />
                 ) : (
@@ -479,7 +479,7 @@ function JobUpdates({ data }: { data: FieldDashboardData }) {
               >
                 <span className="flex items-center gap-2 text-xs text-muted-foreground">
                   {formatDate(l.logDate)}
-                  {l.hasDelays && <span className="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-800">Delay reported</span>}
+                  {l.hasDelays && <span className="rounded-badge bg-amber-50 px-2 py-0.5 font-medium text-amber-800">Delay reported</span>}
                 </span>
                 <span className="line-clamp-2 text-sm">{l.summary}</span>
               </Link>

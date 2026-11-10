@@ -54,8 +54,8 @@ function ReportCard({ report, canManage, isLatest }: { report: StaffReport; canM
           <p className="flex items-center gap-2 font-medium text-foreground">
             <FileText className="size-4 text-muted-foreground" aria-hidden="true" />
             Version {report.version}
-            {isLatest && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Latest</span>}
-            <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+            {isLatest && <span className="rounded-badge bg-muted px-2 py-0.5 text-xs text-muted-foreground">Latest</span>}
+            <span className="rounded-badge border px-2 py-0.5 text-xs text-muted-foreground">
               {report.published_at ? 'Published' : 'Internal only'}
             </span>
           </p>

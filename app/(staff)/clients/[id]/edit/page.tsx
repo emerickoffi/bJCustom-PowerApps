@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { requireManager } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { updateClientAction } from '@/app/actions/clients'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { ClientForm } from '@/components/clients/client-form'
 import { UserRoundPen as UserRoundPenIcon } from 'lucide-react'
 
@@ -24,7 +24,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
   if (!client) notFound()
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <div className={pageLayout('form')}>
       <PageHeader icon={UserRoundPenIcon}
         backHref={`/clients/${client.id}`}
         backLabel="Client"

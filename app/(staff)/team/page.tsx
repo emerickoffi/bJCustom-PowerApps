@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { requireAdmin } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { InviteStaffForm, InvitationList, MemberList, type InvitationRow, type MemberRow } from '@/components/team/team-panels'
 import type { OrgRole } from '@/lib/domain'
 import { UsersRound as UsersRoundIcon } from 'lucide-react'
@@ -23,7 +23,6 @@ function UsersAccessHeader({ actions }: { actions?: React.ReactNode }) {
     <PageHeader
       icon={UsersRoundIcon}
       title="Users & Access"
-      description="Manage builder staff accounts and see which homeowners have portal access."
       actions={actions}
     />
   )
@@ -111,7 +110,7 @@ export default async function TeamPage({
   }))
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <UsersAccessHeader
         actions={
           <>

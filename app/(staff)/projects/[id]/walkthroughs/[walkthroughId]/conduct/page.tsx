@@ -4,7 +4,7 @@ import { ClipboardCheck } from 'lucide-react'
 import { requireStaff } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { signMediaPaths } from '@/lib/media'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { ChecklistForm, type SavedResponse } from '@/components/walkthroughs/checklist-form'
 import type { MediaItem, MediaKind, ResponseValue } from '@/lib/walkthroughs'
 
@@ -57,14 +57,14 @@ export default async function ConductWalkthroughPage({ params }: { params: Promi
   const project = walkthrough.project as unknown as { name: string; project_number: string }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('detail')}>
       <PageHeader
         icon={ClipboardCheck}
         backHref={detailHref}
         backLabel="Walkthrough details"
         eyebrow={<span className="font-mono normal-case tracking-normal">{project.project_number}</span>}
         title={walkthrough.title}
-        description={
+        meta={
           <span className="flex flex-col gap-1">
             <span>{`Builder-led inspection · ${project.name}`}</span>
             <span>Findings stay a draft until you submit. Submitting creates punch list items, labelled as builder observations.</span>

@@ -132,16 +132,19 @@ export function CategoryNav({
   base,
   params,
   counts,
+  compact = false,
 }: {
   base: string
   params: BrowseParams
   counts: Record<DocumentCategory, number>
+  /** Tighter rows for the staff project workspace. */
+  compact?: boolean
 }) {
   const total = Object.values(counts).reduce((a, b) => a + b, 0)
   const items = [{ key: '', label: 'All documents', count: total }, ...DOCUMENT_CATEGORIES.map((c) => ({ key: c.key, label: c.label, count: counts[c.key] }))]
   return (
     <nav aria-labelledby="document-library-heading" className="rounded-xl border border-[#D6DDE5] bg-card p-2">
-      <h2 id="document-library-heading" className="px-3 pb-2 pt-2 font-serif text-base font-semibold text-foreground">
+      <h2 id="document-library-heading" className={cn('px-3 font-serif text-base font-semibold text-foreground', compact ? 'pb-1.5 pt-1.5 pl-2' : 'pb-2 pt-2')}>
         Library
       </h2>
       <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
@@ -153,15 +156,16 @@ export function CategoryNav({
                 href={browseHref(base, params, { category: item.key || undefined, page: undefined })}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                  'flex items-center justify-between gap-3 rounded-lg px-3 text-sm transition-colors',
+                  compact ? 'min-h-10 py-1.5 pl-2' : 'py-2',
                   active ? 'bg-interactive-soft font-medium text-primary' : 'text-muted-foreground hover:bg-[#F3F4F6] hover:text-foreground',
                 )}
               >
                 <span className="flex min-w-0 items-center gap-2.5">
                   <CategoryIcon category={item.key} active={active} />
-                  <span className="whitespace-nowrap lg:whitespace-normal">{item.label}</span>
+                  <span className="whitespace-nowrap break-words lg:whitespace-normal">{item.label}</span>
                 </span>
-                <span className={cn('rounded-full px-1.5 text-xs tabular-nums', active ? 'bg-white text-primary' : 'bg-[#F3F4F6]')}>
+                <span className={cn('shrink-0 rounded-badge px-1.5 text-xs tabular-nums', active ? 'bg-white text-primary' : 'bg-[#F3F4F6]')}>
                   {item.count}
                 </span>
               </Link>

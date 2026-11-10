@@ -3,7 +3,16 @@ import { CommandHeader } from '@/components/dashboard/command-header'
 import { ComingUp } from '@/components/dashboard/coming-up'
 import { FinancialKpis } from '@/components/dashboard/financial-kpis'
 import { PipelineOverview } from '@/components/dashboard/pipeline-overview'
-import { PriorityJobs, type PriorityJob } from '@/components/dashboard/priority-jobs'
+import { PriorityJobs, type PriorityJob, type PriorityJobGroup } from '@/components/dashboard/priority-jobs'
+import { getStageNextSteps } from '@/lib/dashboard-cards'
+import { nextStepDue } from '@/lib/next-step-due'
+import { DUE_GROUP_LIMIT, groupByDue, isDueGroupId, type DueGroupId } from '@/lib/priority-job-groups'
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
+  return out
+}
 import { RecentActivity } from '@/components/dashboard/recent-activity'
 import { WarrantyRail } from '@/components/dashboard/warranty-rail'
 import { isActionCategory } from '@/lib/action-items'
@@ -30,7 +39,7 @@ import type { getOrgFeatures } from '@/lib/features'
 import { getFinancialMetrics } from '@/lib/financial-metrics-data'
 import { loadPortfolioSignals } from '@/lib/portfolio-data'
 import type { PortfolioRow } from '@/lib/portfolio'
-import { rankPriorityJobs, summarizeJob } from '@/lib/priority-jobs'
+import { PRIORITY_JOBS_LIMIT, rankPriorityJobs, summarizeJob } from '@/lib/priority-jobs'
 import { getProfileNames, PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@/lib/queries'
 import { canManage, type requireStaff } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -63,7 +72,7 @@ export async function OwnerDashboard({
 }: {
   session: Awaited<ReturnType<typeof requireStaff>>
   features: Awaited<ReturnType<typeof getOrgFeatures>>
-  query: { actions?: string; agenda?: string; project?: string; tab?: string }
+  query: { actions?: string; agenda?: string; project?: string; tab?: string; jobs?: string }
 }) {
   const supabase = await createClient()
   const orgId = session.organizationId
@@ -77,15 +86,33 @@ export async function OwnerDashboard({
     return qs ? `/dashboard?${qs}` : '/dashboard'
   }
 
+  // Promise.resolve runs the query builder exactly once, so its result can feed both the batch and the health load.
+  const projectsPromise = Promise.resolve(
+    supabase
+      .from('projects')
+      .select(
+        'id, name, status, progress_percent, updated_at, proposed_start_date, address_line1, city, state, postal_code, country',
+      )
+      .eq('organization_id', orgId)
+      .is('archived_at', null),
+  )
+  // Health only needs the project list, so it overlaps the slower action-item load instead of waiting behind it.
+  const healthPromise = projectsPromise.then((res) =>
+    loadProjectHealth(
+      orgId,
+      session.userId,
+      ((res.data ?? []) as ProjectRow[])
+        .filter((r) => ACTIVE_PROJECT_STATUSES.includes(r.status as ProjectStatus))
+        .map((r) => r.id),
+      features,
+    ),
+  )
+  // Awaited below; this only keeps an early rejection from being reported as unhandled meanwhile.
+  healthPromise.catch(() => undefined)
+
   const [projectsRes, activityRes, signals, agendaData, warranty, allAttention, visibilitySettings, weatherChoice, workScope] =
     await Promise.all([
-      supabase
-        .from('projects')
-        .select(
-          'id, name, status, progress_percent, updated_at, proposed_start_date, address_line1, city, state, postal_code, country',
-        )
-        .eq('organization_id', orgId)
-        .is('archived_at', null),
+      projectsPromise,
       supabase
         .from('client_activity')
         .select(
@@ -112,15 +139,17 @@ export async function OwnerDashboard({
     : allAttention
 
   const rows = (projectsRes.data ?? []) as ProjectRow[]
-  const activeIds = rows.filter((r) => ACTIVE_PROJECT_STATUSES.includes(r.status as ProjectStatus)).map((r) => r.id)
   const counts = rows.reduce<Partial<Record<ProjectStatus, number>>>((acc, r) => {
     const s = r.status as ProjectStatus
     acc[s] = (acc[s] ?? 0) + 1
     return acc
   }, {})
 
-  const [health, financials] = await Promise.all([
-    loadProjectHealth(orgId, session.userId, activeIds, features),
+  const priorityStatusRows = rows
+    .filter((r) => r.status !== 'cancelled')
+    .map((r) => ({ id: r.id, status: r.status as ProjectStatus }))
+  const [health, financials, stageNext] = await Promise.all([
+    healthPromise,
     getFinancialMetrics(orgId, {
       features,
       today: agendaData.today,
@@ -128,38 +157,69 @@ export async function OwnerDashboard({
         attention.items.filter((i) => i.category === 'approvals' && i.entityType === 'estimate').map((i) => i.entityId),
       ),
     }),
+    getStageNextSteps(orgId, priorityStatusRows, features.schedule, agendaData.today),
   ])
 
   /** Completed jobs stay listed only while a verified open action item is still attached to them. */
   const closeoutReasons = new Map<string, string>()
   /** The same item's own deadline. The project-schedule item's date is a proposed start, not a deadline, so it is omitted. */
   const closeoutDueOn = new Map<string, string | null>()
+  const closeoutHref = new Map<string, string>()
   for (const item of attention.items) {
     if (item.projectId && !closeoutReasons.has(item.projectId)) {
       closeoutReasons.set(item.projectId, item.title)
+      closeoutHref.set(item.projectId, item.href)
       closeoutDueOn.set(item.projectId, item.id.startsWith('project-schedule:') ? null : item.dueDate)
     }
   }
   const priorityEligible = rows.filter(
     (r) => r.status !== 'cancelled' && (r.status !== 'completed' || closeoutReasons.has(r.id)),
   )
-  const priorityIds = rankPriorityJobs(priorityEligible, signals, health.byId)
+  /** Full risk ranking; the tablet keeps its top slice, and the dashboard card uses it to break ties within a due group. */
+  const fullRank = rankPriorityJobs(priorityEligible, signals, health.byId, priorityEligible.length)
+  const priorityIds = fullRank.slice(0, PRIORITY_JOBS_LIMIT)
+
+  /** Group counts cover every eligible project, before any display limit. */
+  const dueItems = priorityEligible.map((r) => {
+    const completed = r.status === 'completed'
+    return {
+      id: r.id,
+      due: nextStepDue({
+        closeoutReason: completed ? (closeoutReasons.get(r.id) ?? null) : null,
+        closeoutDueOn: completed ? (closeoutDueOn.get(r.id) ?? null) : null,
+        stageActivities: stageNext.get(r.id) ?? null,
+      }),
+    }
+  })
+  const { groups: dueGroups, laterCount } = groupByDue(dueItems, fullRank, agendaData.today)
+  const expandedGroup = isDueGroupId(query.jobs) ? query.jobs : null
+  const visibleByGroup = new Map(
+    dueGroups.map((g) => [g.id, g.id === expandedGroup ? g.ids : g.ids.slice(0, DUE_GROUP_LIMIT)]),
+  )
+
   /** Tablet project scope. Only an id from this organization's open projects is honoured; never a default pick. */
   const selectedRow = query.project ? (rows.find((r) => r.id === query.project) ?? null) : null
-  const summaryIds =
-    selectedRow && !priorityIds.includes(selectedRow.id) ? [...priorityIds, selectedRow.id] : priorityIds
-  const { data: summaryData, error: summaryError } = summaryIds.length
-    ? await supabase.from('projects').select(PROJECT_SUMMARY_COLUMNS).eq('organization_id', orgId).in('id', summaryIds)
-    : { data: [], error: null }
-  const summaries = new Map(((summaryData ?? []) as unknown as ProjectSummary[]).map((p) => [p.id, p]))
+  const summaryIds = [
+    ...new Set([...priorityIds, ...[...visibleByGroup.values()].flat(), ...(selectedRow ? [selectedRow.id] : [])]),
+  ]
+  const summaryResults = await Promise.all(
+    chunk(summaryIds, 100).map((ids) =>
+      supabase.from('projects').select(PROJECT_SUMMARY_COLUMNS).eq('organization_id', orgId).in('id', ids),
+    ),
+  )
+  const summaryError = summaryResults.find((r) => r.error)?.error ?? null
+  const summaries = new Map(
+    summaryResults.flatMap((r) => (r.data ?? []) as unknown as ProjectSummary[]).map((p) => [p.id, p]),
+  )
   const ordered = priorityIds.flatMap((id) => summaries.get(id) ?? [])
   const withSelected = summaryIds.flatMap((id) => summaries.get(id) ?? [])
   const tabletJobIds = [...priorityIds.slice(0, 4), ...(selectedRow ? [selectedRow.id] : [])]
-  const [details, managers, covers] = await Promise.all([
-    getDashboardCardDetails(orgId, withSelected, features),
+  const [detailChunks, managers, covers] = await Promise.all([
+    Promise.all(chunk(withSelected, 8).map((part) => getDashboardCardDetails(orgId, part, features, agendaData.today))),
     getProfileNames(withSelected.map((p) => p.project_manager_id)),
     getProjectCoverPhotos(tabletJobIds),
   ])
+  const details = new Map(detailChunks.flatMap((m) => [...m]))
 
   const budgets =
     financials.contracts.state === 'available'
@@ -178,9 +238,10 @@ export async function OwnerDashboard({
       contractCents: budget?.state === 'established' ? budget.contractCents : null,
       health: h?.level ?? null,
       healthReasons: h?.reasons,
-      stageActivities: d?.stageActivities ?? null,
+      stageActivities: stageNext.has(p.id) ? (stageNext.get(p.id) ?? null) : (d?.stageActivities ?? null),
       closeoutReason: p.status === 'completed' ? (closeoutReasons.get(p.id) ?? null) : null,
       closeoutDueOn: p.status === 'completed' ? (closeoutDueOn.get(p.id) ?? null) : null,
+      closeoutHref: p.status === 'completed' ? (closeoutHref.get(p.id) ?? null) : null,
       canSetUpSchedule: features.schedule && canManage(session.role),
       summary: summarizeJob({
         status: p.status as ProjectStatus,
@@ -195,6 +256,25 @@ export async function OwnerDashboard({
     }
   }
   const jobs: PriorityJob[] = ordered.map(toJob)
+  const groupHref = (group: DueGroupId | null) => {
+    const search = new URLSearchParams()
+    if (selectedAction) search.set('actions', selectedAction)
+    if (agendaRange !== DEFAULT_COMING_UP_RANGE) search.set('agenda', agendaRange)
+    if (group) search.set('jobs', group)
+    const qs = search.toString()
+    return `/dashboard${qs ? `?${qs}` : ''}#${PRIORITY_JOBS_ANCHOR}`
+  }
+  const jobGroups: PriorityJobGroup[] = dueGroups.map((g) => ({
+    id: g.id,
+    total: g.ids.length,
+    jobs: (visibleByGroup.get(g.id) ?? []).flatMap((id) => {
+      const s = summaries.get(id)
+      return s ? [toJob(s)] : []
+    }),
+    expanded: g.id === expandedGroup,
+    showAllHref: groupHref(g.id),
+    showFewerHref: groupHref(null),
+  }))
   const selectedSummary = selectedRow ? summaries.get(selectedRow.id) : undefined
 
   const activityTotal = activityRes.error ? null : (activityRes.count ?? null)
@@ -305,7 +385,12 @@ export async function OwnerDashboard({
       />
     ),
     priority_jobs: (
-      <PriorityJobs jobs={jobs} today={agendaData.today} unavailable={!!projectsRes.error || !!summaryError} />
+      <PriorityJobs
+        groups={jobGroups}
+        laterCount={laterCount}
+        today={agendaData.today}
+        unavailable={!!projectsRes.error || !!summaryError}
+      />
     ),
     coming_up: (
       <ComingUp

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowRight, Mail, MapPin, MessageCircle, Phone, UserRound, UsersRound } from 'lucide-react'
 import { ClientProjectsDisclosure, type ClientProject } from '@/components/clients/client-projects-disclosure'
 import { Button } from '@/components/ui/button'
+import { RecordPreviewSurface, RecordPreviewTrigger } from '@/components/shared/record-preview'
 import { ClientStatusBadge } from '@/components/shared/status-badge'
 import { COMMUNICATION_LABELS, CONTACT_RELATIONSHIP_LABELS } from '@/lib/domain'
 import type { ClientSummary } from '@/lib/queries'
@@ -152,7 +153,10 @@ export function ClientCard({
     : null
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)] transition-[box-shadow,border-color] hover:border-[#D5DED5] hover:shadow-[0_4px_14px_rgba(16,59,39,0.07)]">
+    <RecordPreviewSurface
+      recordId={client.id}
+      className="flex scroll-mt-24 scroll-mb-4 flex-col overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)] transition-[box-shadow,border-color] hover:border-[#D5DED5] hover:shadow-[0_4px_14px_rgba(16,59,39,0.07)] data-selected:border-primary data-selected:ring-1 data-selected:ring-primary"
+    >
       <header className="flex items-center justify-between gap-3 p-4 pb-3 sm:flex-wrap sm:p-5 sm:pb-4">
         <div className="flex min-w-0 items-center gap-3">
           <span
@@ -162,10 +166,13 @@ export function ClientCard({
             {`${client.first_name.charAt(0)}${client.last_name.charAt(0)}`.toUpperCase()}
           </span>
           <div className="flex min-w-0 flex-col gap-0.5">
-            <h2 className="break-words text-base font-semibold text-foreground sm:truncate">
-              <Link href={href} className="hover:text-primary hover:underline">
-                {displayName}
-              </Link>
+            <h2 className="flex min-w-0 text-base font-semibold text-foreground">
+              <RecordPreviewTrigger
+                recordId={client.id}
+                name={displayName}
+                className="max-w-full hover:text-primary hover:underline"
+                labelClassName="break-words sm:block sm:truncate"
+              />
             </h2>
             <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
               <span>{`Client #${client.client_number}`}</span>
@@ -235,6 +242,6 @@ export function ClientCard({
           </Button>
         </div>
       </ClientProjectsDisclosure>
-    </article>
+    </RecordPreviewSurface>
   )
 }

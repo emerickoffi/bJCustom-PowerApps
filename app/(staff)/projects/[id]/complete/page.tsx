@@ -1,7 +1,7 @@
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, ShieldX } from 'lucide-react'
+import { ClipboardCheck, ShieldX } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getOrgFeatures } from '@/lib/features'
@@ -44,20 +44,19 @@ export default async function CompletionReviewPage({ params }: { params: Promise
     blockedReason = 'Resolve the outstanding requirements, or ask an administrator to approve completion with exceptions.'
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-      <Link href={`/projects/${id}`} className="flex items-center gap-1.5 self-start text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to overview
-      </Link>
-      <header className="flex flex-col gap-2">
-        <h1 className="text-balance font-serif text-2xl font-semibold text-foreground">{`Complete ${project.name}`}</h1>
-        <p className="text-sm text-muted-foreground">
-          Readiness is evaluated from current project records and checked again when you submit. Physical completion is separate from financial settlement.
-        </p>
-      </header>
+    <div className={pageLayout('form')}>
+      <PageHeader
+        icon={ClipboardCheck}
+        title={`Complete ${project.name}`}
+        backHref={`/projects/${id}`}
+        backLabel="Back to overview"
+      />
 
       <section aria-labelledby="review-readiness" className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
         <h2 id="review-readiness" className="sr-only">Readiness review</h2>
+        <p className="text-sm text-muted-foreground">
+          Readiness is evaluated from current project records and checked again when you submit. Physical completion is separate from financial settlement.
+        </p>
         <ReadinessCounts summary={summary} />
         <ReadinessChecklist items={summary.items} />
       </section>

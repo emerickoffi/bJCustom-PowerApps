@@ -36,6 +36,8 @@ export type ProjectHomeowners = {
   /** Contacts on the primary homeowner that could be reused instead of duplicated. */
   primaryContacts: ExistingClientContact[]
   scopingAvailable: boolean
+  /** The homeowner links or their contacts could not be read, so empty groups must not read as "no homeowner". */
+  loadFailed: boolean
 }
 
 const MISSING_TABLE = new Set(['42P01', 'PGRST205'])
@@ -45,7 +47,7 @@ export async function loadProjectHomeowners(
   organizationId: string,
   projectId: string,
 ): Promise<ProjectHomeowners> {
-  const { data: linkRows } = await supabase
+  const { data: linkRows, error: linkError } = await supabase
     .from('project_clients')
     .select('id, relationship, client:clients(id, first_name, last_name, email, phone)')
     .eq('project_id', projectId)
@@ -60,7 +62,9 @@ export async function loadProjectHomeowners(
   const primaryLink = links.find((l) => l.relationship === 'primary_owner') ?? links[0]
   const primaryClientId = primaryLink?.client?.id ?? null
 
-  if (clientIds.length === 0) return { groups: [], primaryClientId, primaryContacts: [], scopingAvailable: true }
+  if (clientIds.length === 0) {
+    return { groups: [], primaryClientId, primaryContacts: [], scopingAvailable: true, loadFailed: Boolean(linkError) }
+  }
 
   const [contactsRes, accountsRes] = await Promise.all([
     supabase
@@ -173,5 +177,5 @@ export async function loadProjectHomeowners(
       visibleHere: !c.archived_at && isContactVisibleOnProject(scopes.get(c.id) ?? [], projectId),
     }))
 
-  return { groups, primaryClientId, primaryContacts, scopingAvailable }
+  return { groups, primaryClientId, primaryContacts, scopingAvailable, loadFailed: Boolean(contactsRes.error) }
 }

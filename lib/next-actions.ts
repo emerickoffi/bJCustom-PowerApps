@@ -1,6 +1,8 @@
-import { lifecycleGroup } from './project-lifecycle.ts'
+import { SCHEDULE_DATES_NEEDED } from './schedule.ts'
 
 export type NextActionTone = 'critical' | 'review' | 'setup'
+
+export const SCHEDULE_DATES_ACTION_KEY = 'schedule-dates'
 
 export type NextAction = {
   key: string
@@ -26,14 +28,26 @@ export type ProjectActionState = {
   }
   /** Project status; gates stage-specific steps. Omitted = treated as an active build. */
   status?: string
-  hasProjectManager: boolean
-  activityCount: number
+  /**
+   * `mine` limits the list to work assigned to the viewer: the caller passes only activities and issues
+   * assigned to them, and project-wide reviews appear only when they are this project's manager.
+   */
+  scope?: 'all' | 'mine'
+  isProjectManager?: boolean
   /** Open activities marked delayed or still open after their planned finish. */
   lateActivityCount: number
   reviewEstimateIds: string[]
   signatureRequests: SignatureRequestRef[]
   openIssueCount: number
   firstOpenIssueId: string | null
+  /** Most urgent late activity, with its planned finish already formatted for display. */
+  firstLateActivity?: { name: string; dueLabel: string | null } | null
+  firstOpenIssueLabel?: string | null
+  /**
+   * Open activities waiting for planned dates while none of the open work is dated (`undatedOpenActivityCount`).
+   * Omitted where schedule planning is left to the setup checklist.
+   */
+  undatedOpenActivityCount?: number
 }
 
 export const NEXT_ACTION_LIMIT = 3
@@ -57,24 +71,31 @@ export function latestSignatureRequests(requests: SignatureRequestRef[]): Signat
 export function buildProjectNextActions(state: ProjectActionState): { items: NextAction[]; hiddenCount: number } {
   const base = `/projects/${encodeURIComponent(state.projectId)}`
   const { features, canManage } = state
-  const stage = state.status ? lifecycleGroup(state.status) : 'active'
   const actions: NextAction[] = []
   const signing = features.documents && features.e_signatures
   const signatures = signing ? latestSignatureRequests(state.signatureRequests) : []
 
   if (features.schedule && state.lateActivityCount > 0) {
+    const late = state.firstLateActivity
+    const due = late?.dueLabel ? ` · planned finish ${late.dueLabel}` : ''
     actions.push({
       key: 'late-activities',
       tone: 'critical',
-      title: `${plural(state.lateActivityCount, 'activity needs', 'activities need')} an update`,
-      description: 'Delayed or past the planned finish. Update progress, status, or dates.',
+      title:
+        late && state.lateActivityCount === 1
+          ? `Update ${late.name}`
+          : `${plural(state.lateActivityCount, 'activity needs', 'activities need')} an update`,
+      description: late
+        ? `${state.lateActivityCount === 1 ? 'Delayed or past the planned finish' : `Starting with ${late.name}`}${due}. Update progress, status, or dates.`
+        : 'Delayed or past the planned finish. Update progress, status, or dates.',
       href: `${base}/schedule`,
       actionLabel: 'Update schedule',
     })
   }
 
+  const ownsProjectWide = state.scope !== 'mine' || Boolean(state.isProjectManager)
   const problems = signatures.filter((s) => SIGNATURE_PROBLEM.has(s.status)).length
-  if (canManage && problems > 0) {
+  if (canManage && ownsProjectWide && problems > 0) {
     actions.push({
       key: 'signature-problems',
       tone: 'critical',
@@ -85,18 +106,7 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
     })
   }
 
-  if (canManage && !state.hasProjectManager) {
-    actions.push({
-      key: 'assign-manager',
-      tone: 'setup',
-      title: 'Assign a project manager',
-      description: 'No project manager is assigned to this project yet.',
-      href: `${base}/edit`,
-      actionLabel: 'Assign manager',
-    })
-  }
-
-  if (features.estimates && canManage && state.reviewEstimateIds.length > 0) {
+  if (features.estimates && canManage && ownsProjectWide && state.reviewEstimateIds.length > 0) {
     const one = state.reviewEstimateIds.length === 1
     actions.push({
       key: 'estimate-review',
@@ -115,15 +125,18 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
     actions.push({
       key: 'open-issues',
       tone: 'review',
-      title: `${plural(state.openIssueCount, 'walkthrough issue is', 'walkthrough issues are')} open`,
+      title:
+        one && state.firstOpenIssueLabel
+          ? `Open issue: ${state.firstOpenIssueLabel}`
+          : `${plural(state.openIssueCount, 'walkthrough issue is', 'walkthrough issues are')} open`,
       description: 'Record corrective work and approve repairs for homeowner confirmation.',
-      href: one ? `${base}/issues/${encodeURIComponent(state.firstOpenIssueId!)}` : `${base}#walkthroughs-heading`,
+      href: one ? `${base}/issues/${encodeURIComponent(state.firstOpenIssueId!)}` : `${base}/walkthroughs`,
       actionLabel: one ? 'Open issue' : 'View issues',
     })
   }
 
   const awaiting = signatures.filter((s) => AWAITING_SIGNATURE.has(s.status)).length
-  if (awaiting > 0) {
+  if (ownsProjectWide && awaiting > 0) {
     actions.push({
       key: 'signatures-pending',
       tone: 'review',
@@ -134,19 +147,22 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
     })
   }
 
-  // A build schedule is a readiness task once a job is approved; pipeline and closed jobs don't need one yet.
-  if (stage === 'active' && features.schedule && canManage && state.activityCount === 0) {
+  // Planning dates is manager work on an open project. It ranks below every review, so it never reads as a delay or a risk.
+  const undated = state.undatedOpenActivityCount ?? 0
+  const closed = state.status === 'completed' || state.status === 'cancelled'
+  if (features.schedule && canManage && ownsProjectWide && !closed && undated > 0) {
     actions.push({
-      key: 'schedule-setup',
+      key: SCHEDULE_DATES_ACTION_KEY,
       tone: 'setup',
-      title: 'Set up the construction schedule',
-      description: 'Progress tracking starts once the schedule is initialized.',
+      title: SCHEDULE_DATES_NEEDED,
+      description: `${plural(undated, 'open activity has', 'open activities have')} no planned dates. Add dates to see what is next.`,
       href: `${base}/schedule`,
-      actionLabel: 'Set up schedule',
+      actionLabel: 'Plan schedule',
     })
   }
 
-  if (state.status === 'completed' && features.warranty) {
+  // Other setup gaps (manager, documents...) live in the setup checklist so they never read as urgent work.
+  if (state.status === 'completed' && features.warranty && ownsProjectWide) {
     actions.push({
       key: 'warranty',
       tone: 'review',

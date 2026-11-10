@@ -196,7 +196,7 @@ function PortalSummary({
     <div className="flex flex-col gap-2">
       {accountStatus && <PortalAccountLine status={accountStatus} />}
       <details className="group/perm rounded-lg border border-primary/10 bg-sage/60">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-panel px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
           <ShieldCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="text-sm font-medium text-primary">{heading}</span>
@@ -271,7 +271,7 @@ function ContactCard({
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-foreground">{contactName(c)}</span>
             {c.is_primary && (
-              <span className="rounded-full bg-primary px-2 py-0.5 text-[0.7rem] font-medium text-primary-foreground">
+              <span className="rounded-badge bg-primary px-2 py-0.5 text-[0.7rem] font-medium text-primary-foreground">
                 Primary
               </span>
             )}
@@ -405,7 +405,7 @@ function ClientRecordPrimaryCard({ client, canEdit }: { client: ClientRecordIden
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-foreground">{name}</span>
-            <span className="rounded-full bg-primary px-2 py-0.5 text-[0.7rem] font-medium text-primary-foreground">
+            <span className="rounded-badge bg-primary px-2 py-0.5 text-[0.7rem] font-medium text-primary-foreground">
               Primary
             </span>
           </div>

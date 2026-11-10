@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import type { ActionState } from '@/lib/action-state'
 import { OverlayBody, OverlayFooter, useFormOverlay } from '@/components/shared/form-overlay'
+import { useUnsavedNavigationGuard } from '@/components/app/navigation-guard'
 
 const DISCARD_PROMPT = 'You have unsaved changes. Discard them and leave this page?'
 
@@ -63,6 +64,8 @@ export function useSmartForm(state: ActionState, formKey: string) {
     })
     return () => cancelAnimationFrame(id)
   }, [state, formRef])
+
+  useUnsavedNavigationGuard(!overlay && dirty, DISCARD_PROMPT)
 
   useEffect(() => {
     if (overlay || !dirty) return
@@ -141,6 +144,7 @@ export function SmartFormLayout({
             render={
               <Link
                 href={cancelHref}
+                data-skip-leave-guard
                 onClick={(e) => {
                   if (dirty && !window.confirm(DISCARD_PROMPT)) e.preventDefault()
                 }}

@@ -17,7 +17,7 @@ import {
   parseDailyLogDirectoryFilters,
   type DailyLogStatus,
 } from '@/lib/daily-logs'
-import { EmptyState, PageHeader, Surface } from '@/components/shared/page-header'
+import { EmptyState, PageHeader, Surface, pageLayout } from '@/components/shared/page-header'
 import { DirectoryPagination } from '@/components/shared/directory-pagination'
 import { SearchInput } from '@/components/shared/search-input'
 import { DailyLogStatusBadge } from '@/components/daily-logs/daily-log-report'
@@ -82,10 +82,9 @@ export default async function DailyLogsDirectoryPage({
   const filtered = Boolean(filters.q || filters.project || filters.status)
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader
         title="Daily logs"
-        description="Site activity across every project you have access to. Open a log to view or edit it inside its project."
         icon={ClipboardList}
         actions={
           canCreate && !setupRequired && (

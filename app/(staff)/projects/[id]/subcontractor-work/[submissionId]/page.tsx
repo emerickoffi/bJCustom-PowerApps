@@ -9,7 +9,7 @@ import { formatDate } from '@/lib/format'
 import { workStateFor } from '@/lib/subcontractor-work'
 import { loadProfileNames, loadSubmissionCycles } from '@/lib/subcontractor-work-data'
 import { isUuid } from '@/lib/subcontractor-projects'
-import { PageHeader, Surface } from '@/components/shared/page-header'
+import { PageHeader, Surface, pageLayout } from '@/components/shared/page-header'
 import { WorkStateBadge } from '@/components/subcontractor-work/work-state-badge'
 import { SubmissionHistory } from '@/components/subcontractor-work/submission-history'
 import { ReviewForm, type LinkableIssue } from '@/components/subcontractor-work/review-form'
@@ -76,14 +76,14 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
   const awaiting = current.status === 'submitted'
 
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-5">
+    <div className={pageLayout('detail')}>
       <PageHeader
         icon={ClipboardCheck}
         backHref={`/projects/${id}/subcontractor-work`}
         backLabel="Subcontractor work"
         title={title}
+        eyebrow={(company?.company_name as string | undefined) || undefined}
         titleAddon={<WorkStateBadge state={workStateFor(current.status)} audience="builder" />}
-        description={`${company?.company_name ?? 'Subcontractor'} · ${current.kind === 'work' ? 'Work completion' : 'Correction'}${current.cycle > 1 ? ` · Resubmission ${current.cycle}` : ''}`}
       />
 
       <Surface aria-labelledby="scope-heading" className="gap-3">
@@ -137,7 +137,7 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
           </div>
           <Link
             href={`/subcontractors/${current.companyId}?rate=${current.assignmentId}&work=${current.id}#performance`}
-            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md bg-primary px-3.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border border-action-border bg-action font-semibold text-action-foreground hover:bg-action-hover active:bg-action-pressed px-3.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             <Star className="size-4" aria-hidden="true" />
             Rate Subcontractor

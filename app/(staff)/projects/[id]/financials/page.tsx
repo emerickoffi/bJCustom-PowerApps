@@ -8,8 +8,10 @@ import { createClient } from '@/lib/supabase/server'
 import { BASELINE_REASON_LABELS, formatMoney } from '@/lib/financials'
 import { loadProjectFinancials } from '@/lib/job-costing-data'
 import { PageHeader, SectionHeading, Surface } from '@/components/shared/page-header'
+import { SemanticBadge } from '@/components/shared/semantic-badge'
 import { FinancialSummary } from '@/components/financials/financial-summary'
 import { BudgetTable } from '@/components/financials/budget-table'
+import { ProjectInvoicesPanel } from '@/components/invoices/project-invoices-panel'
 
 export const metadata: Metadata = { title: 'Project financials' }
 
@@ -32,8 +34,8 @@ export default async function ProjectFinancialsPage({ params }: { params: Promis
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Financials"
-        description={`Budget, cost, forecast and billing for ${project.name}. Internal only, never shown to homeowners.`}
         icon={Landmark}
+        titleAddon={<SemanticBadge tone="neutral">Internal only</SemanticBadge>}
       />
 
       <Surface aria-label="Budget baseline">
@@ -59,7 +61,7 @@ export default async function ProjectFinancialsPage({ params }: { params: Promis
         ) : (
           <p className="text-sm text-muted-foreground">
             {BASELINE_REASON_LABELS[baseline.reason]}{' '}
-            <Link href={`/estimates?project=${encodeURIComponent(project.id)}`} className="font-medium text-primary underline-offset-4 hover:underline">
+            <Link href={`/projects/${encodeURIComponent(project.id)}/estimates`} className="font-medium text-primary underline-offset-4 hover:underline">
               Open estimates
             </Link>
           </p>
@@ -74,9 +76,18 @@ export default async function ProjectFinancialsPage({ params }: { params: Promis
       <FinancialSummary summary={summary} showProfit={showProfit} />
 
       <section aria-labelledby="budget-heading" className="flex flex-col gap-3">
-        <SectionHeading id="budget-heading" title="Budget versus actual" description="Grouped by cost code. Estimate categories map to cost codes; historical labels are kept as recorded." />
+        <SectionHeading
+          id="budget-heading"
+          title="Budget versus actual"
+          help={{
+            label: 'How budget lines are grouped',
+            content: 'Grouped by cost code. Estimate categories map to cost codes; historical labels are kept as recorded.',
+          }}
+        />
         <BudgetTable summary={summary} />
       </section>
+
+      {features.invoices && <ProjectInvoicesPanel projectId={project.id} canManage />}
     </div>
   )
 }

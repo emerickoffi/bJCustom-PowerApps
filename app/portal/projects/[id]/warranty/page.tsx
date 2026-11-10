@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ShieldCheck } from 'lucide-react'
-import { PageHeader, EmptyState } from '@/components/shared/page-header'
+import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 import { z } from 'zod'
 import { getSession } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
@@ -65,13 +65,13 @@ export default async function HomeownerWarrantyPage({ params }: { params: Promis
   }))
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader
         icon={ShieldCheck}
         backHref="/portal"
         backLabel="Your home"
         title="Your home warranty"
-        description={project.name}
+        meta={project.name}
       />
 
       {!warranty ? (
@@ -100,7 +100,7 @@ export default async function HomeownerWarrantyPage({ params }: { params: Promis
                       <ShieldCheck className={cn('size-5', ended ? 'text-muted-foreground' : 'text-primary')} aria-hidden="true" />
                       <span
                         className={cn(
-                          'rounded-full px-2.5 py-0.5 text-xs font-medium',
+                          'rounded-badge px-2.5 py-0.5 text-xs font-medium',
                           ended ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary',
                         )}
                       >

@@ -6,7 +6,7 @@ import { getInvoiceAccess } from '@/lib/invoice-access'
 import { getInvoice } from '@/lib/invoice-queries'
 import { getInvoiceFormOptions } from '@/lib/invoice-form-data'
 import { centsToInput } from '@/lib/estimates'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { InvoiceForm } from '@/components/invoices/invoice-form'
 
 export const metadata: Metadata = { title: 'Edit invoice' }
@@ -23,11 +23,10 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   const { projects, estimates } = await getInvoiceFormOptions(session.organizationId, id)
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
+    <div className={pageLayout('form')}>
       <PageHeader
         icon={Receipt}
         title={`Edit ${invoice.invoice_number}`}
-        description="Drafts can be changed freely until they are issued."
         backHref={`/invoices/${id}`}
         backLabel="Back to invoice"
       />

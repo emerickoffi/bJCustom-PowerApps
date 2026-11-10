@@ -684,9 +684,9 @@ function SortablePhase({
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="font-mono text-xs font-medium tabular-nums text-brand-deep/65">{String(phase.number).padStart(2, '0')}</span>
                   <span className="font-serif text-base font-semibold text-brand-deep">{phase.name}</span>
-                  {isCurrent && <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-white">Current phase</span>}
+                  {isCurrent && <span className="rounded-badge bg-primary px-2 py-0.5 text-[11px] font-medium text-white">Current phase</span>}
                   {phase.complete && (
-                    <span className="rounded-full bg-[#E2F3E9] px-2 py-0.5 text-[11px] font-medium text-[#187542]">Complete</span>
+                    <span className="rounded-badge bg-[#E2F3E9] px-2 py-0.5 text-[11px] font-medium text-[#187542]">Complete</span>
                   )}
                 </span>
                 <span className="text-xs text-muted-foreground tabular-nums">
@@ -823,7 +823,7 @@ function PhaseNameEditor({
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex h-10 items-center rounded-md bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-interactive-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60 sm:h-9"
+          className="inline-flex h-10 items-center rounded-md border border-action-border bg-action font-semibold text-action-foreground hover:bg-action-hover active:bg-action-pressed px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:border-border disabled:bg-muted disabled:text-muted-foreground sm:h-9"
         >
           {pending ? 'Saving…' : 'Save'}
         </button>

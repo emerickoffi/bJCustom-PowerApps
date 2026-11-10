@@ -46,7 +46,7 @@ test('projects outside the authorized lookup are rejected', () => {
 
 test('completed, consultation, and cancelled projects are rejected', () => {
   for (const status of ['completed', 'consultation', 'cancelled', 'on_hold', 'lead']) {
-    assert.match(checkSelectedProjects([A], [{ id: A, status }], eligible) ?? '', /preconstruction/)
+    assert.match(checkSelectedProjects([A], [{ id: A, status }], eligible) ?? '', /can’t be added/)
   }
   for (const status of ['preconstruction', 'under_construction', 'punch_list']) {
     assert.equal(checkSelectedProjects([A], [{ id: A, status }], eligible), null)

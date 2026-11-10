@@ -48,9 +48,9 @@ export default async function PortalDocumentsPage({
       <PageHeader
         icon={FolderOpen}
         backHref="/portal"
-        backLabel="My home"
+        backLabel="Your home"
         title="Documents"
-        description={`Documents your builder has shared for ${project.name}.`}
+        meta={project.name}
       />
       <PortalSignatureTasks tasks={tasks} />
       <FocusHashTarget />

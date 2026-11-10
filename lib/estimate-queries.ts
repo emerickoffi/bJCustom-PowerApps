@@ -83,7 +83,7 @@ export async function getEstimateFamily(familyId: string) {
   const supabase = await createClient()
   const { data } = await supabase
     .from('estimates')
-    .select('id, revision, status, construction_total_cents, total_with_land_cents, created_at, decision_at')
+    .select('id, revision, status, construction_total_cents, total_with_land_cents, created_at, updated_at, decision_at')
     .eq('family_id', familyId)
     .order('revision', { ascending: false })
   return (data ?? []) as {
@@ -93,6 +93,7 @@ export async function getEstimateFamily(familyId: string) {
     construction_total_cents: number
     total_with_land_cents: number
     created_at: string
+    updated_at: string | null
     decision_at: string | null
   }[]
 }
@@ -106,7 +107,7 @@ export async function listEstimates(organizationId: string, filters: { projectId
     .order('created_at', { ascending: false })
     .limit(500)
   if (filters.projectId) query = query.eq('project_id', filters.projectId)
-  const { data } = await query
+  const { data, error } = await query
   const rows = (data ?? []).map(normalize)
 
   const latestByFamily = new Map<string, EstimateRecord>()
@@ -119,5 +120,5 @@ export async function listEstimates(organizationId: string, filters: { projectId
   const latest = [...latestByFamily.values()]
     .filter((r) => !filters.status || r.status === filters.status)
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
-  return { estimates: latest, revisionCount, all: rows }
+  return { estimates: latest, revisionCount, all: rows, failed: !!error }
 }

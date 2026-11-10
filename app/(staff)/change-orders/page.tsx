@@ -5,7 +5,7 @@ import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { formatMoney } from '@/lib/financials'
 import { isChangeOrderStatus, summarizeChangeOrders } from '@/lib/change-orders'
-import { EmptyState, PageHeader, Surface } from '@/components/shared/page-header'
+import { EmptyState, PageHeader, Surface, pageLayout } from '@/components/shared/page-header'
 import { OrgChangeOrderDirectory, type OrgChangeOrderRow } from '@/components/change-orders/org-change-order-directory'
 import { ChooseProjectDialog } from '@/components/change-orders/choose-project-dialog'
 
@@ -73,10 +73,9 @@ export default async function OrgChangeOrdersPage() {
   const awaitingCount = list.filter((r) => r.status === 'awaiting_homeowner').length
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader
         title="Change orders"
-        description="Scope and price changes across every project you can access. Open a change order to work on it inside its project."
         icon={FileDiff}
       />
 

@@ -70,9 +70,13 @@ export function CompanyForm({
   const [name, setName] = useState(v.company_name)
   const [suppliers, setSuppliers] = useState(checked.has('suppliers') || Boolean(v.product_categories))
 
+  const setOverlayDirty = overlay?.setDirty
   useEffect(() => {
-    if (state.savedId) onSaved?.(state)
-  }, [state, onSaved])
+    if (!state.savedId) return
+    // The saved values are no longer a draft, so the overlay must not ask about discarding them next time.
+    setOverlayDirty?.(false)
+    onSaved?.(state)
+  }, [state, onSaved, setOverlayDirty])
 
   const search = name.trim().toLowerCase()
   const liveMatches =
@@ -94,7 +98,8 @@ export function CompanyForm({
 
   const sections = (
     <div className={cn('flex flex-col', overlay ? 'gap-0' : 'gap-5')}>
-      {overlay && <input type="hidden" name={OVERLAY_FIELD} value="1" />}
+      {/* Only a caller that handles the result asks for it; the routed edit drawer still follows the redirect. */}
+      {overlay && onSaved && <input type="hidden" name={OVERLAY_FIELD} value="1" />}
 
       <FormSection
         flat={Boolean(overlay)}

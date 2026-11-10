@@ -3,6 +3,7 @@
 import { useDeferredValue, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useSWRConfig } from 'swr'
 import {
   ArrowDown,
   ArrowUp,
@@ -15,6 +16,7 @@ import {
   FileUp,
   FolderKanban,
   Mail,
+  MoreHorizontal,
   Phone,
   Search,
   User,
@@ -38,6 +40,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -76,8 +79,23 @@ import {
 import { setStatusBulkAction } from '@/app/actions/contacts'
 import { InlineEditCell } from '@/components/contacts/inline-edit-cell'
 import { ContactStatusBadge } from '@/components/contacts/contact-status-button'
-import { useOverlayHref } from '@/components/contacts/contact-overlays'
-import { EMPTY_ADVANCED, MoreFilters, countAdvanced, type AdvancedFilters } from '@/components/contacts/more-filters'
+import { ContactPreview, type ContactPreviewRecord } from '@/components/contacts/contact-preview'
+import { RecordPreviewLayout, RecordPreviewSurface, RecordPreviewTrigger } from '@/components/shared/record-preview'
+import {
+  COMPANY_PREVIEW_PARAM,
+  CONTACT_PREVIEW_PANEL_ID,
+  CONTACT_PREVIEW_PARAM,
+  isContactPreviewKey,
+  personPreviewApiPath,
+} from '@/lib/record-preview'
+import {
+  DEFAULT_FILTERS,
+  DirectoryFilters,
+  EMPTY_ADVANCED,
+  isDefaultFilters,
+  type AdvancedFilters,
+  type DirectoryFilterValues,
+} from '@/components/contacts/directory-filters'
 
 type ColumnKey =
   | 'type'
@@ -118,6 +136,26 @@ const COLUMNS: Record<DirectoryView, ColumnDef[]> = {
   ],
 }
 
+/**
+ * With the preview open beside it, the table gives up its lower-priority columns as its own width shrinks, instead
+ * of squeezing every column. The preview shows the same details for the selected record.
+ */
+const PREVIEW_HIDE: Partial<Record<ColumnKey, string>> = {
+  secondary_phone: 'xl:group-data-preview-open/preview:@max-[88rem]:hidden',
+  products: 'xl:group-data-preview-open/preview:@max-[88rem]:hidden',
+  contacts: 'xl:group-data-preview-open/preview:@max-[88rem]:hidden',
+  category: 'xl:group-data-preview-open/preview:@max-[72rem]:hidden',
+  status: 'xl:group-data-preview-open/preview:@max-[72rem]:hidden',
+  email: 'xl:group-data-preview-open/preview:@max-5xl:hidden',
+  specialty: 'xl:group-data-preview-open/preview:@max-4xl:hidden',
+  primary_contact: 'xl:group-data-preview-open/preview:@max-4xl:hidden',
+  projects: 'xl:group-data-preview-open/preview:@max-3xl:hidden',
+}
+
+/** The shared table row styles, plus the highlight for the record open in the preview. */
+const ROW_CLASS =
+  'scroll-mt-24 scroll-mb-4 border-b border-divider transition-colors hover:bg-[#F4F7F3] focus-within:bg-muted/40 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-selected data-[state=selected]:shadow-[inset_3px_0_0_0_var(--selected-border)] data-selected:bg-link-soft!'
+
 const DEFAULT_HIDDEN: Record<DirectoryView, ColumnKey[]> = {
   people: ['secondary_phone'],
   companies: ['products'],
@@ -136,10 +174,6 @@ function rowKey(row: DirectoryRow) {
   return `${row.kind}:${row.id}`
 }
 
-function rowHref(row: DirectoryRow) {
-  return row.kind === 'person' ? `/contacts/people/${row.id}` : `/contacts/companies/${row.id}`
-}
-
 function rowName(row: DirectoryRow) {
   return row.kind === 'person' ? personName(row.person) : row.company.company_name
 }
@@ -149,13 +183,17 @@ export function ContactsDirectory({
   companies,
   initialView,
   initialCategory,
+  formOpen,
 }: {
   people: PersonView[]
   companies: CompanyView[]
   initialView: DirectoryView
   initialCategory: CategoryKey | null
+  /** A create or edit form covers the list. The preview drawer steps aside for it. */
+  formOpen: boolean
 }) {
   const router = useRouter()
+  const { mutate } = useSWRConfig()
   const [view, setView] = useState<DirectoryView>(initialView)
   const [category, setCategory] = useState<CategoryKey | null>(initialCategory)
   const [query, setQuery] = useState('')
@@ -198,31 +236,45 @@ export function ContactsDirectory({
   )
 
   const allRows = useMemo(() => buildRows(view, mergedPeople, companies), [view, mergedPeople, companies])
-  const filtered = useMemo(() => {
-    const base = filterRows(allRows, { query: deferredQuery, status, category })
-    const narrowed = filterByAttributes(
-      base,
-      { specialty: advanced.specialty, product: advanced.product, companyId: advanced.companyId, projectId: projectFilter },
-      companies,
-    )
-    return sortRows(narrowed, sort.key, sort.dir)
-  }, [allRows, deferredQuery, status, category, sort, projectFilter, advanced, companies])
-  const { items, page: safePage, pages } = paginate(filtered, page, pageSize)
+  /** Everything except the category choice, so each category count is the number of results that category would show. */
+  const scoped = useMemo(
+    () =>
+      filterByAttributes(
+        filterRows(allRows, { query: deferredQuery, status, category: null }),
+        { specialty: advanced.specialty, product: advanced.product, companyId: advanced.companyId, projectId: projectFilter },
+        companies,
+      ),
+    [allRows, deferredQuery, status, projectFilter, advanced, companies],
+  )
+  const filtered = useMemo(
+    () => sortRows(category ? filterRows(scoped, { query: '', status: 'all', category }) : scoped, sort.key, sort.dir),
+    [scoped, category, sort],
+  )
+  const { items, page: safePage, pages } = useMemo(() => paginate(filtered, page, pageSize), [filtered, page, pageSize])
+  const previewRecords = useMemo<ContactPreviewRecord[]>(
+    () => items.map((row) => ({ id: row.id, name: rowName(row), kind: row.kind })),
+    [items],
+  )
   const columns = COLUMNS[view].filter((c) => !hidden[view].includes(c.key))
   const selectedRows = filtered.filter((r) => selected.has(rowKey(r)))
   const pageKeys = items.map(rowKey)
   const allOnPageSelected = pageKeys.length > 0 && pageKeys.every((k) => selected.has(k))
 
-  const counts = useMemo(() => categoryCounts(filterRows(allRows, { query: '', status, category: null })), [allRows, status])
+  const counts = useMemo(() => categoryCounts(scoped), [scoped])
 
   function syncUrl(nextView: DirectoryView, nextCategory: CategoryKey | null) {
     const params = new URLSearchParams(window.location.search)
     params.delete('view')
     params.delete('category')
+    // A selection belongs to the tab it was made on, so switching tabs always starts with no preview.
+    if (nextView !== view) {
+      params.delete(CONTACT_PREVIEW_PARAM)
+      params.delete(COMPANY_PREVIEW_PARAM)
+    }
     if (nextView !== 'people') params.set('view', nextView)
     if (nextCategory) params.set('category', nextCategory)
     const qs = params.toString()
-    window.history.replaceState(null, '', qs ? `/contacts?${qs}` : '/contacts')
+    window.history.replaceState(null, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
   }
 
   /**
@@ -254,8 +306,11 @@ export function ContactsDirectory({
     changeCategory(null)
   }
 
-  function applyAdvanced(next: AdvancedFilters) {
-    setAdvanced(next)
+  /** Applies the Filters popover fields only; search, category, and the URL are left as they are. */
+  function applyFilters({ status: nextStatus, projectId, ...nextAdvanced }: DirectoryFilterValues) {
+    setStatus(nextStatus)
+    setProjectFilter(projectId)
+    setAdvanced(nextAdvanced)
     setPage(1)
   }
 
@@ -289,6 +344,7 @@ export function ContactsDirectory({
 
   function savePersonField(personId: string, field: keyof PersonView, value: string | null, updatedAt: string) {
     setEdits((prev) => ({ ...prev, [personId]: { ...prev[personId], [field]: value, updated_at: updatedAt } }))
+    void mutate(personPreviewApiPath(personId))
   }
 
   function exportCsv(rows: DirectoryRow[]) {
@@ -351,23 +407,36 @@ export function ContactsDirectory({
       if (errors.length) toast.error(errors.join(' '))
       setConfirm(null)
       setSelected(new Set())
+      void mutate(isContactPreviewKey)
       router.refresh()
     })
   }
 
-  const hasFilters = Boolean(query || category || status !== 'active' || projectFilter || countAdvanced(advanced))
-  const advancedChips = [
-    advanced.companyId && { key: 'companyId' as const, label: companies.find((c) => c.id === advanced.companyId)?.company_name ?? 'Company' },
-    advanced.specialty && { key: 'specialty' as const, label: advanced.specialty },
-    advanced.product && { key: 'product' as const, label: advanced.product },
-  ].filter((c): c is { key: keyof AdvancedFilters; label: string } => Boolean(c))
+  const filters: DirectoryFilterValues = { ...advanced, status, projectId: projectFilter }
+  const filterChips: { key: string; label: string; cleared: Partial<DirectoryFilterValues> }[] = []
+  if (status !== 'all') {
+    filterChips.push({ key: 'status', label: `Status: ${status === 'active' ? 'Active' : 'Inactive'}`, cleared: { status: 'all' } })
+  }
+  if (projectFilter) {
+    const project = projectOptions.find(([id]) => id === projectFilter)?.[1]
+    filterChips.push({ key: 'projectId', label: `Project: ${project ?? 'Selected project'}`, cleared: { projectId: '' } })
+  }
+  if (advanced.companyId) {
+    const company = companies.find((c) => c.id === advanced.companyId)?.company_name
+    filterChips.push({ key: 'companyId', label: `Company: ${company ?? 'Selected company'}`, cleared: { companyId: '' } })
+  }
+  if (advanced.specialty) filterChips.push({ key: 'specialty', label: `Trade: ${advanced.specialty}`, cleared: { specialty: '' } })
+  if (advanced.product) filterChips.push({ key: 'product', label: `Product: ${advanced.product}`, cleared: { product: '' } })
+  const filtersAtDefault = isDefaultFilters(filters)
+  const isNarrowed = Boolean(query || category || filterChips.length)
   const sortMenuValue = SORT_OPTIONS[view].some((o) => o.value === `${sort.key}:${sort.dir}`) ? `${sort.key}:${sort.dir}` : ''
   const noun = view === 'people' ? 'contacts' : 'companies'
+  const resultNoun = filtered.length === 1 ? (view === 'people' ? 'contact' : 'company') : noun
   const directoryEmpty = allRows.length === 0
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex min-w-0 flex-col gap-3">
         <div role="tablist" aria-label="Directory view" className="inline-flex w-fit shrink-0 rounded-lg border border-border bg-card p-1 shadow-xs">
           {DIRECTORY_VIEWS.map((v) => (
             <button
@@ -388,7 +457,7 @@ export function ContactsDirectory({
         <div
           role="group"
           aria-label="Filter by category"
-          className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 lg:justify-end"
+          className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
         >
           <CategoryChip active={!category} onClick={() => changeCategory(null)} label="All" count={counts.total} />
           {CATEGORY_KEYS.map((k) => (
@@ -397,8 +466,8 @@ export function ContactsDirectory({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <div className="relative min-w-0 flex-1">
+      <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
+        <div className="relative w-full min-w-0 md:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <label htmlFor="contacts-search" className="sr-only">
             {view === 'people' ? 'Search contacts' : 'Search companies'}
@@ -415,42 +484,7 @@ export function ContactsDirectory({
             className="h-10 bg-card pl-9"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="contacts-project" className="sr-only">
-            Project
-          </label>
-          <NativeSelect
-            id="contacts-project"
-            value={projectFilter}
-            onChange={(e) => {
-              setProjectFilter(e.target.value)
-              setPage(1)
-            }}
-            className="w-full min-w-0 bg-card sm:w-48"
-          >
-            <option value="">All projects</option>
-            {projectOptions.map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </NativeSelect>
-          <label htmlFor="contacts-status" className="sr-only">
-            Status
-          </label>
-          <NativeSelect
-            id="contacts-status"
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value as StatusFilter)
-              setPage(1)
-            }}
-            className="w-[calc(50%-0.25rem)] bg-card sm:w-36"
-          >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="all">All statuses</option>
-          </NativeSelect>
+        <div className="flex min-w-0 shrink-0 items-center gap-2">
           <label htmlFor="contacts-sort" className="sr-only md:hidden">
             Sort by
           </label>
@@ -463,7 +497,7 @@ export function ContactsDirectory({
               setSort({ key, dir })
               setPage(1)
             }}
-            className="w-[calc(50%-0.25rem)] bg-card sm:w-48 md:hidden"
+            className="min-w-0 flex-1 bg-card md:hidden"
           >
             {!sortMenuValue && (
               <option value="" disabled>
@@ -476,11 +510,12 @@ export function ContactsDirectory({
               </option>
             ))}
           </NativeSelect>
-          <MoreFilters
+          <DirectoryFilters
             key={view}
             view={view}
-            value={advanced}
-            onApply={applyAdvanced}
+            value={filters}
+            onApply={applyFilters}
+            projectOptions={projectOptions}
             companyOptions={companyOptions}
             specialtyOptions={specialtyOptions}
             productOptions={productOptions}
@@ -510,12 +545,55 @@ export function ContactsDirectory({
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="lg" className="bg-card" onClick={() => exportCsv(filtered)}>
-            <Download data-icon="inline-start" />
-            Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" size="icon" className="size-10 shrink-0 bg-card" aria-label="More contact actions" />}>
+              <MoreHorizontal />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem render={<Link href="/contacts/import" />}>
+                <FileUp />
+                Import CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportCsv(filtered)}>
+                <Download />
+                Export
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
+
+      {(filterChips.length > 0 || !filtersAtDefault) && (
+        <div role="group" aria-label="Applied filters" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+          {filterChips.map((chip) => (
+            <span
+              key={chip.key}
+              className="inline-flex max-w-full items-center gap-1 rounded-badge border border-primary/20 bg-sage py-0.5 pl-2.5 pr-1 text-xs font-medium text-foreground"
+            >
+              <span className="truncate">{chip.label}</span>
+              <button
+                type="button"
+                onClick={() => applyFilters({ ...filters, ...chip.cleared })}
+                aria-label={`Remove filter ${chip.label}`}
+                className="shrink-0 rounded-full p-0.5 text-muted-foreground hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <X className="size-3" aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+          {status === 'all' && <span className="text-xs text-muted-foreground">Active and inactive shown</span>}
+          {!filtersAtDefault && (
+            <button
+              type="button"
+              onClick={() => applyFilters(DEFAULT_FILTERS)}
+              className="inline-flex items-center gap-1 rounded text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex min-h-9 flex-wrap items-center justify-between gap-2 text-sm">
         <p className="text-muted-foreground" aria-live="polite">
@@ -523,30 +601,7 @@ export function ContactsDirectory({
             ? directoryEmpty
               ? `No ${noun} yet`
               : `No matching ${noun}`
-            : `Showing ${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length}`}
-          {advancedChips.map((chip) => (
-            <span key={chip.key} className="ml-2 inline-flex items-center gap-1 rounded-full border border-primary/20 bg-sage py-0.5 pl-2.5 pr-1 text-xs font-medium text-foreground">
-              {chip.label}
-              <button
-                type="button"
-                onClick={() => applyAdvanced({ ...advanced, [chip.key]: '' })}
-                aria-label={`Remove filter ${chip.label}`}
-                className="rounded-full p-0.5 text-muted-foreground hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <X className="size-3" aria-hidden="true" />
-              </button>
-            </span>
-          ))}
-          {hasFilters && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="ml-2 inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
-            >
-              <X className="size-3.5" aria-hidden="true" />
-              Clear filters
-            </button>
-          )}
+            : `Showing ${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length} ${isNarrowed ? 'matching ' : ''}${resultNoun}`}
         </p>
         {selectedRows.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-sage px-3 py-1.5" role="region" aria-label="Bulk actions">
@@ -567,10 +622,18 @@ export function ContactsDirectory({
         )}
       </div>
 
+      <RecordPreviewLayout
+        records={previewRecords}
+        param={view === 'people' ? CONTACT_PREVIEW_PARAM : COMPANY_PREVIEW_PARAM}
+        panelId={CONTACT_PREVIEW_PANEL_ID}
+        label={view === 'people' ? 'Contact preview' : 'Company preview'}
+        suspended={formOpen}
+        renderPreview={(record) => <ContactPreview record={record} />}
+      >
       {filtered.length === 0 ? (
         <DirectoryEmptyState view={view} directoryEmpty={directoryEmpty} onClearFilters={clearFilters} />
       ) : (
-        <>
+        <div className="flex flex-col gap-4">
           <div className="hidden overflow-x-auto rounded-xl border border-border/70 bg-card shadow-xs md:block">
             <Table>
               <TableHeader>
@@ -587,9 +650,9 @@ export function ContactsDirectory({
                   <SortHeader label={view === 'companies' ? 'Company' : 'Name'} sortKey="name" sort={sort} onSort={toggleSort} className="min-w-52" />
                   {columns.map((c) =>
                     c.sort ? (
-                      <SortHeader key={c.key} label={c.label} sortKey={c.sort} sort={sort} onSort={toggleSort} className={c.width} />
+                      <SortHeader key={c.key} label={c.label} sortKey={c.sort} sort={sort} onSort={toggleSort} className={cn(c.width, PREVIEW_HIDE[c.key])} />
                     ) : (
-                      <TableHead key={c.key} scope="col" className={cn(DIRECTORY_TH_TEXT, c.width)}>
+                      <TableHead key={c.key} scope="col" className={cn(DIRECTORY_TH_TEXT, c.width, PREVIEW_HIDE[c.key])}>
                         {c.label}
                       </TableHead>
                     ),
@@ -598,7 +661,14 @@ export function ContactsDirectory({
               </TableHeader>
               <TableBody>
                 {items.map((row) => (
-                  <TableRow key={rowKey(row)} data-state={selected.has(rowKey(row)) ? 'selected' : undefined} className="hover:bg-[#F4F7F3]">
+                  <RecordPreviewSurface
+                    key={rowKey(row)}
+                    as="tr"
+                    recordId={row.id}
+                    data-slot="table-row"
+                    data-state={selected.has(rowKey(row)) ? 'selected' : undefined}
+                    className={ROW_CLASS}
+                  >
                     <TableCell className="pl-4">
                       <input
                         type="checkbox"
@@ -612,7 +682,7 @@ export function ContactsDirectory({
                       <NameCell row={row} />
                     </TableCell>
                     {columns.map((c) => (
-                      <TableCell key={c.key} className="max-w-64 py-3 align-middle">
+                      <TableCell key={c.key} className={cn('max-w-64 py-3 align-middle', PREVIEW_HIDE[c.key])}>
                         <Cell
                           column={c.key}
                           row={row}
@@ -621,7 +691,7 @@ export function ContactsDirectory({
                         />
                       </TableCell>
                     ))}
-                  </TableRow>
+                  </RecordPreviewSurface>
                 ))}
               </TableBody>
             </Table>
@@ -672,8 +742,9 @@ export function ContactsDirectory({
               </Button>
             </div>
           </nav>
-        </>
+        </div>
       )}
+      </RecordPreviewLayout>
 
       <Dialog open={Boolean(projectsFor)} onOpenChange={(open) => !open && setProjectsFor(null)}>
         <DialogContent>
@@ -730,7 +801,7 @@ function CategoryChip({ active, onClick, label, count }: { active: boolean; onCl
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground/80 hover:border-primary/40 hover:text-foreground',
       )}
     >
@@ -766,7 +837,6 @@ function SortHeader({
 }
 
 function NameCell({ row }: { row: DirectoryRow }) {
-  const overlayHref = useOverlayHref()
   const isPerson = row.kind === 'person'
   const Icon = isPerson ? User : Building2
   return (
@@ -781,9 +851,12 @@ function NameCell({ row }: { row: DirectoryRow }) {
         <Icon className="size-4" />
       </span>
       <div className="flex min-w-0 flex-col">
-        <Link href={isPerson ? overlayHref({ contact: row.id }) : rowHref(row)} scroll={isPerson ? false : undefined} className="truncate font-semibold text-link underline-offset-4 hover:text-link-hover hover:underline focus-visible:underline">
-          {rowName(row)}
-        </Link>
+        <RecordPreviewTrigger
+          recordId={row.id}
+          name={rowName(row)}
+          className="max-w-full self-start font-semibold text-link underline-offset-4 hover:text-link-hover hover:underline"
+          labelClassName="block truncate"
+        />
         {row.kind === 'company' && row.company.subcontractor_company_id && (
           <span className="text-xs text-muted-foreground">
             {row.company.trade ? `Subcontractor · ${row.company.trade}` : 'Linked subcontractor'}
@@ -945,7 +1018,14 @@ function MobileCard({
     : row.company.primary_contact?.name ?? `${row.company.contact_count} contacts`
   const projects = isPerson ? row.person.projects : row.company.projects
   return (
-    <li className={cn('flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-xs', selected && 'border-primary/40 ring-1 ring-primary/20')}>
+    <RecordPreviewSurface
+      as="li"
+      recordId={row.id}
+      className={cn(
+        'flex scroll-mt-24 scroll-mb-4 flex-col gap-3 rounded-xl border bg-card p-4 shadow-xs data-selected:border-primary data-selected:bg-link-soft/50 data-selected:ring-1 data-selected:ring-primary',
+        selected && 'border-primary/40 ring-1 ring-primary/20',
+      )}
+    >
       <div className="flex items-start gap-3">
         <input type="checkbox" checked={selected} onChange={onToggle} aria-label={`Select ${rowName(row)}`} className="mt-2 size-4 accent-primary" />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -969,7 +1049,7 @@ function MobileCard({
         )}
         <ProjectsButton title={rowName(row)} projects={projects} onShow={onShowProjects} />
       </div>
-    </li>
+    </RecordPreviewSurface>
   )
 }
 

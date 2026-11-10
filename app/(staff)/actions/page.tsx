@@ -1,3 +1,4 @@
+import { pageLayout } from '@/components/shared/page-header'
 import type { Metadata } from 'next'
 import { canManage, requireStaff } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
@@ -36,7 +37,7 @@ export default async function ActionsPage({
   })
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className={pageLayout('workspace')}>
       <ActionCenter
         items={data.items}
         totalIsLowerBound={data.totalIsLowerBound}

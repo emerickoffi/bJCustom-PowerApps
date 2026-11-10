@@ -72,12 +72,18 @@ export function ScheduleBoard({
   staffOptions,
   conflictIds,
   canManage,
+  filterKey,
+  emptyState,
 }: {
   mode: 'project' | 'all'
   groups: BoardGroup[]
   staffOptions: { value: string; label: string }[]
   conflictIds: string[]
   canManage: boolean
+  /** Active activity filter; switching to a narrowing filter expands everything so matches aren't hidden. */
+  filterKey?: string
+  /** Shown in place of the views when `groups` is empty. */
+  emptyState?: React.ReactNode
 }) {
   const router = useRouter()
   const [view, setView] = useState<View>('stages')
@@ -94,6 +100,12 @@ export function ScheduleBoard({
     }
     return initial
   })
+
+  const [seenFilter, setSeenFilter] = useState(filterKey)
+  if (filterKey !== seenFilter) {
+    setSeenFilter(filterKey)
+    if (filterKey && filterKey !== 'all') setCollapsed(new Set())
+  }
 
   const conflicts = useMemo(() => new Set(conflictIds), [conflictIds])
   const names = useMemo(() => new Map(staffOptions.map((s) => [s.value, s.label])), [staffOptions])
@@ -173,7 +185,9 @@ export function ScheduleBoard({
         </div>
       </div>
 
-      {view === 'stages' && (
+      {groups.length === 0 && emptyState}
+
+      {view === 'stages' && groups.length > 0 && (
         <div className="flex flex-col gap-3">
           {groups.map((g) =>
             mode === 'all' ? (
@@ -193,6 +207,7 @@ export function ScheduleBoard({
       )}
 
       {view === 'timeline' &&
+        groups.length > 0 &&
         (mode === 'project' && groups[0] ? (
           <ScheduleTimeline
             activities={groups[0].activities}
@@ -207,7 +222,7 @@ export function ScheduleBoard({
           </div>
         ))}
 
-      {view === 'list' && (
+      {view === 'list' && groups.length > 0 && (
         <ScheduleActivityList mode={mode} groups={groups} nameFor={nameFor} onSelect={open} today={today} canManage={canManage} />
       )}
     </section>
@@ -253,7 +268,7 @@ function ProjectSection({
             </span>
           </span>
           {overdue > 0 && (
-            <span className="ml-auto shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+            <span className="ml-auto shrink-0 rounded-badge bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
               {`${overdue} overdue`}
             </span>
           )}
@@ -333,7 +348,7 @@ function StageList({
                 <span className="text-xs text-[#526173]">{phaseDates(items)}</span>
               </span>
               {overdue > 0 && (
-                <span className="hidden shrink-0 rounded-full border border-[#F5C7C5] bg-[#FDE8E7] px-2 py-0.5 text-xs font-medium text-[#BD302B] sm:inline">
+                <span className="hidden shrink-0 rounded-badge border border-[#F5C7C5] bg-[#FDE8E7] px-2 py-0.5 text-xs font-medium text-[#BD302B] sm:inline">
                   {`${overdue} overdue`}
                 </span>
               )}
@@ -384,7 +399,7 @@ function StageList({
                           )}
                           <span className="min-w-0 break-words underline-offset-2 group-hover:underline">{a.name}</span>
                           {late && (
-                            <span className="shrink-0 rounded-full bg-[#FDE8E7] px-1.5 py-px text-[11px] font-medium text-[#BD302B]">Overdue</span>
+                            <span className="shrink-0 rounded-badge bg-[#FDE8E7] px-1.5 py-px text-[11px] font-medium text-[#BD302B]">Overdue</span>
                           )}
                         </span>
                         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#526173] md:contents">

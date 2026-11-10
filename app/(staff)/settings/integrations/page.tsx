@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { requireAdmin } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { getQuickBooksStatus, quickBooksStatusLabel } from '@/lib/quickbooks'
-import { PageHeader } from '@/components/shared/page-header'
+import { PageHeader, pageLayout } from '@/components/shared/page-header'
 
 export const metadata: Metadata = { title: 'Integrations' }
 
@@ -14,13 +14,12 @@ export default async function IntegrationsPage() {
   const status = getQuickBooksStatus()
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <div className={pageLayout('form')}>
       <PageHeader
         icon={Plug}
         backHref="/settings"
         backLabel="Company settings"
         title="Integrations"
-        description="Connect outside services. Nothing is sent to another service until it is connected and authorized."
       />
 
       <section aria-labelledby="qbo-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
@@ -33,7 +32,7 @@ export default async function IntegrationsPage() {
               Send approved estimates to QuickBooks so your books match what homeowners approved.
             </p>
           </div>
-          <span className="w-fit shrink-0 rounded-full bg-champagne-soft px-2.5 py-1 text-xs font-medium text-warning">
+          <span className="w-fit shrink-0 rounded-badge bg-champagne-soft px-2.5 py-1 text-xs font-medium text-warning">
             {quickBooksStatusLabel(status)}
           </span>
         </div>

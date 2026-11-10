@@ -8,7 +8,7 @@ import type { WalkthroughStatus } from '@/lib/walkthroughs'
 import { getSession } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
-import { EmptyState } from '@/components/shared/page-header'
+import { EmptyState, pageLayout } from '@/components/shared/page-header'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { ProgressRing } from '@/components/shared/progress'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
@@ -135,18 +135,15 @@ export default async function PortalPage() {
   const firstName = session?.fullName?.split(' ')[0]
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2.5 text-sm font-medium text-link">
           <span className="h-px w-6 bg-link" aria-hidden="true" />
-          My Home
+          Your home
         </div>
-        <h1 className="text-balance font-serif text-3xl font-semibold leading-tight text-foreground md:text-[2.6rem]">
+        <h1 className="text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
           {firstName ? `Welcome home, ${firstName}.` : 'Welcome home.'}
         </h1>
-        <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-          {`Follow every stage of your build with ${session?.brand.displayName ?? 'your builder'}: progress, timeline, and walkthroughs, all in one place.`}
-        </p>
       </div>
 
       {projects.length > 0 && <HomeownerActions actions={homeownerActions} showProject={projects.length > 1} />}

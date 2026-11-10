@@ -102,7 +102,7 @@ function GroupHeading({ icon: Icon, title, count }: { icon: typeof FolderKanban;
       <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
       {title}
       {count !== undefined && (
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{count}</span>
+        <span className="rounded-badge bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{count}</span>
       )}
     </h3>
   )

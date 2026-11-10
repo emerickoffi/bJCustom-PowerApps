@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { CalendarDays, CheckCircle2, Circle, CircleDot, AlertTriangle } from 'lucide-react'
-import { PageHeader, EmptyState } from '@/components/shared/page-header'
+import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 import { z } from 'zod'
 import { getSession } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -60,13 +60,13 @@ export default async function HomeownerSchedulePage({ params }: { params: Promis
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={pageLayout('workspace')}>
       <PageHeader
         icon={CalendarDays}
         backHref="/portal"
         backLabel="Your home"
         title="Construction timeline"
-        description={project.name}
+        meta={project.name}
       />
 
       {items.length === 0 ? (

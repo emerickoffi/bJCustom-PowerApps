@@ -117,7 +117,7 @@ export default async function ProjectWarrantyPage({
       <PageHeader
         icon={ShieldCheckIcon}
         title="Warranty"
-        description={
+        meta={
           warranty
             ? `${snapshot?.template_name ?? 'Warranty'} · started ${formatDate(warranty.start_date)}${
                 warranty.enrollment_method === 'backfill' ? ' (enrolled after completion)' : ''

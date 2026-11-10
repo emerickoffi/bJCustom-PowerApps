@@ -39,6 +39,8 @@ export function friendlyDbError(error: { message?: string; code?: string } | nul
   if (error.code === '42501') return 'You do not have permission to perform this action.'
   if (error.code === '23505') return 'A record with these details already exists.'
   if (error.code === 'P0001' && error.message) return error.message
+  // Raised by runTrackedSave itself (not Postgres); its message is written for end users.
+  if (error.code === 'SAVE_LEDGER_MISSING' && error.message) return error.message
   return 'Something went wrong. Please try again.'
 }
 
