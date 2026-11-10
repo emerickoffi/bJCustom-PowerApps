@@ -9,9 +9,9 @@ import { loadDirectoryForAssignment } from '@/lib/directory-assignment-data'
 import { getClientOptions, getStaffMembers } from '@/lib/queries'
 import { getOrgFeatures } from '@/lib/features'
 import { directoryClosedReason } from '@/lib/domain'
-import { PageHeader, EmptyState } from '@/components/shared/page-header'
+import { PageHeader } from '@/components/shared/page-header'
 import { ProjectContactsTable } from '@/components/projects/project-contacts-table'
-import { ProjectClientsPanel } from '@/components/projects/project-people'
+import { Panel, ProjectClientsPanel } from '@/components/projects/project-people'
 import { ProjectTeamPanel } from '@/components/projects/project-team-panel'
 import { AssignSubcontractors, AssignSubcontractorsLink } from '@/components/projects/assign-subcontractors'
 
@@ -60,26 +60,27 @@ export default async function ProjectPeoplePage({
 
   const content = (
     <div className="flex flex-col gap-6">
-      <PageHeader title="People" />
+      <PageHeader title="People" icon={Users} />
 
-      <ProjectClientsPanel projectId={project.id} homeowners={homeowners} canEdit={manager} clientOptions={clientOptions} />
+      <div className="flex flex-col gap-4">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ProjectClientsPanel projectId={project.id} homeowners={homeowners} canEdit={manager} clientOptions={clientOptions} />
 
-      <ProjectTeamPanel
-        projectId={project.id}
-        projectName={project.name as string}
-        managerId={(project.project_manager_id as string | null) ?? null}
-        managerName={nameFor(project.project_manager_id as string | null)}
-        members={members}
-        staffOptions={staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))}
-        canEdit={manager}
-      />
+          <ProjectTeamPanel
+            projectId={project.id}
+            projectName={project.name as string}
+            managerId={(project.project_manager_id as string | null) ?? null}
+            managerName={nameFor(project.project_manager_id as string | null)}
+            members={members}
+            staffOptions={staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))}
+            canEdit={manager}
+          />
+        </div>
 
-      <section aria-labelledby="outside-heading" className="flex flex-col gap-3">
-        <h2 id="outside-heading" className="font-serif text-lg font-semibold text-foreground">
-          Subcontractors &amp; professionals
-        </h2>
         {data.availability === 'setup-required' ? (
-          <EmptyState icon={Users} title="Contacts are not set up yet" description="The business contacts directory has not been enabled for this organization." />
+          <Panel title="Subcontractors & professionals" compact>
+            <p className="text-sm text-muted-foreground">The business contacts directory has not been enabled for this organization.</p>
+          </Panel>
         ) : (
           <ProjectContactsTable
             projectId={project.id}
@@ -91,7 +92,7 @@ export default async function ProjectPeoplePage({
             emptyAction={assignRows ? <AssignSubcontractorsLink /> : null}
           />
         )}
-      </section>
+      </div>
     </div>
   )
 

@@ -155,7 +155,7 @@ export function ProjectTeamPanel({
   return (
     <Panel title="Builder team" compact={empty} action={unassigned ? undefined : manageTeam}>
       {unassigned ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-dashed border-[#D5E2D3] bg-interactive-soft/60 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <div className="min-w-0 flex-1 basis-48">
             <ManagerRow name={null} membershipRole={null} note={empty ? 'No other team members assigned.' : undefined} />
           </div>

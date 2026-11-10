@@ -113,19 +113,17 @@ export function ProjectContactsTable({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <section aria-labelledby="pc-table-heading" className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 id="pc-table-heading" className="text-sm font-semibold text-foreground">
-              Assigned people
-            </h2>
-            <p className="mt-0.5 text-xs text-muted-foreground" aria-live="polite">
-              {showHistory
-                ? `${visible.length} of ${endedCount} past ${endedCount === 1 ? 'association' : 'associations'}`
-                : `${visible.length} of ${activeCount} active ${activeCount === 1 ? 'contact' : 'contacts'}`}
-            </p>
-          </div>
+    <div className="flex min-w-0 flex-col gap-4">
+      <section aria-labelledby="pc-table-heading" className="flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-card p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h2 id="pc-table-heading" className="font-serif text-lg font-semibold text-foreground">
+            Subcontractors &amp; professionals
+          </h2>
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {showHistory
+              ? `${visible.length} of ${endedCount} past ${endedCount === 1 ? 'association' : 'associations'}`
+              : `${visible.length} of ${activeCount} active ${activeCount === 1 ? 'contact' : 'contacts'}`}
+          </p>
         </div>
         {closedReason && (
           <p className="text-xs text-muted-foreground">{closedReason} Existing associations remain visible.</p>
@@ -157,7 +155,7 @@ export function ProjectContactsTable({
               </option>
             ))}
           </NativeSelect>
-          <div role="group" aria-label="Association status" className="inline-flex h-9 rounded-lg border border-border p-0.5">
+          <div role="group" aria-label="Association status" className="inline-flex h-9 shrink-0 rounded-lg border border-border p-0.5">
             {[
               { v: false, l: `Active (${activeCount})` },
               { v: true, l: `History (${endedCount})` },
@@ -167,7 +165,7 @@ export function ProjectContactsTable({
                 type="button"
                 aria-pressed={showHistory === o.v}
                 onClick={() => setShowHistory(o.v)}
-                className={`flex-1 rounded-md px-3 text-xs font-medium ${segmentClass(showHistory === o.v)}`}
+                className={`flex-1 whitespace-nowrap rounded-md px-3 text-xs font-medium ${segmentClass(showHistory === o.v)}`}
               >
                 {o.l}
               </button>
@@ -176,10 +174,12 @@ export function ProjectContactsTable({
         </div>
 
         {visible.length === 0 ? (
-          <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
             <p>
               {contacts.length === 0
-                ? 'No directory contacts are assigned to this project yet.'
+                ? companies.length === 0
+                  ? 'No subcontractors or professionals assigned yet.'
+                  : 'No people assigned yet.'
                 : showHistory
                   ? 'No past associations match these filters.'
                   : 'No active contacts match these filters.'}

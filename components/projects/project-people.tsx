@@ -60,7 +60,7 @@ export function Panel({
   children: React.ReactNode
 }) {
   return (
-    <section className={cn('flex flex-col rounded-xl border bg-card', compact ? 'gap-2 px-4 py-3' : 'gap-4 p-5')}>
+    <section className={cn('flex min-w-0 flex-col rounded-xl border bg-card', compact ? 'gap-2 px-4 py-3' : 'gap-3 p-4')}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-serif text-lg font-semibold text-foreground">{title}</h2>
         {action}
@@ -163,7 +163,7 @@ export function ProjectClientsPanel({
       }
     >
       {!primaryClientId && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-dashed bg-[#F3F4F6] px-3 py-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span
             aria-hidden="true"
             className="flex size-9 shrink-0 items-center justify-center rounded-full border border-dashed border-primary/40 text-primary"
