@@ -4,7 +4,8 @@ import { canManage, getSession } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { getStaffMembers } from '@/lib/queries'
 import { signMediaPaths } from '@/lib/media'
-import { buildProjectNextActions } from '@/lib/next-actions'
+import { SCHEDULE_DATES_ACTION_KEY, buildProjectNextActions } from '@/lib/next-actions'
+import { undatedOpenActivityCount } from '@/lib/schedule'
 import { dailyLogPath, isDailyLogStatus } from '@/lib/daily-logs'
 import { formatAddress, formatDate } from '@/lib/format'
 import {
@@ -119,6 +120,7 @@ export async function loadProjectPreview(projectId: string): Promise<ProjectPrev
 
   const activities = (activitiesRes?.data ?? []) as PreviewActivityRow[]
   const late = lateActivities(activities)
+  const undatedOpen = undatedOpenActivityCount(activities)
   const actions = buildProjectNextActions({
     projectId: project.id,
     canManage: manager,
@@ -142,6 +144,7 @@ export async function loadProjectPreview(projectId: string): Promise<ProjectPrev
     openIssueCount: issuesRes?.error ? 0 : (issuesRes?.count ?? 0),
     firstOpenIssueId: issuesRes?.data?.[0]?.id ?? null,
     firstOpenIssueLabel: issuesRes?.data?.[0]?.item_label ?? null,
+    undatedOpenActivityCount: undatedOpen,
   })
 
   const scheduleHref = `/projects/${project.id}/schedule`
@@ -163,7 +166,14 @@ export async function loadProjectPreview(projectId: string): Promise<ProjectPrev
             overdue: isPastPlannedFinish(picked.activity),
             assigneeName: nameFor(picked.activity.assigned_to),
           }
-        : { state: picked.state, scheduleHref }
+        : picked.state === 'undated'
+          ? {
+              state: 'undated',
+              scheduleHref,
+              openCount: undatedOpen,
+              actionListed: actions.items.some((item) => item.key === SCHEDULE_DATES_ACTION_KEY),
+            }
+          : { state: picked.state, scheduleHref }
   }
 
   let latestUpdate: PreviewLatestUpdate

@@ -145,6 +145,7 @@ export default async function ProjectsPage({
     photoKind: photos.get(p.id)?.kind ?? null,
     details: cardDetails.get(p.id)!,
     warrantyEnabled: features.warranty,
+    canPlanSchedule: manager,
     managerName: p.project_manager_id ? (managerNames.get(p.project_manager_id) ?? null) : null,
     locationLabel: formatLocation(p.city, p.state, cityLabels),
   }))
@@ -181,6 +182,7 @@ export default async function ProjectsPage({
         preserve={{ sort: stateParams.sort, view: urlView }}
         carryParams={[PREVIEW_PARAM]}
         autoApply
+        groupAdditional
       />
       <ProjectPreviewLayout
         projects={rows.map((p) => ({ id: p.id, name: p.name, project_number: p.project_number, status: p.status }))}

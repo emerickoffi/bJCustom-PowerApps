@@ -1,4 +1,5 @@
 import { formatDate } from './format.ts'
+import { SCHEDULE_DATES_NEEDED } from './schedule.ts'
 import type { ProjectStatus } from './domain.ts'
 import type { DashboardCardDetails } from './dashboard-cards.ts'
 
@@ -52,7 +53,26 @@ const WARRANTY_STAGE_TEXT: Record<string, string> = {
 
 const NO_PENDING: NextAction = { kind: 'info', icon: 'none', title: 'No pending action', meta: null, tone: 'muted' }
 
-export type NextActionProject = { id: string; status: ProjectStatus; warrantyEnabled: boolean }
+export type NextActionProject = {
+  id: string
+  status: ProjectStatus
+  warrantyEnabled: boolean
+  /** Planning dates is manager work. Omitted on surfaces that do not vary the action by viewer, where it stays shown. */
+  canPlanSchedule?: boolean
+}
+
+/** A planning step, never a delay: open work exists and none of it is dated. Same rule as the preview's Needs attention. */
+function scheduleDatesAction(p: NextActionProject, d: DashboardCardDetails): NextAction | null {
+  if (!d.scheduleEnabled || d.undatedOpenCount === 0 || p.canPlanSchedule === false) return null
+  return {
+    kind: 'action',
+    icon: 'schedule',
+    title: SCHEDULE_DATES_NEEDED,
+    meta: `${d.undatedOpenCount} open ${d.undatedOpenCount === 1 ? 'activity' : 'activities'} · no planned dates yet`,
+    href: `/projects/${p.id}/schedule`,
+    tone: 'neutral',
+  }
+}
 
 export function buildNextAction(p: NextActionProject, d: DashboardCardDetails): NextAction {
   const base = `/projects/${p.id}`
@@ -124,7 +144,7 @@ export function buildNextAction(p: NextActionProject, d: DashboardCardDetails): 
 
   if (ESTIMATE_STAGES.includes(p.status)) {
     const e = d.estimate
-    if (!e) return NO_PENDING
+    if (!e) return scheduleDatesAction(p, d) ?? NO_PENDING
     const label = e.number ? `estimate ${e.number}` : `estimate "${e.name}"`
     const href = `/estimates/${e.id}`
     if (e.status === 'draft') {
@@ -164,16 +184,8 @@ export function buildNextAction(p: NextActionProject, d: DashboardCardDetails): 
       tone: 'neutral',
     }
   }
-  if (d.scheduleNotStarted) {
-    return {
-      kind: 'action',
-      icon: 'schedule',
-      title: 'Plan schedule dates',
-      meta: `${d.activityCount} ${d.activityCount === 1 ? 'activity' : 'activities'} · no dates planned yet`,
-      href: `${base}/schedule`,
-      tone: 'neutral',
-    }
-  }
+  const planning = scheduleDatesAction(p, d)
+  if (planning) return planning
   const stage = d.stageActivities
   if (stage?.state === 'blocked') {
     return {

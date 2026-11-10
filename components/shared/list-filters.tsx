@@ -4,6 +4,7 @@ import { NativeSelect } from '@/components/shared/form-field'
 import { SearchInput } from '@/components/shared/search-input'
 import { AutoApplyForm } from '@/components/shared/auto-apply-form'
 import { LocationFilters, type LocationOption } from '@/components/shared/location-filters'
+import { AdditionalFilters, type FilterSelect } from '@/components/shared/additional-filters'
 
 const FORM_CLASS = 'flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center'
 
@@ -18,19 +19,14 @@ export function ListFilters({
   preserve,
   carryParams,
   autoApply = false,
+  groupAdditional = false,
 }: {
   searchPlaceholder: string
   defaultQuery: string
   defaultStatus: string
   statusOptions: { value: string; label: string }[]
   /** Additional single-value dropdown filters rendered after Status. */
-  selects?: {
-    name: string
-    label: string
-    allLabel: string
-    defaultValue: string
-    options: { value: string; label: string }[]
-  }[]
+  selects?: FilterSelect[]
   location?: { options: LocationOption[]; defaultState: string; defaultCity: string }
   clearHref?: string
   /** Non-filter URL state (e.g. sort, view) carried through Apply; page is intentionally dropped. */
@@ -39,6 +35,8 @@ export function ListFilters({
   carryParams?: readonly string[]
   /** Apply filters on change and debounce search, replacing the Apply button. */
   autoApply?: boolean
+  /** Keep only Search and Status in the toolbar; the other selects and location move into one "Filters" popover with chips. */
+  groupAdditional?: boolean
 }) {
   const fields = (
     <>
@@ -53,7 +51,7 @@ export function ListFilters({
         defaultValue={defaultQuery}
         placeholder={searchPlaceholder}
         syncUrl={!autoApply}
-        className="flex-1 sm:min-w-64"
+        className={groupAdditional ? 'sm:w-64 lg:w-80 xl:w-96' : 'flex-1 sm:min-w-64'}
       />
       <label htmlFor="status" className="sr-only">
         Status
@@ -66,7 +64,8 @@ export function ListFilters({
           </option>
         ))}
       </NativeSelect>
-      {selects?.map((select) => (
+      {groupAdditional && <AdditionalFilters selects={selects ?? []} location={location} />}
+      {!groupAdditional && selects?.map((select) => (
         <div key={select.name} className="contents">
           <label htmlFor={select.name} className="sr-only">
             {select.label}
@@ -87,7 +86,7 @@ export function ListFilters({
           </NativeSelect>
         </div>
       ))}
-      {location && (
+      {!groupAdditional && location && (
         <LocationFilters
           key={`${location.defaultState}|${location.defaultCity}`}
           locations={location.options}

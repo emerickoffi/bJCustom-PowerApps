@@ -9,7 +9,7 @@ const details = (over: Partial<DashboardCardDetails> = {}) =>
     holdReason: null,
     scheduleEnabled: true,
     hasSchedule: false,
-    scheduleNotStarted: false,
+    undatedOpenCount: 0,
     activityCount: 0,
     stageActivities: null,
     nextActivity: null,
@@ -68,6 +68,59 @@ test('construction stage without a schedule links to schedule setup', () => {
   const a = buildNextAction(project('under_construction'), details())
   assert.equal(a.title, 'Set up schedule')
   assert.equal(a.href, '/projects/p1/schedule')
+})
+
+test('open activities with no planned dates ask for schedule dates as a planning step', () => {
+  const a = buildNextAction(project('under_construction'), details({ hasSchedule: true, activityCount: 5, undatedOpenCount: 3 }))
+  assert.equal(a.title, 'Schedule dates needed')
+  assert.equal(a.kind, 'action')
+  assert.equal(a.tone, 'neutral')
+  assert.equal(a.href, '/projects/p1/schedule')
+  assert.match(a.meta ?? '', /^3 open activities/)
+  const early = buildNextAction(project('planning'), details({ hasSchedule: true, activityCount: 1, undatedOpenCount: 1 }))
+  assert.equal(early.title, 'Schedule dates needed')
+  assert.match(early.meta ?? '', /^1 open activity /)
+})
+
+test('schedule dates never outrank overdue work, an estimate, a hold, or a closed project', () => {
+  const undated = { hasSchedule: true, activityCount: 2, undatedOpenCount: 2 }
+  const overdue = buildNextAction(
+    project('under_construction'),
+    details({ ...undated, overdueActivity: { id: 'a1', name: 'Framing', dueOn: null } } as never),
+  )
+  assert.match(overdue.title, /^Overdue/)
+  const estimate = buildNextAction(
+    project('estimating'),
+    details({ ...undated, estimate: { id: 'e1', number: 'EST-1', name: 'Kitchen', status: 'draft', expirationDate: null, expired: false } } as never),
+  )
+  assert.match(estimate.title, /^Finish estimate/)
+  assert.equal(buildNextAction(project('on_hold'), details(undated)).title, 'On hold')
+  assert.equal(buildNextAction(project('cancelled'), details(undated)).title, 'Project cancelled')
+  assert.equal(buildNextAction(project('completed', false), details(undated)).title, 'Project completed')
+})
+
+test('schedule dates are not asked of viewers who cannot plan, or when scheduling is off or could not load', () => {
+  const undated = {
+    hasSchedule: true,
+    activityCount: 2,
+    undatedOpenCount: 2,
+    nextActivity: { id: 'a1', name: 'Framing', dueOn: null, overdue: false },
+  }
+  const restricted = buildNextAction({ ...project('under_construction'), canPlanSchedule: false }, details(undated))
+  assert.equal(restricted.title, 'Next: Framing')
+  assert.equal(restricted.meta, 'No due date set')
+  const off = buildNextAction(project('under_construction'), details({ ...undated, scheduleEnabled: false }))
+  assert.equal(off.title, 'No pending action')
+  const failed = buildNextAction(project('under_construction'), details({ ...undated, loadError: true }))
+  assert.equal(failed.kind, 'unavailable')
+})
+
+test('a partly dated schedule keeps its next activity', () => {
+  const a = buildNextAction(
+    project('under_construction'),
+    details({ hasSchedule: true, activityCount: 3, nextActivity: { id: 'a2', name: 'Roofing', dueOn: '2026-12-01', overdue: false } }),
+  )
+  assert.equal(a.title, 'Next: Roofing')
 })
 
 test('monitoring warranty is coverage info, not a task', () => {

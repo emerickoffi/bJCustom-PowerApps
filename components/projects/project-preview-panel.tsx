@@ -8,13 +8,13 @@ import {
   AlertTriangle,
   ArrowRight,
   CalendarCheck,
+  CalendarPlus,
   CircleCheck,
   ClipboardList,
   ImageOff,
   Loader2,
   MapPin,
   RefreshCw,
-  Settings2,
   UserRound,
   X,
   type LucideIcon,
@@ -70,7 +70,8 @@ const LINK_CLASS =
 const ATTENTION_TONE: Record<NextActionTone, { icon: LucideIcon; className: string; label: string }> = {
   critical: { icon: AlertTriangle, className: 'bg-destructive/10 text-destructive', label: 'Needs attention' },
   review: { icon: ClipboardList, className: 'bg-sage text-primary', label: 'To review' },
-  setup: { icon: Settings2, className: 'bg-champagne-soft text-warning', label: 'Setup' },
+  // Planning steps stay neutral so they never read as a delay or a schedule risk.
+  setup: { icon: CalendarPlus, className: 'bg-muted text-muted-foreground', label: 'To plan' },
 }
 
 function PreviewHeader({
@@ -186,16 +187,22 @@ function AttentionSection({ attention, projectHref }: { attention: ProjectPrevie
   )
 }
 
-const NEXT_ACTIVITY_MESSAGE: Record<Exclude<PreviewNextActivity['state'], 'ready' | 'off'>, string> = {
+const NEXT_ACTIVITY_MESSAGE: Record<Exclude<PreviewNextActivity['state'], 'ready' | 'off' | 'undated'>, string> = {
   error: 'Schedule activities could not be loaded.',
   empty: 'No schedule activities yet.',
   complete: 'All activities complete.',
-  undated: 'Open activities have no planned dates yet.',
+}
+
+function undatedMessage(next: Extract<PreviewNextActivity, { state: 'undated' }>) {
+  if (!next.actionListed) return 'Open activities have no planned dates yet.'
+  return `${next.openCount} open ${next.openCount === 1 ? 'activity' : 'activities'}, none with planned dates yet.`
 }
 
 function NextActivitySection({ next }: { next: PreviewNextActivity }) {
   const headingId = useId()
   if (next.state === 'off') return null
+  // The planning step in Needs attention already links to the schedule; repeating it here would show the same action twice.
+  const linkToSchedule = !(next.state === 'undated' && next.actionListed)
   return (
     <section aria-labelledby={headingId} className={SECTION_CLASS}>
       <h3 id={headingId} className={HEADING_CLASS}>
@@ -222,12 +229,14 @@ function NextActivitySection({ next }: { next: PreviewNextActivity }) {
             role={next.state === 'error' ? 'status' : undefined}
             className={cn('text-sm', next.state === 'error' ? 'text-warning' : 'text-muted-foreground')}
           >
-            {NEXT_ACTIVITY_MESSAGE[next.state]}
+            {next.state === 'undated' ? undatedMessage(next) : NEXT_ACTIVITY_MESSAGE[next.state]}
           </p>
-          <Link href={next.scheduleHref} className={LINK_CLASS}>
-            Open schedule
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </Link>
+          {linkToSchedule && (
+            <Link href={next.scheduleHref} className={LINK_CLASS}>
+              Open schedule
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          )}
         </>
       )}
     </section>

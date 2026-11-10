@@ -1,6 +1,4 @@
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { ArchitecturalPlaceholder } from '@/components/projects/project-card'
 import { CoverImage } from '@/components/projects/cover-image'
 import { ProjectPreviewSurface, ProjectPreviewTrigger } from '@/components/projects/project-preview-trigger'
@@ -21,6 +19,9 @@ export type ProjectTableRow = CompactProjectCardData & {
 
 const TH = `${DIRECTORY_TH_TEXT} px-4 text-left align-middle tablet:px-3`
 const TD = 'px-4 py-3 tablet:px-3'
+/** A plain link, so the row's action reads as secondary; the 44px height keeps it a comfortable touch target. */
+const OPEN_LINK =
+  'inline-flex min-h-11 items-center gap-1 rounded-sm px-1 font-medium text-link underline-offset-4 outline-none hover:text-link-hover hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
 /**
  * While the preview column narrows the list, columns the preview already covers step aside so the rest stay readable.
  * Widths are those of the list itself (a container query), so nothing changes unless the preview actually takes the room.
@@ -177,10 +178,10 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                     </div>
                   </td>
                   <td className={`${TD} whitespace-nowrap text-right`}>
-                    <Button variant="view" size="sm" render={<Link href={href} aria-label={`Open project ${p.name}`} />} nativeButton={false}>
+                    <Link href={href} aria-label={`Open project ${p.name}`} className={OPEN_LINK}>
                       Open project
-                      <ArrowRight data-icon="inline-end" />
-                    </Button>
+                      <span aria-hidden="true">→</span>
+                    </Link>
                   </td>
                 </ProjectPreviewSurface>
               )

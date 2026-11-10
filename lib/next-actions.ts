@@ -1,4 +1,8 @@
+import { SCHEDULE_DATES_NEEDED } from './schedule.ts'
+
 export type NextActionTone = 'critical' | 'review' | 'setup'
+
+export const SCHEDULE_DATES_ACTION_KEY = 'schedule-dates'
 
 export type NextAction = {
   key: string
@@ -39,6 +43,11 @@ export type ProjectActionState = {
   /** Most urgent late activity, with its planned finish already formatted for display. */
   firstLateActivity?: { name: string; dueLabel: string | null } | null
   firstOpenIssueLabel?: string | null
+  /**
+   * Open activities waiting for planned dates while none of the open work is dated (`undatedOpenActivityCount`).
+   * Omitted where schedule planning is left to the setup checklist.
+   */
+  undatedOpenActivityCount?: number
 }
 
 export const NEXT_ACTION_LIMIT = 3
@@ -138,7 +147,21 @@ export function buildProjectNextActions(state: ProjectActionState): { items: Nex
     })
   }
 
-  // Setup gaps (manager, schedule, documents...) live in the setup checklist so they never read as urgent work.
+  // Planning dates is manager work on an open project. It ranks below every review, so it never reads as a delay or a risk.
+  const undated = state.undatedOpenActivityCount ?? 0
+  const closed = state.status === 'completed' || state.status === 'cancelled'
+  if (features.schedule && canManage && ownsProjectWide && !closed && undated > 0) {
+    actions.push({
+      key: SCHEDULE_DATES_ACTION_KEY,
+      tone: 'setup',
+      title: SCHEDULE_DATES_NEEDED,
+      description: `${plural(undated, 'open activity has', 'open activities have')} no planned dates. Add dates to see what is next.`,
+      href: `${base}/schedule`,
+      actionLabel: 'Plan schedule',
+    })
+  }
+
+  // Other setup gaps (manager, documents...) live in the setup checklist so they never read as urgent work.
   if (state.status === 'completed' && features.warranty && ownsProjectWide) {
     actions.push({
       key: 'warranty',
