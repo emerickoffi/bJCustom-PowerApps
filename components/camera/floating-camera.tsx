@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { FLOATING_ABOVE_ASSISTANT, FLOATING_CORNER_SECONDARY, type FloatingPlacement } from '@/lib/floating-actions'
+import { FloatingActionSlot } from '@/components/app/floating-actions'
 
 /**
  * A photo destination owned by an existing module uploader. The floating camera never
@@ -49,7 +49,7 @@ type Registry = { upsert: (target: CameraTarget) => void; remove: (id: string) =
 
 const FloatingCameraContext = createContext<Registry | null>(null)
 
-export function FloatingCameraProvider({ placement, children }: { placement: FloatingPlacement; children: React.ReactNode }) {
+export function FloatingCameraProvider({ children }: { children: React.ReactNode }) {
   const [targets, setTargets] = useState<CameraTarget[]>([])
   const upsert = useCallback((target: CameraTarget) => {
     setTargets((prev) => {
@@ -66,7 +66,7 @@ export function FloatingCameraProvider({ placement, children }: { placement: Flo
   return (
     <FloatingCameraContext.Provider value={registry}>
       {children}
-      <FloatingCameraButton targets={targets} placement={placement} />
+      <FloatingCameraButton targets={targets} />
     </FloatingCameraContext.Provider>
   )
 }
@@ -156,7 +156,7 @@ function useInlineControlsInView(targets: CameraTarget[]) {
   return inView
 }
 
-function FloatingCameraButton({ targets, placement }: { targets: CameraTarget[]; placement: FloatingPlacement }) {
+function FloatingCameraButton({ targets }: { targets: CameraTarget[] }) {
   const [open, setOpen] = useState(false)
   const inView = useInlineControlsInView(targets)
   const inlineVisible = targets.some((t) => inView.has(t.id))
@@ -168,15 +168,11 @@ function FloatingCameraButton({ targets, placement }: { targets: CameraTarget[];
   const stepAside = inlineVisible && !open
 
   return (
-    <div
-      data-floating-control
+    <FloatingActionSlot
+      slot="camera"
       inert={stepAside}
       aria-hidden={stepAside || undefined}
-      className={cn(
-        'group fixed z-40 transition-opacity duration-150 print:hidden',
-        placement === 'above-assistant' ? FLOATING_ABOVE_ASSISTANT : FLOATING_CORNER_SECONDARY,
-        stepAside && 'pointer-events-none opacity-0',
-      )}
+      className={cn('transition-opacity duration-150', stepAside && 'pointer-events-none opacity-0')}
     >
       <span
         role="presentation"
@@ -227,6 +223,6 @@ function FloatingCameraButton({ targets, placement }: { targets: CameraTarget[];
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+    </FloatingActionSlot>
   )
 }

@@ -361,6 +361,24 @@
   }
 }
 
+/*
+ * Floating actions marked `data-yields-to-overlay` step aside while a blocking dialog or drawer covers the page.
+ * They stay focusable so the overlay can hand focus back to them as it closes.
+ */
+body:has([data-slot='dialog-overlay'], [data-slot='sheet-overlay'], [data-slot='form-overlay']) [data-yields-to-overlay] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* A third stacked floating action reaches above the shell's bottom padding; extend it so the last controls stay clear. */
+[data-staff-shell]:has(~ [data-floating-stack] > :nth-child(3)) main {
+  padding-bottom: calc(13rem + env(safe-area-inset-bottom));
+
+  @variant tablet {
+    padding-bottom: calc(16.5rem + env(safe-area-inset-bottom));
+  }
+}
+
 /* Floating controls (Quick Actions, AI Assistant) step aside while the on-screen keyboard is likely open on phones. */
 @media (max-width: 639px) {
   body:has(:is(input:not([type='checkbox'], [type='radio'], [type='file']), textarea, select):focus) [data-floating-control] {

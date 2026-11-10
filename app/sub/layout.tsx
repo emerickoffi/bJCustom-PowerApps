@@ -38,7 +38,7 @@ export default async function SubLayout({ children }: { children: React.ReactNod
           </form>
         </div>
       </header>
-      <FloatingCameraProvider placement="corner">
+      <FloatingCameraProvider>
         <main className="mx-auto flex w-full min-w-0 max-w-4xl flex-1 flex-col gap-5 px-(--page-gutter-x) pb-[calc(5rem+env(safe-area-inset-bottom))] pt-(--page-gutter-top) md:gap-6">{children}</main>
       </FloatingCameraProvider>
     </div>

@@ -1,14 +1,38 @@
 import { cn } from '@/lib/utils'
 
+/**
+ * `default` is the primary worksheet row (project and estimate workspaces, list filters).
+ * `compact` is a secondary row inside a worksheet: same construction, smaller, so the primary row stays dominant.
+ */
+export type WorksheetTabSize = 'default' | 'compact'
+
+const TAB_SIZE: Record<WorksheetTabSize, { base: string; active: string; inactive: string }> = {
+  default: {
+    base: 'gap-2 px-4 text-sm',
+    active: 'h-12 before:h-[3px] sm:h-10',
+    inactive: 'h-11 sm:h-9',
+  },
+  compact: {
+    base: 'gap-1.5 px-3 text-[13px]',
+    active: 'h-10 before:h-0.5 sm:h-8',
+    inactive: 'h-9 sm:h-7',
+  },
+}
+
 /** Connected spreadsheet-style tabs shared by project and estimate workspaces. */
-export function worksheetTabClass(active: boolean, first: boolean) {
+export function worksheetTabClass(active: boolean, first: boolean, size: WorksheetTabSize = 'default') {
+  const sizing = TAB_SIZE[size]
   return cn(
-    'relative flex shrink-0 items-center gap-2 whitespace-nowrap rounded-t-tab border-r border-t border-border px-4 text-sm transition-colors',
+    'relative flex shrink-0 items-center whitespace-nowrap rounded-t-tab border-r border-t border-border transition-colors',
     'focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus',
+    sizing.base,
     first && 'border-l',
     active
-      ? 'h-12 border-b border-b-card bg-card font-semibold text-foreground before:absolute before:-inset-x-px before:top-[-1px] before:h-[3px] before:rounded-t-tab before:bg-tab-accent sm:h-10'
-      : 'h-11 border-b bg-muted/70 font-medium text-muted-foreground hover:bg-muted hover:text-foreground sm:h-9',
+      ? cn(
+          'border-b border-b-card bg-card font-semibold text-foreground before:absolute before:-inset-x-px before:top-[-1px] before:rounded-t-tab before:bg-tab-accent',
+          sizing.active,
+        )
+      : cn('border-b bg-muted/70 font-medium text-muted-foreground hover:bg-muted hover:text-foreground', sizing.inactive),
   )
 }
 
@@ -16,17 +40,3 @@ export const worksheetStripClass =
   'overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
 
 export const worksheetFillerClass = 'min-w-4 flex-1 self-stretch border-b border-border'
-
-/** Underlined secondary tabs that sit inside a worksheet, visibly subordinate to the worksheet tabs above. */
-export const sectionTabStripClass =
-  'overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-
-export const sectionTabListClass = 'flex min-w-max gap-1 shadow-[inset_0_-1px_0_var(--border)]'
-
-export function sectionTabClass(active: boolean) {
-  return cn(
-    'flex min-h-11 items-center gap-1.5 border-b-2 px-3 text-sm font-medium transition-colors sm:min-h-10',
-    'focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring',
-    active ? 'border-tab-accent font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
-  )
-}
