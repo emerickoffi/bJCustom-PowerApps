@@ -84,7 +84,11 @@ export function PeopleAssignWorkspace({
   )
 }
 
-function AssignTabs({
+/**
+ * The assignment workflow itself, for any container that provides the form-overlay context: the drawer above, or
+ * a view inside an existing panel. Its field grids follow the width of that container, not the viewport.
+ */
+export function AssignTabs({
   projectId,
   projectName,
   rows,
@@ -107,7 +111,7 @@ function AssignTabs({
   }, [selecting, drafting, setDirty])
 
   return (
-    <Tabs defaultValue="existing" className="min-h-0 flex-1 gap-0">
+    <Tabs defaultValue="existing" className="@container min-h-0 flex-1 gap-0">
       <div className="shrink-0 border-b border-border/70 px-5 py-3 sm:px-6">
         <TabsList aria-label="How to assign" className="w-full group-data-horizontal/tabs:h-11">
           <TabsTrigger value="existing">Add existing</TabsTrigger>
@@ -353,7 +357,7 @@ function AddExisting({
           </div>
 
           {selectedPeople.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 @lg:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={`${ids}-bulk-role`} className="text-xs font-medium text-foreground">
                   Apply role to {selectedPeople.length} selected {selectedPeople.length === 1 ? 'person' : 'people'}
@@ -539,7 +543,7 @@ function DirectoryListRow({
       )}
 
       {person && config && checked && (
-        <div className="grid gap-3 pb-2 pl-7 sm:grid-cols-2">
+        <div className="grid gap-3 pb-2 pl-7 @lg:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <label htmlFor={`${id}-role`} className="text-xs font-medium text-foreground">
               Project role <span className="text-destructive" aria-hidden="true">*</span>
@@ -594,7 +598,7 @@ function DirectoryListRow({
           )}
 
           <label
-            className={cn('flex min-h-11 items-center gap-2 text-xs sm:col-span-2', canNotify ? 'cursor-pointer text-foreground' : 'text-muted-foreground')}
+            className={cn('flex min-h-11 items-center gap-2 text-xs @lg:col-span-2', canNotify ? 'cursor-pointer text-foreground' : 'text-muted-foreground')}
             title={!person.emailEligibility.eligible ? person.emailEligibility.reason : undefined}
           >
             <input
@@ -610,7 +614,7 @@ function DirectoryListRow({
             </span>
           </label>
 
-          <p className="text-xs text-muted-foreground sm:col-span-2">
+          <p className="text-xs text-muted-foreground @lg:col-span-2">
             Adding {row.name} records their role only. It does not create an account or change portal access.
             {person.manageAccessHref && (
               <>

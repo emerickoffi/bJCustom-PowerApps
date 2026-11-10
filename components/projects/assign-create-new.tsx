@@ -104,7 +104,7 @@ function NewContactForm({ projectId, projectName, onDraft }: { projectId: string
       <input type="hidden" name="mode" value="new" />
       <OverlayBody className="flex flex-col gap-4">
         <FormMessage state={state} />
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 @lg:grid-cols-2">
           <TextField name="first_name" id="assign-new-first-name" label="First name" required autoComplete="off" defaultValue={v.first_name} error={fe.first_name} />
           <TextField name="last_name" id="assign-new-last-name" label="Last name" required autoComplete="off" defaultValue={v.last_name} error={fe.last_name} />
           <TextField name="email" id="assign-new-email" label="Email" type="email" inputMode="email" autoComplete="off" defaultValue={v.email} error={fe.email} />
@@ -119,7 +119,7 @@ function NewContactForm({ projectId, projectName, onDraft }: { projectId: string
             error={fe.primary_phone}
           />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 @lg:grid-cols-2">
           <ProjectRoleField defaultValue={v.project_role ?? ''} error={fe.project_role} />
           <StartDateField defaultValue={v.started_at} error={fe.started_at} />
         </div>
@@ -186,7 +186,7 @@ function NewCompanyForm({ projectId, projectName, onDraft }: { projectId: string
           error={fe.company_name}
         />
         <TradeCombobox defaultValue={v.trade ?? ''} error={fe.trade} />
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 @lg:grid-cols-2">
           <TextField
             name="email"
             id="assign-new-company-email"

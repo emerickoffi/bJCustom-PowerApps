@@ -61,7 +61,7 @@ export type NextActionProject = {
   canPlanSchedule?: boolean
 }
 
-/** A planning step, never a delay: open work exists and none of it is dated. Same rule as the preview's Needs attention. */
+/** A planning step, never a delay: open work exists and none of it is dated. Same rule as the preview's Upcoming work. */
 function scheduleDatesAction(p: NextActionProject, d: DashboardCardDetails): NextAction | null {
   if (!d.scheduleEnabled || d.undatedOpenCount === 0 || p.canPlanSchedule === false) return null
   return {

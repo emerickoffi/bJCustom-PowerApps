@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 import { AlertTriangle, XIcon } from 'lucide-react'
 import { cn } from 'cn'
@@ -156,26 +156,12 @@ export function FormOverlay({
             </header>
 
             {confirming && dirty && (
-              <div
-                role="alertdialog"
-                aria-labelledby="overlay-discard-title"
-                className="flex shrink-0 flex-col gap-3 border-b border-amber-300/70 bg-amber-50 px-5 py-3.5 text-amber-950 sm:flex-row sm:items-center sm:px-6 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100"
-              >
-                <p id="overlay-discard-title" className="flex flex-1 items-start gap-2 text-sm">
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                  <span>
-                    <strong className="font-medium">You have unsaved changes.</strong> Discard them and close?
-                  </span>
-                </p>
-                <div className="flex gap-2">
-                  <Button type="button" size="sm" variant="outline" className="bg-background" onClick={() => setConfirming(false)}>
-                    Keep editing
-                  </Button>
-                  <Button ref={discardRef} type="button" size="sm" variant="destructive" onClick={forceClose}>
-                    Discard changes
-                  </Button>
-                </div>
-              </div>
+              <DiscardPrompt
+                question="Discard them and close?"
+                discardRef={discardRef}
+                onKeep={() => setConfirming(false)}
+                onDiscard={forceClose}
+              />
             )}
 
             <div className="flex min-h-0 flex-1 flex-col">{children}</div>
@@ -183,6 +169,155 @@ export function FormOverlay({
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
+  )
+}
+
+function DiscardPrompt({
+  question,
+  stacked = false,
+  discardRef,
+  onKeep,
+  onDiscard,
+}: {
+  question: string
+  /** Keeps the actions under the message, for containers narrower than the viewport suggests. */
+  stacked?: boolean
+  discardRef: React.Ref<HTMLButtonElement>
+  onKeep: () => void
+  onDiscard: () => void
+}) {
+  return (
+    <div
+      role="alertdialog"
+      aria-labelledby="overlay-discard-title"
+      className={cn(
+        'flex shrink-0 flex-col gap-3 border-b border-amber-300/70 bg-amber-50 py-3.5 text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100',
+        stacked ? 'px-4' : 'px-5 sm:flex-row sm:items-center sm:px-6',
+      )}
+    >
+      <p id="overlay-discard-title" className="flex flex-1 items-start gap-2 text-sm">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <span>
+          <strong className="font-medium">You have unsaved changes.</strong> {question}
+        </span>
+      </p>
+      <div className="flex gap-2">
+        <Button type="button" size="sm" variant="outline" className="bg-background pointer-coarse:min-h-11" onClick={onKeep}>
+          Keep editing
+        </Button>
+        <Button ref={discardRef} type="button" size="sm" variant="destructive" className="pointer-coarse:min-h-11" onClick={onDiscard}>
+          Discard changes
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export type FormPanelHandle = {
+  /**
+   * For a container that is about to replace this form (close itself, show something else). Returns true when
+   * nothing is unsaved and the caller may go ahead. Otherwise it asks first, returns false, and runs `proceed`
+   * only if the changes are discarded.
+   */
+  requestLeave: (proceed: () => void) => boolean
+}
+
+/**
+ * The same unsaved-changes contract as FormOverlay for a form shown as a view inside an existing panel, with no
+ * dialog of its own. Forms written for the overlay work here unchanged: closing means leaving the view.
+ */
+export function FormPanel({
+  onClose,
+  handleRef,
+  header,
+  discardQuestion = 'Discard them and go back?',
+  className,
+  children,
+}: {
+  /** Called once leaving is allowed (clean form, confirmed discard, or saved). */
+  onClose: () => void
+  handleRef?: React.Ref<FormPanelHandle>
+  /** Shown above the discard prompt; rendered inside the form context so it can ask to close. */
+  header?: React.ReactNode
+  discardQuestion?: string
+  className?: string
+  children: React.ReactNode
+}) {
+  const [dirty, setDirtyState] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const dirtyRef = useRef(false)
+  const pendingRef = useRef<(() => void) | null>(null)
+  const discardRef = useRef<HTMLButtonElement>(null)
+
+  const setDirty = useCallback((next: boolean) => {
+    dirtyRef.current = next
+    setDirtyState(next)
+    if (!next) {
+      pendingRef.current = null
+      setConfirming(false)
+    }
+  }, [])
+
+  const leave = useCallback(
+    (proceed: () => void) => {
+      setDirty(false)
+      proceed()
+    },
+    [setDirty],
+  )
+  const forceClose = useCallback(() => leave(onClose), [leave, onClose])
+
+  const ask = useCallback((proceed: (() => void) | null) => {
+    pendingRef.current = proceed
+    setConfirming(true)
+    requestAnimationFrame(() => discardRef.current?.focus())
+  }, [])
+  const requestClose = useCallback(() => {
+    if (dirtyRef.current) ask(null)
+    else forceClose()
+  }, [ask, forceClose])
+  const requestLeave = useCallback(
+    (proceed: () => void) => {
+      if (!dirtyRef.current) return true
+      ask(proceed)
+      return false
+    },
+    [ask],
+  )
+  useImperativeHandle(handleRef, () => ({ requestLeave }), [requestLeave])
+
+  // The panel is not modal, so a reload or a closed tab is still reachable while a draft is open.
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
+
+  const ctx = useMemo<OverlayContextValue>(
+    () => ({ markDirty: () => !dirtyRef.current && setDirty(true), dirty, setDirty, requestClose, forceClose, setOverride: () => {} }),
+    [dirty, setDirty, requestClose, forceClose],
+  )
+
+  return (
+    <OverlayContext.Provider value={ctx}>
+      <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
+        {header}
+        {confirming && dirty && (
+          <DiscardPrompt
+            stacked
+            question={discardQuestion}
+            discardRef={discardRef}
+            onKeep={() => {
+              pendingRef.current = null
+              setConfirming(false)
+            }}
+            onDiscard={() => leave(pendingRef.current ?? onClose)}
+          />
+        )}
+        {children}
+      </div>
+    </OverlayContext.Provider>
   )
 }
 
