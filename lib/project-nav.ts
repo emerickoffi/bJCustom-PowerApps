@@ -24,7 +24,7 @@ export type ProjectNavItem = {
 
 export type ProjectNavAccess = {
   features: Pick<FeatureMap, 'schedule' | 'estimates' | 'documents' | 'walkthroughs' | 'warranty'> &
-    Partial<Pick<FeatureMap, 'change_orders' | 'daily_logs' | 'client_updates' | 'subcontractors'>>
+    Partial<Pick<FeatureMap, 'change_orders' | 'daily_logs' | 'client_updates' | 'subcontractors' | 'rfis'>>
   projectStatus: string
   canViewInternal: boolean
   // Administrators and project managers only; change orders carry internal costs.
@@ -123,6 +123,26 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
       },
   ]
   return items.filter((item): item is ProjectNavItem => Boolean(item))
+}
+
+export type ProjectMoreItem = { key: 'rfis'; label: string; href: string; activePrefix: string }
+
+/**
+ * Tools reached from the overflow menu at the end of the tab strip rather than a permanent tab.
+ * Same guard as the pages themselves: the feature switch and internal access to this project.
+ */
+export function getProjectMoreItems(projectId: string, access: ProjectNavAccess): ProjectMoreItem[] {
+  const base = projectBasePath(projectId)
+  const items: ProjectMoreItem[] = []
+  if (access.features.rfis && access.canViewInternal) {
+    items.push({ key: 'rfis', label: 'Questions (RFIs)', href: `${base}/rfis`, activePrefix: `${base}/rfis` })
+  }
+  return items
+}
+
+export function getActiveProjectMoreKey(pathname: string, items: ProjectMoreItem[]): ProjectMoreItem['key'] | null {
+  const path = pathname.replace(/\/+$/, '') || '/'
+  return items.find((item) => path === item.activePrefix || path.startsWith(`${item.activePrefix}/`))?.key ?? null
 }
 
 export function getActiveProjectNavKey(pathname: string, projectId: string, items: ProjectNavItem[]): ProjectNavKey | null {

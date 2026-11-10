@@ -4,7 +4,7 @@ import { ProjectQuickActionsScope } from '@/components/app/quick-actions'
 import { buildProjectQuickActions } from '@/lib/quick-actions'
 import { createClient } from '@/lib/supabase/server'
 import { getOrgFeatures } from '@/lib/features'
-import { getProjectNavItems } from '@/lib/project-nav'
+import { getProjectMoreItems, getProjectNavItems } from '@/lib/project-nav'
 import { ProjectNav } from '@/components/projects/project-nav'
 import { AssistantProjectScope } from '@/components/assistant/assistant-context'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
@@ -33,12 +33,14 @@ export default async function ProjectLayout({
   ])
   if (!project) notFound()
 
-  const items = getProjectNavItems(project.id, {
+  const navAccess = {
     features,
     projectStatus: project.status,
     canViewInternal: Boolean(canViewInternal),
     canViewFinancials: canManage(session.role),
-  })
+  }
+  const items = getProjectNavItems(project.id, navAccess)
+  const moreItems = getProjectMoreItems(project.id, navAccess)
 
   // Each action mirrors the guard on its destination page, so only workflows the user can complete are offered.
   const quickActions = buildProjectQuickActions({
@@ -74,6 +76,7 @@ export default async function ProjectLayout({
         status={project.status as ProjectStatus}
         address={formatAddress(project)}
         items={items}
+        moreItems={moreItems}
       />
       <div
         data-project-workspace

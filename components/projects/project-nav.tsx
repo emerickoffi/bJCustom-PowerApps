@@ -3,9 +3,16 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { Info, MapPin } from 'lucide-react'
+import { Info, MapPin, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getActiveProjectNavKey, getSectionIdFromHref, type ProjectNavItem } from '@/lib/project-nav'
+import {
+  getActiveProjectMoreKey,
+  getActiveProjectNavKey,
+  getSectionIdFromHref,
+  type ProjectMoreItem,
+  type ProjectNavItem,
+} from '@/lib/project-nav'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { scrollToProjectSection } from '@/components/projects/project-section-scroll'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
 import { worksheetTabClass } from '@/components/shared/worksheet-tabs'
@@ -36,6 +43,7 @@ export function ProjectNav({
   status,
   address,
   items,
+  moreItems = [],
 }: {
   userId: string
   projectId: string
@@ -43,11 +51,14 @@ export function ProjectNav({
   status: ProjectStatus
   address: string
   items: ProjectNavItem[]
+  /** Tools without a permanent tab, reached from the overflow menu after the last tab. Hidden when empty. */
+  moreItems?: ProjectMoreItem[]
 }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const search = searchParams.toString()
   const activeKey = getActiveProjectNavKey(pathname, projectId, items)
+  const activeMoreKey = getActiveProjectMoreKey(pathname, moreItems)
 
   // Each tab reopens with the filters, view and scroll position last used in it. Keyed by user and project,
   // so another project or account never inherits them; only URLs inside this project's sections are stored.
@@ -252,7 +263,8 @@ export function ProjectNav({
         data-project-tabs
         className="sticky top-[var(--app-header-h,calc(3.5rem+env(safe-area-inset-top)))] z-20 bg-background pt-1.5"
       >
-        <div className="relative">
+        <div className="flex min-w-0 items-end">
+        <div className="relative min-w-0 flex-1">
           <span
             aria-hidden="true"
             className={cn(
@@ -294,6 +306,37 @@ export function ProjectNav({
               <li aria-hidden="true" className="min-w-4 flex-1 self-stretch border-b border-border" />
             </ul>
           </nav>
+        </div>
+        {moreItems.length > 0 && (
+          // Sits after the scrolling strip, so it is always reachable and no tab changes position.
+          <div className="flex shrink-0 items-end self-stretch border-b border-border pl-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="More project tools"
+                className={cn(
+                  'relative inline-flex h-11 items-center gap-1.5 rounded-t-tab px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground sm:h-9',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus',
+                  activeMoreKey &&
+                    'font-semibold text-foreground before:absolute before:inset-x-0 before:bottom-[-1px] before:h-0.5 before:bg-tab-accent',
+                )}
+              >
+                <MoreHorizontal className="size-4" aria-hidden="true" />
+                More
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={6} className="min-w-52">
+                {moreItems.map((item) => (
+                  <DropdownMenuItem
+                    key={item.key}
+                    render={<Link href={item.href} aria-current={item.key === activeMoreKey ? 'page' : undefined} />}
+                    className="min-h-11 sm:min-h-0"
+                  >
+                    {item.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
         </div>
       </div>
     </>

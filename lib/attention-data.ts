@@ -21,6 +21,7 @@ import {
   type ActionIssue,
   type ActionItem,
   type ActionProject,
+  type ActionRfi,
   type ActionSignedArtifact,
   type ActionWarrantyClaim,
 } from '@/lib/action-items'
@@ -115,7 +116,22 @@ export async function getActionItems(
     return q.order('reported_at', { ascending: true }).limit(SOURCE_LIMIT)
   }
 
-  const [notificationsRes, activitiesRes, logDelaysRes, signaturesRes, projectsRes, invoicesRes, issuesRes, claimsRes, changeOrdersRes] =
+  // Row-level security already limits this to questions the person works on; non-managers only owe something
+  // on the ones they asked or were assigned.
+  const rfiQuery = () => {
+    const q = supabase
+      .from('project_rfis')
+      .select(
+        'id, project_id, rfi_number, subject, status, due_date, responder_user_id, responder_name, created_by, sent_at, answered_at, projects(name, archived_at)',
+      )
+      .eq('organization_id', orgId)
+      .in('status', ['open', 'answered'])
+    return (manager ? q : q.or(`responder_user_id.eq.${userId},created_by.eq.${userId}`))
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .limit(SOURCE_LIMIT)
+  }
+
+  const [notificationsRes, activitiesRes, logDelaysRes, signaturesRes, projectsRes, invoicesRes, issuesRes, claimsRes, changeOrdersRes, rfisRes] =
     await Promise.all([
       supabase
         .from('notifications')
@@ -186,6 +202,7 @@ export async function getActionItems(
             .order('review_started_at', { ascending: true, nullsFirst: false })
             .limit(SOURCE_LIMIT)
         : empty,
+      features.rfis ? rfiQuery() : empty,
     ])
 
   const check = <T,>(res: { data: T[] | null; error: unknown }, module: string, limit: number): T[] => {
@@ -209,6 +226,7 @@ export async function getActionItems(
   const changeOrderRows = check(changeOrdersRes, 'Change Orders', SOURCE_LIMIT).filter(
     (r) => !isArchived(r.projects as ProjectRef),
   )
+  const rfiRows = check(rfisRes, 'Questions (RFIs)', SOURCE_LIMIT).filter((r) => !isArchived(r.projects as ProjectRef))
 
   const startCandidates = features.schedule
     ? projectRows.filter(
@@ -422,8 +440,31 @@ export async function getActionItems(
     reviewStartedAt: r.review_started_at,
   }))
 
+  const rfis: ActionRfi[] = rfiRows.flatMap((r) =>
+    r.rfi_number && (r.status === 'open' || r.status === 'answered')
+      ? [
+          {
+            id: r.id,
+            projectId: r.project_id,
+            projectName: projectName(r.projects as ProjectRef),
+            rfiNumber: Number(r.rfi_number),
+            subject: r.subject,
+            status: r.status,
+            dueDate: r.due_date,
+            responderUserId: r.responder_user_id,
+            responderName: r.responder_name,
+            createdBy: r.created_by,
+            sentAt: r.sent_at,
+            answeredAt: r.answered_at,
+          },
+        ]
+      : [],
+  )
+
   const authoritative = new Set<ActionEntityType>()
   if (manager && features.warranty && !claimsRes.error && claimRows.length < SOURCE_LIMIT) authoritative.add('warranty_claim')
+  // The live question decides: a notice about one that was since answered, reassigned, or closed stops resurfacing.
+  if (features.rfis && !rfisRes.error && (rfisRes.data ?? []).length < SOURCE_LIMIT) authoritative.add('rfi')
   if (qualification?.state === 'ready') authoritative.add('subcontractor')
 
   const items = buildActionItems(
@@ -439,6 +480,7 @@ export async function getActionItems(
       issues,
       warrantyClaims,
       changeOrders,
+      rfis,
       authoritative,
     },
     { today, userId, manager, features },

@@ -9,6 +9,7 @@ import {
   FilePlus2,
   FolderPlus,
   HardHat,
+  MessageCircleQuestion,
   Plus,
   Receipt,
   Upload,
@@ -26,6 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { QuickCreateContactDrawer } from '@/components/contacts/quick-create-contact-drawer'
+import { AskQuestionDrawer, type AskQuestionRequest } from '@/components/rfis/ask-question-drawer'
 import type { QuickAction, QuickActionIcon } from '@/lib/quick-actions'
 
 export type { QuickAction, QuickActionIcon } from '@/lib/quick-actions'
@@ -42,29 +44,40 @@ const ICONS: Record<QuickActionIcon, LucideIcon> = {
   subcontractor: HardHat,
   invoice: Receipt,
   daily_log: ClipboardPen,
+  rfi: MessageCircleQuestion,
 }
 
-type QuickActionDrawer = NonNullable<QuickAction['drawer']>
+type OpenDrawer = { drawer: 'contact' } | { drawer: 'rfi'; request: AskQuestionRequest }
 
 type QuickActionsContextValue = {
   scope: ProjectScope | null
   setScope: (scope: ProjectScope | null) => void
-  openDrawer: (drawer: QuickActionDrawer) => void
+  openDrawer: (drawer: OpenDrawer) => void
 }
 
 const QuickActionsContext = createContext<QuickActionsContextValue | null>(null)
 
 export function QuickActionsProvider({ children }: { children: React.ReactNode }) {
   const [scope, setScope] = useState<ProjectScope | null>(null)
-  const [drawer, setDrawer] = useState<QuickActionDrawer | null>(null)
+  const [drawer, setDrawer] = useState<OpenDrawer | null>(null)
   const closeDrawer = useCallback(() => setDrawer(null), [])
   const value = useMemo(() => ({ scope, setScope, openDrawer: setDrawer }), [scope])
   return (
     <QuickActionsContext.Provider value={value}>
       {children}
-      <QuickCreateContactDrawer open={drawer === 'contact'} onClose={closeDrawer} />
+      <QuickCreateContactDrawer open={drawer?.drawer === 'contact'} onClose={closeDrawer} />
+      <AskQuestionDrawer request={drawer?.drawer === 'rfi' ? drawer.request : null} onClose={closeDrawer} />
     </QuickActionsContext.Provider>
   )
+}
+
+/**
+ * Opens the "Ask a question (RFI)" drawer over the current page, for callers outside the Quick Create menu.
+ * Null when the page is not inside the staff shell.
+ */
+export function useAskQuestion(): ((request: AskQuestionRequest) => void) | null {
+  const openDrawer = useContext(QuickActionsContext)?.openDrawer
+  return useMemo(() => (openDrawer ? (request: AskQuestionRequest) => openDrawer({ drawer: 'rfi', request }) : null), [openDrawer])
 }
 
 /**
@@ -84,15 +97,22 @@ export function ProjectQuickActionsScope({ projectName, actions }: ProjectScope)
   return null
 }
 
-function ActionItem({ action }: { action: QuickAction }) {
+function ActionItem({ action, projectName }: { action: QuickAction; projectName?: string }) {
   const Icon = ICONS[action.icon]
   const openDrawer = useContext(QuickActionsContext)?.openDrawer
   const drawer = openDrawer ? action.drawer : undefined
+  // A job action carries its project; the standalone one leaves the project for the person to choose.
+  const target: OpenDrawer | null =
+    drawer === 'rfi'
+      ? { drawer, request: action.projectId ? { projectId: action.projectId, projectName } : {} }
+      : drawer
+        ? { drawer }
+        : null
   return (
     <DropdownMenuItem
-      render={drawer ? undefined : <Link href={action.href} />}
+      render={target ? undefined : <Link href={action.href} />}
       // The menu closes on click; the drawer opens on the next frame so focus moves into it, not back to the trigger.
-      onClick={drawer ? () => requestAnimationFrame(() => openDrawer?.(drawer)) : undefined}
+      onClick={target ? () => requestAnimationFrame(() => openDrawer?.(target)) : undefined}
       className="min-h-11 gap-3 px-2.5 py-2 sm:min-h-0"
     >
       <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-sage text-primary" aria-hidden="true">
@@ -114,6 +134,9 @@ export function QuickCreateMenu({
   const pageScope = useContext(QuickActionsContext)?.scope ?? null
   const scope = pageScope ?? jobScope
   const jobActions = scope?.actions ?? []
+  // An action offered for the current job is not repeated in the standalone list.
+  const jobKeys = new Set(jobActions.map((a) => a.key))
+  globalActions = globalActions.filter((a) => !jobKeys.has(a.key))
   if (jobActions.length === 0 && globalActions.length === 0) return null
 
   return (
@@ -136,7 +159,7 @@ export function QuickCreateMenu({
               <span className="truncate text-sm font-medium text-foreground">{scope.projectName}</span>
             </DropdownMenuLabel>
             {jobActions.map((a) => (
-              <ActionItem key={a.key} action={a} />
+              <ActionItem key={a.key} action={a} projectName={scope.projectName} />
             ))}
           </DropdownMenuGroup>
         )}
