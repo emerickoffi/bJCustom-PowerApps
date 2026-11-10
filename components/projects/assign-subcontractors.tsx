@@ -1,13 +1,30 @@
 'use client'
 
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { HardHat, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FloatingActionSlot } from '@/components/app/floating-actions'
 import { PeopleAssignWorkspace } from '@/components/projects/people-assign-workspace'
 import type { DirectoryRow } from '@/lib/directory-assignment-data'
+import { cn } from '@/lib/utils'
 
 const LABEL = 'Assign subcontractors'
+const INTRO_SESSION_KEY = 'assign-subcontractors-intro-played'
+
+let introPlayed = false
+
+/** Claims this browser session's single entrance-and-halo run. Returns false once it has been claimed. */
+function claimIntro() {
+  if (introPlayed) return false
+  introPlayed = true
+  try {
+    if (window.sessionStorage.getItem(INTRO_SESSION_KEY)) return false
+    window.sessionStorage.setItem(INTRO_SESSION_KEY, '1')
+  } catch {
+    // Session storage is blocked, so the module flag limits the intro to once per page load instead.
+  }
+  return true
+}
 
 type Target = { projectId: string; projectName: string; rows: DirectoryRow[] }
 
@@ -69,22 +86,7 @@ export function AssignSubcontractors({
         >
           {LABEL}
         </span>
-        <Button
-          ref={floatingRef}
-          type="button"
-          size="icon"
-          aria-label={LABEL}
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          onClick={(event) => openFrom(event.currentTarget)}
-          // The shared button resets the outline style, so its focus outline needs the style restored to show.
-          className="size-12 shadow-lg focus-visible:outline-solid"
-        >
-          <HardHat className="size-6 -translate-x-0.5 translate-y-0.5" aria-hidden="true" />
-          <span className="absolute right-0.5 top-0.5 flex size-[1.125rem] items-center justify-center rounded-full bg-action-foreground text-action">
-            <Plus className="size-3.5" strokeWidth={3} aria-hidden="true" />
-          </span>
-        </Button>
+        <AssignFloatingButton ref={floatingRef} open={open} onOpen={openFrom} />
       </FloatingActionSlot>
       {assigning && (
         <PeopleAssignWorkspace
@@ -100,6 +102,61 @@ export function AssignSubcontractors({
         />
       )}
     </AssignContext.Provider>
+  )
+}
+
+/**
+ * The floating button itself. It mounts only once the floating stack exists, so its first appearance
+ * can be introduced: the wrapper fades in and rises, then a halo behind the button pulses twice.
+ * Hover lift and press scale live on the button, so the three effects never share an element.
+ */
+function AssignFloatingButton({
+  ref,
+  open,
+  onOpen,
+}: {
+  ref: RefObject<HTMLButtonElement | null>
+  open: boolean
+  onOpen: (trigger: HTMLElement) => void
+}) {
+  const [introducing, setIntroducing] = useState(false)
+
+  // Decided before the button first paints, and only while it can be seen: an open drawer or another
+  // overlay hides it, and the session's single run is kept for an appearance the viewer gets to see.
+  useLayoutEffect(() => {
+    const button = ref.current
+    if (open || !button) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const visible = button.checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) ?? true
+    if (visible && claimIntro()) setIntroducing(true)
+  }, [open, ref])
+
+  return (
+    <div className={cn('relative', introducing && 'motion-safe:animate-floating-enter')}>
+      {introducing && (
+        <span
+          aria-hidden="true"
+          onAnimationEnd={() => setIntroducing(false)}
+          className="pointer-events-none absolute left-0 top-0 size-12 rounded-control opacity-0 motion-safe:animate-floating-halo"
+        />
+      )}
+      <Button
+        ref={ref}
+        type="button"
+        size="icon"
+        aria-label={LABEL}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={(event) => onOpen(event.currentTarget)}
+        // The shared button resets the outline style, so its focus outline needs the style restored to show.
+        className="size-12 shadow-lg duration-150 ease-out focus-visible:outline-solid motion-safe:active:scale-[0.97] motion-safe:group-hover:-translate-y-0.5 motion-safe:group-hover:shadow-[0_12px_18px_-4px_rgb(23_33_43/0.16),0_5px_8px_-4px_rgb(23_33_43/0.12)]"
+      >
+        <HardHat className="size-6 -translate-x-0.5 translate-y-0.5" aria-hidden="true" />
+        <span className="absolute right-0.5 top-0.5 flex size-[1.125rem] items-center justify-center rounded-full bg-action-foreground text-action">
+          <Plus className="size-3.5" strokeWidth={3} aria-hidden="true" />
+        </span>
+      </Button>
+    </div>
   )
 }
 
