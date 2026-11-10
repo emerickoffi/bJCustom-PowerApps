@@ -15,6 +15,7 @@ import {
   FileUp,
   FolderKanban,
   Mail,
+  MoreHorizontal,
   Phone,
   Search,
   User,
@@ -38,6 +39,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -77,7 +79,14 @@ import { setStatusBulkAction } from '@/app/actions/contacts'
 import { InlineEditCell } from '@/components/contacts/inline-edit-cell'
 import { ContactStatusBadge } from '@/components/contacts/contact-status-button'
 import { useOverlayHref } from '@/components/contacts/contact-overlays'
-import { EMPTY_ADVANCED, MoreFilters, countAdvanced, type AdvancedFilters } from '@/components/contacts/more-filters'
+import {
+  DEFAULT_FILTERS,
+  DirectoryFilters,
+  EMPTY_ADVANCED,
+  isDefaultFilters,
+  type AdvancedFilters,
+  type DirectoryFilterValues,
+} from '@/components/contacts/directory-filters'
 
 type ColumnKey =
   | 'type'
@@ -198,22 +207,27 @@ export function ContactsDirectory({
   )
 
   const allRows = useMemo(() => buildRows(view, mergedPeople, companies), [view, mergedPeople, companies])
-  const filtered = useMemo(() => {
-    const base = filterRows(allRows, { query: deferredQuery, status, category })
-    const narrowed = filterByAttributes(
-      base,
-      { specialty: advanced.specialty, product: advanced.product, companyId: advanced.companyId, projectId: projectFilter },
-      companies,
-    )
-    return sortRows(narrowed, sort.key, sort.dir)
-  }, [allRows, deferredQuery, status, category, sort, projectFilter, advanced, companies])
+  /** Everything except the category choice, so each category count is the number of results that category would show. */
+  const scoped = useMemo(
+    () =>
+      filterByAttributes(
+        filterRows(allRows, { query: deferredQuery, status, category: null }),
+        { specialty: advanced.specialty, product: advanced.product, companyId: advanced.companyId, projectId: projectFilter },
+        companies,
+      ),
+    [allRows, deferredQuery, status, projectFilter, advanced, companies],
+  )
+  const filtered = useMemo(
+    () => sortRows(category ? filterRows(scoped, { query: '', status: 'all', category }) : scoped, sort.key, sort.dir),
+    [scoped, category, sort],
+  )
   const { items, page: safePage, pages } = paginate(filtered, page, pageSize)
   const columns = COLUMNS[view].filter((c) => !hidden[view].includes(c.key))
   const selectedRows = filtered.filter((r) => selected.has(rowKey(r)))
   const pageKeys = items.map(rowKey)
   const allOnPageSelected = pageKeys.length > 0 && pageKeys.every((k) => selected.has(k))
 
-  const counts = useMemo(() => categoryCounts(filterRows(allRows, { query: '', status, category: null })), [allRows, status])
+  const counts = useMemo(() => categoryCounts(scoped), [scoped])
 
   function syncUrl(nextView: DirectoryView, nextCategory: CategoryKey | null) {
     const params = new URLSearchParams(window.location.search)
@@ -254,8 +268,11 @@ export function ContactsDirectory({
     changeCategory(null)
   }
 
-  function applyAdvanced(next: AdvancedFilters) {
-    setAdvanced(next)
+  /** Applies the Filters popover fields only; search, category, and the URL are left as they are. */
+  function applyFilters({ status: nextStatus, projectId, ...nextAdvanced }: DirectoryFilterValues) {
+    setStatus(nextStatus)
+    setProjectFilter(projectId)
+    setAdvanced(nextAdvanced)
     setPage(1)
   }
 
@@ -355,19 +372,31 @@ export function ContactsDirectory({
     })
   }
 
-  const hasFilters = Boolean(query || category || status !== 'active' || projectFilter || countAdvanced(advanced))
-  const advancedChips = [
-    advanced.companyId && { key: 'companyId' as const, label: companies.find((c) => c.id === advanced.companyId)?.company_name ?? 'Company' },
-    advanced.specialty && { key: 'specialty' as const, label: advanced.specialty },
-    advanced.product && { key: 'product' as const, label: advanced.product },
-  ].filter((c): c is { key: keyof AdvancedFilters; label: string } => Boolean(c))
+  const filters: DirectoryFilterValues = { ...advanced, status, projectId: projectFilter }
+  const filterChips: { key: string; label: string; cleared: Partial<DirectoryFilterValues> }[] = []
+  if (status !== 'all') {
+    filterChips.push({ key: 'status', label: `Status: ${status === 'active' ? 'Active' : 'Inactive'}`, cleared: { status: 'all' } })
+  }
+  if (projectFilter) {
+    const project = projectOptions.find(([id]) => id === projectFilter)?.[1]
+    filterChips.push({ key: 'projectId', label: `Project: ${project ?? 'Selected project'}`, cleared: { projectId: '' } })
+  }
+  if (advanced.companyId) {
+    const company = companies.find((c) => c.id === advanced.companyId)?.company_name
+    filterChips.push({ key: 'companyId', label: `Company: ${company ?? 'Selected company'}`, cleared: { companyId: '' } })
+  }
+  if (advanced.specialty) filterChips.push({ key: 'specialty', label: `Trade: ${advanced.specialty}`, cleared: { specialty: '' } })
+  if (advanced.product) filterChips.push({ key: 'product', label: `Product: ${advanced.product}`, cleared: { product: '' } })
+  const filtersAtDefault = isDefaultFilters(filters)
+  const isNarrowed = Boolean(query || category || filterChips.length)
   const sortMenuValue = SORT_OPTIONS[view].some((o) => o.value === `${sort.key}:${sort.dir}`) ? `${sort.key}:${sort.dir}` : ''
   const noun = view === 'people' ? 'contacts' : 'companies'
+  const resultNoun = filtered.length === 1 ? (view === 'people' ? 'contact' : 'company') : noun
   const directoryEmpty = allRows.length === 0
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex min-w-0 flex-col gap-3">
         <div role="tablist" aria-label="Directory view" className="inline-flex w-fit shrink-0 rounded-lg border border-border bg-card p-1 shadow-xs">
           {DIRECTORY_VIEWS.map((v) => (
             <button
@@ -388,7 +417,7 @@ export function ContactsDirectory({
         <div
           role="group"
           aria-label="Filter by category"
-          className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 lg:justify-end"
+          className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
         >
           <CategoryChip active={!category} onClick={() => changeCategory(null)} label="All" count={counts.total} />
           {CATEGORY_KEYS.map((k) => (
@@ -397,8 +426,8 @@ export function ContactsDirectory({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <div className="relative min-w-0 flex-1">
+      <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
+        <div className="relative w-full min-w-0 md:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <label htmlFor="contacts-search" className="sr-only">
             {view === 'people' ? 'Search contacts' : 'Search companies'}
@@ -415,42 +444,7 @@ export function ContactsDirectory({
             className="h-10 bg-card pl-9"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="contacts-project" className="sr-only">
-            Project
-          </label>
-          <NativeSelect
-            id="contacts-project"
-            value={projectFilter}
-            onChange={(e) => {
-              setProjectFilter(e.target.value)
-              setPage(1)
-            }}
-            className="w-full min-w-0 bg-card sm:w-48"
-          >
-            <option value="">All projects</option>
-            {projectOptions.map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </NativeSelect>
-          <label htmlFor="contacts-status" className="sr-only">
-            Status
-          </label>
-          <NativeSelect
-            id="contacts-status"
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value as StatusFilter)
-              setPage(1)
-            }}
-            className="w-[calc(50%-0.25rem)] bg-card sm:w-36"
-          >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="all">All statuses</option>
-          </NativeSelect>
+        <div className="flex min-w-0 shrink-0 items-center gap-2">
           <label htmlFor="contacts-sort" className="sr-only md:hidden">
             Sort by
           </label>
@@ -463,7 +457,7 @@ export function ContactsDirectory({
               setSort({ key, dir })
               setPage(1)
             }}
-            className="w-[calc(50%-0.25rem)] bg-card sm:w-48 md:hidden"
+            className="min-w-0 flex-1 bg-card md:hidden"
           >
             {!sortMenuValue && (
               <option value="" disabled>
@@ -476,11 +470,12 @@ export function ContactsDirectory({
               </option>
             ))}
           </NativeSelect>
-          <MoreFilters
+          <DirectoryFilters
             key={view}
             view={view}
-            value={advanced}
-            onApply={applyAdvanced}
+            value={filters}
+            onApply={applyFilters}
+            projectOptions={projectOptions}
             companyOptions={companyOptions}
             specialtyOptions={specialtyOptions}
             productOptions={productOptions}
@@ -510,12 +505,55 @@ export function ContactsDirectory({
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="lg" className="bg-card" onClick={() => exportCsv(filtered)}>
-            <Download data-icon="inline-start" />
-            Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" size="icon" className="size-10 shrink-0 bg-card" aria-label="More contact actions" />}>
+              <MoreHorizontal />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem render={<Link href="/contacts/import" />}>
+                <FileUp />
+                Import CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportCsv(filtered)}>
+                <Download />
+                Export
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
+
+      {(filterChips.length > 0 || !filtersAtDefault) && (
+        <div role="group" aria-label="Applied filters" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+          {filterChips.map((chip) => (
+            <span
+              key={chip.key}
+              className="inline-flex max-w-full items-center gap-1 rounded-badge border border-primary/20 bg-sage py-0.5 pl-2.5 pr-1 text-xs font-medium text-foreground"
+            >
+              <span className="truncate">{chip.label}</span>
+              <button
+                type="button"
+                onClick={() => applyFilters({ ...filters, ...chip.cleared })}
+                aria-label={`Remove filter ${chip.label}`}
+                className="shrink-0 rounded-full p-0.5 text-muted-foreground hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <X className="size-3" aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+          {status === 'all' && <span className="text-xs text-muted-foreground">Active and inactive shown</span>}
+          {!filtersAtDefault && (
+            <button
+              type="button"
+              onClick={() => applyFilters(DEFAULT_FILTERS)}
+              className="inline-flex items-center gap-1 rounded text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex min-h-9 flex-wrap items-center justify-between gap-2 text-sm">
         <p className="text-muted-foreground" aria-live="polite">
@@ -523,30 +561,7 @@ export function ContactsDirectory({
             ? directoryEmpty
               ? `No ${noun} yet`
               : `No matching ${noun}`
-            : `Showing ${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length}`}
-          {advancedChips.map((chip) => (
-            <span key={chip.key} className="ml-2 inline-flex items-center gap-1 rounded-badge border border-primary/20 bg-sage py-0.5 pl-2.5 pr-1 text-xs font-medium text-foreground">
-              {chip.label}
-              <button
-                type="button"
-                onClick={() => applyAdvanced({ ...advanced, [chip.key]: '' })}
-                aria-label={`Remove filter ${chip.label}`}
-                className="rounded-full p-0.5 text-muted-foreground hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <X className="size-3" aria-hidden="true" />
-              </button>
-            </span>
-          ))}
-          {hasFilters && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="ml-2 inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
-            >
-              <X className="size-3.5" aria-hidden="true" />
-              Clear filters
-            </button>
-          )}
+            : `Showing ${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length} ${isNarrowed ? 'matching ' : ''}${resultNoun}`}
         </p>
         {selectedRows.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-sage px-3 py-1.5" role="region" aria-label="Bulk actions">
@@ -730,7 +745,7 @@ function CategoryChip({ active, onClick, label, count }: { active: boolean; onCl
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-control border px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground/80 hover:border-primary/40 hover:text-foreground',
       )}
     >
