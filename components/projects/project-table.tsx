@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ArchitecturalPlaceholder } from '@/components/projects/project-card'
 import { CoverImage } from '@/components/projects/cover-image'
+import { ProjectPreviewSurface, ProjectPreviewTrigger } from '@/components/projects/project-preview-trigger'
 import { ProjectTypeLabel } from '@/components/projects/project-type-label'
 import { ProgressBar } from '@/components/shared/progress'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
@@ -20,6 +21,13 @@ export type ProjectTableRow = CompactProjectCardData & {
 
 const TH = `${DIRECTORY_TH_TEXT} px-4 text-left align-middle tablet:px-3`
 const TD = 'px-4 py-3 tablet:px-3'
+/**
+ * While the preview column narrows the list, columns the preview already covers step aside so the rest stay readable.
+ * Widths are those of the list itself (a container query), so nothing changes unless the preview actually takes the room.
+ */
+const PREVIEW_HIDE = 'xl:group-data-preview-open/preview:@max-[88rem]:hidden'
+const PREVIEW_HIDE_NARROW = 'xl:group-data-preview-open/preview:@max-3xl:hidden'
+const PREVIEW_HIDE_NARROWEST = 'xl:group-data-preview-open/preview:@max-2xl:hidden'
 
 const PANEL_TEXT = {
   neutral: 'text-foreground',
@@ -46,17 +54,22 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-[#D6DDE5] bg-card shadow-[0_1px_2px_rgba(16,59,39,0.04)]">
       <div className="relative overflow-x-auto">
-        <table className="w-full min-w-[64rem] text-sm tablet:min-w-0">
+        <table className="w-full min-w-[64rem] text-sm tablet:min-w-0 xl:group-data-preview-open/preview:@max-[88rem]:min-w-0">
           <caption className="sr-only">Projects</caption>
           <thead className={DIRECTORY_THEAD_ROW}>
             <tr>
-              <th scope="col" className={`${TH} w-[26%] min-w-64 tablet:min-w-48`}>Project</th>
-              <th scope="col" className={`${TH} whitespace-nowrap tablet:hidden`}>Location</th>
+              <th
+                scope="col"
+                className={`${TH} w-[26%] min-w-64 tablet:min-w-48 xl:group-data-preview-open/preview:@max-2xl:w-auto xl:group-data-preview-open/preview:@max-2xl:min-w-0`}
+              >
+                Project
+              </th>
+              <th scope="col" className={`${TH} whitespace-nowrap tablet:hidden ${PREVIEW_HIDE}`}>Location</th>
               <th scope="col" className={`${TH} whitespace-nowrap`}>Status</th>
-              <th scope="col" className={`${TH} whitespace-nowrap`}>Progress</th>
-              <th scope="col" className={`${TH} whitespace-nowrap`}>Project manager</th>
-              <th scope="col" className={`${TH} whitespace-nowrap`}>Target / completion</th>
-              <th scope="col" className={`${TH} w-[30%] min-w-72 tablet:min-w-56`}>Next action</th>
+              <th scope="col" className={`${TH} whitespace-nowrap ${PREVIEW_HIDE_NARROW}`}>Progress</th>
+              <th scope="col" className={`${TH} whitespace-nowrap ${PREVIEW_HIDE}`}>Project manager</th>
+              <th scope="col" className={`${TH} whitespace-nowrap ${PREVIEW_HIDE_NARROWEST}`}>Target / completion</th>
+              <th scope="col" className={`${TH} w-[30%] min-w-72 tablet:min-w-56 ${PREVIEW_HIDE}`}>Next action</th>
               <th scope="col" className={`${TH} text-right`}>
                 <span className="sr-only">Actions</span>
               </th>
@@ -71,10 +84,15 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
               const date = dateCell(p)
               const location = p.locationLabel ?? formatLocation(p.city, p.state)
               return (
-                <tr key={p.id} className="transition-colors hover:bg-link-soft/60">
+                <ProjectPreviewSurface
+                  key={p.id}
+                  as="tr"
+                  projectId={p.id}
+                  className="scroll-mt-24 scroll-mb-4 transition-colors hover:bg-link-soft/60 data-selected:bg-link-soft"
+                >
                   <td className={TD}>
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="relative aspect-[4/3] w-14 shrink-0 tablet:w-12 overflow-hidden rounded-md bg-muted">
+                      <div className={`relative aspect-[4/3] w-14 shrink-0 tablet:w-12 overflow-hidden rounded-md bg-muted ${PREVIEW_HIDE_NARROWEST}`}>
                         {p.photoUrl ? (
                           <CoverImage
                             src={p.photoUrl}
@@ -87,20 +105,23 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                         )}
                       </div>
                       <div className="flex min-w-0 flex-col">
-                        <Link href={href} className="line-clamp-2 font-medium text-link hover:text-link-hover hover:underline">
-                          {p.name}
-                        </Link>
+                        <ProjectPreviewTrigger
+                          projectId={p.id}
+                          projectName={p.name}
+                          className="font-medium text-link hover:text-link-hover hover:underline"
+                          labelClassName="line-clamp-2"
+                        />
                         <span className="font-mono text-xs text-muted-foreground">{p.project_number}</span>
                         <ProjectTypeLabel type={p.project_type} />
                         <span className="hidden truncate text-xs text-muted-foreground tablet:block">{location}</span>
                       </div>
                     </div>
                   </td>
-                  <td className={`${TD} whitespace-nowrap text-muted-foreground tablet:hidden`}>{location}</td>
+                  <td className={`${TD} whitespace-nowrap text-muted-foreground tablet:hidden ${PREVIEW_HIDE}`}>{location}</td>
                   <td className={`${TD} whitespace-nowrap`}>
                     <ProjectStatusBadge status={p.status} />
                   </td>
-                  <td className={`${TD} w-36 tablet:w-36`}>
+                  <td className={`${TD} w-36 tablet:w-36 ${PREVIEW_HIDE_NARROW}`}>
                     {progress !== null ? (
                       <div className="flex items-center gap-2">
                         <ProgressBar value={progress} label={`${p.name} construction progress`} size="sm" className="flex-1" />
@@ -112,16 +133,16 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                       </span>
                     )}
                   </td>
-                  <td className={cn(TD, 'whitespace-nowrap', p.managerName ? 'text-foreground' : 'text-muted-foreground')}>
+                  <td className={cn(TD, 'whitespace-nowrap', PREVIEW_HIDE, p.managerName ? 'text-foreground' : 'text-muted-foreground')}>
                     {p.managerName ?? 'Unassigned'}
                   </td>
-                  <td className={`${TD} whitespace-nowrap`}>
+                  <td className={`${TD} whitespace-nowrap ${PREVIEW_HIDE_NARROWEST}`}>
                     <div className="flex flex-col">
                       <span className="text-xs text-muted-foreground">{date.label}</span>
                       <span className="text-foreground">{date.value}</span>
                     </div>
                   </td>
-                  <td className={TD}>
+                  <td className={`${TD} ${PREVIEW_HIDE}`}>
                     <div className="flex min-w-0 items-start gap-2">
                       <panel.Icon
                         className={cn('mt-0.5 size-4 shrink-0', PANEL_ICON_TEXT[panel.tone])}
@@ -155,13 +176,13 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                       </div>
                     </div>
                   </td>
-                  <td className={`${TD} text-right`}>
-                    <Button variant="view" size="sm" render={<Link href={href} aria-label={`View project ${p.name}`} />} nativeButton={false}>
-                      View
+                  <td className={`${TD} whitespace-nowrap text-right`}>
+                    <Button variant="view" size="sm" render={<Link href={href} aria-label={`Open project ${p.name}`} />} nativeButton={false}>
+                      Open project
                       <ArrowRight data-icon="inline-end" />
                     </Button>
                   </td>
-                </tr>
+                </ProjectPreviewSurface>
               )
             })}
           </tbody>

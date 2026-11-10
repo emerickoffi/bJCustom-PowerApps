@@ -6,6 +6,8 @@ import { DirectoryViews } from '@/components/shared/directory-views'
 import { DirectorySort } from '@/components/shared/directory-sort'
 import { DirectoryPagination } from '@/components/shared/directory-pagination'
 import { ProjectTable } from '@/components/projects/project-table'
+import { ProjectPreviewLayout } from '@/components/projects/project-preview-layout'
+import { PREVIEW_PARAM } from '@/lib/project-preview'
 import {
   DIRECTORY_VIEW_COOKIE,
   PROJECT_SORTS,
@@ -177,8 +179,12 @@ export default async function ProjectsPage({
         location={{ options: locations, defaultState: stateFilter, defaultCity: cityFilter }}
         clearHref={filtered ? directoryHref('/projects', { sort: stateParams.sort, view: urlView }) : undefined}
         preserve={{ sort: stateParams.sort, view: urlView }}
+        carryParams={[PREVIEW_PARAM]}
         autoApply
       />
+      <ProjectPreviewLayout
+        projects={rows.map((p) => ({ id: p.id, name: p.name, project_number: p.project_number, status: p.status }))}
+      >
       {projects.length ? (
         <div className="flex flex-col gap-4">
         <DirectoryViews
@@ -189,7 +195,7 @@ export default async function ProjectsPage({
           controls={<DirectorySort value={sort} options={sortOptions(PROJECT_SORTS)} />}
           table={<ProjectTable rows={rows} />}
           cards={
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 xl:group-data-preview-open/preview:grid-cols-1 xl:group-data-preview-open/preview:@2xl:grid-cols-2 xl:group-data-preview-open/preview:@5xl:grid-cols-3">
           {rows.map((row) => {
             const p = row
             const clientName = p.primary_client
@@ -201,6 +207,7 @@ export default async function ProjectsPage({
                 key={p.id}
                 project={row}
                 showType
+                preview
                 footer={
                   <dl className="grid grid-cols-2 gap-4 border-t pt-3">
                     <div className="flex min-w-0 flex-col gap-0.5">
@@ -263,6 +270,7 @@ export default async function ProjectsPage({
           }
         />
       )}
+      </ProjectPreviewLayout>
     </div>
   )
 }
