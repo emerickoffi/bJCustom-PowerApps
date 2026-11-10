@@ -232,7 +232,7 @@ export function PeopleAssignWorkspace({
                 }}
               >
                 <SelectTrigger className="w-44" aria-label="Filter by trade">
-                  <SelectValue />
+                  <SelectValue>{(v: string) => (v === ALL_TRADES ? 'All trades' : v)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL_TRADES}>All trades</SelectItem>
