@@ -9,8 +9,11 @@ type Stack = { node: HTMLElement | null; setNode: (node: HTMLElement | null) => 
 
 const FloatingActionsContext = createContext<Stack | null>(null)
 
-/** Top-to-bottom order of the secondary actions. The AI Assistant always keeps the corner below them. */
-const SLOT_ORDER = { camera: 'order-1', assign: 'order-2' } as const
+/**
+ * Top-to-bottom order of the secondary actions. The AI Assistant always keeps the corner below them, and a page's
+ * creation action sits directly above it.
+ */
+const SLOT_ORDER = { camera: 'order-1', assign: 'order-2', create: 'order-3' } as const
 
 export function FloatingActionsProvider({ children }: { children: ReactNode }) {
   const [node, setNode] = useState<HTMLElement | null>(null)
