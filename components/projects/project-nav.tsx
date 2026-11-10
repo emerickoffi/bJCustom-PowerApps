@@ -32,7 +32,6 @@ function writeMemory(key: string, memory: SectionMemory) {
 export function ProjectNav({
   userId,
   projectId,
-  projectName,
   projectNumber,
   status,
   address,
@@ -40,7 +39,6 @@ export function ProjectNav({
 }: {
   userId: string
   projectId: string
-  projectName: string
   projectNumber: string | null
   status: ProjectStatus
   address: string
@@ -67,7 +65,11 @@ export function ProjectNav({
     activeKeyRef.current = activeKey
     if (!activeKey) return
     const current = readMemory(memoryKey)
-    current[activeKey] = { ...current[activeKey], url: search ? `${pathname}?${search}` : pathname }
+    // An open details drawer is not part of a tab's remembered view, so returning to the tab never reopens it.
+    const remembered = new URLSearchParams(search)
+    remembered.delete('details')
+    const query = remembered.toString()
+    current[activeKey] = { ...current[activeKey], url: query ? `${pathname}?${query}` : pathname }
     writeMemory(memoryKey, current)
     setMemory(current)
   }, [activeKey, pathname, search, memoryKey])
@@ -208,25 +210,29 @@ export function ProjectNav({
     window.history.replaceState(window.history.state, '', href)
   }
 
+  // The details drawer is mounted on the overview, so there the URL changes in place instead of refetching the page.
+  function handleDetailsClick(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (activeKey !== 'overview') return
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    event.preventDefault()
+    const params = new URLSearchParams(window.location.search)
+    params.set('details', 'open')
+    window.history.replaceState(window.history.state, '', `${pathname}?${params.toString()}`)
+  }
+
   return (
     <>
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 pb-3">
-        <div className="flex min-w-0 items-baseline gap-2">
-          {projectNumber && <span className="shrink-0 font-mono text-xs text-muted-foreground">{projectNumber}</span>}
-          {activeKey === 'overview' ? (
-            <span className="truncate font-serif text-base font-semibold text-foreground">{projectName}</span>
-          ) : (
-            <Link
-              href={overviewHref}
-              className="truncate font-serif text-base font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline"
-            >
-              {projectName}
-            </Link>
-          )}
-        </div>
+      {/* The project's name lives in the header selector; this row adds what the selector doesn't show. */}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 pb-3">
+        {projectNumber && (
+          <span className="shrink-0 font-mono text-xs text-muted-foreground">
+            <span className="sr-only">Project ID: </span>
+            {projectNumber}
+          </span>
+        )}
         <ProjectStatusBadge status={status} />
         {address && (
-          <span className="hidden min-w-0 items-center gap-1 text-sm text-muted-foreground md:flex">
+          <span className="order-last flex w-full min-w-0 items-center gap-1 text-sm text-muted-foreground md:order-none md:w-auto md:flex-1">
             <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
             <span className="sr-only">Address:</span>
             <span className="truncate">{address}</span>
@@ -234,6 +240,7 @@ export function ProjectNav({
         )}
         <Link
           href={`${overviewHref}?details=open`}
+          onClick={handleDetailsClick}
           className="ml-auto inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline sm:min-h-0"
         >
           <Info className="size-3.5" aria-hidden="true" />

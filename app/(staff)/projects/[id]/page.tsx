@@ -24,7 +24,7 @@ import { PROJECT_TYPE_LABELS, directoryClosedReason, type ProjectStatus } from '
 import { loadProjectContacts } from '@/lib/project-contacts-data'
 import { loadProjectHomeowners } from '@/lib/project-homeowners-data'
 import { loadDirectoryForAssignment } from '@/lib/directory-assignment-data'
-import { formatAddress, formatCents, formatDate } from '@/lib/format'
+import { formatCents, formatDate } from '@/lib/format'
 import { PROJECT_SECTION_ANCHORS } from '@/lib/project-nav'
 import { ProjectSectionScroll } from '@/components/projects/project-section-scroll'
 import { ProjectNextActions, type WorkScope } from '@/components/projects/next-actions'
@@ -45,7 +45,7 @@ export default async function ProjectDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ work?: string | string[]; details?: string | string[] }>
+  searchParams: Promise<{ work?: string | string[] }>
 }) {
   const session = await requireStaff()
   const [{ id }, query] = await Promise.all([params, searchParams])
@@ -345,10 +345,6 @@ export default async function ProjectDetailPage({
     <div className="flex flex-col gap-6">
       <ProjectSectionScroll />
       <ProjectOverviewHeader
-        projectNumber={project.project_number}
-        name={project.name}
-        status={status}
-        address={formatAddress(project)}
         managerName={managerName}
         dateLabel={isCompleted ? 'Completed' : 'Target'}
         dateValue={
@@ -375,12 +371,10 @@ export default async function ProjectDetailPage({
               projectLabel={`${project.project_number} · ${project.name}`}
               triggerVariant="outline"
             />
-            <ProjectDetailsDrawer projectName={project.name} defaultOpen={query.details === 'open'}>
-              {details}
-            </ProjectDetailsDrawer>
           </>
         }
       />
+      <ProjectDetailsDrawer projectName={project.name}>{details}</ProjectDetailsDrawer>
 
       {showsSetup && !setup.complete && !setupDismissed && (
         <ProjectSetupChecklist projectId={project.id} steps={setup.steps} doneCount={setup.doneCount} />

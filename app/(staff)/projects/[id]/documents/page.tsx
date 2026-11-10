@@ -119,8 +119,11 @@ export default async function ProjectDocumentsPage({
         <CompactEmptyState
           icon={FolderOpen}
           title={`No documents in ${categoryLabel(category)}`}
-          description={`Upload a file to ${categoryLabel(category)}, or choose another category.`}
-          action={canUpload ? <DocumentUploadButton projectId={id} canShare={manager} defaultCategory={category} /> : undefined}
+          description={
+            canUpload
+              ? `Upload document above starts in ${categoryLabel(category)}. You can also choose another category.`
+              : 'Choose another category to see its documents.'
+          }
         />
       )
     }
@@ -129,7 +132,6 @@ export default async function ProjectDocumentsPage({
         icon={FolderOpen}
         title="No documents uploaded yet"
         description="Upload plans, permits, contracts, and other files to keep this project's documents in one place."
-        action={canUpload ? <DocumentUploadButton projectId={id} canShare={manager} /> : undefined}
       />
     )
   }
@@ -148,7 +150,12 @@ export default async function ProjectDocumentsPage({
             </span>
           ) : undefined
         }
-        actions={canUpload ? <DocumentUploadButton projectId={id} canShare={manager} openFromUrl /> : undefined}
+        actions={
+          canUpload ? (
+            // Keyed by category so the dialog's preselected category follows the one being browsed.
+            <DocumentUploadButton key={category ?? 'all'} projectId={id} canShare={manager} openFromUrl defaultCategory={category} />
+          ) : undefined
+        }
       />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5 tablet:flex-col">

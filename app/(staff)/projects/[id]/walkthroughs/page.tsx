@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ClipboardCheck } from 'lucide-react'
+import { ClipboardCheck, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/shared/page-header'
@@ -25,8 +27,16 @@ export default async function ProjectWalkthroughsPage({ params }: { params: Prom
       <PageHeader
         title="Walkthroughs"
         icon={ClipboardCheck}
+        actions={
+          canManage(session.role) ? (
+            <Button render={<Link href={`/projects/${project.id}/walkthroughs/new`} />} nativeButton={false}>
+              <Plus data-icon="inline-start" />
+              New walkthrough
+            </Button>
+          ) : undefined
+        }
       />
-      <ProjectWalkthroughsPanel projectId={project.id} canCreate={canManage(session.role)} />
+      <ProjectWalkthroughsPanel projectId={project.id} />
     </div>
   )
 }
