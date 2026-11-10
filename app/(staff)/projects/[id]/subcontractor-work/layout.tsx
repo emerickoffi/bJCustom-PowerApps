@@ -34,7 +34,7 @@ export default async function SubcontractorWorkLayout({
   if (directory.availability !== 'ready') return children
 
   return (
-    <AssignSubcontractors projectId={project.id} projectName={project.name as string} rows={directory.rows}>
+    <AssignSubcontractors projectId={project.id} projectName={project.name as string} rows={directory.rows} canCreateCompany>
       {children}
     </AssignSubcontractors>
   )

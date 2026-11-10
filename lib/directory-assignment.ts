@@ -57,6 +57,8 @@ const personItem = z.object({
   project_role: z.string().trim().min(1, 'Project role is required').max(120, 'Project role must be 120 characters or fewer'),
   access: z.literal(NO_PORTAL_ACCESS, 'Choose project access'),
   notify: z.boolean(),
+  /** YYYY-MM-DD. Omitted means the association starts today; the action validates the date itself. */
+  started_at: z.string().trim().max(10, 'Enter a valid start date').optional(),
 })
 
 const companyItem = z.object({ kind: z.literal('company'), id: z.uuid() })

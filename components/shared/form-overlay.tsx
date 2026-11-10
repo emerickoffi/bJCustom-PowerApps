@@ -47,6 +47,7 @@ export function FormOverlay({
   description,
   icon: Icon,
   size = 'md',
+  finalFocus,
   children,
 }: {
   open: boolean
@@ -58,6 +59,8 @@ export function FormOverlay({
   icon?: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' }>
   /** `xl` is drawer-only, for forms with wide tables such as invoice line items. */
   size?: 'md' | 'lg' | 'xl'
+  /** Where focus goes when the overlay closes. Defaults to the element focused before it opened. */
+  finalFocus?: React.ComponentProps<typeof DialogPrimitive.Popup>['finalFocus']
   children: React.ReactNode
 }) {
   const [dirty, setDirtyState] = useState(false)
@@ -114,6 +117,7 @@ export function FormOverlay({
         />
         <DialogPrimitive.Popup
           data-variant={variant}
+          finalFocus={finalFocus}
           className={cn(
             'fixed z-50 flex flex-col bg-background text-sm text-foreground shadow-xl outline-none transition duration-200 ease-out',
             // Mobile: full-screen sheet for both variants so fields are never clipped.

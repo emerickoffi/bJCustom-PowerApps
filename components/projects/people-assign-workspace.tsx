@@ -1,26 +1,31 @@
 'use client'
 
-import { Fragment, useMemo, useState, useTransition, type ComponentProps } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState, useTransition, type ComponentProps } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ChevronDown, Info, Plus, Search, UserPlus } from 'lucide-react'
+import { HardHat, Info, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { NativeSelect } from '@/components/shared/form-field'
+import { FormOverlay, OverlayFooter, useFormOverlay } from '@/components/shared/form-overlay'
+import { AssignCreateNew } from '@/components/projects/assign-create-new'
 import { PROJECT_ROLE_OPTIONS } from '@/lib/contacts'
 import { EMAIL_DELIVERY, NO_PORTAL_ACCESS, type BulkAssignItem } from '@/lib/directory-assignment'
 import type { AccountStatus, DirectoryPersonRow, DirectoryRow } from '@/lib/directory-assignment-data'
 import { bulkAssignFromDirectoryAction } from '@/app/actions/directory-assignment'
 import { cn } from '@/lib/utils'
 
-type Config = { role: string; relId: string | null; notify: boolean }
+type Config = { role: string; relId: string | null; notify: boolean; customRole: boolean }
 type KindFilter = 'all' | 'person' | 'company'
+type Audience = 'all' | 'subcontractors'
 
 const PAGE_SIZE = 25
-const ALL_TRADES = '__all__'
+const OTHER_ROLE = '__other__'
+const TOUCH = 'pointer-coarse:min-h-11'
+const PANEL = 'flex min-h-0 flex-col data-hidden:hidden'
 
 const ACCESS_LABEL: Record<AccountStatus, string> = {
   not_provisioned: 'No portal access',
@@ -28,62 +33,144 @@ const ACCESS_LABEL: Record<AccountStatus, string> = {
   portal_revoked: 'Portal access revoked',
 }
 
-const initialConfig = (row: DirectoryPersonRow): Config => ({ role: row.suggestedRole, relId: row.defaultRelationshipId, notify: false })
+const initialConfig = (row: DirectoryPersonRow): Config => ({
+  role: row.suggestedRole,
+  relId: row.defaultRelationshipId,
+  notify: false,
+  customRole: false,
+})
 
+/**
+ * The one assignment drawer for a project: pick existing directory people and companies, or create a new
+ * contact or subcontractor company that lands on the project directly. It always acts on the project it was
+ * opened for and closes only after unsaved entries are confirmed as discarded.
+ */
 export function PeopleAssignWorkspace({
   projectId,
   projectName,
   rows,
-  defaultOpen = false,
-  audience = 'all',
-  triggerLabel = 'Add people & companies',
-  open: controlledOpen,
+  audience = 'subcontractors',
+  canCreateCompany = false,
+  open,
   onOpenChange,
   finalFocus,
 }: {
   projectId: string
   projectName: string
   rows: DirectoryRow[]
-  defaultOpen?: boolean
   /** 'subcontractors' opens filtered to subcontractor people and companies; the filter can be turned off. */
-  audience?: 'all' | 'subcontractors'
-  triggerLabel?: string
-  /** Controlled mode for an external trigger such as the floating assignment action; no trigger button is rendered. */
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  /** Where focus goes when the overlay closes. Defaults to the element focused before it opened. */
-  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus']
+  audience?: Audience
+  /** Subcontractor management is on, so a new company can be created and assigned here. */
+  canCreateCompany?: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** Where focus goes when the drawer closes. Defaults to the element focused before it opened. */
+  finalFocus?: ComponentProps<typeof FormOverlay>['finalFocus']
+}) {
+  const close = useCallback(() => onOpenChange(false), [onOpenChange])
+  return (
+    <FormOverlay
+      open={open}
+      onClose={close}
+      variant="drawer"
+      size="lg"
+      icon={HardHat}
+      title="Assign subcontractors"
+      description={`Add people and companies from your directory to ${projectName}, or create a new one.`}
+      finalFocus={finalFocus}
+    >
+      <AssignTabs projectId={projectId} projectName={projectName} rows={rows} audience={audience} canCreateCompany={canCreateCompany} />
+    </FormOverlay>
+  )
+}
+
+function AssignTabs({
+  projectId,
+  projectName,
+  rows,
+  audience,
+  canCreateCompany,
+}: {
+  projectId: string
+  projectName: string
+  rows: DirectoryRow[]
+  audience: Audience
+  canCreateCompany: boolean
+}) {
+  const overlay = useFormOverlay()
+  const setDirty = overlay?.setDirty
+  const [selecting, setSelecting] = useState(false)
+  const [drafting, setDrafting] = useState(false)
+
+  useEffect(() => {
+    setDirty?.(selecting || drafting)
+  }, [selecting, drafting, setDirty])
+
+  return (
+    <Tabs defaultValue="existing" className="min-h-0 flex-1 gap-0">
+      <div className="shrink-0 border-b border-border/70 px-5 py-3 sm:px-6">
+        <TabsList aria-label="How to assign" className="w-full group-data-horizontal/tabs:h-11">
+          <TabsTrigger value="existing">Add existing</TabsTrigger>
+          <TabsTrigger value="new">Create new</TabsTrigger>
+        </TabsList>
+      </div>
+      <TabsContent value="existing" keepMounted className={PANEL}>
+        <AddExisting projectId={projectId} projectName={projectName} rows={rows} audience={audience} onSelectingChange={setSelecting} />
+      </TabsContent>
+      <TabsContent value="new" keepMounted className={PANEL}>
+        <AssignCreateNew projectId={projectId} projectName={projectName} canCreateCompany={canCreateCompany} onDraftingChange={setDrafting} />
+      </TabsContent>
+    </Tabs>
+  )
+}
+
+function AddExisting({
+  projectId,
+  projectName,
+  rows,
+  audience,
+  onSelectingChange,
+}: {
+  projectId: string
+  projectName: string
+  rows: DirectoryRow[]
+  audience: Audience
+  onSelectingChange: (selecting: boolean) => void
 }) {
   const router = useRouter()
-  const [ownOpen, setOwnOpen] = useState(defaultOpen)
-  const controlled = controlledOpen !== undefined
-  const open = controlled ? controlledOpen : ownOpen
-  const setOpen = controlled ? (next: boolean) => onOpenChange?.(next) : setOwnOpen
+  const overlay = useFormOverlay()
+  const ids = useId()
   const [subsOnly, setSubsOnly] = useState(audience === 'subcontractors')
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<KindFilter>('all')
-  const [trade, setTrade] = useState(ALL_TRADES)
+  const [trade, setTrade] = useState('')
   const [onlySelected, setOnlySelected] = useState(false)
   const [page, setPage] = useState(0)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [configs, setConfigs] = useState<Record<string, Config>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [addedNow, setAddedNow] = useState<Set<string>>(new Set())
-  const [expanded, setExpanded] = useState<string | null>(null)
   const [bulkRole, setBulkRole] = useState('')
+  const [startDate, setStartDate] = useState('')
   const [pending, startTransition] = useTransition()
+
+  const hasSelection = selected.size > 0
+  useEffect(() => {
+    onSelectingChange(hasSelection)
+  }, [hasSelection, onSelectingChange])
 
   const byKey = useMemo(() => new Map(rows.map((r) => [r.key, r])), [rows])
   const trades = useMemo(() => [...new Set(rows.map((r) => r.trade).filter((t): t is string => !!t))].sort(), [rows])
 
   const isAssigned = (r: DirectoryRow) => r.assigned || addedNow.has(r.key)
   const selectable = (r: DirectoryRow) => !isAssigned(r) && !r.disabledReason
+  const configFor = (r: DirectoryPersonRow) => configs[r.key] ?? initialConfig(r)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return rows.filter((r) => {
       if (kind !== 'all' && r.kind !== kind) return false
-      if (trade !== ALL_TRADES && r.trade !== trade) return false
+      if (trade && r.trade !== trade) return false
       if (onlySelected && !selected.has(r.key)) return false
       if (subsOnly && !r.isSubcontractor && !selected.has(r.key)) return false
       if (!q) return true
@@ -98,7 +185,7 @@ export function PeopleAssignWorkspace({
 
   const selectedRows = [...selected].map((k) => byKey.get(k)).filter((r): r is DirectoryRow => !!r)
   const selectedPeople = selectedRows.filter((r): r is DirectoryPersonRow => r.kind === 'person')
-  const missingRole = selectedPeople.filter((r) => !configs[r.key]?.role).length
+  const missingRole = selectedPeople.filter((r) => !configFor(r).role.trim()).length
   const visibleSelectable = visible.filter(selectable)
   const allVisibleSelected = visibleSelectable.length > 0 && visibleSelectable.every((r) => selected.has(r.key))
 
@@ -134,9 +221,10 @@ export function PeopleAssignWorkspace({
 
   const applyBulkRole = (role: string) => {
     setBulkRole(role)
+    if (!role) return
     setConfigs((c) => {
       const next = { ...c }
-      for (const r of selectedPeople) next[r.key] = { ...(next[r.key] ?? initialConfig(r)), role }
+      for (const r of selectedPeople) next[r.key] = { ...(next[r.key] ?? initialConfig(r)), role, customRole: false }
       return next
     })
   }
@@ -145,8 +233,16 @@ export function PeopleAssignWorkspace({
     if (pending || selectedRows.length === 0 || missingRole > 0) return
     const items: BulkAssignItem[] = selectedRows.map((r) => {
       if (r.kind === 'company') return { kind: 'company', id: r.id }
-      const c = configs[r.key] ?? initialConfig(r)
-      return { kind: 'person', id: r.id, person_company_id: c.relId, project_role: c.role, access: NO_PORTAL_ACCESS, notify: c.notify }
+      const c = configFor(r)
+      return {
+        kind: 'person',
+        id: r.id,
+        person_company_id: c.relId,
+        project_role: c.role.trim(),
+        access: NO_PORTAL_ACCESS,
+        notify: c.notify,
+        started_at: startDate || undefined,
+      }
     })
     startTransition(async () => {
       const res = await bulkAssignFromDirectoryAction(projectId, items)
@@ -166,44 +262,32 @@ export function PeopleAssignWorkspace({
         router.refresh()
       }
       if (failed.length) toast.error(`${failed.length} could not be added. They're still selected so you can fix and retry.`)
-      else setOpen(false)
+      else overlay?.forceClose()
     })
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !pending && setOpen(next)}>
-      {!controlled && (
-        <Button size="sm" onClick={() => setOpen(true)}>
-          {audience === 'subcontractors' ? <Plus data-icon="inline-start" /> : <UserPlus data-icon="inline-start" />}
-          {triggerLabel}
-        </Button>
-      )}
-      <DialogContent finalFocus={finalFocus} className="flex max-h-[90vh] w-[calc(100vw-2rem)] flex-col gap-0 p-0 sm:max-w-6xl">
-        <DialogHeader className="border-b border-border px-5 py-4">
-          <DialogTitle>{audience === 'subcontractors' ? 'Assign subcontractors' : 'Add people & companies'}</DialogTitle>
-          <DialogDescription>
-            {audience === 'subcontractors'
-              ? `Pick subcontractor people and companies from your business directory and add them to ${projectName}. Turn off “Subcontractors only” to include other professionals.`
-              : `Pick from your business directory, set each person’s project role, and add them to ${projectName} in one step.`}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="sticky top-0 z-10 bg-background px-5 pt-3 pb-2 sm:px-6">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                resetPage()
+              }}
+              placeholder="Search name, email, company, or trade"
+              aria-label="Search directory"
+              className="h-10 pl-8"
+            />
+          </div>
+        </div>
 
-        <div className="flex flex-col gap-3 border-b border-border px-5 py-3">
+        <div className="flex flex-col gap-3 border-b border-border/70 px-5 pb-3 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-56 flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input
-                type="search"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  resetPage()
-                }}
-                placeholder="Search name, email, company, or trade"
-                aria-label="Search directory"
-                className="pl-8"
-              />
-            </div>
             <div role="group" aria-label="Record type" className="flex rounded-md border border-border p-0.5">
               {(['all', 'person', 'company'] as const).map((k) => (
                 <button
@@ -216,6 +300,7 @@ export function PeopleAssignWorkspace({
                   }}
                   className={cn(
                     'rounded px-3 py-1.5 text-sm',
+                    TOUCH,
                     kind === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
@@ -224,31 +309,28 @@ export function PeopleAssignWorkspace({
               ))}
             </div>
             {trades.length > 0 && (
-              <Select
+              <NativeSelect
+                aria-label="Filter by trade"
                 value={trade}
-                onValueChange={(v) => {
-                  setTrade(v ?? ALL_TRADES)
+                onChange={(e) => {
+                  setTrade(e.target.value)
                   resetPage()
                 }}
+                className={cn('h-9 w-44', TOUCH)}
               >
-                <SelectTrigger className="w-44" aria-label="Filter by trade">
-                  <SelectValue>{(v: string) => (v === ALL_TRADES ? 'All trades' : v)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_TRADES}>All trades</SelectItem>
-                  {trades.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="">All trades</option>
+                {trades.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </NativeSelect>
             )}
             <Button
               type="button"
               variant={subsOnly ? 'secondary' : 'outline'}
-              size="sm"
               aria-pressed={subsOnly}
+              className={TOUCH}
               onClick={() => {
                 setSubsOnly((v) => !v)
                 resetPage()
@@ -259,8 +341,8 @@ export function PeopleAssignWorkspace({
             <Button
               type="button"
               variant={onlySelected ? 'secondary' : 'outline'}
-              size="sm"
               aria-pressed={onlySelected}
+              className={TOUCH}
               onClick={() => {
                 setOnlySelected((v) => !v)
                 resetPage()
@@ -269,122 +351,144 @@ export function PeopleAssignWorkspace({
               Show selected ({selected.size})
             </Button>
           </div>
+
           {selectedPeople.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Apply role to {selectedPeople.length} selected {selectedPeople.length === 1 ? 'person' : 'people'}:</span>
-              <Select value={bulkRole} onValueChange={(v) => v && applyBulkRole(v)}>
-                <SelectTrigger className="h-8 w-60" aria-label="Apply project role to selected people">
-                  <SelectValue placeholder="Choose role" />
-                </SelectTrigger>
-                <SelectContent>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor={`${ids}-bulk-role`} className="text-xs font-medium text-foreground">
+                  Apply role to {selectedPeople.length} selected {selectedPeople.length === 1 ? 'person' : 'people'}
+                </label>
+                <NativeSelect id={`${ids}-bulk-role`} value={bulkRole} onChange={(e) => applyBulkRole(e.target.value)}>
+                  <option value="">Choose role</option>
                   {PROJECT_ROLE_OPTIONS.map((r) => (
-                    <SelectItem key={r} value={r}>
+                    <option key={r} value={r}>
                       {r}
-                    </SelectItem>
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
+                </NativeSelect>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor={`${ids}-start`} className="text-xs font-medium text-foreground">
+                  Start date
+                </label>
+                <Input
+                  id={`${ids}-start`}
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  aria-describedby={`${ids}-start-hint`}
+                  className="h-10"
+                />
+                <p id={`${ids}-start-hint`} className="text-xs text-muted-foreground">
+                  Defaults to today. Applies to everyone selected.
+                </p>
+              </div>
             </div>
           )}
+
           {!EMAIL_DELIVERY.available && (
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Info className="size-3.5 shrink-0" aria-hidden="true" />
-              {EMAIL_DELIVERY.reason} Adding people never grants portal access.
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+              <span>{EMAIL_DELIVERY.reason} Adding people never grants portal access.</span>
             </p>
           )}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto">
-          {visible.length === 0 ? (
-            <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+        {visible.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 px-5 py-10 text-center text-sm text-muted-foreground">
+            <p>
               {rows.length === 0
-                ? 'Your business directory is empty.'
+                ? 'Your business directory is empty. Use “Create new” to add the first record.'
                 : subsOnly
-                  ? 'No subcontractors match. Turn off “Subcontractors only” to include other professionals.'
+                  ? 'No subcontractors match.'
                   : 'No records match these filters.'}
             </p>
-          ) : (
-            <table className="w-full text-sm">
-              <caption className="sr-only">Directory people and companies</caption>
-              <thead className="sticky top-0 z-10 bg-muted/80 text-left text-xs text-muted-foreground backdrop-blur">
-                <tr>
-                  <th scope="col" className="w-10 px-4 py-2">
-                    <input
-                      type="checkbox"
-                      className="size-4 accent-primary"
-                      aria-label="Select all on this page"
-                      checked={allVisibleSelected}
-                      disabled={visibleSelectable.length === 0}
-                      onChange={(e) => toggleVisible(e.target.checked)}
-                    />
-                  </th>
-                  <th scope="col" className="px-2 py-2 font-medium">Name</th>
-                  <th scope="col" className="px-2 py-2 font-medium">Trade</th>
-                  <th scope="col" className="px-2 py-2 font-medium">Project role</th>
-                  <th scope="col" className="px-2 py-2 font-medium">Access</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Notify</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {visible.map((row) => (
-                  <WorkspaceRow
-                    key={row.key}
-                    row={row}
-                    assigned={isAssigned(row)}
-                    checked={selected.has(row.key)}
-                    config={row.kind === 'person' ? (configs[row.key] ?? initialConfig(row)) : null}
-                    error={errors[row.key]}
-                    expanded={expanded === row.key}
-                    onExpand={() => setExpanded((k) => (k === row.key ? null : row.key))}
-                    onToggle={(on) => toggle(row, on)}
-                    onConfig={(patch) => row.kind === 'person' && updateConfig(row, patch)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+            {rows.length > 0 && subsOnly && (
+              <Button
+                type="button"
+                variant="outline"
+                className={TOUCH}
+                onClick={() => {
+                  setSubsOnly(false)
+                  resetPage()
+                }}
+              >
+                Include other professionals
+              </Button>
+            )}
+          </div>
+        ) : (
+          <>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 border-b border-border/70 bg-muted/50 px-5 text-xs font-medium text-muted-foreground sm:px-6">
+              <input
+                type="checkbox"
+                className="size-4 shrink-0 accent-primary"
+                checked={allVisibleSelected}
+                disabled={visibleSelectable.length === 0}
+                onChange={(e) => toggleVisible(e.target.checked)}
+              />
+              Select all on this page
+            </label>
+            <ul className="divide-y divide-border/70">
+              {visible.map((row) => (
+                <DirectoryListRow
+                  key={row.key}
+                  row={row}
+                  assigned={isAssigned(row)}
+                  checked={selected.has(row.key)}
+                  config={row.kind === 'person' ? configFor(row) : null}
+                  error={errors[row.key]}
+                  onToggle={(on) => toggle(row, on)}
+                  onConfig={(patch) => row.kind === 'person' && updateConfig(row, patch)}
+                />
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+      <OverlayFooter
+        message={
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span aria-live="polite">
               {filtered.length} {filtered.length === 1 ? 'record' : 'records'}
-              {missingRole > 0 && <span className="ml-2 font-medium text-destructive">Choose a role for {missingRole} selected {missingRole === 1 ? 'person' : 'people'}</span>}
+              {missingRole > 0 && (
+                <span className="ml-2 font-medium text-destructive">
+                  Choose a role for {missingRole} selected {missingRole === 1 ? 'person' : 'people'}
+                </span>
+              )}
             </span>
             {pageCount > 1 && (
               <span className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>
+                <Button variant="ghost" size="sm" className={TOUCH} disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>
                   Previous
                 </Button>
                 Page {currentPage + 1} of {pageCount}
-                <Button variant="ghost" size="sm" disabled={currentPage >= pageCount - 1} onClick={() => setPage(currentPage + 1)}>
+                <Button variant="ghost" size="sm" className={TOUCH} disabled={currentPage >= pageCount - 1} onClick={() => setPage(currentPage + 1)}>
                   Next
                 </Button>
               </span>
             )}
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
-              Cancel
-            </Button>
-            <Button onClick={submit} disabled={pending || selectedRows.length === 0 || missingRole > 0}>
-              {pending ? 'Adding…' : selectedRows.length ? `Add ${selectedRows.length} to project` : 'Add to project'}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        }
+      >
+        <Button type="button" variant="outline" size="lg" className={TOUCH} onClick={overlay?.requestClose} disabled={pending}>
+          Cancel
+        </Button>
+        <Button type="button" size="lg" className={TOUCH} onClick={submit} disabled={pending || selectedRows.length === 0 || missingRole > 0}>
+          {pending ? 'Adding…' : selectedRows.length ? `Add ${selectedRows.length} to project` : 'Add to project'}
+        </Button>
+      </OverlayFooter>
+    </>
   )
 }
 
-function WorkspaceRow({
+function DirectoryListRow({
   row,
   assigned,
   checked,
   config,
   error,
-  expanded,
-  onExpand,
   onToggle,
   onConfig,
 }: {
@@ -393,131 +497,121 @@ function WorkspaceRow({
   checked: boolean
   config: Config | null
   error?: string
-  expanded: boolean
-  onExpand: () => void
   onToggle: (on: boolean) => void
   onConfig: (patch: Partial<Config>) => void
 }) {
+  const id = useId()
   const blocked = assigned || !!row.disabledReason
   const person = row.kind === 'person' ? row : null
-  const peopleCount = row.kind === 'company' ? row.peopleCount : 0
-  const affiliation = person?.affiliations.find((a) => a.relationship_id === config?.relId) ?? person?.affiliations[0]
-  const canNotify = !!person && checked && person.emailEligibility.eligible
+  const home = person ? (person.affiliations.find((a) => a.relationship_id === person.defaultRelationshipId) ?? person.affiliations[0]) : null
+  const canNotify = !!person && person.emailEligibility.eligible
+  const meta =
+    row.kind === 'person'
+      ? [home?.company_name ?? 'No company', home?.position ? `Company title: ${home.position}` : null, row.trade, ACCESS_LABEL[row.account]]
+      : [`${row.peopleCount} ${row.peopleCount === 1 ? 'person' : 'people'} in directory`, row.trade]
 
   return (
-    <Fragment>
-      <tr className={cn(checked && 'bg-sage/40', error && 'bg-destructive/5')}>
-        <td className="px-4 py-2 align-top">
-          <input
-            type="checkbox"
-            className="mt-1 size-4 accent-primary"
-            aria-label={`Select ${row.name}`}
-            checked={checked}
-            disabled={blocked}
-            onChange={(e) => onToggle(e.target.checked)}
-          />
-        </td>
-        <td className="px-2 py-2 align-top">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-foreground">{row.name}</span>
+    <li className={cn('px-5 py-1.5 sm:px-6', checked && 'bg-sage/40', error && 'bg-destructive/5')}>
+      <label className={cn('flex min-h-11 items-start gap-3 py-1.5', blocked ? 'cursor-not-allowed' : 'cursor-pointer')}>
+        <input
+          type="checkbox"
+          className="mt-0.5 size-4 shrink-0 accent-primary"
+          aria-label={`Select ${row.name}`}
+          checked={checked}
+          disabled={blocked}
+          onChange={(e) => onToggle(e.target.checked)}
+        />
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className={cn('font-medium', blocked ? 'text-muted-foreground' : 'text-foreground')}>{row.name}</span>
             {row.kind === 'company' && <Badge variant="outline">Company</Badge>}
             {assigned && <Badge variant="secondary">On project</Badge>}
-            {!assigned && row.disabledReason && <Badge variant="outline">{row.disabledReason}</Badge>}
-          </div>
-          {person ? (
-            person.affiliations.length > 1 && checked ? (
-              <Select value={config?.relId ?? ''} onValueChange={(v) => v && onConfig({ relId: v })}>
-                <SelectTrigger className="mt-1 h-8 w-64" aria-label={`Company for ${row.name}`}>
-                  <SelectValue placeholder="Choose company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {person.affiliations.map((a) => (
-                    <SelectItem key={a.relationship_id} value={a.relationship_id}>
-                      {a.company_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {affiliation ? affiliation.company_name : 'No company'}
-                {affiliation?.position && <span> · Company title: {affiliation.position}</span>}
-              </p>
-            )
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {peopleCount} {peopleCount === 1 ? 'person' : 'people'} in directory
-            </p>
-          )}
-          {error && (
-            <p role="alert" className="mt-1 text-xs font-medium text-destructive">
-              {error}
-            </p>
-          )}
-        </td>
-        <td className="px-2 py-2 align-top text-muted-foreground">{row.trade ?? '—'}</td>
-        <td className="px-2 py-2 align-top">
-          {person ? (
-            checked ? (
-              <Select value={config?.role ?? ''} onValueChange={(v) => onConfig({ role: v ?? '' })}>
-                <SelectTrigger
-                  className={cn('h-8 w-56', !config?.role && 'border-destructive')}
-                  aria-label={`Project role for ${row.name}`}
-                  aria-invalid={!config?.role}
-                >
-                  <SelectValue placeholder="Choose role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROJECT_ROLE_OPTIONS.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <span className="text-muted-foreground">{blocked ? '—' : 'Select to set role'}</span>
-            )
-          ) : (
-            <span className="text-muted-foreground">Subcontractor company</span>
-          )}
-        </td>
-        <td className="px-2 py-2 align-top">
-          {person ? (
-            <button
-              type="button"
-              onClick={onExpand}
-              aria-expanded={expanded}
-              className="inline-flex items-center gap-1 text-left text-muted-foreground hover:text-foreground"
+          </span>
+          <span className="text-xs text-muted-foreground">{meta.filter(Boolean).join(' · ')}</span>
+          {!assigned && row.disabledReason && <span className="text-xs text-muted-foreground">{row.disabledReason}</span>}
+        </span>
+      </label>
+
+      {error && (
+        <p role="alert" className="pb-1.5 pl-7 text-xs font-medium text-destructive">
+          {error}
+        </p>
+      )}
+
+      {person && config && checked && (
+        <div className="grid gap-3 pb-2 pl-7 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`${id}-role`} className="text-xs font-medium text-foreground">
+              Project role <span className="text-destructive" aria-hidden="true">*</span>
+            </label>
+            <NativeSelect
+              id={`${id}-role`}
+              required
+              value={config.customRole ? OTHER_ROLE : config.role}
+              aria-invalid={!config.role.trim() ? true : undefined}
+              onChange={(e) =>
+                onConfig(e.target.value === OTHER_ROLE ? { role: '', customRole: true } : { role: e.target.value, customRole: false })
+              }
             >
-              {ACCESS_LABEL[person.account]}
-              <ChevronDown className={cn('size-3.5 transition-transform', expanded && 'rotate-180')} aria-hidden="true" />
-            </button>
-          ) : (
-            <span className="text-muted-foreground">No portal access</span>
+              <option value="" disabled>
+                Choose role
+              </option>
+              {PROJECT_ROLE_OPTIONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+              <option value={OTHER_ROLE}>Other</option>
+            </NativeSelect>
+            {config.customRole && (
+              <Input
+                value={config.role}
+                onChange={(e) => onConfig({ role: e.target.value })}
+                maxLength={120}
+                required
+                aria-label={`Custom project role for ${row.name}`}
+                aria-invalid={!config.role.trim() ? true : undefined}
+                placeholder="Describe the role, e.g. Insurance adjuster"
+                className="h-10"
+              />
+            )}
+          </div>
+
+          {person.affiliations.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={`${id}-company`} className="text-xs font-medium text-foreground">
+                On behalf of
+              </label>
+              <NativeSelect id={`${id}-company`} value={config.relId ?? ''} onChange={(e) => onConfig({ relId: e.target.value || null })}>
+                <option value="">No company</option>
+                {person.affiliations.map((a) => (
+                  <option key={a.relationship_id} value={a.relationship_id}>
+                    {a.company_name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
           )}
-        </td>
-        <td className="px-4 py-2 align-top">
-          {person ? (
+
+          <label
+            className={cn('flex min-h-11 items-center gap-2 text-xs sm:col-span-2', canNotify ? 'cursor-pointer text-foreground' : 'text-muted-foreground')}
+            title={!person.emailEligibility.eligible ? person.emailEligibility.reason : undefined}
+          >
             <input
               type="checkbox"
-              className="mt-1 size-4 accent-primary"
-              aria-label={`Notify ${row.name} by email`}
-              title={!person.emailEligibility.eligible ? person.emailEligibility.reason : undefined}
-              checked={!!config?.notify && canNotify}
+              className="size-4 shrink-0 accent-primary"
+              checked={config.notify && canNotify}
               disabled={!canNotify}
               onChange={(e) => onConfig({ notify: e.target.checked })}
             />
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          )}
-        </td>
-      </tr>
-      {person && expanded && (
-        <tr className="bg-muted/40">
-          <td />
-          <td colSpan={5} className="px-2 py-2 text-xs text-muted-foreground">
-            Adding {row.name} to this project records their role only. It does not create an account or change portal access.
+            <span>
+              Notify by email
+              {!person.emailEligibility.eligible && EMAIL_DELIVERY.available && ` (${person.emailEligibility.reason})`}
+            </span>
+          </label>
+
+          <p className="text-xs text-muted-foreground sm:col-span-2">
+            Adding {row.name} records their role only. It does not create an account or change portal access.
             {person.manageAccessHref && (
               <>
                 {' '}
@@ -526,9 +620,9 @@ function WorkspaceRow({
                 </Link>
               </>
             )}
-          </td>
-        </tr>
+          </p>
+        </div>
       )}
-    </Fragment>
+    </li>
   )
 }

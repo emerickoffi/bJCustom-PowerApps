@@ -6,7 +6,7 @@ import { canManage, getSession } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { friendlyDbError } from '@/lib/action-state'
 import { directoryClosedReason } from '@/lib/domain'
-import { personName } from '@/lib/contacts'
+import { parseStartDate, personName } from '@/lib/contacts'
 import { isUuid } from '@/lib/subcontractor-projects'
 import {
   EMAIL_DELIVERY,
@@ -79,6 +79,7 @@ export async function bulkAssignFromDirectoryAction(projectId: string, input: un
     const people = new Map((peopleRes.data ?? []).map((p) => [p.id as string, p]))
     const rels = new Map((relRes.data ?? []).map((r) => [r.id as string, r]))
     const existing = new Set((existingRes.data ?? []).map((r) => r.person_id as string))
+    const today = new Date().toISOString().slice(0, 10)
 
     results.push(
       ...(await inChunks(personItems, async (item): Promise<BulkAssignResult> => {
@@ -100,6 +101,8 @@ export async function bulkAssignFromDirectoryAction(projectId: string, input: un
           }
         }
         if (existing.has(item.id)) return finish('already_assigned', 'Already assigned to this project.')
+        const start = item.started_at ? parseStartDate(item.started_at, today) : null
+        if (start && !start.ok) return finish('failed', `${start.error}.`)
         const { error } = await supabase.from('business_person_projects').insert({
           organization_id: orgId,
           person_id: item.id,
@@ -107,6 +110,7 @@ export async function bulkAssignFromDirectoryAction(projectId: string, input: un
           person_company_id: item.person_company_id,
           project_role: item.project_role,
           status: 'active',
+          ...(start ? { started_at: start.value } : {}),
         })
         const c = classifyInsertError(error)
         return finish(c.outcome, c.reason)
