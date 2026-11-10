@@ -32,7 +32,8 @@ import type { QuickAction, QuickActionIcon } from '@/lib/quick-actions'
 
 export type { QuickAction, QuickActionIcon } from '@/lib/quick-actions'
 
-type ProjectScope = { projectName: string; actions: QuickAction[] }
+/** `projectId` identifies the job the actions target, so other surfaces never apply them to a different project. */
+type ProjectScope = { projectId?: string; projectName: string; actions: QuickAction[] }
 
 const ICONS: Record<QuickActionIcon, LucideIcon> = {
   schedule: CalendarPlus,
@@ -84,17 +85,22 @@ export function useAskQuestion(): ((request: AskQuestionRequest) => void) | null
  * Rendered by the project layout with actions it already checked against the user's role,
  * enabled features, and project state. Takes priority over the remembered job while mounted.
  */
-export function ProjectQuickActionsScope({ projectName, actions }: ProjectScope) {
+export function ProjectQuickActionsScope({ projectId, projectName, actions }: ProjectScope) {
   const setScope = useContext(QuickActionsContext)?.setScope
   const signature = JSON.stringify(actions)
 
   useEffect(() => {
     if (!setScope) return
-    setScope({ projectName, actions: JSON.parse(signature) as QuickAction[] })
+    setScope({ projectId, projectName, actions: JSON.parse(signature) as QuickAction[] })
     return () => setScope(null)
-  }, [setScope, projectName, signature])
+  }, [setScope, projectId, projectName, signature])
 
   return null
+}
+
+/** The current page's job actions, as set by the project layout. Null outside a project. */
+export function useProjectQuickActionsScope(): ProjectScope | null {
+  return useContext(QuickActionsContext)?.scope ?? null
 }
 
 function ActionItem({ action, projectName }: { action: QuickAction; projectName?: string }) {

@@ -15,7 +15,7 @@ import { ClientCard, type DirectoryContact } from '@/components/clients/client-c
 import { ClientTable } from '@/components/clients/client-table'
 import { ClientPreviewLayout } from '@/components/clients/client-preview'
 import { ClientEditOverlay, type EditableClient } from '@/components/clients/client-edit-overlay'
-import { FloatingCreateAction } from '@/components/app/floating-create-action'
+import { RegisterLauncherAction } from '@/components/app/floating-actions'
 import type { ClientProject } from '@/components/clients/client-projects-disclosure'
 import { CLIENT_STATUS_LABELS, type ClientStatus } from '@/lib/domain'
 import { sanitizeSearch } from '@/lib/format'
@@ -300,7 +300,7 @@ export default async function ClientsPage({
       )}
       </ClientPreviewLayout>
       <ClientEditOverlay client={editClient} />
-      {manager && <FloatingCreateAction href="/clients/new" label="Add client" icon="client" />}
+      {manager && <RegisterLauncherAction id="create-client" href="/clients/new" label="Add client" icon="client" />}
     </div>
   )
 }

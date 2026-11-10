@@ -2,21 +2,30 @@
 
 import { useSearchParams } from 'next/navigation'
 import { parseView } from '@/lib/contacts'
-import { FloatingCreateAction } from '@/components/app/floating-create-action'
+import { useLauncherAction } from '@/components/app/floating-actions'
 import { useOverlayHref } from '@/components/contacts/contact-overlays'
 
-/** The directory's single create action. It follows the active tab, which the directory mirrors into ?view=. */
+/** The directory's create actions on the shared launcher. The active tab (mirrored into ?view=) sits nearest. */
 export function ContactsCreateAction() {
   const searchParams = useSearchParams()
   const overlayHref = useOverlayHref()
   const isPeople = parseView(searchParams.get('view')) === 'people'
 
-  return (
-    <FloatingCreateAction
-      href={overlayHref({ new: isPeople ? 'contact' : 'company' })}
-      label={isPeople ? 'Add contact' : 'Add company'}
-      icon={isPeople ? 'person' : 'company'}
-      scroll={false}
-    />
-  )
+  useLauncherAction({
+    id: 'create-contact',
+    label: 'Add contact',
+    icon: 'contact',
+    href: overlayHref({ new: 'contact' }),
+    scroll: false,
+    priority: isPeople ? 0 : 1,
+  })
+  useLauncherAction({
+    id: 'create-company',
+    label: 'Add company',
+    icon: 'company',
+    href: overlayHref({ new: 'company' }),
+    scroll: false,
+    priority: isPeople ? 1 : 0,
+  })
+  return null
 }

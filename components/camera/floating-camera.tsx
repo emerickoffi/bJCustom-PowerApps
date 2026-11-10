@@ -12,7 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { FloatingActionSlot } from '@/components/app/floating-actions'
+import { useLauncherAction, useLauncherRegistry } from '@/components/app/floating-actions'
+import { FLOATING_CORNER_BOTTOM, FLOATING_CORNER_RIGHT } from '@/lib/floating-actions'
 
 /**
  * A photo destination owned by an existing module uploader. The floating camera never
@@ -156,10 +157,39 @@ function useInlineControlsInView(targets: CameraTarget[]) {
   return inView
 }
 
+/**
+ * In the staff shell the camera offers its photo actions as pills on the shared launcher, for the most recent
+ * destination and only while that uploader's own inline controls are off screen. Elsewhere (the subcontractor
+ * portal) it keeps its own corner button.
+ */
 function FloatingCameraButton({ targets }: { targets: CameraTarget[] }) {
-  const [open, setOpen] = useState(false)
+  const launcher = useLauncherRegistry()
   const inView = useInlineControlsInView(targets)
   const inlineVisible = targets.some((t) => inView.has(t.id))
+  const target = launcher && !inlineVisible ? targets.findLast((t) => !t.disabled) : undefined
+
+  useLauncherAction(
+    target?.kind === 'capture'
+      ? { id: 'camera-take', label: 'Take photo', icon: 'camera', priority: 10, onSelect: () => target.camera.current?.click() }
+      : null,
+  )
+  useLauncherAction(
+    target?.kind === 'capture'
+      ? { id: 'camera-upload', label: 'Upload photos', icon: 'gallery', priority: 11, onSelect: () => target.gallery.current?.click() }
+      : null,
+  )
+  useLauncherAction(
+    target?.kind === 'save-first'
+      ? { id: 'camera-save-first', label: target.actionLabel, icon: 'save', priority: 10, onSelect: target.onSelect }
+      : null,
+  )
+
+  if (launcher) return null
+  return <CornerCameraButton targets={targets} inlineVisible={inlineVisible} />
+}
+
+function CornerCameraButton({ targets, inlineVisible }: { targets: CameraTarget[]; inlineVisible: boolean }) {
+  const [open, setOpen] = useState(false)
 
   if (!targets.length) return null
 
@@ -168,11 +198,16 @@ function FloatingCameraButton({ targets }: { targets: CameraTarget[] }) {
   const stepAside = inlineVisible && !open
 
   return (
-    <FloatingActionSlot
-      slot="camera"
+    <div
+      data-floating-control
       inert={stepAside}
       aria-hidden={stepAside || undefined}
-      className={cn('transition-opacity duration-150', stepAside && 'pointer-events-none opacity-0')}
+      className={cn(
+        'group fixed z-40 transition-opacity duration-150 print:hidden',
+        FLOATING_CORNER_BOTTOM,
+        FLOATING_CORNER_RIGHT,
+        stepAside && 'pointer-events-none opacity-0',
+      )}
     >
       <span
         role="presentation"
@@ -223,6 +258,6 @@ function FloatingCameraButton({ targets }: { targets: CameraTarget[] }) {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-    </FloatingActionSlot>
+    </div>
   )
 }
