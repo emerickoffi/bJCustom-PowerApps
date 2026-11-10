@@ -82,6 +82,7 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
         backHref={`/projects/${id}/subcontractor-work`}
         backLabel="Subcontractor work"
         title={title}
+        eyebrow={(company?.company_name as string | undefined) || undefined}
         titleAddon={<WorkStateBadge state={workStateFor(current.status)} audience="builder" />}
       />
 

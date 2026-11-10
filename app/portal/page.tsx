@@ -139,7 +139,7 @@ export default async function PortalPage() {
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2.5 text-sm font-medium text-link">
           <span className="h-px w-6 bg-link" aria-hidden="true" />
-          My Home
+          Your home
         </div>
         <h1 className="text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
           {firstName ? `Welcome home, ${firstName}.` : 'Welcome home.'}

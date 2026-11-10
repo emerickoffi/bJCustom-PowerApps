@@ -65,7 +65,7 @@ export default async function HomeownerUpdatesPage({ params }: { params: Promise
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Progress updates" icon={Megaphone} backHref="/portal" backLabel="My home" />
+      <PageHeader title="Progress updates" icon={Megaphone} backHref="/portal" backLabel="Your home" />
       {updates.length === 0 ? (
         <EmptyState icon={Megaphone} title="No updates yet" description="Your builder will post progress reports here as work moves along." />
       ) : (

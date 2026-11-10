@@ -148,7 +148,7 @@ export function ReportIssueDrawer({
                 <div className="flex flex-col gap-1">
                   <p className="text-sm font-medium text-foreground">{state.success ?? 'Issue reported.'}</p>
                   <p className="text-sm text-muted-foreground">
-                    The issue is open. Anyone assigned has been notified in the app.
+                    The issue is open. Anyone assigned sees it in their work list in the app. Nothing is emailed.
                   </p>
                 </div>
               </div>

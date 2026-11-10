@@ -224,7 +224,7 @@ export function SelectQuoteButton({ projectId, requestId, currency, c }: { proje
 
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            One company per request. Other companies that submitted are marked Not selected and notified without any price or company names. This cannot be reversed in this release.
+            One company per request. Other companies that submitted see Not selected in their workspace, without any price or company names. This cannot be reversed in this release.
           </p>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" className="mt-0.5 size-4 accent-primary" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />

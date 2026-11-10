@@ -39,7 +39,7 @@ export default async function SubQuotesPage() {
         title="Quote requests"
         count={{ value: rows.length, noun: 'request' }}
         backHref="/sub"
-        backLabel="Back to my work"
+        backLabel="All work"
       />
       {rows.length ? (
         <ul className="flex flex-col gap-2">

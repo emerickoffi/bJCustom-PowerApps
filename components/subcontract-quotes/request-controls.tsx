@@ -182,7 +182,7 @@ export function RequestControls(p: Props) {
 
       {panel === 'cancel' ? (
         <div className="flex flex-col gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
-          <p className="text-sm text-foreground">Cancelling ends this request permanently. Invitees are notified and keep read-only access to their quotes.</p>
+          <p className="text-sm text-foreground">Cancelling ends this request permanently. Invitees see it as cancelled in their workspace and keep read-only access to their quotes.</p>
           <div>
             <Button
               variant="destructive"

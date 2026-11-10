@@ -23,8 +23,9 @@ import { ChangeOrderStatusBadge } from '@/components/change-orders/change-order-
 import { ChangeOrderStepper } from '@/components/change-orders/change-order-stepper'
 import { ChangeOrderSection } from '@/components/change-orders/change-order-section'
 import { ChangeOrderWorkflow } from '@/components/change-orders/change-order-workflow'
+import { DeleteDraftButton } from '@/components/change-orders/delete-draft-button'
 import { deleteDraftChangeOrderAction } from '@/app/actions/change-orders'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Change order' }
@@ -292,9 +293,7 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
             <form action={deleteDraftChangeOrderAction} className="flex">
               <input type="hidden" name="project_id" value={id} />
               <input type="hidden" name="id" value={co.id} />
-              <Button type="submit" variant="ghost" className="text-destructive">
-                Delete draft
-              </Button>
+              <DeleteDraftButton />
             </form>
           )}
         </aside>

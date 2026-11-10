@@ -265,7 +265,8 @@ export function RequestForm({ projectId, requestId, rowVersion, currency, initia
   const reviewList = (
     <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
       <li>
-        {invited.length} {invited.length === 1 ? 'company' : 'companies'} will be notified: {invited.map((c) => c.name).join(', ')}
+        {invited.length} {invited.length === 1 ? 'company' : 'companies'} will see this request in their subcontractor workspace:{' '}
+        {invited.map((c) => c.name).join(', ')}. Nothing is emailed.
       </li>
       <li>Responses due {formatDeadline(deadlineIso, values.deadline_timezone)}</li>
       <li>{values.document_ids.length} document(s) pinned at their current version · amounts in {currency}</li>
