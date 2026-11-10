@@ -52,6 +52,7 @@ const SEGMENT_LABELS: Record<string, string> = {
 /** Project tabs whose name differs from their route segment. The org-wide /contacts page keeps its own label. */
 const PROJECT_SECTION_LABELS: Record<string, string> = {
   contacts: 'People',
+  rfis: 'Questions (RFIs)',
 }
 
 const ID_LIKE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i

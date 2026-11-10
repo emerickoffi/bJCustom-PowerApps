@@ -10,16 +10,29 @@ export type QuickActionIcon =
   | 'subcontractor'
   | 'invoice'
   | 'daily_log'
+  | 'rfi'
 
-/** Actions with `drawer` open an in-place drawer from the menu; `href` stays the full-page fallback. */
-export type QuickAction = { key: string; label: string; href: string; icon: QuickActionIcon; drawer?: 'contact' }
+/**
+ * Actions with `drawer` open an in-place drawer from the menu; `href` stays the full-page fallback.
+ * `projectId` is set on job actions whose drawer inherits the project instead of asking for one.
+ */
+export type QuickAction = {
+  key: string
+  label: string
+  href: string
+  icon: QuickActionIcon
+  drawer?: 'contact' | 'rfi'
+  projectId?: string
+}
 
 type QuickActionFeatures = Partial<
-  Record<'schedule' | 'estimates' | 'documents' | 'daily_logs' | 'invoices' | 'subcontractors', boolean>
+  Record<'schedule' | 'estimates' | 'documents' | 'daily_logs' | 'invoices' | 'subcontractors' | 'rfis', boolean>
 >
 
 const isManager = (role: OrgRole | null) => role === 'org_admin' || role === 'project_manager'
 const DAILY_LOG_ROLES: OrgRole[] = ['org_admin', 'project_manager', 'builder_staff']
+const STAFF_ROLES: OrgRole[] = ['org_admin', 'project_manager', 'builder_staff']
+export const ASK_QUESTION_LABEL = 'Ask a question (RFI)'
 
 /**
  * Actions for one job. Each mirrors the guard on its destination page (role, feature switch, project state),
@@ -54,6 +67,10 @@ export function buildProjectQuickActions(input: {
   if (features.documents && canViewInternal) {
     actions.push({ key: 'document', label: 'Upload document', href: `${base}/documents?upload=1`, icon: 'document' })
   }
+  // Same rule the database applies (rfi_can_ask): builder staff with internal access to this project.
+  if (features.rfis && canViewInternal && role && STAFF_ROLES.includes(role)) {
+    actions.push({ key: 'rfi', label: ASK_QUESTION_LABEL, href: `${base}/rfis?new=1`, icon: 'rfi', drawer: 'rfi', projectId })
+  }
   return actions
 }
 
@@ -86,14 +103,20 @@ export function buildFieldQuickActions(input: Parameters<typeof buildProjectQuic
 /** Records that do not belong to a single job. Same guards as their destination pages. */
 export function buildGlobalQuickActions(input: { role: OrgRole | null; features: QuickActionFeatures }): QuickAction[] {
   const { role, features } = input
-  if (!isManager(role)) return []
-  const actions: QuickAction[] = [
-    { key: 'project', label: 'New project', href: '/projects/new', icon: 'project' },
-    { key: 'client', label: 'New client', href: '/clients/new', icon: 'client' },
-    { key: 'contact', label: 'New contact', href: '/contacts/people/new', icon: 'contact', drawer: 'contact' },
-  ]
-  if (features.subcontractors) {
-    actions.push({ key: 'subcontractor', label: 'New subcontractor', href: '/subcontractors/new', icon: 'subcontractor' })
+  const actions: QuickAction[] = []
+  if (isManager(role)) {
+    actions.push(
+      { key: 'project', label: 'New project', href: '/projects/new', icon: 'project' },
+      { key: 'client', label: 'New client', href: '/clients/new', icon: 'client' },
+      { key: 'contact', label: 'New contact', href: '/contacts/people/new', icon: 'contact', drawer: 'contact' },
+    )
+    if (features.subcontractors) {
+      actions.push({ key: 'subcontractor', label: 'New subcontractor', href: '/subcontractors/new', icon: 'subcontractor' })
+    }
+  }
+  // Outside a project the drawer asks which project the question is for; nothing is preselected.
+  if (features.rfis && role && STAFF_ROLES.includes(role)) {
+    actions.push({ key: 'rfi', label: ASK_QUESTION_LABEL, href: '/projects', icon: 'rfi', drawer: 'rfi' })
   }
   return actions
 }

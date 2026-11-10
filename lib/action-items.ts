@@ -52,6 +52,7 @@ export type ActionEntityType =
   | 'project_issue'
   | 'warranty_claim'
   | 'change_order'
+  | 'rfi'
 
 export type ActionItem = {
   /** Stable entity-based key; two sources describing one obligation share it. */
@@ -92,6 +93,23 @@ export type ActionFeatures = {
   invoices?: boolean
   issues?: boolean
   change_orders?: boolean
+  rfis?: boolean
+}
+
+/** A sent question that is still open or answered. Drafts and closed questions never need attention. */
+export type ActionRfi = {
+  id: string
+  projectId: string
+  projectName: string | null
+  rfiNumber: number
+  subject: string
+  status: 'open' | 'answered'
+  dueDate: string | null
+  responderUserId: string | null
+  responderName: string | null
+  createdBy: string | null
+  sentAt: string | null
+  answeredAt: string | null
 }
 
 /** A change order sitting in internal review: the builder, not the homeowner, owes the next step. */
@@ -192,6 +210,7 @@ export type ActionSources = {
   issues?: ActionIssue[]
   warrantyClaims?: ActionWarrantyClaim[]
   changeOrders?: ActionChangeOrder[]
+  rfis?: ActionRfi[]
   /**
    * Entity types whose authoritative source loaded fully for this user. Unread notifications pointing at one of
    * these entities are kept only when the live record still needs action, so resolved work stops resurfacing.
@@ -229,6 +248,7 @@ const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
 const SIGNATURE_KEY = new RegExp(`^signature:(${UUID}):`, 'i')
 const CLAIM_KEY = new RegExp(`^claim:(${UUID}):`, 'i')
 const SUBCONTRACTOR_LINK = new RegExp(`^/subcontractors/(${UUID})`, 'i')
+const RFI_KEY = new RegExp(`^rfi:(${UUID}):`, 'i')
 const WARRANTY_KINDS = new Set(['warranty_claim', 'warranty_milestone', 'warranty_reminder', 'anniversary_card'])
 
 function clip(text: string, max = 140): string {
@@ -267,6 +287,8 @@ export function notificationEntity(n: Pick<AttentionNotification, 'id' | 'kind' 
   if (claim) return { entityType: 'warranty_claim', entityId: claim[1].toLowerCase() }
   const company = n.kind === 'subcontractor_qualification' ? n.link?.match(SUBCONTRACTOR_LINK) : null
   if (company) return { entityType: 'subcontractor', entityId: company[1].toLowerCase() }
+  const rfi = n.kind === 'rfi' ? n.dedupe_key?.match(RFI_KEY) : null
+  if (rfi) return { entityType: 'rfi', entityId: rfi[1].toLowerCase() }
   return { entityType: 'notification', entityId: n.id }
 }
 
@@ -274,10 +296,12 @@ function notificationCategory(kind: string): ActionCategory {
   if (WARRANTY_KINDS.has(kind)) return 'warranty'
   if (kind === 'signature_request') return 'documents'
   if (kind === 'subcontractor_qualification') return 'compliance'
+  if (kind === 'rfi') return 'client_data'
   return 'setup'
 }
 
 function notificationAction(kind: string): string {
+  if (kind === 'rfi') return 'Open Question'
   if (kind === 'subcontractor_qualification') return 'Review Qualification'
   if (kind === 'warranty_claim') return 'Open Warranty Claim'
   if (WARRANTY_KINDS.has(kind)) return 'Open Warranty'
@@ -436,6 +460,74 @@ function changeOrderItems(rows: ActionChangeOrder[], ctx: ActionContext): Action
     source: 'Change Order',
     resolutionCondition: 'Sent to the homeowner, returned to draft or voided',
   }))
+}
+
+/**
+ * At most one item per question, chosen by what the signed-in person owes next: their own answer first,
+ * then a review of someone else's answer, then a follow-up on a question that is past due.
+ */
+function rfiItems(rows: ActionRfi[], ctx: ActionContext): ActionItem[] {
+  if (!ctx.features.rfis) return []
+  const items: ActionItem[] = []
+  for (const r of rows) {
+    const ref = `RFI-${String(r.rfiNumber).padStart(3, '0')}`
+    const overdue = r.status === 'open' && !!r.dueDate && r.dueDate < ctx.today
+    const mine = r.responderUserId === ctx.userId
+    const requester = ctx.manager || r.createdBy === ctx.userId
+    const base = {
+      id: key('rfi', r.id),
+      projectId: r.projectId,
+      projectName: r.projectName,
+      entityType: 'rfi',
+      entityId: r.id,
+      category: 'client_data',
+      severity: 'warning',
+      href: `/projects/${encodeURIComponent(r.projectId)}/rfis?rfi=${encodeURIComponent(r.id)}`,
+      source: 'Question (RFI)',
+    } satisfies Partial<ActionItem>
+    const subject = `“${clip(r.subject, 80)}”`
+    if (r.status === 'open' && mine) {
+      items.push({
+        ...base,
+        tier: overdue ? 3 : 4,
+        title: `Answer ${ref}`,
+        description: overdue ? `${subject} is waiting for your official answer and is past its due date.` : `${subject} is waiting for your official answer.`,
+        dueDate: r.dueDate,
+        createdAt: r.sentAt?.slice(0, 10) ?? null,
+        responsibleUserId: r.responderUserId,
+        actionLabel: 'Answer Question',
+        actionName: `Answer ${ref}`,
+        resolutionCondition: 'Official answer submitted, or the question reassigned or closed',
+      })
+    } else if (r.status === 'answered' && requester) {
+      items.push({
+        ...base,
+        tier: 4,
+        title: `Review the answer to ${ref}`,
+        description: `${r.responderName ?? 'The responder'} answered ${subject}. Close it, or request clarification.`,
+        dueDate: null,
+        createdAt: r.answeredAt?.slice(0, 10) ?? null,
+        responsibleUserId: r.createdBy,
+        actionLabel: 'Review Answer',
+        actionName: `Review the answer to ${ref}`,
+        resolutionCondition: 'Question closed, or clarification requested',
+      })
+    } else if (overdue && requester) {
+      items.push({
+        ...base,
+        tier: 3,
+        title: `${ref} is overdue`,
+        description: `${r.responderName ?? 'The responder'} has not answered ${subject}. Follow up, reassign it, or close it.`,
+        dueDate: r.dueDate,
+        createdAt: r.sentAt?.slice(0, 10) ?? null,
+        responsibleUserId: r.responderUserId,
+        actionLabel: 'Open Question',
+        actionName: `Open ${ref}`,
+        resolutionCondition: 'Official answer submitted, or the question reassigned or closed',
+      })
+    }
+  }
+  return items
 }
 
 /** "Estimate EST-0002 Rev 1 — kitchen" → "estimate EST-0002 Rev 1". Display only; the stored title is untouched. */
@@ -747,6 +839,7 @@ export function buildActionItems(sources: ActionSources, ctx: ActionContext): Ac
     ...dailyLogItems(sources.logDelays ?? [], ctx),
     ...estimateItems(sources.estimateApprovals ?? [], ctx),
     ...changeOrderItems(sources.changeOrders ?? [], ctx),
+    ...rfiItems(sources.rfis ?? [], ctx),
     ...signedArtifactItems(sources.signedArtifacts ?? [], ctx),
     ...projectItems(sources.projects ?? [], ctx),
     ...invoiceItems(sources.invoices ?? [], ctx),
