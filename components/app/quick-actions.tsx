@@ -82,6 +82,24 @@ export function useAskQuestion(): ((request: AskQuestionRequest) => void) | null
 }
 
 /**
+ * Opens a Quick Create action's in-place drawer (contact, RFI) exactly as the header menu does, for the shared
+ * launcher. Null outside the staff shell.
+ */
+export function useQuickActionDrawer(): ((action: QuickAction, projectName?: string) => void) | null {
+  const openDrawer = useContext(QuickActionsContext)?.openDrawer
+  return useMemo(() => {
+    if (!openDrawer) return null
+    return (action: QuickAction, projectName?: string) => {
+      if (action.drawer === 'rfi') {
+        openDrawer({ drawer: 'rfi', request: action.projectId ? { projectId: action.projectId, projectName } : {} })
+      } else if (action.drawer === 'contact') {
+        openDrawer({ drawer: 'contact' })
+      }
+    }
+  }, [openDrawer])
+}
+
+/**
  * Rendered by the project layout with actions it already checked against the user's role,
  * enabled features, and project state. Takes priority over the remembered job while mounted.
  */

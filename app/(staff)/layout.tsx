@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { requireStaff } from '@/lib/session'
 import { QuickActionsProvider, QuickCreateMenu } from '@/components/app/quick-actions'
 import { JobSwitcher } from '@/components/app/job-switcher'
-import { buildGlobalQuickActions } from '@/lib/quick-actions'
+import { buildGlobalQuickActions, buildProjectPickerActions } from '@/lib/quick-actions'
 import { dashboardKeyForRole } from '@/lib/dashboard-layout'
 import type { ProjectFilterRoute } from '@/lib/route-job'
 import { landingPathForRole, NAV_GROUPS_COOKIE, navForRole, parseClosedNavGroups } from '@/lib/navigation'
@@ -180,6 +180,7 @@ export default async function StaffLayout({ children, modal }: { children: React
       <AssistantDock
         assistant={showAssistant ? { configured: getAssistantProviderConfig().configured } : null}
         globalActions={globalQuickActions}
+        pickerActions={buildProjectPickerActions({ role: session.role, features })}
       />
       </LayoutModeProvider>
       {modal}

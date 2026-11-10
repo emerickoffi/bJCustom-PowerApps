@@ -100,6 +100,42 @@ export function buildFieldQuickActions(input: Parameters<typeof buildProjectQuic
   return actions
 }
 
+export type ProjectPickerActionKey = 'daily_log' | 'document' | 'assign' | 'schedule'
+export type ProjectPickerAction = { key: ProjectPickerActionKey; label: string; icon: QuickActionIcon }
+
+/**
+ * Job actions offered before a project is known (the shared launcher outside a project route). They use the
+ * workspace-level part of each destination's guard; the project page re-checks access to the chosen job.
+ */
+export function buildProjectPickerActions(input: { role: OrgRole | null; features: QuickActionFeatures }): ProjectPickerAction[] {
+  const { role, features } = input
+  const actions: ProjectPickerAction[] = []
+  if (features.daily_logs && role && DAILY_LOG_ROLES.includes(role)) {
+    actions.push({ key: 'daily_log', label: 'Add daily log', icon: 'daily_log' })
+  }
+  if (features.documents && role && STAFF_ROLES.includes(role)) {
+    actions.push({ key: 'document', label: 'Upload document', icon: 'document' })
+  }
+  if (isManager(role)) actions.push({ key: 'assign', label: 'Assign subcontractor', icon: 'subcontractor' })
+  if (isManager(role) && features.schedule) actions.push({ key: 'schedule', label: 'Add activity', icon: 'schedule' })
+  return actions
+}
+
+/** Canonical entry point of each job action for a chosen project. */
+export function projectPickerHref(key: ProjectPickerActionKey, projectId: string): string {
+  const id = encodeURIComponent(projectId)
+  switch (key) {
+    case 'daily_log':
+      return `/daily-logs/new?project=${id}`
+    case 'document':
+      return `/projects/${id}/documents?upload=1`
+    case 'assign':
+      return `/projects/${id}/contacts?add=1`
+    case 'schedule':
+      return `/projects/${id}/schedule?new=activity`
+  }
+}
+
 /** Records that do not belong to a single job. Same guards as their destination pages. */
 export function buildGlobalQuickActions(input: { role: OrgRole | null; features: QuickActionFeatures }): QuickAction[] {
   const { role, features } = input

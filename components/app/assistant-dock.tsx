@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -12,7 +13,7 @@ import {
   type PointerEvent,
 } from 'react'
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   Building2,
   CalendarPlus,
@@ -35,10 +36,20 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FLOATING_ABOVE_TABLET_NAV, FLOATING_CORNER_BOTTOM, FLOATING_CORNER_RIGHT } from '@/lib/floating-actions'
-import { LAUNCHER_LABELS, LAUNCHER_MAX_ACTIONS, launcherPlanFor, type LauncherIcon } from '@/lib/launcher-actions'
-import type { QuickAction } from '@/lib/quick-actions'
+import {
+  COMMON_LAUNCHER_ACTIONS,
+  LAUNCHER_ALIASES,
+  LAUNCHER_LABELS,
+  LAUNCHER_MAX_ACTIONS,
+  launcherPlanFor,
+  type LauncherIcon,
+} from '@/lib/launcher-actions'
+import { projectPickerHref, type ProjectPickerAction, type QuickAction } from '@/lib/quick-actions'
+import { PREVIEW_PARAM } from '@/lib/project-preview'
 import { useLauncherRegistry, useRegisteredLauncherActions, type LauncherAction } from '@/components/app/floating-actions'
-import { useProjectQuickActionsScope } from '@/components/app/quick-actions'
+import { useProjectQuickActionsScope, useQuickActionDrawer } from '@/components/app/quick-actions'
+import { LauncherProjectPicker } from '@/components/app/launcher-project-picker'
+import { confirmLeave } from '@/components/app/navigation-guard'
 import { AssistantSheet } from '@/components/assistant/assistant-launcher'
 
 const ICONS: Record<LauncherIcon, LucideIcon> = {
@@ -62,58 +73,122 @@ const ICONS: Record<LauncherIcon, LucideIcon> = {
 
 const OPEN_DELAY_MS = 150
 const CLOSE_DELAY_MS = 250
+/** Per-pill stagger: opening builds up from the launcher, closing folds down from the top a little faster. */
+const OPEN_STAGGER_MS = 70
+const CLOSE_STAGGER_MS = 45
 const ASK_AI_ID = 'ask-ai'
 
 /** How the pills were revealed: hover follows the pointer; touch and keyboard stay until dismissed. */
 type Mode = 'hover' | 'touch' | 'keyboard'
 
-function resolveActions(
-  plan: ReturnType<typeof launcherPlanFor>,
-  registered: LauncherAction[],
-  scope: ReturnType<typeof useProjectQuickActionsScope>,
-  limit: number,
-  globals: QuickAction[] = [],
-): LauncherAction[] {
-  const fromCatalog = (prefix: string, a: QuickAction): LauncherAction => ({
-    id: `${prefix}:${a.key}`,
-    label: LAUNCHER_LABELS[`${prefix}:${a.key}`] ?? a.label,
-    icon: a.icon,
-    href: a.href,
-  })
-  const available = new Map<string, LauncherAction>()
-  // Project actions only apply to the project the route shows, never a previously remembered one.
-  if (plan.projectId && scope?.projectId === plan.projectId) {
-    for (const a of scope.actions) available.set(`project:${a.key}`, fromCatalog('project', a))
-  }
-  for (const a of globals) available.set(`global:${a.key}`, fromCatalog('global', a))
-  for (const a of registered) available.set(a.id, a)
-
-  const planned = plan.order.flatMap((id) => available.get(id) ?? [])
-  const rest = registered
-    .filter((a) => !plan.order.includes(a.id))
-    .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
-  return [...planned, ...rest].slice(0, limit)
+type Sources = {
+  plan: ReturnType<typeof launcherPlanFor>
+  registered: LauncherAction[]
+  scope: ReturnType<typeof useProjectQuickActionsScope>
+  globals: QuickAction[]
+  pickerActions: ProjectPickerAction[]
+  openDrawer: ReturnType<typeof useQuickActionDrawer>
+  askForProject: (action: ProjectPickerAction) => void
 }
 
-/**
- * The one bottom-right floating control. Hovering (fine pointers) reveals the page's quick actions as separate
- * pills; clicking, Enter or Space opens the AI assistant. Touch taps toggle the pills, which then include "Ask AI".
- * Keyboard users reach the pills through the discreet "Show quick actions" control beside the launcher.
- */
-export function AssistantDock({
-  assistant,
-  globalActions,
-}: {
+/** Collects every shortcut the viewer may use here, keyed by launcher id, and orders the page's own first. */
+function resolveActions(sources: Sources, limit: number): LauncherAction[] {
+  const { plan, registered, scope, globals, pickerActions, openDrawer, askForProject } = sources
+  const available = new Map<string, LauncherAction>()
+  const label = (id: string, fallback: string) => LAUNCHER_LABELS[id] ?? fallback
+
+  const fromCatalog = (id: string, a: QuickAction, projectName?: string): LauncherAction => ({
+    id,
+    label: label(id, a.label),
+    icon: a.icon,
+    href: a.href,
+    onSelect: a.drawer && openDrawer ? () => openDrawer(a, projectName) : undefined,
+  })
+
+  for (const a of globals) available.set(`global:${a.key}`, fromCatalog(`global:${a.key}`, a))
+
+  const project = plan.project
+  if (project?.source === 'route') {
+    // Job actions only apply to the project the route shows, once its layout has published that project's catalog.
+    if (scope?.projectId === project.id) {
+      for (const a of scope.actions) available.set(`ctx:${a.key}`, fromCatalog(`ctx:${a.key}`, a, scope.projectName))
+      const assign = pickerActions.find((a) => a.key === 'assign')
+      if (assign) {
+        available.set('ctx:assign', { id: 'ctx:assign', label: assign.label, icon: assign.icon, href: projectPickerHref('assign', project.id) })
+      }
+    }
+  } else {
+    for (const a of pickerActions) {
+      const id = `ctx:${a.key}`
+      if (project) {
+        available.set(id, { id, label: label(id, a.label), icon: a.icon, href: projectPickerHref(a.key, project.id) })
+      } else if (a.key === 'daily_log') {
+        // The daily log flow has its own project chooser page.
+        available.set(id, { id, label: label(id, a.label), icon: a.icon, href: '/daily-logs/new' })
+      } else {
+        available.set(id, { id, label: label(id, a.label), icon: a.icon, onSelect: () => askForProject(a) })
+      }
+    }
+  }
+
+  // A page's own registration replaces the catalog version of the same workflow (e.g. the in-page contact drawer).
+  const extras: LauncherAction[] = []
+  for (const a of registered) {
+    const id = LAUNCHER_ALIASES[a.id] ?? a.id
+    if (id === 'ctx:assign' && project?.source !== 'route') continue
+    const action = { ...a, id }
+    if (available.has(id) || plan.contextual.includes(id)) available.set(id, action)
+    else extras.push(action)
+  }
+  extras.sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
+
+  const ordered: LauncherAction[] = []
+  const seen = new Set<string>()
+  const add = (a: LauncherAction | undefined) => {
+    if (!a || seen.has(a.id)) return
+    seen.add(a.id)
+    ordered.push(a)
+  }
+  for (const id of plan.contextual) add(available.get(id))
+  for (const a of extras) add(a)
+  for (const id of COMMON_LAUNCHER_ACTIONS) add(available.get(id))
+  return ordered.slice(0, limit)
+}
+
+type DockProps = {
   /** Null when the AI assistant is off for this workspace; the launcher then only offers quick actions. */
   assistant: { configured: boolean } | null
   globalActions: QuickAction[]
-}) {
+  /** Job actions the viewer's role and workspace features allow before a project is chosen. */
+  pickerActions: ProjectPickerAction[]
+}
+
+/**
+ * The one bottom-right floating control. Hovering (fine pointers) unfolds the shortcuts as separate pills;
+ * clicking, Enter or Space opens the AI assistant. Touch taps toggle the pills, which then include "Ask AI".
+ * Keyboard users reach the pills through the discreet "Show quick actions" control beside the launcher.
+ */
+export function AssistantDock(props: DockProps) {
+  return (
+    <Suspense fallback={null}>
+      <Dock {...props} />
+    </Suspense>
+  )
+}
+
+function Dock({ assistant, globalActions, pickerActions }: DockProps) {
   const registry = useLauncherRegistry()
+  const router = useRouter()
   const pathname = usePathname() ?? ''
+  const searchParams = useSearchParams()
+  const query = searchParams?.toString() ?? ''
+  const previewId = pathname === '/projects' ? (searchParams?.get(PREVIEW_PARAM) ?? null) : null
   const registered = useRegisteredLauncherActions()
   const scope = useProjectQuickActionsScope()
+  const openDrawer = useQuickActionDrawer()
   const [mode, setMode] = useState<Mode | null>(null)
   const [aiOpen, setAiOpen] = useState(false)
+  const [pending, setPending] = useState<ProjectPickerAction | null>(null)
   const timer = useRef<number | null>(null)
   const lastPointer = useRef('')
   const focusFirstPill = useRef(false)
@@ -122,13 +197,14 @@ export function AssistantDock({
   const listId = useId()
 
   const touch = mode === 'touch'
-  const plan = launcherPlanFor(pathname)
-  const pointerActions = resolveActions(plan, registered, scope, LAUNCHER_MAX_ACTIONS.pointer, globalActions)
-  const actions = touch ? pointerActions.slice(0, LAUNCHER_MAX_ACTIONS.touch) : pointerActions
+  const plan = launcherPlanFor(pathname, previewId)
+  const sources: Sources = { plan, registered, scope, globals: globalActions, pickerActions, openDrawer, askForProject: setPending }
+  const actions = resolveActions(sources, touch ? LAUNCHER_MAX_ACTIONS.touch : LAUNCHER_MAX_ACTIONS.pointer)
   const pills: LauncherAction[] =
     touch && assistant ? [...actions, { id: ASK_AI_ID, label: 'Ask AI', icon: 'ai' }] : actions
   const open = mode !== null && pills.length > 0
   const hasActions = actions.length > 0
+  const pillKey = pills.map((p) => `${p.id}|${p.label}`).join(',')
 
   const clearTimer = useCallback(() => {
     if (timer.current !== null) window.clearTimeout(timer.current)
@@ -145,9 +221,12 @@ export function AssistantDock({
     setAiOpen(true)
   }, [dismiss])
 
-  // Route, query, project or workspace changes leave the pills closed with no hover timer pending.
+  // Route, query (filters, tabs, previewed project) or project changes close the pills and drop a pending pick.
   const projectKey = scope?.projectId ?? ''
-  useEffect(() => dismiss(), [pathname, projectKey, dismiss])
+  useEffect(() => {
+    dismiss()
+    setPending(null)
+  }, [pathname, query, projectKey, dismiss])
   useEffect(() => clearTimer, [clearTimer])
 
   // Pills opened by touch or keyboard close on an interaction outside the launcher group.
@@ -166,8 +245,38 @@ export function AssistantDock({
     listRef.current?.querySelector<HTMLElement>('[data-launcher-pill]')?.focus()
   }, [open])
 
+  // Each pill starts with its right-center on the launcher's center, so every pill travels its own path
+  // (right-to-left, bottom-to-top) out of the launcher. Offsets ignore transforms, so mid-flight pills measure true.
+  useLayoutEffect(() => {
+    const list = listRef.current
+    const launcher = registry?.launcherRef.current
+    if (!list || !launcher) return
+    const measure = () => {
+      const listBox = list.getBoundingClientRect()
+      const launcherBox = launcher.getBoundingClientRect()
+      const originX = launcherBox.left + launcherBox.width / 2 - listBox.left
+      const originY = launcherBox.top + launcherBox.height / 2 - listBox.top
+      for (const item of Array.from(list.children) as HTMLElement[]) {
+        const pill = item.firstElementChild as HTMLElement | null
+        if (!pill) continue
+        const right = item.offsetLeft + pill.offsetLeft + pill.offsetWidth
+        const centerY = item.offsetTop - list.scrollTop + pill.offsetTop + pill.offsetHeight / 2
+        item.style.setProperty('--from-x', `${Math.round(originX - right)}px`)
+        item.style.setProperty('--from-y', `${Math.round(originY - centerY)}px`)
+      }
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(list)
+    window.addEventListener('resize', measure)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [registry, pillKey])
+
   if (!registry) return null
-  if (!assistant && pointerActions.length === 0) return null
+  if (!assistant && !hasActions) return null
 
   const onPointerEnter = (event: PointerEvent) => {
     if (event.pointerType !== 'mouse') return
@@ -253,27 +362,35 @@ export function AssistantDock({
           FLOATING_CORNER_BOTTOM,
           FLOATING_CORNER_RIGHT,
           FLOATING_ABOVE_TABLET_NAV,
+          (aiOpen || pending) && 'pointer-events-none opacity-0',
         )}
       >
+        {/* The list itself never takes the pointer; only the pills and their padding (the bridge across gaps) do. */}
         <ul
           ref={listRef}
           id={listId}
           aria-label="Quick actions"
           inert={!open}
           className={cn(
-            'absolute bottom-full right-0 mb-3 flex flex-col-reverse items-end gap-2.5',
-            !open && 'pointer-events-none',
+            'pointer-events-none absolute bottom-full right-0 flex max-h-[calc(100dvh-9rem)] flex-col-reverse items-end',
+            '[@media(max-height:560px)]:overflow-y-auto [@media(max-height:560px)]:overscroll-contain [@media(max-height:560px)]:pl-3',
+            open && '[@media(max-height:560px)]:pointer-events-auto',
           )}
         >
           {pills.map((action, index) => (
             <li
               key={action.id}
-              style={{ '--pill-delay': `${open ? index * 50 : (pills.length - 1 - index) * 30}ms` } as CSSProperties}
+              style={
+                {
+                  '--pill-delay': `${open ? index * OPEN_STAGGER_MS : (pills.length - 1 - index) * CLOSE_STAGGER_MS}ms`,
+                } as CSSProperties
+              }
               className={cn(
-                // A transparent bridge across the gap keeps the pills open while the pointer travels between them.
-                'relative flex justify-end before:absolute before:inset-x-0 before:-inset-y-[5px] before:content-[""] first:before:-bottom-3',
-                'transition-[opacity,translate] ease-out motion-safe:[transition-delay:var(--pill-delay)]',
-                open ? 'opacity-100 duration-200' : 'opacity-0 duration-150 motion-safe:translate-y-2.5',
+                'flex w-max max-w-[calc(100vw-2.5rem)] shrink-0 justify-end py-[5px] first:pb-3',
+                'origin-right transition-[opacity,transform] [transition-delay:var(--pill-delay)] motion-reduce:[transition-delay:0ms]',
+                open
+                  ? 'pointer-events-auto opacity-100 [transform:none] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'
+                  : 'opacity-0 [transform:translate(var(--from-x,0px),var(--from-y,0px))_scale(0.92)] duration-200 ease-[cubic-bezier(0.4,0,1,1)] motion-reduce:[transform:none]',
               )}
             >
               <Pill action={action} onSelect={() => select(action)} />
@@ -289,7 +406,7 @@ export function AssistantDock({
               aria-expanded={false}
               onClick={showForKeyboard}
               className={cn(
-                'absolute right-full top-1/2 mr-2 flex min-h-11 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-white px-3 text-sm font-medium text-foreground shadow-sm',
+                'absolute right-full top-1/2 mr-2 flex min-h-11 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#A8D8DF] bg-sage px-3 text-sm font-medium text-[#17212B] shadow-sm',
                 'pointer-events-none opacity-0 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100',
                 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
               )}
@@ -310,22 +427,30 @@ export function AssistantDock({
             }}
             onClick={(event) => onLauncherClick(event.detail)}
             className={cn(
-              'flex size-14 touch-manipulation items-center justify-center rounded-2xl border border-border bg-white shadow-[0_6px_16px_-6px_rgb(23_33_43/0.22),0_2px_4px_-2px_rgb(23_33_43/0.12)] transition-[translate,box-shadow,border-color] duration-200 ease-out [-webkit-tap-highlight-color:transparent]',
-              'hover:border-action/40 hover:shadow-[0_10px_24px_-8px_color-mix(in_oklab,var(--action)_55%,transparent),0_2px_6px_-2px_rgb(23_33_43/0.14)] motion-safe:hover:-translate-y-0.5',
+              'relative flex size-14 touch-manipulation items-center justify-center rounded-2xl bg-primary text-primary-foreground [-webkit-tap-highlight-color:transparent]',
+              'shadow-[0_8px_20px_-6px_rgb(0_88_103/0.55),0_2px_6px_-2px_rgb(23_33_43/0.2)] transition-[translate,box-shadow,background-color] duration-200 ease-out',
+              'hover:bg-primary-hover hover:shadow-[0_0_0_4px_color-mix(in_oklab,var(--action)_30%,transparent),0_12px_26px_-8px_color-mix(in_oklab,var(--action)_70%,transparent)] motion-safe:hover:-translate-y-0.5',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
-              open && 'border-action/40',
+              open && 'shadow-[0_0_0_4px_color-mix(in_oklab,var(--action)_30%,transparent),0_8px_20px_-6px_rgb(0_88_103/0.55)]',
             )}
           >
-            <AssistantMark />
+            <Sparkles className="size-6" strokeWidth={2.25} aria-hidden="true" />
+            <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-action ring-2 ring-primary" aria-hidden="true" />
           </button>
         </div>
-
-        <Suspense fallback={null}>
-          <QueryChangeWatcher onChange={dismiss} />
-        </Suspense>
       </div>
 
       {assistant && <AssistantSheet configured={assistant.configured} open={aiOpen} onOpenChange={setAiOpen} />}
+      <LauncherProjectPicker
+        actionLabel={pending?.label ?? null}
+        onCancel={() => setPending(null)}
+        onPick={(job) => {
+          if (!pending) return
+          const href = projectPickerHref(pending.key, job.id)
+          setPending(null)
+          if (confirmLeave()) router.push(href)
+        }}
+      />
     </>
   )
 }
@@ -333,14 +458,14 @@ export function AssistantDock({
 function Pill({ action, onSelect }: { action: LauncherAction; onSelect: () => void }) {
   const Icon = ICONS[action.icon]
   const className = cn(
-    'group/pill flex min-h-11 w-max max-w-[calc(100vw-2.5rem)] items-center gap-2 rounded-full border border-border bg-white py-2 pl-3 pr-4 text-left text-sm font-medium leading-snug text-foreground',
-    'shadow-[0_4px_12px_-4px_rgb(23_33_43/0.18),0_1px_2px_rgb(23_33_43/0.08)] transition-colors duration-150',
-    'hover:border-primary/40 hover:bg-sage/40 hover:text-primary',
-    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
+    'flex min-h-11 w-max max-w-full items-center gap-2 rounded-full border border-[#A8D8DF] bg-sage py-2 pl-3.5 pr-4 text-left text-sm font-semibold leading-snug text-[#17212B]',
+    'shadow-[0_6px_14px_-6px_rgb(0_88_103/0.35),0_1px_2px_rgb(23_33_43/0.08)] transition-[background-color,border-color,box-shadow,translate] duration-150',
+    'hover:border-action hover:bg-[#FFF0D6] hover:shadow-[0_10px_20px_-8px_rgb(163_92_0/0.45),0_2px_4px_rgb(23_33_43/0.1)] motion-safe:hover:-translate-y-px',
+    'focus-visible:border-action focus-visible:bg-[#FFF0D6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
   )
   const content = (
     <>
-      <Icon className="size-4 shrink-0 text-primary transition-colors group-hover/pill:text-action" aria-hidden="true" />
+      <Icon className="size-4 shrink-0 text-[#00879A]" strokeWidth={2.25} aria-hidden="true" />
       <span className="min-w-0">{action.label}</span>
     </>
   )
@@ -361,33 +486,5 @@ function Pill({ action, onSelect }: { action: LauncherAction; onSelect: () => vo
     >
       {content}
     </button>
-  )
-}
-
-/** Dismisses the pills when the query string changes (filters, tabs, a selected project preview). */
-function QueryChangeWatcher({ onChange }: { onChange: () => void }) {
-  const query = useSearchParams()?.toString() ?? ''
-  useEffect(() => onChange(), [query, onChange])
-  return null
-}
-
-/** Trefort's flowing teal mark with an orange accent. */
-function AssistantMark() {
-  return (
-    <svg viewBox="0 0 32 32" fill="none" className="size-8" aria-hidden="true">
-      <path
-        d="M5 13.5c3.6-4.2 8.2-4.6 11.6-1.6 3.1 2.8 6.6 2.9 10.4-.4"
-        className="stroke-primary"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-      <path
-        d="M5 20.5c3.6-4.2 8.2-4.6 11.6-1.6 3.1 2.8 6.6 2.9 10.4-.4"
-        className="stroke-primary opacity-55"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-      <circle cx="24.5" cy="6.5" r="2.5" className="fill-action" />
-    </svg>
   )
 }

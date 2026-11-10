@@ -2,38 +2,73 @@ import type { QuickActionIcon } from '@/lib/quick-actions'
 
 export type LauncherIcon = QuickActionIcon | 'company' | 'quote' | 'camera' | 'gallery' | 'save' | 'ai'
 
-/** Most contextual pills shown at once. Touch reserves one place for the explicit "Ask AI" pill. */
-export const LAUNCHER_MAX_ACTIONS = { pointer: 4, touch: 3 } as const
+/** Most shortcut pills shown at once. Touch reserves one place for the explicit "Ask AI" pill. */
+export const LAUNCHER_MAX_ACTIONS = { pointer: 6, touch: 5 } as const
 
 /**
  * Stable ids of the launcher's sources:
- * - `project:<key>` — a project action from the Quick Create catalog (buildProjectQuickActions), already
- *   checked against role, features and project state, and only used for the project the route shows.
- * - `global:<key>` — a standalone action from buildGlobalQuickActions.
- * - anything else — an action a page registers through useLauncherAction (e.g. `assign`, `quote-request`).
+ * - `global:<key>` — a standalone Quick Create action (buildGlobalQuickActions).
+ * - `ctx:<key>` — a job action. On a project route it comes from that project's Quick Create catalog; with a
+ *   project preview open it targets the previewed project; otherwise it asks for the project first.
+ * - anything else — an action a page registers through useLauncherAction (e.g. `quote-request`, camera pills).
  */
-type Plan = { projectId: string | null; order: string[] }
+export type LauncherProject = { id: string; source: 'route' | 'preview' }
+type Plan = { project: LauncherProject | null; contextual: string[] }
+
+/** Shortcuts kept on every page after the page's own, nearest the launcher first. */
+export const COMMON_LAUNCHER_ACTIONS = [
+  'global:project',
+  'global:client',
+  'global:contact',
+  'global:subcontractor',
+  'ctx:daily_log',
+  'ctx:document',
+]
+
+/** Page registrations that replace a catalog action with an in-place version of the same workflow. */
+export const LAUNCHER_ALIASES: Record<string, string> = {
+  'create-contact': 'global:contact',
+  'create-client': 'global:client',
+  assign: 'ctx:assign',
+}
+
+/** Launcher wording where it differs from the Quick Create menu. */
+export const LAUNCHER_LABELS: Record<string, string> = {
+  'global:client': 'Add client',
+  'global:contact': 'Add contact',
+  'global:subcontractor': 'Add subcontractor',
+  'ctx:schedule': 'Add activity',
+}
 
 const PROJECT_ROUTE = /^\/projects\/([^/]+)(\/.*)?$/
 
-/** Launcher labels that differ from the Quick Create wording. */
-export const LAUNCHER_LABELS: Record<string, string> = {
-  'project:schedule': 'Add activity',
-}
+/** Page-specific shortcuts, nearest the launcher first. Ids a page cannot provide are skipped. */
+export function launcherPlanFor(pathname: string, previewProjectId: string | null): Plan {
+  if (pathname === '/projects') {
+    return previewProjectId
+      ? {
+          project: { id: previewProjectId, source: 'preview' },
+          contextual: ['ctx:assign', 'ctx:daily_log', 'ctx:document', 'global:project'],
+        }
+      : { project: null, contextual: ['global:project'] }
+  }
+  if (pathname.startsWith('/contacts')) return { project: null, contextual: ['global:contact', 'create-company'] }
+  if (pathname.startsWith('/clients')) return { project: null, contextual: ['global:client'] }
+  if (pathname.startsWith('/subcontractors')) return { project: null, contextual: ['global:subcontractor', 'ctx:assign'] }
+  if (pathname.startsWith('/schedule')) return { project: null, contextual: ['ctx:schedule', 'ctx:daily_log'] }
+  if (pathname.startsWith('/daily-logs')) return { project: null, contextual: ['ctx:daily_log'] }
+  if (pathname.startsWith('/documents')) return { project: null, contextual: ['ctx:document'] }
 
-/**
- * Page-specific pills, nearest the launcher first. Ids a page does not provide are skipped, so only working,
- * authorized actions appear. Registered actions the plan does not list follow in their own priority.
- */
-export function launcherPlanFor(pathname: string): Plan {
-  if (pathname === '/projects') return { projectId: null, order: ['global:project'] }
   const match = PROJECT_ROUTE.exec(pathname)
-  if (!match || match[1] === 'new') return { projectId: null, order: [] }
-  const projectId = decodeURIComponent(match[1])
+  if (!match || match[1] === 'new') return { project: null, contextual: [] }
+  const project: LauncherProject = { id: decodeURIComponent(match[1]), source: 'route' }
   const tab = match[2] ?? ''
-  if (tab === '') return { projectId, order: ['project:daily_log', 'assign', 'project:document'] }
-  if (tab.startsWith('/schedule')) return { projectId, order: ['project:schedule', 'assign', 'project:daily_log'] }
-  if (tab.startsWith('/subcontractor-work')) return { projectId, order: ['quote-request', 'assign'] }
-  if (tab.startsWith('/documents')) return { projectId, order: ['project:document'] }
-  return { projectId, order: [] }
+  if (tab.startsWith('/schedule')) {
+    return { project, contextual: ['ctx:schedule', 'ctx:daily_log', 'ctx:assign', 'ctx:document'] }
+  }
+  if (tab.startsWith('/subcontractor-work')) {
+    return { project, contextual: ['quote-request', 'ctx:assign', 'ctx:daily_log', 'ctx:document'] }
+  }
+  if (tab.startsWith('/documents')) return { project, contextual: ['ctx:document', 'ctx:daily_log', 'ctx:assign'] }
+  return { project, contextual: ['ctx:assign', 'ctx:daily_log', 'ctx:document', 'quote-request', 'ctx:schedule'] }
 }
