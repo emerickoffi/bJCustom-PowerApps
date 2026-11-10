@@ -1,24 +1,19 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import { AlertCircle, BookUser, Building2, FileUp, UserPlus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { AlertCircle, BookUser } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { loadAssignableProjectOptions, loadCompanyOptions, loadDirectory, loadPersonProfile } from '@/lib/contacts-data'
 import { CATEGORY_KEYS, parseView, type CategoryKey, type DirectoryView } from '@/lib/contacts'
 import { isUuid } from '@/lib/subcontractor-projects'
-import { EmptyState, PageContainer, PageHeader } from '@/components/shared/page-header'
+import { EmptyState, HeaderHelp, PageContainer, PageHeader } from '@/components/shared/page-header'
 import { ContactsDirectory } from '@/components/contacts/contacts-directory'
+import { ContactsPrimaryAction } from '@/components/contacts/contacts-primary-action'
 import { ContactOverlays } from '@/components/contacts/contact-overlays'
 
 export const metadata: Metadata = { title: 'Contacts' }
 
-function addHref(params: { view?: string; category?: string }, kind: 'contact' | 'company') {
-  const qs = new URLSearchParams()
-  if (params.view) qs.set('view', params.view)
-  if (params.category) qs.set('category', params.category)
-  qs.set('new', kind)
-  return `/contacts?${qs}`
+function countLabel(value: number, noun: string, plural: string) {
+  return `${value.toLocaleString()} ${value === 1 ? noun : plural}`
 }
 
 export default async function ContactsPage({
@@ -40,38 +35,32 @@ export default async function ContactsPage({
     needsOptions ? loadAssignableProjectOptions(supabase, session.organizationId) : Promise.resolve([]),
     personId ? loadPersonProfile(supabase, session.organizationId, personId) : Promise.resolve(null),
   ])
+  const inactivePeople = people.filter((p) => p.status === 'inactive').length
+  const inactiveCompanies = companies.filter((c) => c.status === 'inactive').length
 
   return (
     <PageContainer className="gap-5 md:gap-6">
       <PageHeader
         icon={BookUser}
         title="Contacts"
-        count={availability === 'ready' ? { value: people.length, noun: 'person', plural: 'people' } : undefined}
         titleAddon={
           availability === 'ready' ? (
-            <span className="text-sm tabular-nums text-muted-foreground">
-              {`${companies.length.toLocaleString()} ${companies.length === 1 ? 'company' : 'companies'}`}
-            </span>
+            <div className="relative flex min-w-0 items-center gap-0.5">
+              <p className="text-sm tabular-nums text-muted-foreground">
+                {`${countLabel(people.length, 'person', 'people')} · ${countLabel(companies.length, 'company', 'companies')} in directory`}
+              </p>
+              <HeaderHelp label="About directory totals" className="static">
+                <p>
+                  {inactivePeople + inactiveCompanies > 0
+                    ? `Directory totals count every record, including ${countLabel(inactivePeople, 'inactive person', 'inactive people')} and ${countLabel(inactiveCompanies, 'inactive company', 'inactive companies')}.`
+                    : 'Directory totals count every record, active or inactive.'}
+                </p>
+                <p className="mt-2">The list starts on Active records only, so its counts follow the filters applied below.</p>
+              </HeaderHelp>
+            </div>
           ) : undefined
         }
-        actions={
-          availability === 'ready' && (
-            <>
-              <Button variant="outline" size="lg" render={<Link href="/contacts/import" />} nativeButton={false}>
-                <FileUp data-icon="inline-start" />
-                Import CSV
-              </Button>
-              <Button variant="outline" size="lg" render={<Link href={addHref(params, 'company')} scroll={false} />} nativeButton={false}>
-                <Building2 data-icon="inline-start" />
-                Add company
-              </Button>
-              <Button size="lg" render={<Link href={addHref(params, 'contact')} scroll={false} />} nativeButton={false}>
-                <UserPlus data-icon="inline-start" />
-                Add contact
-              </Button>
-            </>
-          )
-        }
+        actions={availability === 'ready' && <ContactsPrimaryAction />}
       />
       {availability === 'setup-required' ? (
         <EmptyState icon={AlertCircle} title="Contacts are not set up yet" description="The Business Contacts database migration has not been applied to this environment." />
