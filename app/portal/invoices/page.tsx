@@ -36,7 +36,7 @@ export default async function PortalInvoicesPage() {
         title="Invoices"
         count={{ value: invoices.length, noun: 'invoice' }}
         backHref="/portal"
-        backLabel="Back to your home"
+        backLabel="Your home"
         meta={
           <span>
             Balance due across all invoices: <span className="font-semibold text-foreground">{formatCentsExact(owed)}</span>

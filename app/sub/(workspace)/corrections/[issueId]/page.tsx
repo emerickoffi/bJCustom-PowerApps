@@ -14,6 +14,7 @@ import { MediaGrid } from '@/components/walkthroughs/media-uploader'
 import { WorkStateBadge } from '@/components/subcontractor-work/work-state-badge'
 import { SubmissionComposer } from '@/components/subcontractor-work/submission-composer'
 import { SubmissionHistory } from '@/components/subcontractor-work/submission-history'
+import { AwaitingBuilderNotice } from '@/components/subcontractor-work/awaiting-builder-notice'
 
 type CorrectionRow = {
   issue_id: string
@@ -84,6 +85,8 @@ export default async function SubCorrectionPage({ params }: { params: Promise<{ 
           <MediaGrid items={original} emptyLabel="No original photos." evidence="original" />
         </div>
       </section>
+
+      {state === 'submitted' && <AwaitingBuilderNotice />}
 
       {lastDecided?.reviewNotes && lastDecided.status !== 'accepted' && (
         <section aria-labelledby="feedback-heading" className="flex flex-col gap-1 rounded-xl border border-destructive/30 bg-destructive/5 p-4">

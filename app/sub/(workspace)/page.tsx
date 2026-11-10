@@ -7,6 +7,8 @@ import { formatDate, APP_TIME_ZONE } from '@/lib/format'
 import { todayIn } from '@/lib/subcontractor-qualification'
 import { isOverdue, isSubWorkSetupError, workStateFor, type WorkState } from '@/lib/subcontractor-work'
 import { WorkCard } from '@/components/subcontractor-work/work-card'
+import { responseState } from '@/lib/subcontract-quotes'
+import type { SubQuoteRow } from './quotes/page'
 
 type WorkRow = {
   assignment_id: string
@@ -51,7 +53,18 @@ function Section({ id, title, entries, empty }: { id: string; title: string; ent
 export default async function SubWorkspacePage() {
   const session = await requireSubcontractor()
   const supabase = await createClient()
-  const [work, corrections] = await Promise.all([supabase.rpc('sub_assigned_work'), supabase.rpc('sub_correction_requests')])
+  const [work, corrections, quotes] = await Promise.all([
+    supabase.rpc('sub_assigned_work'),
+    supabase.rpc('sub_correction_requests'),
+    supabase.rpc('sub_quote_requests'),
+  ])
+  // Quote requests are optional here: if they cannot be loaded, the link still works and simply shows no count.
+  const quotesToAnswer = quotes.error
+    ? 0
+    : ((quotes.data ?? []) as SubQuoteRow[]).filter((q) => {
+        const response = responseState(q.invitation_status, q.revision_requested_at, q.last_submitted_at)
+        return q.status === 'open' && (response === 'awaiting' || response === 'revision_requested')
+      }).length
   if (isSubWorkSetupError(work.error) || isSubWorkSetupError(corrections.error)) {
     return <p className="text-sm text-muted-foreground">The subcontractor workspace is not available yet.</p>
   }
@@ -104,7 +117,14 @@ export default async function SubWorkspacePage() {
         className="flex min-h-11 items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:bg-sage/30"
       >
         Quote requests
-        <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+        <span className="flex shrink-0 items-center gap-2">
+          {quotesToAnswer > 0 && (
+            <span className="rounded-badge border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">
+              {quotesToAnswer === 1 ? '1 needs a response' : `${quotesToAnswer} need a response`}
+            </span>
+          )}
+          <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+        </span>
       </Link>
 
       <section aria-labelledby="projects-heading" className="flex flex-col gap-3">

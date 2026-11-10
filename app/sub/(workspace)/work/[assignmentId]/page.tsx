@@ -11,6 +11,7 @@ import { loadSubmissionCycles } from '@/lib/subcontractor-work-data'
 import { WorkStateBadge } from '@/components/subcontractor-work/work-state-badge'
 import { SubmissionComposer } from '@/components/subcontractor-work/submission-composer'
 import { SubmissionHistory } from '@/components/subcontractor-work/submission-history'
+import { AwaitingBuilderNotice } from '@/components/subcontractor-work/awaiting-builder-notice'
 
 type WorkRow = {
   assignment_id: string
@@ -69,6 +70,8 @@ export default async function SubWorkPage({ params }: { params: Promise<{ assign
           Submitting reports completion only. The builder verifies the work; the schedule and payments are not changed automatically.
         </p>
       </section>
+
+      {state === 'submitted' && <AwaitingBuilderNotice />}
 
       {lastDecided?.reviewNotes && lastDecided.status !== 'accepted' && (
         <section aria-labelledby="feedback-heading" className="flex flex-col gap-1 rounded-xl border border-destructive/30 bg-destructive/5 p-4">

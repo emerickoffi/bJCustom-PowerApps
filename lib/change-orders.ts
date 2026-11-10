@@ -135,7 +135,7 @@ export function nextChangeOrderAction(status: ChangeOrderStatus): string | null 
     case 'draft':
       return 'Submit for internal review'
     case 'internal_review':
-      return 'Send to homeowner'
+      return 'Mark as sent to homeowner'
     case 'awaiting_homeowner':
       return 'Record homeowner decision'
     default:

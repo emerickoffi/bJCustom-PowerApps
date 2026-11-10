@@ -297,7 +297,7 @@ export async function approveRepairAction(projectId: string, issueId: string): P
   }
 
   revalidatePath(`/projects/${projectId}/issues/${issueId}`)
-  return { success: 'Repair approved and sent to the homeowner for review.' }
+  return { success: 'Repair approved. It now appears in the homeowner portal for them to confirm.' }
 }
 
 export async function addIssueNoteAction(
@@ -327,7 +327,7 @@ export async function addIssueNoteAction(
   revalidatePath(`/projects/${projectId}/issues/${issueId}`)
   if (visibility === 'shared') {
     revalidatePath('/portal', 'layout')
-    return { success: 'Reply sent. The homeowner has been notified.' }
+    return { success: 'Reply posted. The homeowner sees it on this issue in their portal. Nothing is emailed.' }
   }
   return { success: 'Note added.' }
 }

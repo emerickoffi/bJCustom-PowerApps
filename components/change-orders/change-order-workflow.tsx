@@ -43,6 +43,12 @@ export function ChangeOrderWorkflow({ projectId, id, status, version, today, sig
         <h2 id="co-workflow-heading" className="text-sm font-semibold text-foreground">
           Next step
         </h2>
+        {status === 'internal_review' && (
+          <p className="text-sm text-muted-foreground">
+            Marking as sent only updates the status. Nothing is emailed, and change orders are not shown in the homeowner portal. Share the
+            homeowner summary with them directly, then record their decision here.
+          </p>
+        )}
         {status === 'awaiting_homeowner' && (
           <p className="text-sm text-muted-foreground">
             Record the homeowner&apos;s decision once you have it. Returning to draft starts version {version + 1} so the decision always matches what they saw.
