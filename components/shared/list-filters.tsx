@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/shared/form-field'
 import { SearchInput } from '@/components/shared/search-input'
 import { AutoApplyForm } from '@/components/shared/auto-apply-form'
+import { CarriedParamFields } from '@/components/shared/carried-param-fields'
 import { LocationFilters, type LocationOption } from '@/components/shared/location-filters'
 import { AdditionalFilters, type FilterSelect } from '@/components/shared/additional-filters'
 
@@ -31,7 +32,7 @@ export function ListFilters({
   clearHref?: string
   /** Non-filter URL state (e.g. sort, view) carried through Apply; page is intentionally dropped. */
   preserve?: Record<string, string | null | undefined>
-  /** Client-set URL parameters kept through auto-applied filter changes (auto-apply only). */
+  /** Client-set URL parameters kept through filter changes, such as a list's selected preview. */
   carryParams?: readonly string[]
   /** Apply filters on change and debounce search, replacing the Apply button. */
   autoApply?: boolean
@@ -45,7 +46,7 @@ export function ListFilters({
       )}
       <SearchInput
         // Auto-apply updates the URL while typing; remounting on each change would drop focus.
-        key={autoApply ? 'search' : defaultQuery}
+        key={autoApply ? 'search' : `search:${defaultQuery}`}
         id="q"
         label="Search"
         defaultValue={defaultQuery}
@@ -56,7 +57,7 @@ export function ListFilters({
       <label htmlFor="status" className="sr-only">
         Status
       </label>
-      <NativeSelect key={defaultStatus} id="status" name="status" defaultValue={defaultStatus} className="bg-card sm:w-56">
+      <NativeSelect key={`status:${defaultStatus}`} id="status" name="status" defaultValue={defaultStatus} className="bg-card sm:w-56">
         <option value="">All statuses</option>
         {statusOptions.map((option) => (
           <option key={option.value} value={option.value}>
@@ -107,6 +108,7 @@ export function ListFilters({
 
   return (
     <form role="search" className={FORM_CLASS}>
+      {carryParams && <CarriedParamFields names={carryParams} />}
       {fields}
       <div className="flex gap-2">
         <Button type="submit" variant="outline" size="lg" className="h-10 flex-1 sm:flex-none">

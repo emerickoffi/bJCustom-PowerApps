@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { useActionState, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { initialActionState, type ActionState } from '@/lib/action-state'
+import { OVERLAY_FIELD, initialActionState, type ActionState } from '@/lib/action-state'
 import { CLIENT_STATUS_LABELS, COMMUNICATION_LABELS } from '@/lib/domain'
 import type { ClientOption } from '@/lib/client-options'
 import { cn } from '@/lib/utils'
@@ -64,7 +64,10 @@ export function ClientForm({
   additionalContacts = false,
   projectOptions,
   projectSetup,
+  onSaved,
 }: {
+  /** Drawer over a list: called after a successful save instead of following the action's redirect. */
+  onSaved?: (result: ActionState) => void
   pendingLabel?: string
   action: (state: ClientFormState, formData: FormData) => Promise<ClientFormState>
   defaults?: ClientFormValues
@@ -84,7 +87,15 @@ export function ClientForm({
   const fe = state.fieldErrors ?? {}
   const defaults: ClientFormValues = { ...initialDefaults, ...state.values }
   const formKey = state.values ? JSON.stringify(state.values) : 'initial'
-  const { inOverlay: flat, dirty, formProps } = useSmartForm(state, formKey)
+  const { overlay, inOverlay: flat, dirty, formProps } = useSmartForm(state, formKey)
+  const setOverlayDirty = overlay?.setDirty
+
+  useEffect(() => {
+    if (!state.savedId) return
+    // The saved values are no longer a draft, so the overlay must not ask about discarding them next time.
+    setOverlayDirty?.(false)
+    onSaved?.(state)
+  }, [state, onSaved, setOverlayDirty])
 
   // Once saved, the client form is replaced, so it can never be submitted (and the client created) twice.
   if (state.client && projectSetup) {
@@ -108,6 +119,7 @@ export function ClientForm({
 
   return (
     <form key={formKey} action={formAction} {...formProps}>
+      {onSaved && <input type="hidden" name={OVERLAY_FIELD} value="1" />}
       <SmartFormLayout
         dirty={dirty}
         cancelHref={cancelHref}

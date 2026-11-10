@@ -8,7 +8,7 @@ import { AlertTriangle, ArrowRight, Loader2, MapPin, RefreshCw, X } from 'lucide
 import { Button } from '@/components/ui/button'
 import type { FormPanelHandle } from '@/components/shared/form-overlay'
 import { AssignView } from '@/components/projects/project-preview-assign'
-import { PreviewRequestError, fetchPreviewJson } from '@/components/projects/project-preview-request'
+import { PreviewRequestError, fetchPreviewJson } from '@/components/shared/preview-request'
 import {
   LatestUpdateSection,
   PendingQuestionsSection,

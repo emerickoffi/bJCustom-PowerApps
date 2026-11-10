@@ -722,6 +722,7 @@ export async function updateCompanyAction(companyId: string, _prev: ActionState,
   )
   revalidateDirectory(`/contacts/companies/${companyId}`)
   if (catError) return { error: `Company details were saved, but categories were not. ${catError}`, values }
+  if (values[OVERLAY_FIELD] === '1') return { savedId: companyId, success: 'Changes saved.' }
   redirect(`/contacts/companies/${companyId}?saved=1`)
 }
 

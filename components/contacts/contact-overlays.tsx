@@ -1,27 +1,24 @@
 'use client'
 
 import { useCallback } from 'react'
-import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Building2, ExternalLink, FolderKanban, Pencil, UserPlus, UserRound } from 'lucide-react'
+import { useSWRConfig } from 'swr'
+import { Building2, Pencil, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 import type { ActionState } from '@/lib/action-state'
-import type { CompanyOption, PersonProfile } from '@/lib/contacts-data'
+import type { CompanyOption, CompanyProfile, PersonProfile } from '@/lib/contacts-data'
 import { personName } from '@/lib/contacts'
-import { formatDate, formatPhone } from '@/lib/format'
-import { createCompanyAction, createPersonAction, updatePersonAction } from '@/app/actions/contacts'
+import { isContactPreviewKey } from '@/lib/record-preview'
+import { createCompanyAction, createPersonAction, updateCompanyAction, updatePersonAction } from '@/app/actions/contacts'
 import { CompanyForm } from '@/components/contacts/company-form'
-import { DetailList } from '@/components/shared/page-header'
-import { FormOverlay, OverlayBody, OverlayFooter, useFormOverlay } from '@/components/shared/form-overlay'
+import { FormOverlay } from '@/components/shared/form-overlay'
 import { PersonForm } from '@/components/contacts/person-form'
-import { ContactStatusBadge } from '@/components/contacts/contact-status-button'
 import type { AssignableProjectOption } from '@/components/contacts/project-assignments-field'
 
-/** Search params that address an overlay, so each one is linkable and survives refresh. */
-export const OVERLAY_KEYS = ['new', 'contact', 'edit', 'back'] as const
+/** Search params that address a form overlay, so each one is linkable and survives refresh. */
+export const OVERLAY_KEYS = ['new', 'edit', 'editCompany'] as const
 
-/** Builds a link to the current page with the given overlay open, keeping filters like ?view=. */
+/** Builds a link to the current page with the given overlay open, keeping filters like ?view= and the open preview. */
 export function useOverlayHref() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -37,58 +34,60 @@ export function useOverlayHref() {
   )
 }
 
+/**
+ * The directory's create and edit forms. Only one is ever open, and the list's preview drawer steps aside for it,
+ * so overlays never stack. Closing or saving returns to the same list with its filters and selection.
+ */
 export function ContactOverlays({
   companies,
   projects,
   person,
+  company,
 }: {
   companies: CompanyOption[]
   projects: AssignableProjectOption[]
-  /** Loaded by the server when ?contact= or ?edit= names a person. */
+  /** Loaded by the server when ?edit= names a person. */
   person: PersonProfile | null
+  /** Loaded by the server when ?editCompany= names a company. */
+  company: CompanyProfile | null
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const hrefWith = useOverlayHref()
-  const go = useCallback((href: string) => router.replace(href, { scroll: false }), [router])
+  const { mutate } = useSWRConfig()
 
   const creating = searchParams.get('new') === 'contact'
   const creatingCompany = searchParams.get('new') === 'company'
-  const detailsId = searchParams.get('contact')
-  const editId = searchParams.get('edit')
-  const backToDetails = searchParams.get('back') === 'contact'
-  const viewing = Boolean(person && detailsId === person.id)
-  const editing = Boolean(person && editId === person.id)
+  const editing = Boolean(person && searchParams.get('edit') === person.id)
+  const editingCompany = Boolean(company && searchParams.get('editCompany') === company.id)
 
-  const closeAll = useCallback(() => go(hrefWith({})), [go, hrefWith])
+  const closeAll = useCallback(() => router.replace(hrefWith({}), { scroll: false }), [router, hrefWith])
 
+  /** The new record may fall outside the current filters or page, so the confirmation carries a direct way to open it. */
   const onCreated = useCallback(
-    (result: ActionState) => {
-      if (result.warning) toast.warning(result.warning)
-      else toast.success(result.success ?? 'Contact added.')
-      if (result.savedId) go(hrefWith({ contact: result.savedId }))
-    },
-    [go, hrefWith],
-  )
-
-  const onCompanyCreated = useCallback(
-    (result: ActionState) => {
+    (kind: 'contact' | 'company', result: ActionState) => {
       const id = result.savedId
-      const open = id ? { label: 'Open profile', onClick: () => router.push(`/contacts/companies/${id}`) } : undefined
-      if (result.warning) toast.warning(result.warning, { action: open })
-      else toast.success(result.success ?? 'Company added.', { description: 'Add contact persons from its profile.', action: open })
+      const href = kind === 'contact' ? `/contacts/people/${id}` : `/contacts/companies/${id}`
+      const action = id ? { label: kind === 'contact' ? 'Open contact' : 'Open company', onClick: () => router.push(href) } : undefined
+      if (result.warning) toast.warning(result.warning, { action })
+      else if (kind === 'contact') toast.success(result.success ?? 'Contact added.', { action })
+      else toast.success(result.success ?? 'Company added.', { description: 'Add contact persons from its profile.', action })
       closeAll()
     },
     [router, closeAll],
   )
+  const onPersonCreated = useCallback((result: ActionState) => onCreated('contact', result), [onCreated])
+  const onCompanyCreated = useCallback((result: ActionState) => onCreated('company', result), [onCreated])
 
   const onEdited = useCallback(
     (result: ActionState) => {
       if (result.warning) toast.warning(result.warning)
       else toast.success(result.success ?? 'Changes saved.')
-      go(backToDetails && result.savedId ? hrefWith({ contact: result.savedId }) : hrefWith({}))
+      // An edit can change what any open preview shows: a person's own details, or their name under a company.
+      void mutate(isContactPreviewKey)
+      closeAll()
     },
-    [go, hrefWith, backToDetails],
+    [mutate, closeAll],
   )
 
   return (
@@ -102,7 +101,7 @@ export function ContactOverlays({
         title="Add contact"
         description="Add a person to your business directory. Only first and last name are required."
       >
-        {creating && <PersonForm action={createPersonAction} companies={companies} projects={projects} onSaved={onCreated} />}
+        {creating && <PersonForm action={createPersonAction} companies={companies} projects={projects} onSaved={onPersonCreated} />}
       </FormOverlay>
 
       <FormOverlay
@@ -119,7 +118,7 @@ export function ContactOverlays({
 
       <FormOverlay
         open={editing}
-        onClose={() => go(backToDetails && person ? hrefWith({ contact: person.id }) : hrefWith({}))}
+        onClose={closeAll}
         variant="drawer"
         size="lg"
         icon={Pencil}
@@ -145,124 +144,18 @@ export function ContactOverlays({
       </FormOverlay>
 
       <FormOverlay
-        open={viewing}
+        open={editingCompany}
         onClose={closeAll}
         variant="drawer"
-        icon={UserRound}
-        title={person ? personName(person) : 'Contact'}
-        description={person?.specialty ?? 'Business contact'}
+        size="lg"
+        icon={Pencil}
+        title={company ? `Edit ${company.company_name}` : 'Edit company'}
+        description="Changes apply everywhere this company appears."
       >
-        {viewing && person && (
-          <>
-            <OverlayBody className="flex flex-col gap-6">
-              <ContactStatusBadge status={person.status} />
-              <DetailList
-                items={[
-                  {
-                    label: 'Email',
-                    value: person.email ? (
-                      <a href={`mailto:${person.email}`} className="break-all underline-offset-4 hover:underline">
-                        {person.email}
-                      </a>
-                    ) : (
-                      '—'
-                    ),
-                  },
-                  { label: 'Primary phone', value: person.primary_phone ? formatPhone(person.primary_phone) : '—' },
-                  { label: 'Secondary phone', value: person.secondary_phone ? formatPhone(person.secondary_phone) : '—' },
-                  { label: 'Added', value: formatDate(person.created_at) },
-                ]}
-              />
-              <SummaryList
-                icon={Building2}
-                title="Companies"
-                empty="Independent. Not linked to a company."
-                items={person.relationships
-                  .filter((r) => r.status === 'active')
-                  .map((r) => ({ id: r.id, href: `/contacts/companies/${r.company_id}`, label: r.company_name, meta: r.is_primary_contact ? 'Primary contact' : r.role }))}
-              />
-              <SummaryList
-                icon={FolderKanban}
-                title="Active projects"
-                empty="Not assigned to any active project."
-                items={person.projects
-                  .filter((p) => p.status === 'active')
-                  .map((p) => ({ id: p.id, href: `/projects/${p.project_id}`, label: p.project_number ? `${p.project_number} · ${p.name}` : p.name, meta: p.project_role }))}
-              />
-              <section className="flex flex-col gap-2">
-                <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Account and access</h3>
-                <div className="flex flex-col gap-1 rounded-lg border border-border/80 bg-card px-3 py-2.5 text-sm">
-                  <p className="font-medium text-foreground">
-                    {person.status === 'active' ? 'Active directory contact' : 'Inactive directory contact'}
-                  </p>
-                  <p className="text-muted-foreground">
-                    No individual sign-in. Directory contacts don&apos;t have their own app account; subcontractor access is managed per company.
-                  </p>
-                </div>
-              </section>
-              {person.notes && (
-                <div className="flex flex-col gap-1.5">
-                  <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Notes</h3>
-                  <p className="text-sm leading-relaxed whitespace-pre-line">{person.notes}</p>
-                </div>
-              )}
-            </OverlayBody>
-            <OverlayFooter>
-              <OverlayCloseButton />
-              <Button variant="outline" size="lg" render={<Link href={`/contacts/people/${person.id}`} />} nativeButton={false}>
-                <ExternalLink data-icon="inline-start" />
-                Open full details
-              </Button>
-              <Button size="lg" render={<Link href={hrefWith({ edit: person.id, back: 'contact' })} scroll={false} replace />} nativeButton={false}>
-                <Pencil data-icon="inline-start" />
-                Edit
-              </Button>
-            </OverlayFooter>
-          </>
+        {editingCompany && company && (
+          <CompanyForm key={company.id} action={updateCompanyAction.bind(null, company.id)} company={company} onSaved={onEdited} />
         )}
       </FormOverlay>
     </>
-  )
-}
-
-function OverlayCloseButton() {
-  const overlay = useFormOverlay()
-  return (
-    <Button type="button" variant="ghost" size="lg" className="sm:mr-auto" onClick={() => overlay?.requestClose()}>
-      Close
-    </Button>
-  )
-}
-
-function SummaryList({
-  icon: Icon,
-  title,
-  empty,
-  items,
-}: {
-  icon: typeof Building2
-  title: string
-  empty: string
-  items: { id: string; href: string; label: string; meta: string | null }[]
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{title}</h3>
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{empty}</p>
-      ) : (
-        <ul className="flex flex-col divide-y divide-border/60 rounded-lg border border-border/80 bg-card">
-          {items.map((item) => (
-            <li key={item.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
-              <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <Link href={item.href} className="min-w-0 flex-1 truncate font-medium underline-offset-4 hover:text-primary hover:underline">
-                {item.label}
-              </Link>
-              {item.meta && <span className="shrink-0 text-xs text-muted-foreground">{item.meta}</span>}
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   )
 }
