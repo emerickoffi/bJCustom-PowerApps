@@ -327,6 +327,9 @@
 :root {
   --page-gutter-x: 1rem;
   --page-gutter-top: 1rem;
+  /* Desktop sidebar widths (248px / 68px). The shell is a flex row, so the header and <main> take the rest. */
+  --sidebar-width: 15.5rem;
+  --sidebar-width-collapsed: 4.25rem;
 }
 @media (min-width: 40rem) {
   :root {

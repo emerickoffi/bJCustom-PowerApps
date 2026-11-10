@@ -24,6 +24,7 @@ import {
   UsersRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   NAV_GROUPS,
   NAV_GROUPS_COOKIE,
@@ -73,14 +74,13 @@ function NavLink({
   onNavigate?: () => void
 }) {
   const Icon = ICONS[icon] ?? LayoutDashboard
-  return (
+  const link = (
     <Link
       href={href}
       onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
-      title={collapsed ? label : undefined}
       className={cn(
-        'group relative flex h-10 items-center gap-3 rounded-nav px-3.5 text-sm transition-colors duration-150',
+        'group relative flex h-11 items-center gap-3 rounded-nav px-3.5 text-sm transition-colors duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
         collapsed && 'justify-center px-0',
         active
@@ -103,6 +103,16 @@ function NavLink({
         </span>
       )}
     </Link>
+  )
+  if (!collapsed) return link
+  // The label stays in the link as sr-only text; the tooltip shows it on hover and keyboard focus.
+  return (
+    <Tooltip>
+      <TooltipTrigger render={link} />
+      <TooltipContent side="right" sideOffset={8}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

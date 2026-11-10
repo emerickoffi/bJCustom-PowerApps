@@ -124,6 +124,7 @@ export default async function StaffLayout({ children, modal }: { children: React
           <Sidebar
             items={items}
             logo={logo}
+            brandName={session.brand.displayName}
             homeLabel={homeLabel}
             homeHref={homeHref}
             defaultMode={sidebarMode}
