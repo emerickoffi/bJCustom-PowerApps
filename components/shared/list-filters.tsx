@@ -8,6 +8,7 @@ import { LocationFilters, type LocationOption } from '@/components/shared/locati
 import { AdditionalFilters, type FilterSelect } from '@/components/shared/additional-filters'
 
 const FORM_CLASS = 'flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center'
+const TOOLBAR_FORM_CLASS = 'flex min-w-0 flex-wrap items-center gap-2'
 
 export function ListFilters({
   searchPlaceholder,
@@ -21,6 +22,8 @@ export function ListFilters({
   carryParams,
   autoApply = false,
   groupAdditional = false,
+  toolbar = false,
+  chipsSlotId,
 }: {
   searchPlaceholder: string
   defaultQuery: string
@@ -38,7 +41,12 @@ export function ListFilters({
   autoApply?: boolean
   /** Keep only Search and Status in the toolbar; the other selects and location move into one "Filters" popover with chips. */
   groupAdditional?: boolean
+  /** Lay the fields out as the left half of a shared single-row toolbar that wraps compactly. */
+  toolbar?: boolean
+  /** Element id elsewhere on the page that receives the applied-filter chips (with `groupAdditional`). */
+  chipsSlotId?: string
 }) {
+  const formClass = toolbar ? TOOLBAR_FORM_CLASS : FORM_CLASS
   const fields = (
     <>
       {Object.entries(preserve ?? {}).map(([name, value]) =>
@@ -52,12 +60,24 @@ export function ListFilters({
         defaultValue={defaultQuery}
         placeholder={searchPlaceholder}
         syncUrl={!autoApply}
-        className={groupAdditional ? 'sm:w-64 lg:w-80 xl:w-96' : 'flex-1 sm:min-w-64'}
+        className={
+          toolbar
+            ? 'w-full sm:w-auto sm:min-w-56 sm:max-w-md sm:flex-1'
+            : groupAdditional
+              ? 'sm:w-64 lg:w-80 xl:w-96'
+              : 'flex-1 sm:min-w-64'
+        }
       />
       <label htmlFor="status" className="sr-only">
         Status
       </label>
-      <NativeSelect key={`status:${defaultStatus}`} id="status" name="status" defaultValue={defaultStatus} className="bg-card sm:w-56">
+      <NativeSelect
+        key={`status:${defaultStatus}`}
+        id="status"
+        name="status"
+        defaultValue={defaultStatus}
+        className={toolbar ? 'flex-1 bg-card sm:w-48 sm:flex-none' : 'bg-card sm:w-56'}
+      >
         <option value="">All statuses</option>
         {statusOptions.map((option) => (
           <option key={option.value} value={option.value}>
@@ -65,7 +85,7 @@ export function ListFilters({
           </option>
         ))}
       </NativeSelect>
-      {groupAdditional && <AdditionalFilters selects={selects ?? []} location={location} />}
+      {groupAdditional && <AdditionalFilters selects={selects ?? []} location={location} chipsSlotId={chipsSlotId} />}
       {!groupAdditional && selects?.map((select) => (
         <div key={select.name} className="contents">
           <label htmlFor={select.name} className="sr-only">
@@ -100,14 +120,14 @@ export function ListFilters({
 
   if (autoApply) {
     return (
-      <AutoApplyForm clearHref={clearHref} carryParams={carryParams} className={FORM_CLASS}>
+      <AutoApplyForm clearHref={clearHref} carryParams={carryParams} className={formClass}>
         {fields}
       </AutoApplyForm>
     )
   }
 
   return (
-    <form role="search" className={FORM_CLASS}>
+    <form role="search" className={formClass}>
       {carryParams && <CarriedParamFields names={carryParams} />}
       {fields}
       <div className="flex gap-2">

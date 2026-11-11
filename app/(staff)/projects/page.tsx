@@ -41,6 +41,8 @@ import { PROJECT_SUMMARY_COLUMNS, getProfileNames, type ProjectSummary } from '@
 
 export const metadata: Metadata = { title: 'Projects' }
 
+const FILTER_CHIPS_SLOT = 'projects-filter-chips'
+
 export default async function ProjectsPage({
   searchParams,
 }: {
@@ -154,8 +156,35 @@ export default async function ProjectsPage({
     locationLabel: formatLocation(p.city, p.state, cityLabels),
   }))
 
+  const emptyState = (
+  <EmptyState
+    icon={FolderKanban}
+    title={filtered ? 'No matching projects' : 'No projects yet'}
+    description={
+      filtered
+        ? 'Try a different search, or clear the status, type, and location filters.'
+        : manager
+          ? 'Start a project for an existing client to begin tracking it.'
+          : 'Projects you are assigned to will appear here.'
+    }
+    action={
+      filtered ? (
+        <Button variant="outline" render={<Link href="/projects" />} nativeButton={false}>
+          Clear filters
+        </Button>
+      ) : (
+        manager && (
+          <Button render={<Link href="/projects/new" />} nativeButton={false}>
+            Create project
+          </Button>
+        )
+      )
+    }
+  />
+  )
+
   return (
-    <div className={pageLayout('workspace')}>
+    <div className={pageLayout('workspace', 'gap-4 md:gap-4')}>
       <PageHeader icon={FolderKanbanIcon}
         title="Projects"
         actions={
@@ -167,40 +196,45 @@ export default async function ProjectsPage({
           )
         }
       />
-      <ListFilters
-        searchPlaceholder="Search by name, number, address, city, or state"
-        defaultQuery={q}
-        defaultStatus={status ?? ''}
-        statusOptions={ALL_PROJECT_STATUSES.map((s) => ({ value: s, label: PROJECT_STATUS_LABELS[s] }))}
-        selects={[
-          {
-            name: 'type',
-            label: 'Project type',
-            allLabel: 'All project types',
-            defaultValue: projectType ?? '',
-            options: Object.entries(PROJECT_TYPE_LABELS).map(([value, label]) => ({ value, label })),
-          },
-        ]}
-        location={{ options: locations, defaultState: stateFilter, defaultCity: cityFilter }}
-        clearHref={filtered ? directoryHref('/projects', { sort: stateParams.sort, view: urlView }) : undefined}
-        preserve={{ sort: stateParams.sort, view: urlView }}
-        carryParams={[PREVIEW_PARAM]}
-        autoApply
-        groupAdditional
-      />
       <ProjectPreviewLayout projects={rows.map((p) => ({ id: p.id, name: p.name, project_number: p.project_number }))}>
-      {projects.length ? (
         <div className="flex flex-col gap-4">
         <ProjectColumns initial={optionalColumns}>
         <DirectoryViews
           module="projects"
           initialView={initialView}
           desktopDefault="cards"
+          leading={
+            <ListFilters
+              searchPlaceholder="Search by name, number, address, city, or state"
+              defaultQuery={q}
+              defaultStatus={status ?? ''}
+              statusOptions={ALL_PROJECT_STATUSES.map((s) => ({ value: s, label: PROJECT_STATUS_LABELS[s] }))}
+              selects={[
+                {
+                  name: 'type',
+                  label: 'Project type',
+                  allLabel: 'All project types',
+                  defaultValue: projectType ?? '',
+                  options: Object.entries(PROJECT_TYPE_LABELS).map(([value, label]) => ({ value, label })),
+                },
+              ]}
+              location={{ options: locations, defaultState: stateFilter, defaultCity: cityFilter }}
+              clearHref={filtered ? directoryHref('/projects', { sort: stateParams.sort, view: urlView }) : undefined}
+              preserve={{ sort: stateParams.sort, view: urlView }}
+              carryParams={[PREVIEW_PARAM]}
+              autoApply
+              groupAdditional
+              toolbar
+              chipsSlotId={FILTER_CHIPS_SLOT}
+            />
+          }
+          summaryAddon={<div id={FILTER_CHIPS_SLOT} className="contents" />}
+          empty={projects.length ? undefined : emptyState}
           summary={`Showing ${range.start}–${range.end} of ${total} ${total === 1 ? 'project' : 'projects'}`}
           controls={
             <>
               <ProjectColumnsMenu />
-              <DirectorySort value={sort} options={sortOptions(PROJECT_SORTS)} />
+              <DirectorySort value={sort} options={sortOptions(PROJECT_SORTS)} hideLabel />
             </>
           }
           table={<ProjectTable rows={rows} />}
@@ -253,34 +287,10 @@ export default async function ProjectsPage({
           }
         />
         </ProjectColumns>
-          <DirectoryPagination page={page} pageCount={pageCount} hrefFor={hrefFor} label="Projects pagination" />
+          {projects.length > 0 && (
+            <DirectoryPagination page={page} pageCount={pageCount} hrefFor={hrefFor} label="Projects pagination" />
+          )}
         </div>
-      ) : (
-        <EmptyState
-          icon={FolderKanban}
-          title={filtered ? 'No matching projects' : 'No projects yet'}
-          description={
-            filtered
-              ? 'Try a different search, or clear the status, type, and location filters.'
-              : manager
-                ? 'Start a project for an existing client to begin tracking it.'
-                : 'Projects you are assigned to will appear here.'
-          }
-          action={
-            filtered ? (
-              <Button variant="outline" render={<Link href="/projects" />} nativeButton={false}>
-                Clear filters
-              </Button>
-            ) : (
-              manager && (
-                <Button render={<Link href="/projects/new" />} nativeButton={false}>
-                  Create project
-                </Button>
-              )
-            )
-          }
-        />
-      )}
       </ProjectPreviewLayout>
     </div>
   )
