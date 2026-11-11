@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, ArrowLeft, ChevronDown, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,8 +13,8 @@ import type { ActivityOption, CompanyOption, DocumentOption } from '@/lib/subcon
 type DrawerOptions = {
   /** Rendered above the fields (e.g. the currency confirmation). */
   topSlot?: ReactNode
-  /** Replaces the footer actions, e.g. with an unsaved-changes prompt. */
-  footerOverride?: ReactNode
+  /** When set, the footer asks whether to discard unsaved changes. */
+  discard?: { onKeepEditing: () => void; onDiscard: () => void; onSaved: () => void } | null
   onCancel: () => void
   onSent: () => void
   onDirtyChange: (dirty: boolean) => void
@@ -112,6 +112,8 @@ export function RequestForm({ projectId, requestId, rowVersion, currency, initia
       } else router.refresh()
     })
 
+  const tradeListId = useId()
+  const tradeOptions = [...new Set(companies.map((c) => c.trade?.trim()).filter((t): t is string => Boolean(t)))].sort()
   const invited = companies.filter((c) => values.company_ids.includes(c.id))
   const deadlineIso = values.deadline_local ? zonedLocalToIso(values.deadline_local, values.deadline_timezone) : null
   const missing = [
@@ -125,11 +127,22 @@ export function RequestForm({ projectId, requestId, rowVersion, currency, initia
     <div className="grid gap-4 md:grid-cols-2">
       <label className={fieldClass}>
         <span className={labelClass}>Title</span>
-        <Input required maxLength={160} value={values.title} onChange={(e) => set('title', e.target.value)} placeholder="Roofing package" />
+        <Input required maxLength={160} value={values.title} onChange={(e) => set('title', e.target.value)} placeholder="Enter request title" />
       </label>
       <label className={fieldClass}>
         <span className={labelClass}>Trade</span>
-        <Input maxLength={80} value={values.trade} onChange={(e) => set('trade', e.target.value)} placeholder="Roofing" />
+        <Input
+          maxLength={80}
+          list={tradeListId}
+          value={values.trade}
+          onChange={(e) => set('trade', e.target.value)}
+          placeholder="Select or enter trade"
+        />
+        <datalist id={tradeListId}>
+          {tradeOptions.map((t) => (
+            <option key={t} value={t} />
+          ))}
+        </datalist>
       </label>
     </div>
   )
@@ -343,8 +356,22 @@ export function RequestForm({ projectId, requestId, rowVersion, currency, initia
         </div>
 
         <div className="shrink-0 border-t border-border bg-popover px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
-          {drawer.footerOverride ??
-            (confirming ? (
+          {drawer.discard ? (
+            <DiscardPrompt
+              canSave={Boolean(values.title.trim())}
+              pending={pending}
+              onKeepEditing={drawer.discard.onKeepEditing}
+              onDiscard={drawer.discard.onDiscard}
+              onSave={() => {
+                const onSaved = drawer.discard?.onSaved
+                run(async () => {
+                  if (await save()) onSaved?.()
+                  else drawer.discard?.onKeepEditing()
+                })
+              }}
+            />
+          ) : (
+            confirming ? (
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button type="button" variant="outline" disabled={pending} onClick={() => setConfirming(false)}>
                   <ArrowLeft className="size-4" aria-hidden="true" />
@@ -434,5 +461,42 @@ export function RequestForm({ projectId, requestId, rowVersion, currency, initia
         </div>
       )}
     </form>
+  )
+}
+
+function DiscardPrompt({
+  canSave,
+  pending,
+  onKeepEditing,
+  onDiscard,
+  onSave,
+}: {
+  canSave: boolean
+  pending: boolean
+  onKeepEditing: () => void
+  onDiscard: () => void
+  onSave: () => void
+}) {
+  const keepRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => keepRef.current?.focus(), [])
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <p role="alert" className="text-sm font-medium text-foreground">
+        Discard this unsaved quote request?
+      </p>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button ref={keepRef} type="button" variant="outline" disabled={pending} onClick={onKeepEditing}>
+          Keep editing
+        </Button>
+        {canSave ? (
+          <Button type="button" variant="outline" disabled={pending} onClick={onSave}>
+            {pending ? 'Saving…' : 'Save draft'}
+          </Button>
+        ) : null}
+        <Button type="button" variant="destructive" disabled={pending} onClick={onDiscard}>
+          Discard
+        </Button>
+      </div>
+    </div>
   )
 }
