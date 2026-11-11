@@ -42,6 +42,38 @@ export const LAUNCHER_LABELS: Record<string, string> = {
 
 const PROJECT_ROUTE = /^\/projects\/([^/]+)(\/.*)?$/
 
+/**
+ * Launcher ids that the page's visible header button already performs in the same scope. The launcher omits them
+ * so each page keeps a single primary entry point. Only header buttons count, not empty-state ones, and each
+ * button uses the same permission guard as its catalog action. Distinct workflows stay in the launcher, e.g.
+ * assigning an existing subcontractor beside "Add subcontractor", or a project upload on the company library tab.
+ */
+export function pageButtonLauncherIds(pathname: string, search: { get(key: string): string | null } | null): string[] {
+  switch (pathname) {
+    case '/projects':
+      return ['global:project']
+    case '/subcontractors':
+      return ['global:subcontractor']
+    case '/daily-logs':
+      return ['ctx:daily_log']
+    case '/documents':
+      return search?.get('tab') === 'company' ? [] : ['ctx:document']
+  }
+  const match = PROJECT_ROUTE.exec(pathname)
+  if (!match || match[1] === 'new') return []
+  switch (match[2]) {
+    case '/daily-logs':
+      return ['ctx:daily_log']
+    case '/documents':
+      return ['ctx:document']
+    case '/schedule':
+      return ['ctx:schedule']
+    case '/subcontractor-work/quotes':
+      return ['quote-request']
+  }
+  return []
+}
+
 /** Page-specific shortcuts, nearest the launcher first. Ids a page cannot provide are skipped. */
 export function launcherPlanFor(pathname: string, previewProjectId: string | null): Plan {
   if (pathname === '/projects') {

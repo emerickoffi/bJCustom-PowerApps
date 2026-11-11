@@ -42,6 +42,7 @@ import {
   LAUNCHER_LABELS,
   LAUNCHER_MAX_ACTIONS,
   launcherPlanFor,
+  pageButtonLauncherIds,
   type LauncherIcon,
 } from '@/lib/launcher-actions'
 import { projectPickerHref, type ProjectPickerAction, type QuickAction } from '@/lib/quick-actions'
@@ -83,6 +84,8 @@ type Mode = 'hover' | 'touch' | 'keyboard'
 
 type Sources = {
   plan: ReturnType<typeof launcherPlanFor>
+  /** Launcher ids already offered by a visible button on this page. */
+  pageButtonIds: string[]
   registered: LauncherAction[]
   scope: ReturnType<typeof useProjectQuickActionsScope>
   globals: QuickAction[]
@@ -143,7 +146,8 @@ function resolveActions(sources: Sources, limit: number): LauncherAction[] {
   extras.sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
 
   const ordered: LauncherAction[] = []
-  const seen = new Set<string>()
+  // Ids the page's own header button covers are marked seen up front, so they never take a pill slot.
+  const seen = new Set<string>(sources.pageButtonIds)
   const add = (a: LauncherAction | undefined) => {
     if (!a || seen.has(a.id)) return
     seen.add(a.id)
@@ -198,7 +202,8 @@ function Dock({ assistant, globalActions, pickerActions }: DockProps) {
 
   const touch = mode === 'touch'
   const plan = launcherPlanFor(pathname, previewId)
-  const sources: Sources = { plan, registered, scope, globals: globalActions, pickerActions, openDrawer, askForProject: setPending }
+  const pageButtonIds = pageButtonLauncherIds(pathname, searchParams)
+  const sources: Sources = { plan, pageButtonIds, registered, scope, globals: globalActions, pickerActions, openDrawer, askForProject: setPending }
   const actions = resolveActions(sources, touch ? LAUNCHER_MAX_ACTIONS.touch : LAUNCHER_MAX_ACTIONS.pointer)
   const pills: LauncherAction[] =
     touch && assistant ? [...actions, { id: ASK_AI_ID, label: 'Ask AI', icon: 'ai' }] : actions
