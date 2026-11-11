@@ -63,8 +63,24 @@ const bodySchema = z.object({
     .refine((m) => m[m.length - 1].role === 'user', 'The last message must come from the user.'),
 })
 
-const fail = (status: number, error: string, requestId?: string) =>
-  Response.json({ error, ...(requestId ? { requestId } : {}) }, { status })
+type FailureCode =
+  | 'session_expired'
+  | 'not_configured'
+  | 'feature_off'
+  | 'invalid_request'
+  | 'rate_limited'
+  | 'no_access'
+  | 'data_unavailable'
+  | 'project_unavailable'
+  | 'ai_billing'
+  | 'ai_auth'
+  | 'ai_rate_limited'
+  | 'ai_timeout'
+  | 'ai_unavailable'
+  | 'empty_answer'
+
+const fail = (status: number, code: FailureCode, error: string, requestId: string, retryable: boolean) =>
+  Response.json({ error, code, retryable, requestId }, { status })
 
 /**
  * Follow-ups like "yes please" name no project, so the records loaded for them
@@ -82,6 +98,37 @@ function describeGenerationError(error: unknown) {
   const name = e?.name ?? 'UnknownError'
   const timedOut = name === 'TimeoutError' || name === 'AbortError' || e?.cause?.name === 'TimeoutError'
   return { name, statusCode: e?.statusCode, message: e?.message?.slice(0, 300), timedOut }
+}
+
+/**
+ * Maps a provider failure to what the user can actually do about it. AI Gateway
+ * reports an empty credit balance as 402; retrying cannot fix that, so Retry is hidden.
+ */
+function classifyGenerationError(details: ReturnType<typeof describeGenerationError>) {
+  if (details.timedOut) {
+    return { status: 504, code: 'ai_timeout', retryable: true, message: 'The assistant took too long to answer. Your question is kept, so you can retry.' } as const
+  }
+  switch (details.statusCode) {
+    case 402:
+      return {
+        status: 503,
+        code: 'ai_billing',
+        retryable: false,
+        message: 'The AI service is unavailable because the AI Gateway account has no credit balance. A Vercel team owner needs to add AI Gateway credits before the assistant can answer.',
+      } as const
+    case 401:
+    case 403:
+      return {
+        status: 503,
+        code: 'ai_auth',
+        retryable: false,
+        message: 'The AI service rejected this app’s credentials. An administrator needs to check the AI Gateway configuration.',
+      } as const
+    case 429:
+      return { status: 429, code: 'ai_rate_limited', retryable: true, message: 'The AI service is receiving too many requests. Wait a minute, then retry.' } as const
+    default:
+      return { status: 502, code: 'ai_unavailable', retryable: true, message: 'The AI service is unavailable right now. Your question is kept, so you can retry.' } as const
+  }
 }
 
 const INSTRUCTIONS = `You are the ${PRODUCT_BRAND.assistant.name}, a read-only construction management copilot for a residential home builder's staff.
@@ -127,18 +174,24 @@ Rules:
 export async function POST(request: Request) {
   const requestId = crypto.randomUUID()
   const session = await getSession()
-  if (!session?.organizationId || !session.role || session.role === 'client') {
-    return fail(401, 'Sign in with a staff account to use the assistant.')
+  if (!session?.userId) {
+    return fail(401, 'session_expired', 'Your session has expired. Sign in again to keep using the assistant.', requestId, false)
+  }
+  if (!session.organizationId || !session.role || session.role === 'client') {
+    return fail(403, 'no_access', 'The assistant is available to builder staff accounts only.', requestId, false)
   }
 
   const provider = getAssistantProviderConfig()
-  if (!provider.configured) return fail(503, 'The AI provider is not configured for this environment.')
+  if (!provider.configured) {
+    console.error('[assistant] provider not configured', { requestId, stage: 'config' })
+    return fail(503, 'not_configured', 'The AI provider is not configured for this environment. An administrator needs to connect AI Gateway.', requestId, false)
+  }
 
   const features = await getOrgFeatures(session.organizationId)
-  if (!features.ai_assistant) return fail(403, `The ${PRODUCT_BRAND.assistant.name} is turned off for your company.`)
+  if (!features.ai_assistant) return fail(403, 'feature_off', `The ${PRODUCT_BRAND.assistant.name} is turned off for your company.`, requestId, false)
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => null))
-  if (!parsed.success) return fail(400, 'That message could not be sent. Shorten it and try again.')
+  if (!parsed.success) return fail(400, 'invalid_request', 'That message could not be sent. Shorten it and try again.', requestId, false)
   const { projectId, messages } = parsed.data
   const pageModule = parsed.data.module ?? null
 
@@ -147,12 +200,12 @@ export async function POST(request: Request) {
     user_last_hour: number
     org_last_day: number
   }>()
-  if (!usage) return fail(403, 'You do not have access to the assistant.')
+  if (!usage) return fail(403, 'no_access', 'You do not have access to the assistant.', requestId, false)
   if (usage.user_last_hour >= ASSISTANT_LIMITS.perUserPerHour) {
-    return fail(429, 'You have reached the hourly assistant limit. Try again a little later.')
+    return fail(429, 'rate_limited', 'You have reached the hourly assistant limit. Try again a little later.', requestId, false)
   }
   if (usage.org_last_day >= ASSISTANT_LIMITS.perOrgPerDay) {
-    return fail(429, 'Your company has reached today’s assistant limit. It resets within 24 hours.')
+    return fail(429, 'rate_limited', 'Your company has reached today’s assistant limit. It resets within 24 hours.', requestId, false)
   }
 
   let context: AssistantContext | null
@@ -165,10 +218,10 @@ export async function POST(request: Request) {
       question: contextQuestion(messages),
     })
   } catch (error) {
-    console.error('[assistant] context load failed', { requestId, error: error instanceof Error ? `${error.name}: ${error.message}` : String(error) })
-    return fail(503, 'Project records could not be loaded right now, so the assistant cannot answer reliably. Please try again.', requestId)
+    console.error('[assistant] context load failed', { requestId, stage: 'data', error: error instanceof Error ? `${error.name}: ${error.message}` : String(error) })
+    return fail(503, 'data_unavailable', 'Project records could not be loaded right now, so the assistant cannot answer reliably. Please try again.', requestId, true)
   }
-  if (!context) return fail(404, 'That project is not available to you.')
+  if (!context) return fail(404, 'project_unavailable', 'That project is not available to you.', requestId, false)
 
   const attempt = { organization_id: session.organizationId, user_id: session.userId, project_id: projectId }
   let tracked = true
@@ -195,8 +248,8 @@ export async function POST(request: Request) {
     if (error) console.warn('[assistant] outcome record failed', { requestId, code: error.code })
   }
   if (logError) {
-    console.error('[assistant] usage log insert failed', { requestId, code: logError.code })
-    return fail(403, 'The assistant is not available for your account.', requestId)
+    console.error('[assistant] usage log insert failed', { requestId, stage: 'usage_log', code: logError.code })
+    return fail(403, 'no_access', 'The assistant is not available for your account.', requestId, false)
   }
 
   const builderData = JSON.stringify(context.data).replaceAll('</builder_data>', '')
@@ -411,12 +464,13 @@ export async function POST(request: Request) {
       stopWhen: isStepCount(MAX_STEPS),
       maxOutputTokens: ASSISTANT_LIMITS.maxOutputTokens,
       timeout: ASSISTANT_LIMITS.timeoutMs,
+      abortSignal: request.signal,
     })
     const { text, links } = extractLinks(result.text, allowedLinks)
     if (!text) {
-      console.error('[assistant] empty answer', { requestId, finishReason: result.finishReason, steps: result.steps.length })
+      console.error('[assistant] empty answer', { requestId, stage: 'generation', finishReason: result.finishReason, steps: result.steps.length })
       await complete('failure', 'empty_answer', result.totalUsage)
-      return fail(502, 'The assistant returned an empty answer. Try again or rephrase your question.', requestId)
+      return fail(502, 'empty_answer', 'The assistant returned an empty answer. Try again or rephrase your question.', requestId, true)
     }
     const finalHealth = health as { project: string; indicator: HealthLevel } | null
     const finalDraft = estimateDraft as DraftProposal | null
@@ -430,11 +484,24 @@ export async function POST(request: Request) {
       ...(finalHealth ? { health: { ...finalHealth, label: HEALTH_LABELS[finalHealth.indicator] } } : {}),
     })
   } catch (error) {
+    const durationMs = Date.now() - startedAt
+    if (request.signal.aborted) {
+      console.warn('[assistant] request abandoned by client', { requestId, stage: 'generation', durationMs })
+      await complete('failure', 'internal')
+      return fail(499 as number, 'ai_unavailable', 'The request was cancelled.', requestId, true)
+    }
     const details = describeGenerationError(error)
-    console.error('[assistant] generation failed', { requestId, model: provider.model, turns: messages.length, ...details })
+    const outcome = classifyGenerationError(details)
+    console.error('[assistant] generation failed', {
+      requestId,
+      stage: 'generation',
+      category: outcome.code,
+      model: provider.model,
+      turns: messages.length,
+      durationMs,
+      ...details,
+    })
     await complete(details.timedOut ? 'timeout' : 'failure', details.timedOut ? 'timeout' : 'provider_error')
-    return details.timedOut
-      ? fail(504, 'The assistant took too long to answer. Your conversation is saved, so you can retry.', requestId)
-      : fail(502, 'The AI service could not answer right now. Your conversation is saved, so you can retry.', requestId)
+    return fail(outcome.status, outcome.code, outcome.message, requestId, outcome.retryable)
   }
 }
