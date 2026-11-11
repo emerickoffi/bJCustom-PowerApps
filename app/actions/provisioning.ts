@@ -12,14 +12,6 @@ export type ProvisionState = ActionState & {
   credential?: { email: string; password: string; expiresAt: string }
 }
 
-const staffRoles = ['org_admin', 'project_manager', 'builder_staff'] as const
-
-const staffAccountSchema = z.object({
-  full_name: z.string().trim().min(2, 'Enter the staff member’s name').max(120),
-  email: z.email('Enter a valid email address').trim().toLowerCase().max(254),
-  role: z.enum(staffRoles, 'Select a role'),
-})
-
 type Admin = ReturnType<typeof createAdminClient>
 
 function escapeLike(value: string) {
@@ -63,83 +55,6 @@ async function validProjectIds(session: StaffSession, ids: string[]) {
   return (data ?? []).map((p) => p.id as string)
 }
 
-export async function createStaffAccountAction(_prev: ProvisionState, formData: FormData): Promise<ProvisionState> {
-  const session = await requireAdmin()
-  const values = formValues(formData)
-  const parsed = staffAccountSchema.safeParse(values)
-  if (!parsed.success) return { ...fromZodError(parsed.error), values }
-  const { full_name, email, role } = parsed.data
-  const projectIds = await validProjectIds(session, formData.getAll('project_ids').map(String))
-
-  const admin = createAdminClient()
-  const existingId = await findUserIdByEmail(admin, email)
-
-  if (existingId) {
-    const { data: memberships } = await admin
-      .from('organization_memberships')
-      .select('organization_id')
-      .eq('user_id', existingId)
-    if (memberships?.some((m) => m.organization_id === session.organizationId)) {
-      return { error: 'This person is already a member of your organization.', values }
-    }
-    if (memberships?.length) {
-      return { error: 'This email belongs to an account in another organization and cannot be added here.', values }
-    }
-  }
-
-  let userId = existingId
-  let credential: ProvisionState['credential']
-  if (!userId) {
-    const created = await createAuthUser(admin, email, full_name)
-    if ('error' in created) return { error: created.error, values }
-    userId = created.userId
-    credential = { email, password: created.password, expiresAt: created.expiresAt }
-  }
-
-  const { data: membership, error: membershipError } = await admin
-    .from('organization_memberships')
-    .insert({
-      organization_id: session.organizationId,
-      user_id: userId,
-      role,
-      status: 'active',
-      invited_by: session.userId,
-      activation_required: Boolean(credential),
-    })
-    .select('id')
-    .single()
-
-  if (membershipError || !membership) {
-    if (credential) await admin.auth.admin.deleteUser(userId)
-    return { error: 'The account could not be added to your organization. Nothing was saved; please try again.', values }
-  }
-
-  if (projectIds.length) {
-    const supabase = await createClient()
-    const { error } = await supabase.from('project_members').insert(
-      projectIds.map((project_id) => ({
-        organization_id: session.organizationId,
-        project_id,
-        user_id: userId,
-        created_by: session.userId,
-      })),
-    )
-    if (error) {
-      await admin.from('organization_memberships').delete().eq('id', membership.id)
-      if (credential) await admin.auth.admin.deleteUser(userId)
-      return { error: `Project assignment failed, so the account was not created. ${friendlyDbError(error)}`, values }
-    }
-  }
-
-  revalidatePath('/team')
-  return {
-    success: credential
-      ? `Account created for ${full_name}. Share the temporary password below in person or by phone. It is shown only once.`
-      : `${full_name} already had an account and now has access to your organization with their existing password.`,
-    credential,
-  }
-}
-
 async function reissueCredential(admin: Admin, userId: string, email: string): Promise<ProvisionState> {
   const password = generateTemporaryPassword()
   const expiresAt = temporaryCredentialExpiry()
@@ -152,29 +67,6 @@ async function reissueCredential(admin: Admin, userId: string, email: string): P
     success: 'New temporary password issued. The previous one no longer works. It is shown only once.',
     credential: { email, password, expiresAt },
   }
-}
-
-/** Only for accounts that have not activated yet; activated users reset their own password. */
-export async function reissueTemporaryPasswordAction(_prev: ProvisionState, formData: FormData): Promise<ProvisionState> {
-  const session = await requireAdmin()
-  const membershipId = String(formData.get('membership_id') ?? '')
-  if (!z.uuid().safeParse(membershipId).success) return { error: 'Invalid account.' }
-
-  const admin = createAdminClient()
-  const { data: m } = await admin
-    .from('organization_memberships')
-    .select('user_id, activation_required')
-    .eq('id', membershipId)
-    .eq('organization_id', session.organizationId)
-    .maybeSingle()
-  if (!m) return { error: 'Account not found.' }
-  if (!m.activation_required) return { error: 'This account is already activated. They can reset their own password.' }
-  if (m.user_id === session.userId) return { error: 'You cannot reissue your own credentials.' }
-
-  const { data: profile } = await admin.from('profiles').select('email').eq('id', m.user_id).maybeSingle()
-  const result = await reissueCredential(admin, m.user_id, profile?.email ?? '')
-  revalidatePath('/team')
-  return result
 }
 
 const portalAccountSchema = z.object({

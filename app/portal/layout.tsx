@@ -11,7 +11,7 @@ import { ROLE_LABELS } from '@/lib/domain'
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
   if (!session) redirect('/auth/login')
-  if (!session.role) redirect('/onboarding')
+  if (!session.role) redirect('/no-access')
   if (session.activationRequired) redirect('/account/activate')
   if (session.role !== 'client') redirect('/dashboard')
   const { brand } = session

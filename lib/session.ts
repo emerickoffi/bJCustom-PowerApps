@@ -56,11 +56,7 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  let memberships = await loadMemberships(supabase, user.id)
-  if (!memberships.length) {
-    const { data: accepted } = await supabase.rpc('accept_pending_invitations')
-    if (accepted) memberships = await loadMemberships(supabase, user.id)
-  }
+  const memberships = await loadMemberships(supabase, user.id)
 
   const selectedOrg = (await cookies()).get(WORKSPACE_COOKIE)?.value
   const membership = memberships.find((m) => m.organization_id === selectedOrg) ?? memberships[0] ?? null
@@ -98,7 +94,7 @@ export type StaffSession = SessionContext & { role: Exclude<OrgRole, 'client'>; 
 export async function requireStaff(): Promise<StaffSession> {
   const session = await getSession()
   if (!session) redirect('/auth/login')
-  if (!session.organizationId || !session.role) redirect('/onboarding')
+  if (!session.organizationId || !session.role) redirect('/no-access')
   if (session.activationRequired) redirect('/account/activate')
   if (session.role === 'client') redirect('/portal')
   return session as StaffSession

@@ -15,6 +15,6 @@ export async function GET(request: NextRequest) {
     if (sub) return to(sub.activationRequired ? '/sub/activate' : '/sub')
   }
   if (!session) return to('/auth/login')
-  if (!session.organizationId) return to('/onboarding')
+  if (!session.organizationId) return to('/no-access')
   return to(landingPathForRole(session.role))
 }

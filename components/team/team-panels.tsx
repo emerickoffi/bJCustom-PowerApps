@@ -3,13 +3,12 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { ChevronDown as ChevronDownIcon, UserCheck as UserCheckIcon, UserCog as UserCogIcon, UserX as UserXIcon } from 'lucide-react'
-import { inviteStaffAction, revokeInvitationAction, updateMemberAction, updateMemberFormAction } from '@/app/actions/team'
+import { updateMemberAction, updateMemberFormAction } from '@/app/actions/team'
 import { ROLE_LABELS, STAFF_ROLES, type OrgRole } from '@/lib/domain'
-import { formatDate, initials } from '@/lib/format'
+import { initials } from '@/lib/format'
 import { initialActionState } from '@/lib/action-state'
 import { SemanticBadge, type SemanticTone } from '@/components/shared/semantic-badge'
-import { ActionButton, InlineActionForm } from '@/components/shared/inline-action'
-import { NativeSelect, SelectField, TextField } from '@/components/shared/form-field'
+import { NativeSelect } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,14 +35,6 @@ export type MemberRow = {
   name: string | null
   email: string | null
   isSelf: boolean
-}
-
-export type InvitationRow = {
-  id: string
-  email: string
-  role: OrgRole
-  created_at: string
-  expires_at: string
 }
 
 const roleOptions = STAFF_ROLES.map((value) => ({ value, label: ROLE_LABELS[value] }))
@@ -254,65 +245,5 @@ function AccessForm({ member, onDone }: { member: MemberRow; onDone: () => void 
         </Button>
       </DialogFooter>
     </div>
-  )
-}
-
-export function InvitationList({ invitations }: { invitations: InvitationRow[] }) {
-  if (!invitations.length) return null
-  return (
-    <section aria-labelledby="invites-heading" className="flex flex-col gap-4">
-      <h2 id="invites-heading" className="font-serif text-lg font-semibold text-foreground">
-        Pending invitations
-      </h2>
-      <ul className="divide-y overflow-hidden rounded-xl border bg-card">
-        {invitations.map((inv) => (
-          <li key={inv.id} className="flex items-center justify-between gap-4 p-5">
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate font-medium text-foreground">{inv.email}</span>
-              <span className="text-sm text-muted-foreground">
-                {`${ROLE_LABELS[inv.role]} · expires ${formatDate(inv.expires_at)}`}
-              </span>
-            </div>
-            <ActionButton
-              label="Revoke"
-              confirmMessage="Revoke this invitation?"
-              action={() => revokeInvitationAction(inv.id)}
-            />
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
-export function InviteStaffForm() {
-  return (
-    <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-serif text-lg font-semibold text-foreground">Invite staff</h2>
-        <p className="text-sm text-muted-foreground">
-          They join automatically after signing up and confirming this email address.
-        </p>
-      </div>
-      <InlineActionForm action={inviteStaffAction} className="flex flex-col gap-4">
-        <TextField name="email" label="Email" type="email" required autoComplete="off" />
-        <SelectField name="role" label="Role" defaultValue="builder_staff" options={roleOptions} />
-        <dl className="flex flex-col gap-2 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-          <div>
-            <dt className="inline font-medium text-foreground">Administrator: </dt>
-            <dd className="inline">Full access, including team and company settings.</dd>
-          </div>
-          <div>
-            <dt className="inline font-medium text-foreground">Project manager: </dt>
-            <dd className="inline">Manages all clients and projects.</dd>
-          </div>
-          <div>
-            <dt className="inline font-medium text-foreground">Builder staff: </dt>
-            <dd className="inline">Sees only projects they are assigned to.</dd>
-          </div>
-        </dl>
-        <SubmitButton pendingLabel="Sending...">Send invitation</SubmitButton>
-      </InlineActionForm>
-    </section>
   )
 }
