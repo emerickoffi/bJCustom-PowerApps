@@ -42,12 +42,18 @@ export type AssignmentProps = {
 
 type StaffOption = { value: string; label: string }
 
+// Fixed header with a single scrolling body, so the title and Close stay visible and nothing competes for scroll.
+const DRAWER_SHELL = 'w-full max-h-dvh gap-0 data-[side=right]:sm:max-w-xl'
+const DRAWER_HEADER = 'shrink-0 border-b pr-12 pt-[max(1rem,env(safe-area-inset-top))]'
+const DRAWER_BODY =
+  'scrollbar-hidden min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain scroll-py-6 px-4 pt-4 pb-[max(2rem,env(safe-area-inset-bottom))]'
+
 type SavedNotice = (message: string) => void
 
 function MarkCompleteButton({ onMarkComplete }: { onMarkComplete: (formData: FormData) => void }) {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" variant="outline" size="lg" disabled={pending} formAction={onMarkComplete} className="w-full">
+    <Button type="submit" variant="outline" size="lg" disabled={pending} formAction={onMarkComplete} className="min-w-0 shrink grow basis-48">
       <CheckCircle2 data-icon="inline-start" />
       {pending ? 'Saving...' : 'Mark Complete'}
     </Button>
@@ -100,8 +106,8 @@ function ProgressForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
+        <div className="flex min-w-0 flex-col gap-2">
           <label htmlFor="status" className="text-sm font-medium text-foreground">
             Status
           </label>
@@ -190,9 +196,9 @@ function ProgressForm({
         hint="Staff only. Never shown to the homeowner."
       />
       <FormMessage state={state.success ? initialActionState : state} />
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-wrap gap-2">
         {!isComplete && <MarkCompleteButton onMarkComplete={markComplete} />}
-        <SubmitButton pendingLabel="Saving..." className="w-full sm:flex-1">
+        <SubmitButton pendingLabel="Saving..." className="min-w-0 shrink grow basis-48">
           Save Progress
         </SubmitButton>
       </div>
@@ -237,7 +243,7 @@ function PlanFields({
           error={errors.phase_id}
         />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
         <SelectField
           name="activity_type"
           label="Type"
@@ -355,8 +361,8 @@ function DependencyEditor({
           <label htmlFor="predecessor_id" className="text-sm font-medium text-foreground">
             Must start after
           </label>
-          <div className="flex gap-2">
-            <NativeSelect id="predecessor_id" name="predecessor_id" defaultValue="" required>
+          <div className="flex flex-wrap gap-2">
+            <NativeSelect id="predecessor_id" name="predecessor_id" defaultValue="" required className="grow basis-48">
               <option value="" disabled>
                 Choose an activity
               </option>
@@ -410,14 +416,14 @@ export function ActivityEditor({
     notice && activity && notice.activityId === activity.id && notice.section === section ? notice.message : null
   return (
     <Sheet open={!!activity} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full overflow-y-auto data-[side=right]:sm:max-w-xl">
+      <SheetContent side="right" className={DRAWER_SHELL}>
         {activity && (
           <>
-            <SheetHeader className="border-b">
-              <SheetTitle className="font-serif text-xl">{activity.name}</SheetTitle>
-              <SheetDescription>{`${activity.phase} · ${ACTIVITY_TYPE_LABELS[activity.activity_type]}`}</SheetDescription>
+            <SheetHeader className={DRAWER_HEADER}>
+              <SheetTitle className="font-serif text-xl break-words">{activity.name}</SheetTitle>
+              <SheetDescription className="break-words">{`${activity.phase} · ${ACTIVITY_TYPE_LABELS[activity.activity_type]}`}</SheetDescription>
             </SheetHeader>
-            <div className="flex flex-col gap-8 px-4 pb-8">
+            <div className={`${DRAWER_BODY} flex flex-col gap-8`}>
               {relatedIssues.length > 0 && (
                 <section className="flex flex-col gap-3">
                   <SectionTitle>Related issues</SectionTitle>
@@ -425,7 +431,7 @@ export function ActivityEditor({
                     {relatedIssues.map((i) => (
                       <li key={i.id}>
                         <Link href={`/projects/${projectId}/issues/${i.id}`} className="flex flex-col gap-0.5 rounded-panel border p-3 text-sm hover:bg-muted/40">
-                          <span className="font-medium text-foreground">{i.label}</span>
+                          <span className="font-medium break-words text-foreground">{i.label}</span>
                           <span className="text-xs text-muted-foreground">{i.category}</span>
                         </Link>
                       </li>
@@ -476,8 +482,8 @@ export function ActivityEditor({
                     <SectionTitle>Dependencies</SectionTitle>
                     <DependencyEditor projectId={projectId} activity={activity} activities={activities} dependencies={dependencies} />
                   </section>
-                  <section className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 p-3">
-                    <p className="text-sm text-muted-foreground">Removing an activity also removes its dependencies. History is kept.</p>
+                  <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 p-3">
+                    <p className="min-w-0 grow basis-56 text-sm text-muted-foreground">Removing an activity also removes its dependencies. History is kept.</p>
                     <ActionButton
                       action={async () => {
                         const res = await deleteActivityAction(projectId, activity.id)
@@ -521,14 +527,14 @@ export function NewActivitySheet({
   const phaseName = phases.find((p) => p.id === initialPhaseId)?.name
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full overflow-y-auto data-[side=right]:sm:max-w-xl">
-        <SheetHeader className="border-b">
+      <SheetContent side="right" className={DRAWER_SHELL}>
+        <SheetHeader className={DRAWER_HEADER}>
           <SheetTitle className="font-serif text-xl">New activity</SheetTitle>
           <SheetDescription>
             {phaseName ? `Adding to ${phaseName}. You can pick a different phase below.` : 'Add a task, milestone, inspection, or meeting to this schedule.'}
           </SheetDescription>
         </SheetHeader>
-        <form key={initialPhaseId ?? 'global'} action={formAction} className="flex flex-col gap-4 px-4 pb-8">
+        <form key={initialPhaseId ?? 'global'} action={formAction} className={`${DRAWER_BODY} flex flex-col gap-4`}>
           <PlanFields
             projectId={projectId}
             phases={phases}
@@ -537,12 +543,12 @@ export function NewActivitySheet({
             errors={state.fieldErrors ?? {}}
           />
           <FormMessage state={state} />
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={onClose} className="min-w-0 shrink grow basis-40">
               <X data-icon="inline-start" />
               Cancel
             </Button>
-            <SubmitButton pendingLabel="Adding..." className="flex-1">
+            <SubmitButton pendingLabel="Adding..." className="min-w-0 shrink grow basis-40">
               Add activity
             </SubmitButton>
           </div>

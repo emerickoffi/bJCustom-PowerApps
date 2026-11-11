@@ -303,6 +303,20 @@
   box-shadow: var(--shadow-lift);
 }
 
+/* Visually hides the scrollbar while keeping wheel, touch, and keyboard scrolling. Forced-colors users keep the native bar. */
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  @media (forced-colors: active) {
+    scrollbar-width: auto;
+    &::-webkit-scrollbar {
+      display: block;
+    }
+  }
+}
+
 @utility surface {
   background-color: var(--card);
   border: 1px solid var(--surface-border, var(--border));

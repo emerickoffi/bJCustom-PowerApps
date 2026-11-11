@@ -142,11 +142,11 @@ function AssignmentRow({
           className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3"
         >
           <CompanyFields companies={companies} defaultScope={assignment.scope_of_work} />
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={close} className="flex-1">
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={close} className="min-w-0 shrink grow basis-36">
               Cancel
             </Button>
-            <SubmitButton size="default" pendingLabel="Saving..." className="flex-1">
+            <SubmitButton size="default" pendingLabel="Saving..." className="min-w-0 shrink grow basis-36">
               Save reassignment
             </SubmitButton>
           </div>
@@ -160,11 +160,11 @@ function AssignmentRow({
           className="flex flex-col gap-3 rounded-lg bg-destructive/5 p-3"
         >
           <TextAreaField name="revoke_reason" label="Reason (optional)" rows={2} maxLength={500} />
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={close} className="flex-1">
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={close} className="min-w-0 shrink grow basis-36">
               Cancel
             </Button>
-            <SubmitButton size="default" variant="destructive" pendingLabel="Revoking..." className="flex-1">
+            <SubmitButton size="default" variant="destructive" pendingLabel="Revoking..." className="min-w-0 shrink grow basis-36">
               Revoke assignment
             </SubmitButton>
           </div>
