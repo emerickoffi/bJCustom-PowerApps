@@ -17,8 +17,8 @@ test('null or malformed stored settings resolve to the built-in defaults', () =>
 test('attention condition falls back to always for items without a reliable rule', () => {
   const v = parseVisibility({ coming_up: { enabled: true, showWhen: 'attention' } })
   assert.equal(v.coming_up.showWhen, 'always')
-  const w = parseVisibility({ warranty: { enabled: false, showWhen: 'attention' } })
-  assert.deepEqual(w.warranty, { enabled: false, showWhen: 'attention' })
+  const w = parseVisibility({ my_todos: { enabled: false, showWhen: 'attention' } })
+  assert.deepEqual(w.my_todos, { enabled: false, showWhen: 'attention' })
 })
 
 test('disabled items are hidden; conditions never hide on unknown data', () => {

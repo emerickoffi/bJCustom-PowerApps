@@ -14,7 +14,7 @@ function chunk<T>(items: T[], size: number): T[][] {
   return out
 }
 import { RecentActivity } from '@/components/dashboard/recent-activity'
-import { WarrantyRail } from '@/components/dashboard/warranty-rail'
+import { MyTodos } from '@/components/dashboard/my-todos'
 import { isActionCategory } from '@/lib/action-items'
 import { getActionItems } from '@/lib/attention-data'
 import {
@@ -37,6 +37,8 @@ import { loadAgenda, loadProjectHealth, loadWarrantyOverview } from '@/lib/dashb
 import { ACTIVE_PROJECT_STATUSES, type ProjectStatus } from '@/lib/domain'
 import type { getOrgFeatures } from '@/lib/features'
 import { getFinancialMetrics } from '@/lib/financial-metrics-data'
+import { taskUrgency } from '@/lib/tasks'
+import { loadMyTasks } from '@/lib/tasks-data'
 import { loadPortfolioSignals } from '@/lib/portfolio-data'
 import type { PortfolioRow } from '@/lib/portfolio'
 import { PRIORITY_JOBS_LIMIT, rankPriorityJobs, summarizeJob } from '@/lib/priority-jobs'
@@ -110,8 +112,21 @@ export async function OwnerDashboard({
   // Awaited below; this only keeps an early rejection from being reported as unhandled meanwhile.
   healthPromise.catch(() => undefined)
 
-  const [projectsRes, activityRes, signals, agendaData, warranty, allAttention, visibilitySettings, weatherChoice, workScope] =
-    await Promise.all([
+  const agendaPromise = loadAgenda(orgId, features.schedule, COMING_UP_DAYS)
+  const tasksPromise = agendaPromise.then((a) => loadMyTasks(orgId, session.userId, a.today))
+
+  const [
+    projectsRes,
+    activityRes,
+    signals,
+    agendaData,
+    warranty,
+    allAttention,
+    visibilitySettings,
+    weatherChoice,
+    workScope,
+    myTasks,
+  ] = await Promise.all([
       projectsPromise,
       supabase
         .from('client_activity')
@@ -123,12 +138,13 @@ export async function OwnerDashboard({
         .order('created_at', { ascending: false })
         .limit(8),
       loadPortfolioSignals(orgId, session.userId, features.schedule),
-      loadAgenda(orgId, features.schedule, COMING_UP_DAYS),
+      agendaPromise,
       loadWarrantyOverview(orgId, features.warranty),
       getActionItems(orgId, session.userId, { manager: true, features }),
       getDashboardVisibility(orgId),
       readWeatherChoice(session.userId, orgId),
       readWorkScope(session.userId),
+      tasksPromise,
     ])
 
   /** My work keeps only items explicitly assigned to the signed-in user; the header count follows the same scope. */
@@ -139,6 +155,10 @@ export async function OwnerDashboard({
     : allAttention
 
   const rows = (projectsRes.data ?? []) as ProjectRow[]
+  const dueTodayCount =
+    myTasks.state === 'available'
+      ? myTasks.open.filter((t) => taskUrgency(t.dueDate, agendaData.today) === 'today').length
+      : 0
   const counts = rows.reduce<Partial<Record<ProjectStatus, number>>>((acc, r) => {
     const s = r.status as ProjectStatus
     acc[s] = (acc[s] ?? 0) + 1
@@ -345,15 +365,9 @@ export async function OwnerDashboard({
       attention: projectsRes.error ? null : jobs.some((j) => j.health === 'at_risk' || j.health === 'needs_attention'),
     },
     coming_up: { records: comingUp.length > 0, attention: null },
-    warranty: {
-      records:
-        warranty.state === 'available' ? warranty.value.rows.length > 0 : warranty.state === 'disabled' ? false : null,
-      attention:
-        warranty.state === 'available'
-          ? warranty.value.rows.some((w) => w.openClaims > 0)
-          : warranty.state === 'disabled'
-            ? false
-            : null,
+    my_todos: {
+      records: myTasks.state === 'available' ? myTasks.openCount > 0 : null,
+      attention: myTasks.state === 'available' ? myTasks.overdueCount > 0 || dueTodayCount > 0 : null,
     },
     recent_activity: {
       records: activityRes.error ? null : (activityRes.data?.length ?? 0) + attention.updates.length > 0,
@@ -403,7 +417,16 @@ export async function OwnerDashboard({
         headerAction={show.attention ? undefined : <WorkScopeControl scope={workScope} />}
       />
     ),
-    warranty: <WarrantyRail overview={warranty} />,
+    my_todos: (
+      <MyTodos
+        open={myTasks.state === 'available' ? myTasks.open : []}
+        openCount={myTasks.state === 'available' ? myTasks.openCount : 0}
+        completed={myTasks.state === 'available' ? myTasks.completed : []}
+        projects={rows.map((r) => ({ id: r.id, name: r.name }))}
+        today={agendaData.today}
+        unavailable={myTasks.state === 'unavailable'}
+      />
+    ),
     recent_activity: (
       <RecentActivity
         items={activityItems as unknown as Parameters<typeof RecentActivity>[0]['items']}

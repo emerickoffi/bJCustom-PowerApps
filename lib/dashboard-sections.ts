@@ -9,6 +9,7 @@ export const DASHBOARD_SECTIONS = [
   { id: 'attention', label: 'Action Center', row: 'main' },
   { id: 'priority_jobs', label: 'Priority Jobs', row: 'main', replaces: 'project_portfolio' },
   { id: 'coming_up', label: 'Coming Up', row: 'rail', replaces: 'agenda' },
+  { id: 'my_todos', label: 'My To-dos', row: 'rail' },
   { id: 'warranty', label: 'Warranty', row: 'rail' },
   { id: 'recent_activity', label: 'Recent Activity', row: 'rail' },
   { id: 'pipeline', label: 'Construction Pipeline', row: 'bottom' },

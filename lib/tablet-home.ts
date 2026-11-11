@@ -50,9 +50,9 @@ export function buildTabletShortcuts(input: {
  * The tablet Home has no editor of its own: it reads the same saved desktop layout and visibility that the
  * Standard dashboard uses, and never writes to them.
  *
- * - Today:     weather (inside the greeting), attention, coming_up (shown as "My day").
+ * - Today:     weather (inside the greeting), attention, my_todos, coming_up (shown as "My day").
  * - Job focus: priority_jobs.
- * - Overview:  key-figure cards (kpis), then pipeline, warranty, recent_activity.
+ * - Overview:  key-figure cards (kpis), then pipeline, recent_activity.
  *
  * Within a tab, sections keep their relative saved order, read across the desktop areas top to bottom
  * (above, main, side, below). Hidden or unavailable sections are dropped, so they never leave blank slots.
@@ -74,10 +74,10 @@ export function parseTabletTab(value: string | null | undefined): TabletTab {
 
 const TAB_FOR_SECTION: Partial<Record<VisibilityItemId, TabletTab>> = {
   attention: 'today',
+  my_todos: 'today',
   coming_up: 'today',
   priority_jobs: 'jobs',
   pipeline: 'overview',
-  warranty: 'overview',
   recent_activity: 'overview',
 }
 
