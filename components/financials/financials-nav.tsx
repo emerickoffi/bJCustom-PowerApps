@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
-export type FinancialsView = 'summary' | 'budget' | 'invoices'
+export type FinancialsView = 'summary' | 'budget' | 'bills' | 'invoices'
 
 export function parseFinancialsView(value: string | string[] | undefined, invoicesEnabled: boolean): FinancialsView {
   if (value === 'budget') return 'budget'
+  if (value === 'bills') return 'bills'
   if (value === 'invoices' && invoicesEnabled) return 'invoices'
   return 'summary'
 }
@@ -14,6 +15,7 @@ export function FinancialsNav({ projectId, current, invoicesEnabled }: { project
   const items: { view: FinancialsView; label: string; href: string }[] = [
     { view: 'summary', label: 'Summary', href: base },
     { view: 'budget', label: 'Budget & costs', href: `${base}?view=budget` },
+    { view: 'bills', label: 'Vendor bills', href: `${base}?view=bills` },
     ...(invoicesEnabled ? [{ view: 'invoices' as const, label: 'Invoices & payments', href: `${base}?view=invoices` }] : []),
   ]
   return (
