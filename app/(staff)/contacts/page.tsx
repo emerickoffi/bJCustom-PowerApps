@@ -55,7 +55,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
   const formOpen = params.new === 'contact' || params.new === 'company' || Boolean(person) || Boolean(company)
 
   return (
-    <PageContainer className="gap-5 md:gap-6">
+    <PageContainer className="gap-4">
       <PageHeader
         icon={BookUser}
         title="Contacts"

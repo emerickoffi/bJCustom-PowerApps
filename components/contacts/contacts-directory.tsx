@@ -435,8 +435,8 @@ export function ContactsDirectory({
   const directoryEmpty = allRows.length === 0
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex min-w-0 flex-col gap-3">
+    <div className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
         <div role="tablist" aria-label="Directory view" className="inline-flex w-fit shrink-0 rounded-lg border border-border bg-card p-1 shadow-xs">
           {DIRECTORY_VIEWS.map((v) => (
             <button
@@ -454,11 +454,8 @@ export function ContactsDirectory({
             </button>
           ))}
         </div>
-        <div
-          role="group"
-          aria-label="Filter by category"
-          className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
-        >
+        <span aria-hidden="true" className="hidden h-6 w-px shrink-0 bg-border sm:block" />
+        <div role="group" aria-label="Filter by category" className="flex min-w-0 flex-wrap items-center gap-1.5">
           <CategoryChip active={!category} onClick={() => changeCategory(null)} label="All" count={counts.total} />
           {CATEGORY_KEYS.map((k) => (
             <CategoryChip key={k} active={category === k} onClick={() => changeCategory(category === k ? null : k)} label={CATEGORY_LABELS[k]} count={counts.byCat[k]} />
@@ -466,11 +463,13 @@ export function ContactsDirectory({
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
-        <div className="relative w-full min-w-0 md:max-w-md">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="relative w-full min-w-0 sm:w-auto sm:min-w-56 sm:flex-[0_1_26rem]">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <label htmlFor="contacts-search" className="sr-only">
-            {view === 'people' ? 'Search contacts' : 'Search companies'}
+            {view === 'people'
+              ? 'Search contacts by name, company, email, phone, or trade'
+              : 'Search companies by name, contact, email, phone, or product'}
           </label>
           <Input
             id="contacts-search"
@@ -480,11 +479,11 @@ export function ContactsDirectory({
               setQuery(e.target.value)
               setPage(1)
             }}
-            placeholder={view === 'people' ? 'Search names, companies, emails, phones, trades' : 'Search companies, contacts, emails, phones, products'}
+            placeholder={view === 'people' ? 'Search names, companies, emails, trades' : 'Search companies, contacts, products'}
             className="h-10 bg-card pl-9"
           />
         </div>
-        <div className="flex min-w-0 shrink-0 items-center gap-2">
+        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:shrink-0">
           <label htmlFor="contacts-sort" className="sr-only md:hidden">
             Sort by
           </label>
@@ -563,6 +562,7 @@ export function ContactsDirectory({
         </div>
       </div>
 
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-sm">
       {(filterChips.length > 0 || !filtersAtDefault) && (
         <div role="group" aria-label="Applied filters" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
           {filterChips.map((chip) => (
@@ -594,8 +594,6 @@ export function ContactsDirectory({
           )}
         </div>
       )}
-
-      <div className="flex min-h-9 flex-wrap items-center justify-between gap-2 text-sm">
         <p className="text-muted-foreground" aria-live="polite">
           {filtered.length === 0
             ? directoryEmpty
@@ -604,7 +602,7 @@ export function ContactsDirectory({
             : `Showing ${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length} ${isNarrowed ? 'matching ' : ''}${resultNoun}`}
         </p>
         {selectedRows.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-sage px-3 py-1.5" role="region" aria-label="Bulk actions">
+          <div className="ml-auto flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-sage px-3 py-1.5" role="region" aria-label="Bulk actions">
             <span className="font-medium text-foreground">{selectedRows.length} selected</span>
             <Button size="sm" variant="ghost" onClick={() => exportCsv(selectedRows)}>
               Export selected
