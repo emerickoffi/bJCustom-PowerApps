@@ -10,7 +10,8 @@ import { useLauncherAction } from '@/components/app/floating-actions'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { RequestForm } from '@/components/subcontract-quotes/request-form'
 import { CurrencyNotice } from '@/components/subcontract-quotes/currency-notice'
-import { emptyRequestDraft, type ActivityOption, type CompanyOption, type DocumentOption } from '@/lib/subcontract-quotes-data'
+import { emptyRequestDraft } from '@/lib/subcontract-quotes'
+import type { ActivityOption, CompanyOption, DocumentOption } from '@/lib/subcontract-quotes-data'
 
 type Props = {
   projectId: string

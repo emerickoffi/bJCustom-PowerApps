@@ -2,8 +2,6 @@ import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { loadQualificationSummaries } from '@/lib/subcontractor-qualification-data'
 import { assignmentWarning, qualificationBadge } from '@/lib/subcontractor-qualification'
-import { APP_TIME_ZONE } from '@/lib/format'
-import type { DraftInput } from '@/app/actions/subcontract-quotes'
 
 type Client = Awaited<ReturnType<typeof createClient>>
 
@@ -11,21 +9,7 @@ export type CompanyOption = { id: string; name: string; trade: string; badge: st
 export type DocumentOption = { id: string; name: string; versionNumber: number }
 export type ActivityOption = { id: string; name: string }
 
-export function emptyRequestDraft(): DraftInput {
-  return {
-    title: '',
-    trade: '',
-    scope: '',
-    document_ids: [],
-    company_ids: [],
-    deadline_local: '',
-    deadline_timezone: APP_TIME_ZONE,
-    cost_category: '',
-    schedule_activity_id: '',
-    work_window_start: '',
-    work_window_end: '',
-  }
-}
+export { emptyRequestDraft } from '@/lib/subcontract-quotes'
 
 export async function loadRequestFormOptions(supabase: Client, organizationId: string, projectId: string) {
   const [companies, documents, activities] = await Promise.all([
