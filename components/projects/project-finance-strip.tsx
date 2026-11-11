@@ -49,7 +49,7 @@ export async function ProjectFinanceStrip({
   ])
 
   const estimatesHref = `/projects/${projectId}/estimates`
-  const invoicesHref = financialsHref ? `${financialsHref}#invoices-heading` : '/invoices'
+  const invoicesHref = financialsHref ? `${financialsHref}?view=invoices` : '/invoices'
   const hasBudget = budgetCents !== null
   const figures: Figure[] = [
     {
