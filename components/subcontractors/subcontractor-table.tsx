@@ -13,6 +13,11 @@ import { vettingStatusOf, type QualificationSummary } from '@/lib/subcontractor-
 import { formatDate } from '@/lib/format'
 import type { PerformanceSummary } from '@/lib/subcontractor-performance'
 import { PerformanceCell } from '@/components/subcontractors/performance-stars'
+import { RecordPreviewSurface, RecordPreviewTrigger } from '@/components/shared/record-preview'
+
+/** Columns the open panel squeezes out first; the panel shows the same detail. */
+const HIDE_WITH_PREVIEW = 'xl:group-data-preview-open/preview:@max-[80rem]:hidden'
+const HIDE_WITH_PREVIEW_NARROW = 'xl:group-data-preview-open/preview:@max-[64rem]:hidden'
 
 type Props = {
   rows: SubcontractorCompany[]
@@ -49,12 +54,12 @@ function CompanyCell({ row }: { row: SubcontractorCompany }) {
     <div className="flex min-w-0 items-center gap-3">
       <CompanyAvatar name={row.company_name} status={row.status} />
       <div className="flex min-w-0 flex-col">
-        <Link
-          href={`/subcontractors/${row.id}`}
-          className="truncate font-semibold text-link underline-offset-4 hover:text-link-hover hover:underline focus-visible:underline"
-        >
-          {row.company_name}
-        </Link>
+        <RecordPreviewTrigger
+          recordId={row.id}
+          name={row.company_name}
+          className="max-w-full self-start font-semibold text-link underline-offset-4 hover:text-link-hover hover:underline"
+          labelClassName="block truncate"
+        />
         <span className="truncate text-sm text-muted-foreground">{row.trade}</span>
       </div>
     </div>
@@ -158,7 +163,7 @@ export function SubcontractorTable({
               <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, showPerformance ? "w-[24%] pl-5" : "w-[27%] pl-5")}>
                 Company / Trade
               </TableHead>
-              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, showQualification ? "w-[20%]" : "w-[26%]")}>
+              <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, showQualification ? "w-[20%]" : "w-[26%]", HIDE_WITH_PREVIEW_NARROW)}>
                 Primary Contact
               </TableHead>
               {showQualification && (
@@ -167,12 +172,12 @@ export function SubcontractorTable({
                 </TableHead>
               )}
               {showPerformance && (
-                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[13%]")}>
+                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[13%]", HIDE_WITH_PREVIEW)}>
                   Performance
                 </TableHead>
               )}
               {showProjects && (
-                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[16%]")}>
+                <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, "w-[16%]", HIDE_WITH_PREVIEW)}>
                   Assigned Projects
                 </TableHead>
               )}
@@ -186,11 +191,17 @@ export function SubcontractorTable({
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={row.id} className="hover:bg-[#F4F7F3]">
+              <RecordPreviewSurface
+                key={row.id}
+                as="tr"
+                recordId={row.id}
+                data-slot="table-row"
+                className="scroll-mt-24 scroll-mb-4 border-b border-divider transition-colors hover:bg-[#F4F7F3] data-selected:bg-selected data-selected:shadow-[inset_3px_0_0_0_var(--selected-border)]"
+              >
                 <TableCell className="py-3.5 pl-5">
                   <CompanyCell row={row} />
                 </TableCell>
-                <TableCell className="py-3.5">
+                <TableCell className={cn("py-3.5", HIDE_WITH_PREVIEW_NARROW)}>
                   <ContactLines row={row} />
                 </TableCell>
                 {showQualification && (
@@ -199,12 +210,12 @@ export function SubcontractorTable({
                   </TableCell>
                 )}
                 {showPerformance && (
-                  <TableCell className="py-3.5">
+                  <TableCell className={cn("py-3.5", HIDE_WITH_PREVIEW)}>
                     <PerformanceCell summary={performanceByCompany[row.id]} />
                   </TableCell>
                 )}
                 {showProjects && (
-                  <TableCell className="py-3.5">
+                  <TableCell className={cn("py-3.5", HIDE_WITH_PREVIEW)}>
                     <ProjectsSummary projects={projectsByCompany[row.id]} />
                   </TableCell>
                 )}
@@ -228,7 +239,7 @@ export function SubcontractorTable({
                     />
                   </div>
                 </TableCell>
-              </TableRow>
+              </RecordPreviewSurface>
             ))}
           </TableBody>
         </Table>
@@ -236,7 +247,12 @@ export function SubcontractorTable({
 
       <ul className="flex flex-col divide-y divide-border/70 overflow-hidden rounded-xl border border-border/70 bg-card shadow-xs md:hidden">
         {rows.map((row) => (
-          <li key={row.id} className="flex flex-col gap-3 p-4">
+          <RecordPreviewSurface
+            key={row.id}
+            as="li"
+            recordId={row.id}
+            className="flex scroll-mt-24 flex-col gap-3 p-4 transition-colors data-selected:bg-selected"
+          >
             <div className="flex items-start justify-between gap-2">
               <CompanyCell row={row} />
               <div className="-mr-1.5 -mt-1 shrink-0">
@@ -252,7 +268,7 @@ export function SubcontractorTable({
                 <StatusBadge status={row.status} />
               </span>
             </div>
-          </li>
+          </RecordPreviewSurface>
         ))}
       </ul>
     </>

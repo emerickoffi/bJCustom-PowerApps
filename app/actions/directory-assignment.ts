@@ -172,6 +172,7 @@ export async function bulkAssignFromDirectoryAction(projectId: string, input: un
     revalidatePath(`/projects/${projectId}/contacts`)
     revalidatePath(`/projects/${projectId}`)
     revalidatePath('/contacts')
+    if (results.some((r) => r.kind === 'company' && r.outcome === 'added')) revalidatePath('/subcontractors', 'layout')
   }
 
   const order = new Map(items.map((i, idx) => [itemKey(i.kind, i.id), idx]))

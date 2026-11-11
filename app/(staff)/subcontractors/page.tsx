@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { sanitizeSearch } from '@/lib/format'
 import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 import { SubcontractorTable } from '@/components/subcontractors/subcontractor-table'
+import { SubcontractorPreviewLayout } from '@/components/subcontractors/subcontractor-preview'
 import {
   SUBCONTRACTOR_COLUMNS,
   SUBCONTRACTOR_STATUS_LABELS,
@@ -186,6 +187,9 @@ export default async function SubcontractorsPage({
             }
           />
           {rows.length ? (
+            <SubcontractorPreviewLayout
+              companies={rows.map((r) => ({ id: r.id, name: r.company_name, trade: r.trade, status: r.status }))}
+            >
             <div className="flex flex-col gap-2">
               {(filtered || loadedRows.length === LIMIT) && (
                 <p className="text-sm text-muted-foreground" role="status">
@@ -201,6 +205,7 @@ export default async function SubcontractorsPage({
                 performanceByCompany={performanceReady ? performance.byCompany : null}
               />
             </div>
+            </SubcontractorPreviewLayout>
           ) : null}
           {work.availability !== 'off' && <AssignedWorkCard availability={work.availability} items={work.items} />}
           {rows.length ? null : (
