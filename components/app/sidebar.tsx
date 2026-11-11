@@ -5,34 +5,21 @@ import Link from 'next/link'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AppNav } from '@/components/app/app-nav'
+import { TrefortLogo, TrefortMark } from '@/components/brand/trefort-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { NavGroup, NavItem } from '@/lib/navigation'
 import { SIDEBAR_COOKIE, type SidebarMode } from '@/lib/sidebar'
 
 const DESKTOP_QUERY = '(min-width: 80rem)'
 
-/** "B & J Custom Homes" -> "BJ": a compact mark for the rail, since no square logo asset exists. */
-function monogram(name: string) {
-  const letters = name
-    .split(/\s+/)
-    .map((word) => word.replace(/[^\p{L}\p{N}]/gu, ''))
-    .filter(Boolean)
-    .map((word) => word[0].toUpperCase())
-  return letters.slice(0, 2).join('') || name.slice(0, 1).toUpperCase()
-}
-
 export function Sidebar({
   items,
-  logo,
-  brandName,
   homeLabel,
   homeHref = '/dashboard',
   defaultMode,
   closedGroups,
 }: {
   items: NavItem[]
-  logo: React.ReactNode
-  brandName: string
   homeLabel: string
   homeHref?: string
   defaultMode: SidebarMode
@@ -72,28 +59,19 @@ export function Sidebar({
         <div key={String(collapsed)} className={cn('flex min-h-0 flex-1 flex-col', className)}>
           <div
             className={cn(
-              'flex h-24 shrink-0 items-center border-b border-[#D6DDE5] bg-white',
-              collapsed ? 'justify-center px-2' : 'px-4',
+              'flex h-24 shrink-0 items-center bg-[#00788d]',
+              collapsed ? 'justify-center px-2' : 'px-5',
             )}
           >
             <Link
               href={homeHref}
               aria-label={homeLabel}
               className={cn(
-                'block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-                !collapsed && 'w-48 max-w-full',
+                'block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#00788d]',
+                collapsed ? 'w-9' : 'w-48 max-w-full',
               )}
             >
-              {collapsed ? (
-                <span
-                  className="flex size-11 items-center justify-center rounded-nav bg-(--brand-primary) text-sm font-bold tracking-wide text-white"
-                  aria-hidden="true"
-                >
-                  {monogram(brandName)}
-                </span>
-              ) : (
-                logo
-              )}
+              {collapsed ? <TrefortMark priority /> : <TrefortLogo priority />}
             </Link>
           </div>
           <div className={cn('flex-1 overflow-y-auto overflow-x-hidden py-6', collapsed ? 'px-3' : 'px-4')}>

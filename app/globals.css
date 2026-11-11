@@ -272,6 +272,12 @@
   --sidebar-ring: #ffffff;
 }
 
+/* The stable scrollbar gutter shows the root background; keep it teal behind the login screen. */
+html:has([data-login-shell]),
+html:has([data-login-shell]) body {
+  background-color: #00788d;
+}
+
 /* Generated customer documents keep their original palette so printed output is unchanged. */
 [data-print-document] {
   --background: #f8f7f3;
