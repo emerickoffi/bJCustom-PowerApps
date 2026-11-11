@@ -148,15 +148,14 @@ export function LoginForm({ next = '/' }: { next?: string }) {
           </p>
         )}
 
-        <Button type="submit" size="lg" className="mt-1 h-10 w-full rounded-[6px]" disabled={isLoading}>
+        <Button type="submit" size="lg" className="mt-1 h-10 w-full rounded-[6px] bg-[#ffa500] font-semibold text-[#17212b] hover:bg-[#f29600] active:bg-[#e08a00] disabled:opacity-70"
+          disabled={isLoading}
+        >
           {isLoading ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
 
-      <div className="flex flex-col gap-2 border-t pt-5 text-center text-sm text-muted-foreground">
-        <p>{'Need access? Contact your builder or administrator.'}</p>
-        <p className="text-xs">{'Invited? Open the invitation link in your email to get started.'}</p>
-      </div>
+      <p className="text-center text-sm text-muted-foreground">{'Need access? Contact your administrator.'}</p>
     </div>
   )
 }
