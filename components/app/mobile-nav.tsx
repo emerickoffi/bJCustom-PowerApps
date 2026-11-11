@@ -4,15 +4,14 @@ import { useState } from 'react'
 import { Menu } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { AppNav } from '@/components/app/app-nav'
+import { TrefortLogo } from '@/components/brand/trefort-logo'
 import type { NavGroup, NavItem } from '@/lib/navigation'
 
 export function MobileNav({
   items,
-  logo,
   closedGroups,
 }: {
   items: NavItem[]
-  logo: React.ReactNode
   closedGroups?: NavGroup[]
 }) {
   const [open, setOpen] = useState(false)
@@ -25,9 +24,11 @@ export function MobileNav({
         <Menu className="size-5" aria-hidden="true" />
       </SheetTrigger>
       <SheetContent data-staff-nav side="left" className="flex w-[18rem] flex-col gap-0 border-sidebar-border bg-sidebar p-0">
-        <SheetHeader className="border-b border-[#D6DDE5] bg-white px-7 py-6">
+        <SheetHeader className="bg-[#00788d] px-7 py-6">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <div className="w-44">{logo}</div>
+          <div className="w-44">
+            <TrefortLogo />
+          </div>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto px-4 py-6">
           <AppNav items={items} onNavigate={() => setOpen(false)} closedGroups={closedGroups} />

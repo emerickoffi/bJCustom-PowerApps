@@ -34,6 +34,7 @@ import { useAssistantProject, type AssistantProject } from './assistant-context'
 import { AssistantMarkdown } from './assistant-markdown'
 import { EstimateDraftPreview, isDraftProposal } from './estimate-draft-preview'
 import type { DraftProposal } from '@/lib/ai/estimate-draft'
+import { PRODUCT_BRAND } from '@/lib/product-brand'
 
 type QuickActionKey = 'overview' | 'schedule' | 'update' | 'warranty'
 
@@ -267,9 +268,9 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
           <SheetTitle className="type-section-title text-foreground">
-            B &amp; J AI Assistant
+            {PRODUCT_BRAND.assistant.name}
           </SheetTitle>
-          <SheetDescription className="text-xs">Your construction copilot</SheetDescription>
+          <SheetDescription className="text-xs">{PRODUCT_BRAND.assistant.subtitle}</SheetDescription>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -691,7 +692,7 @@ function Composer({
         )}
       >
         <label htmlFor="assistant-input" className="sr-only">
-          Message B &amp; J AI
+          Message {PRODUCT_BRAND.assistant.name}
         </label>
         <textarea
           id="assistant-input"

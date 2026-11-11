@@ -82,7 +82,7 @@ export function CompanyBrandingSection({
     <FormSection
       icon={PaletteIcon}
       title="Company Branding"
-      description="Your logo and colors appear in the app header, homeowner portal, and documents."
+      description="Your logo and colors appear in the homeowner portal and on documents."
     >
       <div className="flex flex-col gap-4 sm:col-span-2 lg:flex-row">
         <div className="flex flex-1 flex-col gap-3">
@@ -103,7 +103,7 @@ export function CompanyBrandingSection({
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            {usingDefault ? 'Using the default B & J Custom Homes logo.' : 'Using your custom logo.'}
+            {usingDefault ? 'Using the default company logo.' : 'Using your custom logo.'}
           </p>
         </div>
 

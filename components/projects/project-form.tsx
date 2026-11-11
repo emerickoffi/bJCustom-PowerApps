@@ -410,7 +410,7 @@ export function ProjectForm({
                 <legend className="mb-2 text-sm font-medium text-foreground">Schedule</legend>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
-                    { value: 'standard', label: 'Use standard construction schedule', hint: 'Adds the standard B & J activities by phase.' },
+                    { value: 'standard', label: 'Use standard construction schedule', hint: 'Adds the standard construction activities by phase.' },
                     { value: 'later', label: 'Configure later', hint: 'Start with an empty schedule.' },
                   ].map((opt) => (
                     <label
