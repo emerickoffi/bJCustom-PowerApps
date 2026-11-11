@@ -21,9 +21,11 @@ test('distinct workflows and pages without a header button keep their shortcuts'
   assert.deepEqual(pageButtonLauncherIds('/documents', params('tab=company')), [])
   // Assigning stays available beside "Add subcontractor"; only creation is deduplicated.
   assert.ok(!pageButtonLauncherIds('/subcontractors', params()).includes('ctx:assign'))
-  // Clients and contacts only show creation buttons in their empty state.
+  // Clients only show creation buttons in their empty state.
   assert.deepEqual(pageButtonLauncherIds('/clients', params()), [])
-  assert.deepEqual(pageButtonLauncherIds('/contacts', params()), [])
+  // Contacts' header button follows the active tab, so only that tab's creation is deduplicated.
+  assert.deepEqual(pageButtonLauncherIds('/contacts', params()), ['global:contact'])
+  assert.deepEqual(pageButtonLauncherIds('/contacts', params('view=companies')), ['create-company'])
   assert.deepEqual(pageButtonLauncherIds('/schedule', params()), [])
   // Detail and create sub-pages have no list header button.
   assert.deepEqual(pageButtonLauncherIds('/daily-logs/new', params()), [])

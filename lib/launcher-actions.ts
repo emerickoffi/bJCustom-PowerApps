@@ -54,6 +54,8 @@ export function pageButtonLauncherIds(pathname: string, search: { get(key: strin
       return ['global:project']
     case '/subcontractors':
       return ['global:subcontractor']
+    case '/contacts':
+      return search?.get('view') === 'companies' ? ['create-company'] : ['global:contact']
     case '/daily-logs':
       return ['ctx:daily_log']
     case '/documents':

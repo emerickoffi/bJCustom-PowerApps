@@ -73,7 +73,7 @@ export function DirectoryFilters({
     <Popover.Root open={open} onOpenChange={handleOpenChange}>
       <Popover.Trigger render={<Button variant="outline" size="lg" className="bg-card" aria-label={active ? `Filters, ${active} active` : 'Filters'} />}>
         <SlidersHorizontal data-icon="inline-start" />
-        <span>Filters</span>
+        <span className="max-sm:hidden">Filters</span>
         {active > 0 && (
           <span className="ml-0.5 inline-flex min-w-5 items-center justify-center rounded-badge bg-primary px-1.5 text-xs font-semibold tabular-nums text-primary-foreground">
             {active}
