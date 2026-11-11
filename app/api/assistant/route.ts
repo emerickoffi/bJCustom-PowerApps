@@ -39,6 +39,7 @@ import { canManage } from '@/lib/session'
 import { formatCentsExact } from '@/lib/estimates'
 import { calculateDraft, type DraftProposal } from '@/lib/ai/estimate-draft'
 import { aiDraftInput, buildDraftProposal } from '@/lib/ai/estimate-draft-server'
+import { PRODUCT_BRAND } from '@/lib/product-brand'
 
 /** Caps external and database work per question, whatever the model asks for. */
 const MAX_TOOL_CALLS = 4
@@ -83,7 +84,7 @@ function describeGenerationError(error: unknown) {
   return { name, statusCode: e?.statusCode, message: e?.message?.slice(0, 300), timedOut }
 }
 
-const INSTRUCTIONS = `You are the B & J AI Assistant, a read-only construction management copilot for a residential home builder's staff.
+const INSTRUCTIONS = `You are the ${PRODUCT_BRAND.assistant.name}, a read-only construction management copilot for a residential home builder's staff.
 
 Rules:
 - Answer only from the JSON inside <builder_data>, which contains records this user is authorized to see. If the data does not contain the answer, say so plainly. Never invent dates, amounts, names, statuses, milestones, or warranty details.
@@ -134,7 +135,7 @@ export async function POST(request: Request) {
   if (!provider.configured) return fail(503, 'The AI provider is not configured for this environment.')
 
   const features = await getOrgFeatures(session.organizationId)
-  if (!features.ai_assistant) return fail(403, 'The B & J AI Assistant is turned off for your company.')
+  if (!features.ai_assistant) return fail(403, `The ${PRODUCT_BRAND.assistant.name} is turned off for your company.`)
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return fail(400, 'That message could not be sent. Shorten it and try again.')

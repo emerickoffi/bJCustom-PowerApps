@@ -11,7 +11,8 @@ import { WorkspaceSwitcher } from '@/components/app/workspace-switcher'
 import { getOrgFeatures } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { ROLE_LABELS } from '@/lib/domain'
-import { CompanyLogo } from '@/components/brand/company-logo'
+import { TrefortLogo } from '@/components/brand/trefort-logo'
+import { PRODUCT_BRAND } from '@/lib/product-brand'
 import { BrandStyle } from '@/components/brand/brand-style'
 import { Sidebar } from '@/components/app/sidebar'
 import { SIDEBAR_COOKIE, parseSidebarMode } from '@/lib/sidebar'
@@ -98,9 +99,8 @@ export default async function StaffLayout({ children, modal }: { children: React
   const sidebarMode = parseSidebarMode(cookieStore.get(SIDEBAR_COOKIE)?.value)
   const closedGroups = parseClosedNavGroups(cookieStore.get(NAV_GROUPS_COOKIE)?.value)
   const items = navForRole(session.role, features)
-  const logo = <CompanyLogo brand={session.brand} priority />
   const homeHref = landingPathForRole(session.role)
-  const homeLabel = `${session.brand.displayName} ${homeHref === '/my-work' ? 'my work' : 'dashboard'}`
+  const homeLabel = `${PRODUCT_BRAND.name} ${homeHref === '/my-work' ? 'my work' : 'dashboard'}`
   const showAssistant = features.ai_assistant
   const globalQuickActions = buildGlobalQuickActions({ role: session.role, features })
   const workspaces = session.workspaces.map((w) => ({
@@ -133,14 +133,14 @@ export default async function StaffLayout({ children, modal }: { children: React
           <header data-app-header className="sticky top-0 z-30 border-b border-[#D6DDE5] bg-white pt-[env(safe-area-inset-top)] shadow-[0_1px_2px_rgba(23,77,50,0.04)]">
             <div className="flex h-14 min-w-0 items-center gap-2 pl-[max(var(--page-gutter-x),env(safe-area-inset-left))] pr-[max(var(--page-gutter-x),env(safe-area-inset-right))] sm:h-16 sm:gap-3">
               <div className="contents tablet:hidden">
-                <MobileNav items={items} logo={logo} closedGroups={closedGroups} />
+                <MobileNav items={items} closedGroups={closedGroups} />
               </div>
               <Link
                 href={homeHref}
-                className="flex min-h-11 w-24 shrink-0 items-center sm:w-28 lg:hidden tablet:flex"
+                className="flex min-h-11 w-28 shrink-0 items-center rounded-md bg-[#00788d] px-2.5 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-32 lg:hidden tablet:flex"
                 aria-label={homeLabel}
               >
-                {logo}
+                <TrefortLogo priority />
               </Link>
               <div className="hidden min-w-0 flex-1 lg:block tablet:hidden">
                 <Breadcrumbs rootHref="/dashboard" rootLabel="Dashboard" />

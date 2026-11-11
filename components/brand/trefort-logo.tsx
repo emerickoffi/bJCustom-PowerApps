@@ -1,14 +1,16 @@
 import Image from 'next/image'
+import { PRODUCT_BRAND } from '@/lib/product-brand'
 import { cn } from '@/lib/utils'
 
 /** Transparent white-and-orange artwork; only place it on the Trefort teal. */
 export function TrefortLogo({ className, priority }: { className?: string; priority?: boolean }) {
+  const { src, width, height } = PRODUCT_BRAND.logo
   return (
     <Image
-      src="/branding/trefort-logo.png"
-      alt="Trefort Construction Management"
-      width={1196}
-      height={319}
+      src={src}
+      alt={PRODUCT_BRAND.fullName}
+      width={width}
+      height={height}
       priority={priority}
       className={cn('h-auto w-full', className)}
     />
@@ -16,12 +18,13 @@ export function TrefortLogo({ className, priority }: { className?: string; prior
 }
 
 export function TrefortMark({ className, priority }: { className?: string; priority?: boolean }) {
+  const { src, width, height } = PRODUCT_BRAND.mark
   return (
     <Image
-      src="/branding/trefort-mark.png"
-      alt="Trefort"
-      width={151}
-      height={186}
+      src={src}
+      alt={PRODUCT_BRAND.name}
+      width={width}
+      height={height}
       priority={priority}
       className={cn('h-auto w-full', className)}
     />

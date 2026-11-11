@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Inter, Source_Serif_4 } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
+import { PRODUCT_BRAND } from '@/lib/product-brand'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
@@ -11,15 +12,17 @@ const sourceSerif = Source_Serif_4({ subsets: ['latin'], variable: '--font-sourc
 
 export const metadata: Metadata = {
   title: {
-    default: 'B & J Custom Homes',
-    template: '%s | B & J Custom Homes',
+    default: PRODUCT_BRAND.name,
+    template: `%s | ${PRODUCT_BRAND.name}`,
   },
-  description: 'Client, project, and construction management for B & J Custom Homes, Inc.',
+  description: PRODUCT_BRAND.description,
+  applicationName: PRODUCT_BRAND.name,
+  appleWebApp: { title: PRODUCT_BRAND.name },
   generator: 'v0.app',
 }
 
 export const viewport: Viewport = {
-  themeColor: '#00788D',
+  themeColor: PRODUCT_BRAND.themeColor,
   width: 'device-width',
   initialScale: 1,
 }
