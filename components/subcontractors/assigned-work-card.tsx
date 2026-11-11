@@ -35,7 +35,7 @@ export function AssignedWorkCard({ availability, items }: { availability: Assign
     <details aria-labelledby="assigned-work-heading" className="group rounded-xl border bg-card [&[open]]:pb-5">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-surface px-5 py-3.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
         <span className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
-          <h2 id="assigned-work-heading" className="flex items-center gap-2 font-serif text-base font-semibold text-foreground">
+          <h2 id="assigned-work-heading" className="flex items-center gap-2 type-section-title text-foreground">
             <ClipboardList className="size-4 text-primary" aria-hidden="true" />
             Assigned work
           </h2>

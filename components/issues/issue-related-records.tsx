@@ -134,7 +134,7 @@ function DraftChangeOrderSheet({
           <input type="hidden" name="issue_id" value={issueId} />
           <input type="hidden" name="request_id" value={requestId} />
           <div className="rounded-lg border bg-muted/40 p-3 text-sm">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Source issue</p>
+            <p className="text-xs font-medium text-muted-foreground">Source issue</p>
             <p className="mt-0.5 font-medium text-foreground">{defaultTitle}</p>
             <p className="mt-1 text-xs text-muted-foreground">Issue photos stay on the issue with their existing visibility. Open them from the linked issue.</p>
           </div>
@@ -223,7 +223,7 @@ function Panel({ id, icon: Icon, title, description, children }: { id: string; i
   return (
     <section aria-labelledby={id} className="flex flex-col gap-4 rounded-xl border bg-card p-5">
       <div className="flex flex-col gap-1">
-        <h2 id={id} className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
+        <h2 id={id} className="flex items-center gap-2 type-section-title text-foreground">
           <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
           {title}
         </h2>

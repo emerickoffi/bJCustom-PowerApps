@@ -190,7 +190,7 @@ function ChangeOrderFormBody({ projectId, defaults, cancelHref, status, save }: 
 
           <div
             aria-hidden="true"
-            className="hidden border-b border-border/70 bg-muted/40 px-6 py-2 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-[9rem_minmax(0,1fr)_4.5rem_4rem_7rem_7rem_4.5rem] md:gap-2"
+            className="hidden border-b border-border/70 bg-muted/40 px-6 py-2 text-[0.7rem] font-semibold text-muted-foreground md:grid md:grid-cols-[9rem_minmax(0,1fr)_4.5rem_4rem_7rem_7rem_4.5rem] md:gap-2"
           >
             <span>Category</span>
             <span>Description</span>
@@ -330,7 +330,7 @@ function ChangeOrderSummary({ priceCents, costCents, lineCount, schedule }: { pr
     <dl className="flex flex-col gap-3 text-sm">
       <SummaryRow label="Price adjustment" value={priceCents === null ? '—' : formatMoney(priceCents, { signed: true })} strong />
       <SummaryRow label="Schedule impact" value={days === null || !Number.isInteger(days) ? 'Not set' : formatScheduleDays(days, 'long')} />
-      <div className="border-t border-border/60 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Internal only</div>
+      <div className="border-t border-border/60 pt-3 text-xs font-medium text-muted-foreground">Internal only</div>
       <SummaryRow label={`Builder cost (${lineCount} line${lineCount === 1 ? '' : 's'})`} value={formatMoney(costCents, { signed: true })} />
       <SummaryRow label="Margin on change" value={margin === null ? '—' : formatMoney(margin, { signed: true })} tone={margin !== null && margin < 0 ? 'danger' : undefined} />
       <p className="text-xs text-muted-foreground">Preview only. Totals are recalculated on the server when you save.</p>

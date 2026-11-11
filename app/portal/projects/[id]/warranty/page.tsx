@@ -84,7 +84,7 @@ export default async function HomeownerWarrantyPage({ params }: { params: Promis
         <>
           <section aria-labelledby="coverage" className="flex flex-col gap-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 id="coverage" className="font-serif text-xl font-semibold">
+              <h2 id="coverage" className="type-section-title">
                 Coverage
               </h2>
               <p className="text-sm text-muted-foreground">Started {formatDate(warranty.start_date)}</p>
@@ -126,7 +126,7 @@ export default async function HomeownerWarrantyPage({ params }: { params: Promis
           {warranty.stage !== 'archived' && (
             <section aria-labelledby="new-claim" className="flex flex-col gap-4 rounded-xl border bg-card p-5">
               <div className="flex flex-col gap-1">
-                <h2 id="new-claim" className="font-serif text-xl font-semibold">
+                <h2 id="new-claim" className="type-section-title">
                   Report a warranty item
                 </h2>
                 <p className="text-sm text-muted-foreground">
@@ -138,7 +138,7 @@ export default async function HomeownerWarrantyPage({ params }: { params: Promis
           )}
 
           <section aria-labelledby="claims" className="flex flex-col gap-3">
-            <h2 id="claims" className="font-serif text-xl font-semibold">
+            <h2 id="claims" className="type-section-title">
               Your claims
             </h2>
             <ClaimList projectId={id} audience="homeowner" coverageNames={coverageNames} />

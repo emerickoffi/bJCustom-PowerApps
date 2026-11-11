@@ -132,10 +132,10 @@ function PerformancePanel({
 
       <section aria-label={`${companyName} rating summary`} className="flex flex-col gap-4 rounded-xl border bg-muted/30 p-4 sm:flex-row sm:gap-6">
         <div className="flex shrink-0 flex-col gap-1 sm:w-36">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Overall</span>
+          <span className="text-xs font-medium text-muted-foreground">Overall</span>
           {rated ? (
             <>
-              <span className="font-serif text-3xl font-semibold tabular-nums text-foreground">
+              <span className="type-financial text-foreground">
                 {formatRating(summary.average)}
                 <span className="text-base font-normal text-muted-foreground"> / 5</span>
               </span>

@@ -68,7 +68,7 @@ export function CompletedProjectPanel({
   return (
     <section aria-labelledby="closeout-heading" className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
       <div className="flex flex-col gap-1.5">
-        <h2 id="closeout-heading" className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
+        <h2 id="closeout-heading" className="flex items-center gap-2 type-section-title text-foreground">
           <CircleCheck className="size-4.5 text-primary" aria-hidden="true" />
           Project closeout
         </h2>

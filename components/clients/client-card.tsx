@@ -92,7 +92,7 @@ function ContactColumn({
         empty ? 'gap-1.5 border-dashed border-[#D5DED5] bg-transparent' : 'gap-3 border-[#D6DDE5] bg-[#F3F4F6]',
       )}
     >
-      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#526173]">
+      <span className="flex items-center gap-1.5 text-xs font-semibold text-[#526173]">
         <Icon className="size-3.5 text-primary/70" aria-hidden="true" />
         {label}
       </span>
@@ -160,7 +160,7 @@ export function ClientCard({
       <header className="flex items-center justify-between gap-3 p-4 pb-3 sm:flex-wrap sm:p-5 sm:pb-4">
         <div className="flex min-w-0 items-center gap-3">
           <span
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-interactive-soft font-serif text-sm font-semibold text-primary ring-1 ring-inset ring-primary/12"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-interactive-soft text-sm font-semibold text-primary ring-1 ring-inset ring-primary/12"
             aria-hidden="true"
           >
             {`${client.first_name.charAt(0)}${client.last_name.charAt(0)}`.toUpperCase()}

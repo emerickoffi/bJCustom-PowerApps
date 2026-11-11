@@ -618,7 +618,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
       <Dialog open={bulkConfirmArchive} onOpenChange={setBulkConfirmArchive}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-serif text-lg">{`Archive ${archivable.length} ${archivable.length === 1 ? 'document' : 'documents'}?`}</DialogTitle>
+            <DialogTitle className="type-section-title">{`Archive ${archivable.length} ${archivable.length === 1 ? 'document' : 'documents'}?`}</DialogTitle>
             <DialogDescription>
               {`They will be hidden from the active library${
                 archivable.some((d) => d.visibility === 'homeowner') ? ', and shared ones will no longer be visible to the homeowner' : ''
@@ -668,7 +668,7 @@ export function DocumentLibrary({ rows, mode, canEdit, canManage, people, projec
       <Dialog open={Boolean(confirmArchive)} onOpenChange={(o) => !o && setConfirmArchive(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-serif text-lg">Archive this document?</DialogTitle>
+            <DialogTitle className="type-section-title">Archive this document?</DialogTitle>
             <DialogDescription>
               {`${confirmArchive?.name ?? 'This document'} will be hidden from the active library${
                 confirmArchive?.visibility === 'homeowner' ? ' and no longer shared with the homeowner' : ''
@@ -874,7 +874,7 @@ function PreviewDialog({ state, onRetry, onClose }: { state: PreviewState | null
     <Dialog open={Boolean(state)} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex h-[calc(100svh-2rem)] max-h-[900px] flex-col gap-3 sm:max-w-5xl">
         <DialogHeader className="pr-10">
-          <DialogTitle className="truncate font-serif text-lg">{doc?.name ?? 'Preview'}</DialogTitle>
+          <DialogTitle className="truncate type-section-title">{doc?.name ?? 'Preview'}</DialogTitle>
           <DialogDescription>
             {version ? `Version ${doc?.current_version_number} · ${version.original_filename} · ${formatBytes(version.size_bytes)}` : ''}
           </DialogDescription>
@@ -933,7 +933,7 @@ function HistoryDialog({ state, onClose }: { state: HistoryState | null; onClose
     <Dialog open={Boolean(state)} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle className="font-serif text-lg">Version history</DialogTitle>
+          <DialogTitle className="type-section-title">Version history</DialogTitle>
           <DialogDescription>{state?.doc.name}</DialogDescription>
         </DialogHeader>
         {state && (
@@ -983,7 +983,7 @@ function EditDialog({ doc, onClose }: { doc: DocumentRow | null; onClose: () => 
     <Dialog open={Boolean(doc)} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-serif text-lg">Edit document details</DialogTitle>
+          <DialogTitle className="type-section-title">Edit document details</DialogTitle>
           <DialogDescription>Changes are recorded in the audit log. File versions are not affected.</DialogDescription>
         </DialogHeader>
         {doc && <EditForm key={doc.id} doc={doc} onDone={onClose} />}

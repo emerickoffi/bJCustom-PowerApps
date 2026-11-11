@@ -116,7 +116,7 @@ export function ProjectContactsTable({
     <div className="flex min-w-0 flex-col gap-4">
       <section aria-labelledby="pc-table-heading" className="flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-card p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <h2 id="pc-table-heading" className="font-serif text-lg font-semibold text-foreground">
+          <h2 id="pc-table-heading" className="type-section-title text-foreground">
             Subcontractors &amp; professionals
           </h2>
           <p className="text-xs text-muted-foreground" aria-live="polite">

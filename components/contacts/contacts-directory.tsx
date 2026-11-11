@@ -826,7 +826,7 @@ function SortHeader({
   const Icon = !active ? ArrowUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown
   return (
     <TableHead scope="col" className={cn(DIRECTORY_TH_TEXT, className)} aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-      <button type="button" onClick={() => onSort(sortKey)} className="-mx-1 inline-flex items-center gap-1 rounded px-1 uppercase hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <button type="button" onClick={() => onSort(sortKey)} className="-mx-1 inline-flex items-center gap-1 rounded px-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {label}
         <Icon className={cn('size-3.5', active ? 'text-foreground' : 'opacity-50')} aria-hidden="true" />
       </button>
@@ -1072,7 +1072,7 @@ function DirectoryEmptyState({
       </div>
       {directoryEmpty ? (
         <>
-          <p className="font-serif text-lg font-semibold text-foreground">{isPeople ? 'No contacts yet' : 'No companies yet'}</p>
+          <p className="type-section-title text-foreground">{isPeople ? 'No contacts yet' : 'No companies yet'}</p>
           <p className="max-w-sm text-sm text-muted-foreground">
             {isPeople
               ? 'Add people to your business network and link them to companies or projects.'
@@ -1096,7 +1096,7 @@ function DirectoryEmptyState({
         </>
       ) : (
         <>
-          <p className="font-serif text-lg font-semibold text-foreground">{isPeople ? 'No matching contacts' : 'No matching companies'}</p>
+          <p className="type-section-title text-foreground">{isPeople ? 'No matching contacts' : 'No matching companies'}</p>
           <p className="max-w-sm text-sm text-muted-foreground">Try a different search or clear your filters.</p>
           <Button variant="outline" className="mt-2" onClick={onClearFilters}>
             <X data-icon="inline-start" />

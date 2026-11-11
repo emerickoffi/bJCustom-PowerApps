@@ -115,7 +115,7 @@ export function ScheduleWorkspace({
               <CalendarClock className="size-4" />
             </span>
             <div className="flex flex-col gap-0.5">
-              <h2 id="schedule-not-started" className="font-serif text-base font-semibold text-brand-deep">
+              <h2 id="schedule-not-started" className="type-section-title text-brand-deep">
                 Scheduling hasn&apos;t started yet
               </h2>
               <p className="text-sm text-brand-deep/70">

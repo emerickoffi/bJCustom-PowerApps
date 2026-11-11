@@ -122,7 +122,7 @@ export default async function CompareRevisionsPage({
           </thead>
           <tbody className="divide-y">
             <tr className="bg-sage/40">
-              <th colSpan={4} scope="colgroup" className="px-5 py-2 text-left text-xs font-semibold uppercase tracking-wide text-primary">
+              <th colSpan={4} scope="colgroup" className="px-5 py-2 text-left text-xs font-semibold text-primary">
                 By category
               </th>
             </tr>
@@ -139,7 +139,7 @@ export default async function CompareRevisionsPage({
               )
             })}
             <tr className="bg-sage/40">
-              <th colSpan={4} scope="colgroup" className="px-5 py-2 text-left text-xs font-semibold uppercase tracking-wide text-primary">
+              <th colSpan={4} scope="colgroup" className="px-5 py-2 text-left text-xs font-semibold text-primary">
                 Summary
               </th>
             </tr>

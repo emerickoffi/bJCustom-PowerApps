@@ -162,7 +162,7 @@ export default async function SubcontractorDetailPage({
         <CardSectionHeader id="company-heading" title="Company & Contacts" icon={Building2} />
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-0">
         <section aria-labelledby="company-details-heading" className="flex min-w-0 flex-col gap-3 lg:pr-6">
-        <h3 id="company-details-heading" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <h3 id="company-details-heading" className="text-xs font-semibold text-muted-foreground">
           Company details
         </h3>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-1">
@@ -295,7 +295,7 @@ export default async function SubcontractorDetailPage({
       <Surface aria-labelledby="projects-heading" className="gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-0.5">
-            <h2 id="projects-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+            <h2 id="projects-heading" className="type-section-title text-foreground">
               Project Assignments
             </h2>
             <p className="text-sm text-muted-foreground">Separate from schedule activity assignments.</p>
@@ -345,7 +345,7 @@ export default async function SubcontractorDetailPage({
 function InfoItem({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className="min-w-0 text-sm font-medium text-foreground">{children}</dd>
     </div>
   )

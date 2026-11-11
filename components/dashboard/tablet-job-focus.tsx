@@ -22,7 +22,7 @@ function JobFocusCard({ job, cover, large = false }: { job: PriorityJob; cover: 
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-0.5">
             {job.projectNumber && <span className="font-mono text-xs text-muted-foreground">{job.projectNumber}</span>}
-            <h3 className="line-clamp-2 break-words font-serif text-lg font-semibold leading-snug">
+            <h3 className="line-clamp-2 break-words type-section-title">
               <Link
                 href={`/projects/${job.id}`}
                 className="after:absolute after:inset-0 hover:text-link focus-visible:outline-none"
@@ -37,7 +37,7 @@ function JobFocusCard({ job, cover, large = false }: { job: PriorityJob; cover: 
         </div>
         <CurrentStage job={job} />
         <div className="mt-auto flex flex-col gap-1 border-t border-divider pt-3">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Next activity</span>
+          <span className="text-xs font-medium text-muted-foreground">Next activity</span>
           <NextActivity job={job} />
         </div>
       </div>
@@ -73,7 +73,7 @@ export function TabletJobFocus({
   return (
     <section aria-labelledby="tablet-job-focus-heading" className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 id="tablet-job-focus-heading" className="font-serif text-lg font-semibold">
+        <h2 id="tablet-job-focus-heading" className="type-section-title">
           Priority jobs
         </h2>
         <Link

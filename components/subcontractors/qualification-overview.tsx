@@ -91,7 +91,7 @@ export function QualificationOverview({
 
           {started && missingRequired.length > 0 && (
             <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Still needed</span>
+              <span className="text-xs font-medium text-muted-foreground">Still needed</span>
               <ul className="flex flex-wrap gap-1.5" aria-label="Missing required items">
                 {missingRequired.slice(0, 3).map((i) => (
                   <li key={i.requirementId} className="rounded-md border border-border/80 px-2 py-0.5 text-xs font-medium text-foreground">
@@ -142,7 +142,7 @@ export function QualificationOverview({
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className="text-sm font-medium text-foreground">{children}</dd>
     </div>
   )

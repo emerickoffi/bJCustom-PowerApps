@@ -37,7 +37,7 @@ export function ProjectNextActions({
     <section aria-labelledby="next-actions-heading" className="surface flex flex-col gap-3 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 id="next-actions-heading" className="font-serif text-lg font-semibold text-foreground">
+          <h2 id="next-actions-heading" className="type-section-title text-foreground">
             Needs attention
           </h2>
           {hiddenCount > 0 && <span className="text-xs text-muted-foreground">{`${hiddenCount} more after these`}</span>}

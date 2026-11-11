@@ -49,7 +49,7 @@ const ROW_CONTROLS =
 export const PREVIEW_SCROLL_CLASS = 'min-h-0 flex-1 overflow-y-auto overscroll-contain'
 export const PREVIEW_DRAWER_INSETS = 'pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]'
 export const PREVIEW_SECTION_CLASS = 'flex flex-col gap-2.5 px-4 py-3.5'
-export const PREVIEW_HEADING_CLASS = 'text-xs font-semibold uppercase tracking-wide text-muted-foreground'
+export const PREVIEW_HEADING_CLASS = 'text-xs font-semibold text-muted-foreground'
 export const PREVIEW_LINK_CLASS =
   'inline-flex items-center gap-1 self-start rounded-sm text-sm font-medium text-link outline-none hover:text-link-hover hover:underline focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-11'
 export const PREVIEW_SHORTCUT_CLASS =
@@ -421,7 +421,7 @@ export function RecordPreviewHeader({
   actions?: React.ReactNode
 }) {
   const chrome = useContext(ChromeContext)
-  const titleClass = 'min-w-0 flex-1 text-pretty break-words font-serif text-lg font-semibold leading-snug text-foreground'
+  const titleClass = 'min-w-0 flex-1 text-pretty break-words type-section-title text-foreground'
   return (
     <header
       className={cn(

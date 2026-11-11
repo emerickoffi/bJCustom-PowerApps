@@ -242,7 +242,7 @@ export function RfiWorkspace({ projectId, projectName, rows, total, page, pageCo
             )}
           >
             <header className="flex shrink-0 items-start gap-2 border-b border-[#D6DDE5] px-4 py-3.5">
-              <h2 className="min-w-0 flex-1 text-pretty break-words font-serif text-lg font-semibold leading-snug text-foreground">{title}</h2>
+              <h2 className="min-w-0 flex-1 text-pretty break-words type-section-title text-foreground">{title}</h2>
               <Button type="button" variant="ghost" size="icon" className="-mt-1 -mr-2 shrink-0" aria-label="Close question details" onClick={closeInline}>
                 <X aria-hidden="true" />
               </Button>

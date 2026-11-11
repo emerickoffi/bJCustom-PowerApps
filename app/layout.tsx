@@ -4,8 +4,10 @@ import { Inter, Source_Serif_4 } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-const sourceSerif = Source_Serif_4({ subsets: ['latin'], variable: '--font-source-serif' })
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
+// Only the printable estimate and daily-log documents use the serif face, so it is not preloaded:
+// the browser fetches it on those pages alone and app screens download Inter only.
+const sourceSerif = Source_Serif_4({ subsets: ['latin'], variable: '--font-source-serif', preload: false })
 
 export const metadata: Metadata = {
   title: {

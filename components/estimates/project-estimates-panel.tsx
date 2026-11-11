@@ -51,13 +51,13 @@ function SummaryCard({
 }) {
   return (
     <div className="flex h-full min-w-0 flex-col gap-1.5 rounded-xl border border-[#D6DDE5] bg-[#F3F4F6] p-3">
-      <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd
         className={cn(
           'flex min-h-7 items-center break-words',
           unavailable
             ? 'text-sm font-medium italic text-muted-foreground'
-            : 'font-serif text-xl font-semibold leading-tight tabular-nums text-foreground',
+            : 'type-financial text-foreground',
           valueClassName,
         )}
       >

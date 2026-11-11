@@ -33,7 +33,7 @@ export function DashboardLayoutPreview({ settings }: { settings: DashboardSettin
 
   const zone = (area: LayoutArea, direction: 'row' | 'col', className?: string) => (
     <div className={cn('flex min-w-0 flex-col gap-2 rounded-lg bg-muted/50 p-3', className)}>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{AREA_LABELS[area]}</p>
+      <p className="text-[11px] font-medium text-muted-foreground">{AREA_LABELS[area]}</p>
       {chips(area, direction)}
     </div>
   )
@@ -41,7 +41,7 @@ export function DashboardLayoutPreview({ settings }: { settings: DashboardSettin
   return (
     <section aria-labelledby="layout-preview-heading" className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <h2 id="layout-preview-heading" className="font-serif text-lg font-semibold text-foreground">
+        <h2 id="layout-preview-heading" className="type-section-title text-foreground">
           Layout preview
         </h2>
         <p className="text-sm text-muted-foreground">

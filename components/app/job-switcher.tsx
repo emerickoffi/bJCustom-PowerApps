@@ -216,7 +216,7 @@ export function JobSwitcher({
               <span className="flex-1 font-medium">All projects</span>
               {!scoped && <Check className="size-4 text-primary" aria-label="Current" />}
             </li>
-            <li role="presentation" className="px-2.5 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <li role="presentation" className="px-2.5 pb-1 pt-3 text-xs font-semibold text-muted-foreground">
               {debounced ? 'Matching projects' : 'Recently updated'}
             </li>
             {jobs.length === 0 && !isLoading && (

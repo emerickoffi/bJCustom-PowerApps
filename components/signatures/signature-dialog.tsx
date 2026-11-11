@@ -373,7 +373,7 @@ function Composer({ data, doc, onCancel, onSent }: { data: SignaturePanelData; d
         <legend className="mb-1.5 text-sm font-medium text-foreground">Signers</legend>
         {groups.map((g) => (
           <div key={g.label} className="flex flex-col gap-1">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{g.label}</p>
+            <p className="text-xs font-medium text-muted-foreground">{g.label}</p>
             {g.items.length === 0 ? (
               <p className="text-sm text-muted-foreground">{g.label === 'Homeowners' ? 'This project has no client contacts.' : 'No team members found.'}</p>
             ) : (

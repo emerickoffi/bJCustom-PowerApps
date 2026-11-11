@@ -21,7 +21,7 @@ export default async function ActivatePage() {
             <CompanyLogo brand={session.brand} priority />
           </div>
           <div className="flex flex-col gap-1">
-            <h1 className="font-serif text-2xl font-semibold text-foreground">Set your password</h1>
+            <h1 className="type-page-title text-foreground">Set your password</h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
               {`You signed in as ${session.email} with a temporary password. Choose your own password to finish activating your account.`}
             </p>

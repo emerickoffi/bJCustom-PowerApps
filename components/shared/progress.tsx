@@ -97,7 +97,7 @@ export function ProgressRing({
       <span className="absolute flex flex-col items-center leading-none">
         <span
           className={cn(
-            'tabular font-serif font-semibold',
+            'tabular font-semibold leading-none',
             tone === 'light' ? 'text-white' : 'text-foreground',
           )}
           style={{ fontSize: size * 0.24 }}

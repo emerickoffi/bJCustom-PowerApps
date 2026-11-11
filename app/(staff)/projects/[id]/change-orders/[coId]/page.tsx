@@ -238,7 +238,7 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
             </div>
             <dl className="flex flex-col gap-3 px-5 py-4 text-sm">
               <SummaryRow label="Schedule impact" value={formatScheduleDays(co.schedule_impact_days, 'long')} />
-              <div className="flex items-center gap-2 border-t border-border/60 pt-3 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">Internal only</div>
+              <div className="flex items-center gap-2 border-t border-border/60 pt-3 text-[0.7rem] font-semibold text-muted-foreground">Internal only</div>
               <SummaryRow label={`Builder cost (${lines.length} line${lines.length === 1 ? '' : 's'})`} value={formatMoney(co.cost_adjustment_cents, { signed: true })} />
               <SummaryRow label="Margin on change" value={formatMoney(margin, { signed: true })} tone={margin < 0 ? 'danger' : margin > 0 ? 'positive' : undefined} />
               <div className="flex flex-col gap-3 border-t border-border/60 pt-3">

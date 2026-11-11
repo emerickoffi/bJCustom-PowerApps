@@ -55,7 +55,7 @@ function Section({
               {step}
             </span>
           )}
-          <h2 id={id} className="font-serif text-lg font-semibold text-foreground">
+          <h2 id={id} className="type-section-title text-foreground">
             {title}
           </h2>
         </div>
@@ -67,7 +67,7 @@ function Section({
 }
 
 const Label = ({ children }: { children: React.ReactNode }) => (
-  <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{children}</h3>
+  <h3 className="text-xs font-medium text-muted-foreground">{children}</h3>
 )
 
 export default async function IssuePage({ params }: { params: Promise<{ id: string; issueId: string }> }) {
@@ -264,7 +264,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
           { label: 'Reported', value: formatDate(issue.reported_at) },
         ].map((item) => (
           <div key={item.label} className="flex flex-col gap-1 bg-card p-4">
-            <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{item.label}</dt>
+            <dt className="text-xs font-medium text-muted-foreground">{item.label}</dt>
             <dd className="text-sm font-medium text-foreground">{item.value}</dd>
           </div>
         ))}
@@ -466,7 +466,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
         <aside className="flex flex-col gap-6">
           {!closed && (
             <section aria-labelledby="manage-heading" className="flex flex-col gap-4 rounded-xl border bg-card p-5">
-              <h2 id="manage-heading" className="font-serif text-lg font-semibold text-foreground">
+              <h2 id="manage-heading" className="type-section-title text-foreground">
                 Manage issue
               </h2>
               <IssueUpdateForm
@@ -494,7 +494,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
           {manager && subCompanies && (!closed || issue.responsible_subcontractor_company_id) && (
             <section aria-labelledby="sub-heading" className="flex flex-col gap-4 rounded-xl border bg-card p-5">
               <div className="flex flex-col gap-1">
-                <h2 id="sub-heading" className="font-serif text-lg font-semibold text-foreground">
+                <h2 id="sub-heading" className="type-section-title text-foreground">
                   Responsible subcontractor
                 </h2>
                 <p className="text-xs text-muted-foreground">
@@ -541,7 +541,7 @@ export default async function IssuePage({ params }: { params: Promise<{ id: stri
 
           <section aria-labelledby="history-heading" className="flex flex-col gap-4 rounded-xl border bg-card p-5">
             <div className="flex flex-col gap-1">
-              <h2 id="history-heading" className="font-serif text-lg font-semibold text-foreground">
+              <h2 id="history-heading" className="type-section-title text-foreground">
                 Activity history
               </h2>
               <p className="text-xs text-muted-foreground">Permanent record. Entries cannot be edited or removed.</p>

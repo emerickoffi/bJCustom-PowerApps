@@ -74,7 +74,7 @@ export function TabletBottomNav({
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent side="right" className="w-[min(22rem,85vw)] gap-0 p-0">
           <SheetHeader className="border-b px-4 py-4">
-            <SheetTitle className="font-serif text-lg">More</SheetTitle>
+            <SheetTitle className="type-section-title">More</SheetTitle>
             <SheetDescription>Every area your role can open.</SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3">

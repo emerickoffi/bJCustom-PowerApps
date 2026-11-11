@@ -129,7 +129,7 @@ export function AddAdditionalContactDialog({
       </Button>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-serif text-lg">Add additional contact</DialogTitle>
+          <DialogTitle className="type-section-title">Add additional contact</DialogTitle>
           <DialogDescription>
             {'Adds a person to '}
             <span className="font-medium text-foreground">{homeownerName}</span>

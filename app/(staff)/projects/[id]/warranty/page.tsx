@@ -154,10 +154,10 @@ export default async function ProjectWarrantyPage({
         <>
           <section aria-labelledby="status" className="surface flex flex-wrap items-center justify-between gap-4 px-5 py-4 md:px-6">
             <div className="flex flex-col gap-0.5">
-              <h2 id="status" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <h2 id="status" className="text-xs font-medium text-muted-foreground">
                 Warranty stage
               </h2>
-              <p className="font-serif text-xl font-semibold text-foreground">{stage ? WARRANTY_STAGE_LABELS[stage] : '-'}</p>
+              <p className="type-section-title text-foreground">{stage ? WARRANTY_STAGE_LABELS[stage] : '-'}</p>
             </div>
             <p className="text-sm text-muted-foreground">
               {openIssues ?? 0} open issue{openIssues === 1 ? '' : 's'} on this project
@@ -283,7 +283,7 @@ export default async function ProjectWarrantyPage({
                     <CalendarCog className="size-5" />
                   </span>
                   <span className="flex min-w-0 flex-col">
-                    <span className="font-serif text-lg font-semibold leading-tight text-foreground">Warranty administration</span>
+                    <span className="type-section-title text-foreground">Warranty administration</span>
                     <span className="text-sm text-muted-foreground">
                       Official completion date: {project.completion_date ? formatDate(project.completion_date) : 'not recorded'}
                     </span>

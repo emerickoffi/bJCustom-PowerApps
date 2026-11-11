@@ -172,7 +172,7 @@ export function EstimateLineItemDrawer({
         }}
       >
         <SheetHeader className="shrink-0 gap-1 border-b p-4 pr-12 sm:px-6">
-          <SheetTitle className="font-serif text-lg font-semibold">{isEdit ? 'Edit line item' : 'Add line item'}</SheetTitle>
+          <SheetTitle className="type-section-title">{isEdit ? 'Edit line item' : 'Add line item'}</SheetTitle>
           <SheetDescription>Saving adds this item to the draft. Use Save draft to save it to the estimate.</SheetDescription>
         </SheetHeader>
 

@@ -25,7 +25,7 @@ export default async function IntegrationsPage() {
       <section aria-labelledby="qbo-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="flex min-w-0 flex-col gap-1.5">
-            <h2 id="qbo-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
+            <h2 id="qbo-heading" className="type-section-title text-foreground">
               QuickBooks Online
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">

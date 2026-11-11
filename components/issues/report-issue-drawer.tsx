@@ -137,7 +137,7 @@ export function ReportIssueDrawer({
       <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent side="right" className="w-full gap-0 overflow-y-auto p-0 data-[side=right]:sm:max-w-lg">
           <SheetHeader className="border-b p-5">
-            <SheetTitle className="font-serif text-lg">Report issue</SheetTitle>
+            <SheetTitle className="type-section-title">Report issue</SheetTitle>
             <SheetDescription>Recorded for the builder team only. Homeowners do not see field issues.</SheetDescription>
           </SheetHeader>
 

@@ -176,7 +176,7 @@ export function PermissionsMatrix({ features }: { features: FeatureMap }) {
                             className={`size-4 text-[#526173] transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
                             aria-hidden="true"
                           />
-                          <span className="font-serif text-base font-semibold text-foreground">{mod.module}</span>
+                          <span className="type-record-name text-foreground">{mod.module}</span>
                           <span className="text-xs font-normal text-muted-foreground">
                             {actions.length} {actions.length === 1 ? 'action' : 'actions'}
                           </span>

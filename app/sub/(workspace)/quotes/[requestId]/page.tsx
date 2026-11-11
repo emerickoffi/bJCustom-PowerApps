@@ -103,7 +103,7 @@ export default async function SubQuotePage({ params }: { params: Promise<{ reque
 
       {current ? (
         <section aria-labelledby="scope-heading" className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-          <h2 id="scope-heading" className="font-serif text-lg font-semibold text-foreground">Scope of work · v{current.version}</h2>
+          <h2 id="scope-heading" className="type-section-title text-foreground">Scope of work · v{current.version}</h2>
           {current.change_summary ? <p className="text-sm text-muted-foreground">What changed: {current.change_summary}</p> : null}
           <p className="whitespace-pre-wrap text-sm text-foreground">{current.scope}</p>
           {current.documents.length ? (
@@ -121,7 +121,7 @@ export default async function SubQuotePage({ params }: { params: Promise<{ reque
 
       {canEdit ? (
         <section aria-labelledby="quote-heading" className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-          <h2 id="quote-heading" className="font-serif text-lg font-semibold text-foreground">
+          <h2 id="quote-heading" className="type-section-title text-foreground">
             {submitted.length ? `Revised quote (revision ${submitted[0].revision_number + 1})` : 'Your quote'}
           </h2>
           <QuoteForm
@@ -141,7 +141,7 @@ export default async function SubQuotePage({ params }: { params: Promise<{ reque
 
       {submitted.length ? (
         <section aria-labelledby="submitted-heading" className="flex flex-col gap-3">
-          <h2 id="submitted-heading" className="font-serif text-lg font-semibold text-foreground">Submitted revisions</h2>
+          <h2 id="submitted-heading" className="type-section-title text-foreground">Submitted revisions</h2>
           {submitted.map((r) => (
             <div key={r.id} className="rounded-xl border border-border bg-card p-4">
               <QuoteDetails revision={r} currency={row.currency} />
@@ -152,7 +152,7 @@ export default async function SubQuotePage({ params }: { params: Promise<{ reque
 
       {(events ?? []).length ? (
         <section aria-labelledby="activity-heading" className="flex flex-col gap-2">
-          <h2 id="activity-heading" className="font-serif text-lg font-semibold text-foreground">Activity</h2>
+          <h2 id="activity-heading" className="type-section-title text-foreground">Activity</h2>
           <ol className="flex flex-col gap-2">
             {(events as { id: string; event_type: string; message: string | null; created_at: string }[]).map((e) => (
               <li key={e.id} className="text-sm">

@@ -227,7 +227,7 @@ export function MediaThumb({
   const tone = evidence ? EVIDENCE[evidence] : null
   const frame = cn('relative aspect-square w-full overflow-hidden rounded-lg border bg-muted', tone?.frame)
   const chip = tone && (
-    <span className={cn('pointer-events-none absolute bottom-1.5 left-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide', tone.className)}>
+    <span className={cn('pointer-events-none absolute bottom-1.5 left-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold', tone.className)}>
       {tone.chip}
     </span>
   )
@@ -290,7 +290,7 @@ function MediaLightbox({
       >
         <DialogHeader className="pr-10">
           <DialogTitle className="flex flex-wrap items-center gap-2 text-sm">
-            {tone && <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide', tone.className)}>{tone.chip}</span>}
+            {tone && <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-semibold', tone.className)}>{tone.chip}</span>}
             <span className="min-w-0 truncate">{current?.file_name}</span>
           </DialogTitle>
           <DialogDescription className="text-xs">

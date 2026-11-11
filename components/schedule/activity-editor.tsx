@@ -385,7 +385,7 @@ function DependencyEditor({
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{children}</h3>
+  return <h3 className="text-xs font-medium text-muted-foreground">{children}</h3>
 }
 
 export function ActivityEditor({
@@ -420,7 +420,7 @@ export function ActivityEditor({
         {activity && (
           <>
             <SheetHeader className={DRAWER_HEADER}>
-              <SheetTitle className="font-serif text-xl break-words">{activity.name}</SheetTitle>
+              <SheetTitle className="type-section-title break-words">{activity.name}</SheetTitle>
               <SheetDescription className="break-words">{`${activity.phase} · ${ACTIVITY_TYPE_LABELS[activity.activity_type]}`}</SheetDescription>
             </SheetHeader>
             <div className={`${DRAWER_BODY} flex flex-col gap-8`}>
@@ -529,7 +529,7 @@ export function NewActivitySheet({
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className={DRAWER_SHELL}>
         <SheetHeader className={DRAWER_HEADER}>
-          <SheetTitle className="font-serif text-xl">New activity</SheetTitle>
+          <SheetTitle className="type-section-title">New activity</SheetTitle>
           <SheetDescription>
             {phaseName ? `Adding to ${phaseName}. You can pick a different phase below.` : 'Add a task, milestone, inspection, or meeting to this schedule.'}
           </SheetDescription>

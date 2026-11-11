@@ -19,7 +19,7 @@ import { SCHEDULE_DATES_NEEDED } from '@/lib/schedule'
 import { cn } from '@/lib/utils'
 
 const SECTION_CLASS = 'flex flex-col gap-2.5 px-4 py-3.5'
-const HEADING_CLASS = 'text-xs font-semibold uppercase tracking-wide text-muted-foreground'
+const HEADING_CLASS = 'text-xs font-semibold text-muted-foreground'
 const SHORTCUT_CLASS =
   'relative inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5'
 

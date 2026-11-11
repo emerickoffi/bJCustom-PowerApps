@@ -7,7 +7,7 @@ import { formatDate } from '@/lib/format'
 
 const WALKTHROUGH_PREVIEW = 3
 const ISSUE_PREVIEW = 5
-const SECTION_HEADING = 'scroll-mt-36 font-serif text-lg font-semibold text-foreground'
+const SECTION_HEADING = 'scroll-mt-36 type-section-title text-foreground'
 const ROW = 'flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[#F3F4F6]'
 
 function MoreToggle({ count, noun, children }: { count: number; noun: string; children: React.ReactNode }) {

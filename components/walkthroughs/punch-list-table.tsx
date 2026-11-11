@@ -161,7 +161,7 @@ export function PunchListTable({
   return (
     <section aria-labelledby="punch-list-heading" className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 id="punch-list-heading" className="font-serif text-lg font-semibold text-foreground">
+        <h2 id="punch-list-heading" className="type-section-title text-foreground">
           Punch list
         </h2>
         <p className="text-sm text-muted-foreground">

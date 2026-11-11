@@ -225,7 +225,7 @@ async function SubmittedView({
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <h3 className="text-xs font-medium text-muted-foreground">
                     {issue.reported_source === 'staff' ? 'Builder observation' : 'Your description'}
                   </h3>
                   <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{issue.homeowner_description}</p>
@@ -233,7 +233,7 @@ async function SubmittedView({
                 </div>
                 {(issue.corrective_action || repairPhotos.length > 0) && (
                   <div className="flex flex-col gap-2 border-t pt-4">
-                    <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Builder&apos;s repair</h3>
+                    <h3 className="text-xs font-medium text-muted-foreground">Builder&apos;s repair</h3>
                     {issue.corrective_action && (
                       <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{issue.corrective_action}</p>
                     )}
@@ -250,7 +250,7 @@ async function SubmittedView({
                   </div>
                 )}
                 <div className="flex flex-col gap-3 border-t pt-4">
-                  <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Conversation with your builder</h3>
+                  <h3 className="text-xs font-medium text-muted-foreground">Conversation with your builder</h3>
                   <IssueConversation
                     messages={conversationFor(issue.id)}
                     emptyLabel="No messages yet. Ask a question or send photos of what you are seeing."

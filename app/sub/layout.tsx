@@ -23,7 +23,7 @@ export default async function SubLayout({ children }: { children: React.ReactNod
               <HardHat className="size-5" aria-hidden="true" />
             </span>
             <span className="flex min-w-0 flex-col leading-tight">
-              <span className="truncate font-serif text-base font-semibold text-foreground">{company}</span>
+              <span className="truncate type-record-name text-foreground">{company}</span>
               <span className="truncate text-xs text-muted-foreground">{session.fullName}</span>
             </span>
           </Link>

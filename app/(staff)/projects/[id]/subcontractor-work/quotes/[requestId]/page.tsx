@@ -343,7 +343,7 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
       {award && awardedInvitation ? (
         <Surface aria-labelledby="award-heading">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 id="award-heading" className="font-serif text-lg font-semibold text-foreground">
+            <h2 id="award-heading" className="type-section-title text-foreground">
               Selected quote
             </h2>
             <DecisionBadge decision="selected" />
@@ -392,7 +392,7 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
 
       {entries.length >= 2 ? (
         <Surface aria-labelledby="compare-heading">
-          <h2 id="compare-heading" className="font-serif text-lg font-semibold text-foreground">
+          <h2 id="compare-heading" className="type-section-title text-foreground">
             Compare quotes
           </h2>
           <QuoteComparison
@@ -407,7 +407,7 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
       ) : null}
 
       <Surface aria-labelledby="responses-heading">
-        <h2 id="responses-heading" className="font-serif text-lg font-semibold text-foreground">
+        <h2 id="responses-heading" className="type-section-title text-foreground">
           Responses
         </h2>
         <p className="text-sm text-muted-foreground">Amounts are shown as submitted. Alternates are never added to the base amount, and totals stay blank when tax is excluded but unknown.</p>
@@ -506,7 +506,7 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Surface aria-labelledby="scope-heading">
-          <h2 id="scope-heading" className="font-serif text-lg font-semibold text-foreground">Scope versions</h2>
+          <h2 id="scope-heading" className="type-section-title text-foreground">Scope versions</h2>
           <ol className="flex flex-col gap-4">
             {scopeVersions.map((v) => (
               <li key={v.version} className="flex flex-col gap-2">
@@ -531,7 +531,7 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
         </Surface>
 
         <Surface aria-labelledby="history-heading">
-          <h2 id="history-heading" className="font-serif text-lg font-semibold text-foreground">History</h2>
+          <h2 id="history-heading" className="type-section-title text-foreground">History</h2>
           <ol className="flex flex-col gap-3">
             {((events.data ?? []) as Event[]).map((e) => (
               <li key={e.id} className="flex flex-col text-sm">

@@ -24,7 +24,7 @@ export function ActivityHistoryCard({
             <History className="size-4" />
           </span>
           <div className="flex min-w-0 flex-col">
-            <h2 id="schedule-history" className="font-serif text-lg font-semibold leading-tight text-brand-deep">
+            <h2 id="schedule-history" className="type-section-title text-brand-deep">
               Activity History
             </h2>
             <p className="text-xs text-muted-foreground">Most recent schedule changes</p>

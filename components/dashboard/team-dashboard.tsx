@@ -131,7 +131,7 @@ export async function TeamDashboard({
               <span className="h-px w-6 bg-link-border" aria-hidden="true" />
               {session.brand.displayName}
             </div>
-            <h1 id="welcome-heading" className="text-balance font-serif text-xl font-semibold leading-tight tracking-tight md:text-[26px]">
+            <h1 id="welcome-heading" className="text-balance type-page-title">
               {firstName ? `${greeting()}, ${firstName}.` : `${greeting()}.`}
             </h1>
             <p className="text-pretty leading-relaxed text-white/75">

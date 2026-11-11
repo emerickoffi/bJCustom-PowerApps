@@ -134,7 +134,7 @@ function Result({ analysis, currency, ai }: { analysis: SavedAnalysis; currency:
         {rec.rationale.length ? <Points points={rec.rationale} /> : null}
         {rec.tradeoffs.length ? (
           <div className="flex flex-col gap-2">
-            <h5 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Tradeoffs</h5>
+            <h5 className="text-xs font-medium text-muted-foreground">Tradeoffs</h5>
             <Points points={rec.tradeoffs} />
           </div>
         ) : null}

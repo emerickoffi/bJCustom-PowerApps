@@ -26,10 +26,10 @@ export function EstimateSummary({
   return (
     <section aria-labelledby={headingId} className={cn('surface flex flex-col gap-5 p-5 md:p-6', className)}>
       <div className="flex flex-col gap-1 rounded-2xl bg-brand-deep p-5 text-white">
-        <h2 id={headingId} className="text-xs font-medium uppercase tracking-wider text-white/65">
+        <h2 id={headingId} className="text-xs font-medium text-white/65">
           {label}
         </h2>
-        <p className="font-serif text-4xl font-semibold tabular-nums tracking-tight">
+        <p className="type-financial">
           {formatCentsExact(totals.construction_total_cents)}
         </p>
         <p className="text-xs text-white/60">{note}</p>

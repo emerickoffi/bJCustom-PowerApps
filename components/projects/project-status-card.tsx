@@ -34,7 +34,7 @@ export function ProjectStatusCard({
   return (
     <section aria-labelledby="status-heading" className="surface flex flex-col gap-3 p-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 id="status-heading" className="font-serif text-lg font-semibold text-foreground">
+        <h2 id="status-heading" className="type-section-title text-foreground">
           Project status
         </h2>
         <ProjectStatusBadge status={status} />
@@ -82,7 +82,7 @@ export function ProjectStatusCard({
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent finalFocus={openerRef} className="w-full gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-md">
           <SheetHeader className="gap-1 border-b p-4 pr-12">
-            <SheetTitle className="font-serif text-xl font-semibold text-foreground">Change status</SheetTitle>
+            <SheetTitle className="type-section-title text-foreground">Change status</SheetTitle>
             <SheetDescription>{projectName}</SheetDescription>
           </SheetHeader>
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">

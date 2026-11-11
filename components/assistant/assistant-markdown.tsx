@@ -34,7 +34,7 @@ const components: Components = {
   h2: ({ children }) => <h3 className="mt-4 text-[0.9375rem] font-semibold leading-snug text-foreground first:mt-0">{children}</h3>,
   h3: ({ children }) => <h4 className="mt-3.5 text-sm font-semibold leading-snug text-foreground first:mt-0">{children}</h4>,
   h4: ({ children }) => (
-    <h5 className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground first:mt-0">{children}</h5>
+    <h5 className="mt-3 text-xs font-semibold text-muted-foreground first:mt-0">{children}</h5>
   ),
   p: ({ children }) => <p className="text-pretty leading-relaxed [&:not(:first-child)]:mt-2.5">{children}</p>,
   ul: ({ children }) => <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 first:mt-0 [&_ul]:mt-1.5">{children}</ul>,

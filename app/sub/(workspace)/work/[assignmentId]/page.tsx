@@ -84,7 +84,7 @@ export default async function SubWorkPage({ params }: { params: Promise<{ assign
 
       {canSubmit && (
         <section aria-labelledby="submit-heading" className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
-          <h2 id="submit-heading" className="font-serif text-lg font-semibold text-foreground">
+          <h2 id="submit-heading" className="type-section-title text-foreground">
             {lastDecided ? 'Resubmit completed work' : 'Report completed work'}
           </h2>
           <SubmissionComposer
@@ -98,7 +98,7 @@ export default async function SubWorkPage({ params }: { params: Promise<{ assign
       )}
 
       <section aria-labelledby="history-heading" className="flex flex-col gap-3">
-        <h2 id="history-heading" className="font-serif text-lg font-semibold text-foreground">
+        <h2 id="history-heading" className="type-section-title text-foreground">
           Submission history
         </h2>
         <SubmissionHistory cycles={cycles} names={names} audience="sub" />

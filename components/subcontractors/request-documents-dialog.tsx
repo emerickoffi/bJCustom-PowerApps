@@ -276,7 +276,7 @@ function RequestDocumentsDialog({
                 ) : (
                   grouped.map((g) => (
                     <div key={g.category} className="flex flex-col gap-1.5">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{CATEGORY_LABELS[g.category]}</p>
+                      <p className="text-xs font-semibold text-muted-foreground">{CATEGORY_LABELS[g.category]}</p>
                       <ul className="flex flex-col divide-y rounded-lg border">
                         {g.items.map((i) => (
                           <li key={i.requirementId}>

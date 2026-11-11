@@ -23,7 +23,7 @@ export function SectionCardHeader({
           <Icon className="size-4" />
         </span>
         <div className="flex min-w-0 flex-col">
-          <h2 id={titleId} className="font-serif text-lg font-semibold leading-tight text-brand-deep">
+          <h2 id={titleId} className="type-section-title text-brand-deep">
             {title}
           </h2>
           {description && <p className="text-xs text-muted-foreground">{description}</p>}

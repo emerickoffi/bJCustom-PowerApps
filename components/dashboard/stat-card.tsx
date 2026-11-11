@@ -138,7 +138,7 @@ export function StatCard({
         </span>
       </div>
       <div className="flex min-w-0 flex-col gap-1">
-        <span className="tabular break-words font-serif text-[2rem] font-semibold leading-none tracking-tight text-foreground">
+        <span className="break-words type-financial text-foreground">
           {countTo ? <AnimatedNumber value={countTo.value} format={countTo.format} /> : value}
         </span>
         {subValue && <span className="tabular pt-1 text-sm font-medium text-muted-foreground">{subValue}</span>}

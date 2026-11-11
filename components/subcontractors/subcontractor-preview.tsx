@@ -366,7 +366,7 @@ function AssignToProject({
         save()
       }}
     >
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assign to project</h3>
+      <h3 className="text-xs font-semibold text-muted-foreground">Assign to project</h3>
       {projects.length ? (
         <>
           <div className="relative">

@@ -40,7 +40,7 @@ export function EstimateSettingsPanel({
   return (
     <section aria-labelledby="estimate-settings-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
       <header className="flex flex-col gap-1">
-        <h2 id="estimate-settings-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
+        <h2 id="estimate-settings-heading" className="type-section-title text-foreground">
           Pricing &amp; notes
         </h2>
         <p className="text-sm text-muted-foreground">

@@ -116,7 +116,7 @@ export function DashboardVisibilityForm({
 
       <section aria-labelledby="group-header" className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
-          <h2 id="group-header" className="font-serif text-lg font-semibold text-foreground">
+          <h2 id="group-header" className="type-section-title text-foreground">
             Greeting row
           </h2>
           <p className="text-sm text-muted-foreground">Compact details shown beside the dashboard greeting.</p>
@@ -141,7 +141,7 @@ export function DashboardVisibilityForm({
       {GROUPS.map((group, groupIndex) => (
         <section key={group.title} aria-labelledby={`group-${groupIndex}`} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <h2 id={`group-${groupIndex}`} className="font-serif text-lg font-semibold text-foreground">
+            <h2 id={`group-${groupIndex}`} className="type-section-title text-foreground">
               {group.title}
             </h2>
             <p className="text-sm text-muted-foreground">{group.description}</p>

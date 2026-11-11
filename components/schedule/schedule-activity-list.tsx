@@ -152,7 +152,7 @@ export function ScheduleActivityList({
         filtered.map((g) => (
           <div key={g.project.id} className="flex flex-col gap-2">
             {mode === 'all' && (
-              <h3 className="flex items-baseline gap-2 px-1 font-serif text-base font-semibold text-[#17212B]">
+              <h3 className="flex items-baseline gap-2 px-1 type-section-title text-[#17212B]">
                 {g.project.name}
                 <span className="font-sans text-xs font-normal text-[#526173]">{`${g.activities.length} activities`}</span>
               </h3>

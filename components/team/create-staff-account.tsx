@@ -5,7 +5,7 @@ export function PendingActivationList({ accounts }: { accounts: PendingActivatio
   if (!accounts.length) return null
   return (
     <section aria-labelledby="pending-activation" className="flex flex-col gap-4">
-      <h2 id="pending-activation" className="font-serif text-lg font-semibold text-foreground">
+      <h2 id="pending-activation" className="type-section-title text-foreground">
         Awaiting first sign-in
       </h2>
       <ul className="flex flex-col divide-y rounded-xl border bg-card">

@@ -256,7 +256,7 @@ function ProjectSection({
         >
           <ChevronDown className={cn('size-4 shrink-0 text-[#526173] transition-transform motion-reduce:transition-none', !open && '-rotate-90')} aria-hidden="true" />
           <span className="flex min-w-0 flex-col">
-            <span className="font-serif text-base font-semibold text-[#17212B]">{group.project.name}</span>
+            <span className="type-record-name text-[#17212B]">{group.project.name}</span>
             <span className="text-xs text-[#526173]">
               {[
                 group.project.statusLabel,
@@ -371,7 +371,7 @@ function StageList({
             {open && (
               <div
                 aria-hidden="true"
-                className="hidden border-t border-[#D6DDE5] bg-[#F5F7F9] px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#526173] md:grid md:grid-cols-[minmax(0,1fr)_9rem_11rem_8rem_7.5rem] md:gap-4"
+                className="hidden border-t border-[#D6DDE5] bg-[#F5F7F9] px-4 py-2 type-table-head text-[#526173] md:grid md:grid-cols-[minmax(0,1fr)_9rem_11rem_8rem_7.5rem] md:gap-4"
               >
                 <span>Activity</span>
                 <span>Assigned</span>

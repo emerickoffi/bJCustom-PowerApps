@@ -52,7 +52,7 @@ function KpiCard({
   return (
     <div className="flex min-w-0 flex-col gap-2 rounded-xl border border-[#D6DDE5] bg-white p-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium uppercase tracking-wider text-brand-deep/60">{label}</span>
+        <span className="text-xs font-medium text-brand-deep/60">{label}</span>
         <span
           className={cn(
             'flex size-7 items-center justify-center rounded-lg',
@@ -72,7 +72,7 @@ function KpiValue({ muted = false, children }: { muted?: boolean; children: Reac
   return (
     <span
       className={cn(
-        'font-serif text-2xl font-semibold leading-tight tabular-nums',
+        'type-financial',
         muted ? 'text-brand-deep/45' : 'text-brand-deep',
       )}
     >
@@ -184,7 +184,7 @@ export default async function SchedulePage({
         <section className="flex flex-col items-start gap-4 rounded-xl border border-dashed bg-card p-8">
           <CalendarRange className="size-8 text-primary" aria-hidden="true" />
           <div className="flex flex-col gap-1">
-            <h2 className="font-serif text-xl font-semibold text-foreground">No schedule yet</h2>
+            <h2 className="type-section-title text-foreground">No schedule yet</h2>
             <p className="max-w-prose text-sm text-muted-foreground">
               Construction progress is not configured for this project. Initialize the schedule from your organization&apos;s
               milestone template (with dependencies and progress weights), then adjust activities to fit this home. Existing

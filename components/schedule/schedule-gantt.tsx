@@ -635,7 +635,7 @@ export function ScheduleGantt({
                     >
                       <ChevronDown className={cn('size-4 shrink-0 text-[#526173] transition-transform motion-reduce:transition-none', !row.open && '-rotate-90')} aria-hidden="true" />
                       <row.style.icon className="size-4 shrink-0" style={{ color: row.style.accent }} aria-hidden="true" />
-                      <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-[#17212B]">{row.phase}</span>
+                      <span className="min-w-0 truncate text-xs font-semibold text-[#17212B]">{row.phase}</span>
                       <span className="ml-auto shrink-0 text-xs tabular-nums text-[#526173]">{row.count}</span>
                     </button>
                   ) : (

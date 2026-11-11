@@ -165,7 +165,7 @@ export default async function DailyLogsDirectoryPage({
       ) : (
         <Surface className="p-0 md:p-0">
           <div
-            className="hidden gap-6 border-b border-border/70 px-5 py-3 text-xs font-medium tracking-wide text-muted-foreground uppercase md:flex"
+            className="hidden gap-6 border-b border-border/70 px-5 py-3 text-xs font-medium text-muted-foreground md:flex"
             aria-hidden="true"
           >
             <span className="w-32 shrink-0">Log date</span>

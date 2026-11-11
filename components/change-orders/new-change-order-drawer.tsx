@@ -116,7 +116,7 @@ function DraftForm({
             <FileDiff className="size-5" />
           </span>
           <div className="flex min-w-0 flex-col">
-            <SheetTitle className="font-serif text-xl font-semibold tracking-tight text-foreground">New change order</SheetTitle>
+            <SheetTitle className="type-section-title text-foreground">New change order</SheetTitle>
             <SheetDescription className="truncate">{projectName}</SheetDescription>
           </div>
         </div>
@@ -124,7 +124,7 @@ function DraftForm({
 
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">
         <fieldset aria-describedby="new-co-homeowner-note" className="flex flex-col gap-5">
-          <legend className="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+          <legend className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-primary">
             <Eye className="size-3.5" aria-hidden="true" />
             Homeowner sees
           </legend>
@@ -158,7 +158,7 @@ function DraftForm({
 
         <div className="border-t border-border/70 pt-6">
           <fieldset aria-describedby="new-co-internal-note" className="flex flex-col gap-5">
-            <legend className="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <legend className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
               <Lock className="size-3.5" aria-hidden="true" />
               Internal only
             </legend>

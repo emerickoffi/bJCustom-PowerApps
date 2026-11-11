@@ -255,7 +255,7 @@ export default async function ProjectsPage({
                 footer={
                   <dl className="grid grid-cols-2 gap-4 border-t pt-3">
                     <div className="flex min-w-0 flex-col gap-0.5">
-                      <dt className="flex items-center gap-1 text-[0.68rem] font-medium uppercase tracking-wide text-muted-foreground">
+                      <dt className="flex items-center gap-1 text-[0.68rem] font-medium text-muted-foreground">
                         <Home className="size-3 shrink-0" aria-hidden="true" />
                         Homeowner
                       </dt>
@@ -267,7 +267,7 @@ export default async function ProjectsPage({
                       </dd>
                     </div>
                     <div className="flex min-w-0 flex-col gap-0.5">
-                      <dt className="flex items-center gap-1 text-[0.68rem] font-medium uppercase tracking-wide text-muted-foreground">
+                      <dt className="flex items-center gap-1 text-[0.68rem] font-medium text-muted-foreground">
                         <UserRound className="size-3 shrink-0" aria-hidden="true" />
                         Project manager
                       </dt>

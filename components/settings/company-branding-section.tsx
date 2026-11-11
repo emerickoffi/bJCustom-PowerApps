@@ -42,7 +42,7 @@ function ColorField({
           onChange={(e) => onChange(e.target.value)}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${name}-error` : `${name}-hint`}
-          className="h-10 font-mono uppercase"
+          className="h-10 font-mono"
           maxLength={7}
         />
       </div>
@@ -111,7 +111,7 @@ export function CompanyBrandingSection({
           <span className="text-sm font-medium text-foreground">Branding preview</span>
           <div className="overflow-hidden rounded-lg border border-[#D6DDE5] bg-card">
             <div className="flex items-center gap-3 px-4 py-3" style={{ backgroundColor: previewSecondary }}>
-              <span className="truncate font-serif text-sm font-semibold text-white">{displayName}</span>
+              <span className="truncate text-sm font-semibold text-white">{displayName}</span>
             </div>
             <div className="flex flex-col gap-3 p-4">
               <p className="text-sm text-muted-foreground">Buttons and highlights use your primary color.</p>

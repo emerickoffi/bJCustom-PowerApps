@@ -34,7 +34,7 @@ export function WorkItemList({
           <Icon className="size-4" aria-hidden="true" />
         </span>
         <div className="flex min-w-0 flex-col">
-          <h2 id={id} className="font-serif text-lg font-semibold text-foreground">
+          <h2 id={id} className="type-section-title text-foreground">
             {title}
             {items.length > 0 && <span className="ml-2 font-sans text-sm font-medium text-muted-foreground">{items.length}</span>}
           </h2>

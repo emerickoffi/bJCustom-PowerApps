@@ -10,7 +10,7 @@ export function HomeownerActions({ actions, showProject }: { actions: HomeownerA
           <ListChecks className="size-5" aria-hidden="true" />
         </span>
         <div className="flex flex-col">
-          <h2 id="homeowner-actions-heading" className="font-serif text-xl font-semibold text-foreground">
+          <h2 id="homeowner-actions-heading" className="type-section-title text-foreground">
             Your next steps
           </h2>
           <p className="text-sm text-muted-foreground">

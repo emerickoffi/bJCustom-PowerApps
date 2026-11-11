@@ -122,7 +122,7 @@ export function ActivityHistoryDrawer({
       </SheetTrigger>
       <SheetContent className="w-full gap-0 bg-[#F8F7F3] p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-2xl">
         <SheetHeader className="gap-1 border-b border-border bg-white p-4 pr-12">
-          <SheetTitle className="font-serif text-xl font-semibold text-brand-deep">Activity History</SheetTitle>
+          <SheetTitle className="type-section-title text-brand-deep">Activity History</SheetTitle>
           <SheetDescription className="flex flex-wrap items-center gap-x-2 text-sm">
             <span className="font-medium text-brand-deep">{project.name}</span>
             {project.project_number && <span className="font-mono text-xs">{project.project_number}</span>}

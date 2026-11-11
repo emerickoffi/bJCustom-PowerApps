@@ -17,7 +17,7 @@ export type DetailsHistoryEntry = {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{title}</h3>
+      <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
       {children}
     </section>
   )
@@ -77,7 +77,7 @@ export function ProjectDetailsContent({
       )}
       {internalNotes && (
         <div className="flex flex-col gap-1 rounded-xl bg-champagne-soft p-3">
-          <h3 className="text-xs font-medium uppercase tracking-wider text-warning">Internal notes · staff only</h3>
+          <h3 className="text-xs font-medium text-warning">Internal notes · staff only</h3>
           <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{internalNotes}</p>
         </div>
       )}

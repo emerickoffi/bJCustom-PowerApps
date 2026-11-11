@@ -38,13 +38,13 @@ export function CommandHeader({
     return (
       <header className="flex flex-col gap-4 border-b pb-4 md:flex-row md:items-center md:justify-between md:gap-6">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <CalendarDays className="size-3.5" aria-hidden="true" />
             <time dateTime={today} title={formatLongDate(today)}>
               {formatShortDate(today)}
             </time>
           </p>
-          <h1 className="text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
+          <h1 className="text-balance type-page-title text-foreground">
             {hello}
           </h1>
         </div>
@@ -68,18 +68,13 @@ export function CommandHeader({
       )}
     >
       <div className={cn('flex min-w-0 flex-col', compact ? 'gap-0.5' : 'gap-1')}>
-        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           <CalendarDays className="size-3.5" aria-hidden="true" />
           <time dateTime={today} title={formatLongDate(today)}>
             {formatShortDate(today)}
           </time>
         </p>
-        <h1
-          className={cn(
-            'text-balance font-serif font-semibold leading-tight tracking-tight text-foreground',
-            compact ? 'text-xl' : 'text-xl md:text-[26px]',
-          )}
-        >
+        <h1 className="text-balance type-page-title text-foreground">
           {hello}
         </h1>
         {weather && <div className="mt-1.5 self-start">{weather}</div>}
@@ -173,7 +168,7 @@ export function AttentionSummary({ total, isLowerBound, href }: { total: number;
         </span>
       ) : (
         <span className="flex items-center gap-2.5">
-          <span className="font-serif text-2xl font-semibold leading-none tabular-nums text-primary">{count}</span>
+          <span className="type-financial text-primary">{count}</span>
           <span className="flex flex-col leading-tight">
             <span className="whitespace-nowrap text-sm font-medium text-foreground">{label}</span>
             <span className="text-xs text-muted-foreground group-hover:text-primary">Items to review</span>

@@ -41,7 +41,7 @@ export function ProjectOverviewHeader({
         )}
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <h1 id="project-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
+            <h1 id="project-heading" className="type-page-title text-foreground">
               Overview
             </h1>
             {badges}

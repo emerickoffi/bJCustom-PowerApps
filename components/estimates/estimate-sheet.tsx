@@ -681,7 +681,7 @@ export function EstimateSheet({
         <div className="flex flex-col gap-3 rounded-t-2xl border-b bg-card p-4 md:p-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="flex flex-col gap-0.5">
-              <h2 id="sheet-heading" className="font-serif text-xl font-semibold tracking-tight text-foreground">
+              <h2 id="sheet-heading" className="type-section-title text-foreground">
                 Line items
               </h2>
               <p className="text-sm text-muted-foreground">

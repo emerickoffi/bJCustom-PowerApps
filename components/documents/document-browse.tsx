@@ -144,7 +144,7 @@ export function CategoryNav({
   const items = [{ key: '', label: 'All documents', count: total }, ...DOCUMENT_CATEGORIES.map((c) => ({ key: c.key, label: c.label, count: counts[c.key] }))]
   return (
     <nav aria-labelledby="document-library-heading" className="rounded-xl border border-[#D6DDE5] bg-card p-2">
-      <h2 id="document-library-heading" className={cn('px-3 font-serif text-base font-semibold text-foreground', compact ? 'pb-1.5 pt-1.5 pl-2' : 'pb-2 pt-2')}>
+      <h2 id="document-library-heading" className={cn('px-3 type-section-title text-foreground', compact ? 'pb-1.5 pt-1.5 pl-2' : 'pb-2 pt-2')}>
         Library
       </h2>
       <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">

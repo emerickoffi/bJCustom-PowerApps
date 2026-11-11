@@ -124,7 +124,7 @@ export async function ProjectFinanceStrip({
   return (
     <section id="invoices-heading" aria-labelledby="finance-summary-heading" className="surface flex scroll-mt-36 flex-col gap-3 p-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 id="finance-summary-heading" className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
+        <h2 id="finance-summary-heading" className="flex items-center gap-2 type-section-title text-foreground">
           <Wallet className="size-4 text-primary" aria-hidden="true" />
           Financial summary
         </h2>
@@ -145,13 +145,13 @@ export async function ProjectFinanceStrip({
               href={f.href}
               className="flex h-full min-h-11 flex-col gap-1 rounded-xl border border-[#D6DDE5] bg-[#F8F9FA] p-3 transition-colors hover:border-primary/40 hover:bg-[#F3F4F6] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             >
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{f.label}</span>
+              <span className="text-xs font-medium text-muted-foreground">{f.label}</span>
               <span
                 className={cn(
                   'break-words',
                   f.unavailable
                     ? 'text-sm font-medium italic text-muted-foreground'
-                    : 'font-serif text-lg font-semibold leading-tight tabular-nums text-foreground',
+                    : 'type-financial text-foreground',
                   !f.unavailable && f.tone === 'danger' && 'text-destructive',
                   !f.unavailable && f.tone === 'good' && 'text-primary',
                 )}
