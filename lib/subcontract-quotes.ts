@@ -1,3 +1,22 @@
+import { APP_TIME_ZONE } from '@/lib/format'
+import type { DraftInput } from '@/app/actions/subcontract-quotes'
+
+export function emptyRequestDraft(): DraftInput {
+  return {
+    title: '',
+    trade: '',
+    scope: '',
+    document_ids: [],
+    company_ids: [],
+    deadline_local: '',
+    deadline_timezone: APP_TIME_ZONE,
+    cost_category: '',
+    schedule_activity_id: '',
+    work_window_start: '',
+    work_window_end: '',
+  }
+}
+
 export const QUOTES_MIGRATION = '20261130000010_subcontract_quote_requests.sql'
 export const QUOTES_BUCKET = 'subcontract-quotes'
 export const QUOTE_MAX_FILE_BYTES = 25 * 1024 * 1024
