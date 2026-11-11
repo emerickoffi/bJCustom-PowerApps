@@ -2,35 +2,48 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Plus, XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useLauncherAction } from '@/components/app/floating-actions'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { RequestForm } from '@/components/subcontract-quotes/request-form'
-import { CurrencyPanel } from '@/components/subcontract-quotes/currency-panel'
-import type { DraftInput } from '@/app/actions/subcontract-quotes'
-import type { ActivityOption, CompanyOption, DocumentOption } from '@/lib/subcontract-quotes-data'
+import { CurrencyNotice } from '@/components/subcontract-quotes/currency-notice'
+import { emptyRequestDraft, type ActivityOption, type CompanyOption, type DocumentOption } from '@/lib/subcontract-quotes-data'
 
 type Props = {
   projectId: string
   projectName: string
   currency: string | null
-  initial: DraftInput
+  canConfirmCurrency: boolean
   companies: CompanyOption[]
   documents: DocumentOption[]
   activities: ActivityOption[]
 }
 
-export function NewQuoteRequestDrawer({ projectId, projectName, currency, initial, companies, documents, activities }: Props) {
+/** The single creation surface for quote requests: header button, Quick Create and `/quotes/new` all open it. */
+export function NewQuoteRequestDrawer({ projectId, projectName, currency, canConfirmCurrency, companies, documents, activities }: Props) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
+  // Each opening mounts a fresh form, so values never carry over from a previous session.
+  const [session, setSession] = useState(0)
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [reviewing, setReviewing] = useState(false)
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const openerRef = useRef<HTMLAnchorElement | null>(null)
-  const keepEditingRef = useRef<HTMLButtonElement | null>(null)
   const href = `/projects/${projectId}/subcontractor-work/quotes/new`
+
+  const openFresh = useCallback(() => {
+    setSession((s) => s + 1)
+    setDirty(false)
+    setReviewing(false)
+    setConfirmingDiscard(false)
+    setOpen(true)
+  }, [])
 
   const close = useCallback(() => {
     setConfirmingDiscard(false)
@@ -49,9 +62,15 @@ export function NewQuoteRequestDrawer({ projectId, projectName, currency, initia
     return true
   }
 
+  const wantsNew = searchParams.get('new') === '1'
   useEffect(() => {
-    if (confirmingDiscard) keepEditingRef.current?.focus()
-  }, [confirmingDiscard])
+    if (!wantsNew) return
+    openFresh()
+    const rest = new URLSearchParams(searchParams.toString())
+    rest.delete('new')
+    const query = rest.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [wantsNew, openFresh, pathname, router, searchParams])
 
   useEffect(() => {
     if (!open || !dirty) return
@@ -60,11 +79,16 @@ export function NewQuoteRequestDrawer({ projectId, projectName, currency, initia
     return () => window.removeEventListener('beforeunload', warn)
   }, [open, dirty])
 
-  useLauncherAction({ id: 'quote-request', label: 'New quote request', icon: 'quote', onSelect: () => setOpen(true) })
+  useLauncherAction({ id: 'quote-request', label: 'New quote request', icon: 'quote', onSelect: openFresh })
 
   const onSent = useCallback(() => {
     close()
     toast.success('Quote request sent.')
+  }, [close])
+
+  const onSavedAndClose = useCallback(() => {
+    close()
+    toast.success('Draft saved.')
   }, [close])
 
   return (
@@ -74,10 +98,10 @@ export function NewQuoteRequestDrawer({ projectId, projectName, currency, initia
         href={href}
         aria-haspopup="dialog"
         onClick={(e) => {
-          // Modified clicks keep the direct route (new tab/window).
+          // Modified clicks keep the direct route (new tab/window), which opens this same drawer.
           if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
           e.preventDefault()
-          setOpen(true)
+          openFresh()
         }}
         className="inline-flex h-9 items-center gap-2 rounded-md border border-action-border bg-action font-semibold text-action-foreground hover:bg-action-hover active:bg-action-pressed px-4 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
@@ -115,31 +139,20 @@ export function NewQuoteRequestDrawer({ projectId, projectName, currency, initia
           </header>
 
           <RequestForm
+            key={`${projectId}:${session}`}
             projectId={projectId}
             requestId={null}
             rowVersion={null}
             currency={currency}
-            initial={initial}
+            initial={emptyRequestDraft()}
             companies={companies}
             documents={documents}
             activities={activities}
             drawer={{
-              topSlot: currency ? null : <CurrencyPanel projectId={projectId} />,
-              footerOverride: confirmingDiscard ? (
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <p role="alert" className="text-sm font-medium text-foreground">
-                    Discard unsaved changes?
-                  </p>
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <Button ref={keepEditingRef} type="button" variant="outline" onClick={() => setConfirmingDiscard(false)}>
-                      Keep editing
-                    </Button>
-                    <Button type="button" variant="destructive" onClick={close}>
-                      Discard
-                    </Button>
-                  </div>
-                </div>
-              ) : undefined,
+              topSlot: currency ? null : <CurrencyNotice projectId={projectId} canConfirm={canConfirmCurrency} />,
+              discard: confirmingDiscard
+                ? { onKeepEditing: () => setConfirmingDiscard(false), onDiscard: close, onSaved: onSavedAndClose }
+                : null,
               onCancel: () => void requestClose(),
               onSent,
               onDirtyChange: setDirty,

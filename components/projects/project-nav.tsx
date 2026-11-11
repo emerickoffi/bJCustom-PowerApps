@@ -28,6 +28,10 @@ function readMemory(key: string): SectionMemory {
   }
 }
 
+function isCreationPath(path: string) {
+  return /\/new\/?$/.test(path)
+}
+
 function writeMemory(key: string, memory: SectionMemory) {
   try {
     window.sessionStorage.setItem(key, JSON.stringify(memory))
@@ -75,10 +79,13 @@ export function ProjectNav({
   useEffect(() => {
     activeKeyRef.current = activeKey
     if (!activeKey) return
+    // Creation flows are transient: returning to a tab must land on its index, never a new-record form.
+    if (isCreationPath(pathname)) return
     const current = readMemory(memoryKey)
     // An open details drawer is not part of a tab's remembered view, so returning to the tab never reopens it.
     const remembered = new URLSearchParams(search)
     remembered.delete('details')
+    remembered.delete('new')
     const query = remembered.toString()
     current[activeKey] = { ...current[activeKey], url: query ? `${pathname}?${query}` : pathname }
     writeMemory(memoryKey, current)
@@ -144,6 +151,7 @@ export function ProjectNav({
     const saved = memory[item.key]?.url
     const base = item.activePrefix ?? item.href.split(/[?#]/)[0]
     // Only reuse a remembered URL that still points inside this tab's own route.
+    if (saved && isCreationPath(saved.split('?')[0])) return item.href
     if (saved && (saved === base || saved.startsWith(`${base}?`) || saved.startsWith(`${base}/`))) return saved
     return item.href
   }

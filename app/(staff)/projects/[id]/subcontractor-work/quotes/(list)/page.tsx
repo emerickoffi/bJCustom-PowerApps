@@ -1,14 +1,14 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { AlertTriangle, ChevronRight, Plus } from 'lucide-react'
+import { AlertTriangle, ChevronRight } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { SubWorkShell } from '@/components/subcontractor-work/sub-work-shell'
 import { NewQuoteRequestDrawer } from '@/components/subcontract-quotes/new-request-drawer'
 import { CurrencyNotice } from '@/components/subcontract-quotes/currency-notice'
-import { emptyRequestDraft, loadRequestFormOptions } from '@/lib/subcontract-quotes-data'
+import { loadRequestFormOptions } from '@/lib/subcontract-quotes-data'
 import { RequestStatusBadge } from '@/components/subcontract-quotes/status-badges'
 import { QUOTES_SETUP_MESSAGE, formatDeadline, isQuoteSetupError, type RequestStatus } from '@/lib/subcontract-quotes'
 
@@ -70,7 +70,7 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
             projectId={id}
             projectName={project.name}
             currency={currency}
-            initial={emptyRequestDraft()}
+            canConfirmCurrency={canConfirmCurrency}
             companies={options.companies}
             documents={options.documents}
             activities={options.activities}
@@ -129,18 +129,9 @@ export default async function QuoteRequestsPage({ params }: { params: Promise<{ 
                 })}
               </ul>
             ) : (
-              <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-col gap-0.5">
-                  <p className="text-sm font-medium text-foreground">No quote requests yet</p>
-                  <p className="text-sm text-muted-foreground">Invite qualified subcontractors to price a scope of work.</p>
-                </div>
-                <Link
-                  href={`/projects/${id}/subcontractor-work/quotes/new`}
-                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground hover:bg-muted sm:min-h-9"
-                >
-                  <Plus className="size-4" aria-hidden="true" />
-                  Create quote request
-                </Link>
+              <div className="flex flex-col gap-0.5 rounded-lg border border-dashed border-border px-4 py-4">
+                <p className="text-sm font-medium text-foreground">No quote requests yet</p>
+                <p className="text-sm text-muted-foreground">Invite qualified subcontractors to price a scope of work.</p>
               </div>
             )}
           </section>
