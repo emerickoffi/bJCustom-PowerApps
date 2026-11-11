@@ -5,6 +5,8 @@ import { requireAdmin } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { OrganizationSettingsForm } from '@/components/settings/organization-settings-form'
+import { EmailDeliveryCard, type EmailDeliveryOverview } from '@/components/settings/email-delivery-card'
+import { resolveEmailConfig } from '@/lib/email/config'
 import { Settings as SettingsIcon } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'Company settings' }
@@ -14,7 +16,7 @@ const navButtonClass = 'border-[#D6E0D5] bg-white text-primary hover:bg-[#F3F4F6
 export default async function SettingsPage() {
   const session = await requireAdmin()
   const supabase = await createClient()
-  const [orgRes, settingsRes] = await Promise.all([
+  const [orgRes, settingsRes, deliveryRes] = await Promise.all([
     supabase
       .from('organizations')
       .select(
@@ -27,7 +29,9 @@ export default async function SettingsPage() {
       .select('project_number_prefix, next_project_number, next_client_number')
       .eq('organization_id', session.organizationId)
       .single(),
+    supabase.rpc('email_delivery_overview', { p_org: session.organizationId }),
   ])
+  const emailConfig = resolveEmailConfig()
 
   return (
     <div className={pageLayout('form')}>
@@ -54,6 +58,11 @@ export default async function SettingsPage() {
         defaults={{ ...orgRes.data, project_number_prefix: settingsRes.data?.project_number_prefix ?? 'P' }}
         nextProjectNumber={settingsRes.data?.next_project_number ?? null}
         nextClientNumber={settingsRes.data?.next_client_number ?? null}
+      />
+      <EmailDeliveryCard
+        overview={(deliveryRes.data as EmailDeliveryOverview | null) ?? null}
+        ready={emailConfig.ready}
+        problems={emailConfig.problems}
       />
     </div>
   )

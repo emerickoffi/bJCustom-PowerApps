@@ -9,6 +9,7 @@ import { requireAdmin } from '@/lib/session'
 import { getSubcontractorSession } from '@/lib/subcontractor-session'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { isSubWorkSetupError } from '@/lib/subcontractor-work'
+import { queueAccountEmail } from '@/lib/email/worker'
 
 export type SubPortalState = ActionState & {
   credential?: { email: string; password: string; expiresAt: string }
@@ -97,6 +98,15 @@ export async function inviteSubcontractorUserAction(_prev: SubPortalState, formD
     if (credential) await admin.auth.admin.deleteUser(userId)
     return { error: dbError(error), values }
   }
+  // The email only announces access; the temporary password is never sent by email.
+  await queueAccountEmail({
+    eventKey: `portal_access:${session.organizationId}:${userId}`,
+    organizationId: session.organizationId,
+    userId,
+    email,
+    template: 'portal_access',
+    payload: { temporary_password: Boolean(credential) },
+  })
   revalidatePath(`/subcontractors/${company_id}`)
   return credential
     ? { success: 'Portal account created. Share the temporary password securely.', credential }
