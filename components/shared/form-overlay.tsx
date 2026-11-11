@@ -142,7 +142,7 @@ export function FormOverlay({
                 </span>
               )}
               <div className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
-                <DialogPrimitive.Title className="font-serif text-lg leading-tight font-semibold text-balance">{shownTitle}</DialogPrimitive.Title>
+                <DialogPrimitive.Title className="type-section-title text-balance">{shownTitle}</DialogPrimitive.Title>
                 {shownDescription && (
                   <DialogPrimitive.Description className="text-sm leading-relaxed text-pretty text-muted-foreground">
                     {shownDescription}

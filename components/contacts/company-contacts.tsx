@@ -104,7 +104,7 @@ export function CompanyContacts({
       {embedded ? (
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div className="flex min-w-0 flex-col">
-            <h3 id="company-contacts-heading" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 id="company-contacts-heading" className="text-xs font-semibold text-muted-foreground">
               {heading}
             </h3>
             <p className="text-sm text-foreground/80">{countLabel}</p>
@@ -392,7 +392,7 @@ function EditContactDialog({
         <form key={formKey} action={formAction} className="flex flex-col gap-5" noValidate>
           {c.person_updated_at && <input type="hidden" name="expected_updated_at" value={c.person_updated_at} />}
           <fieldset className="flex flex-col gap-3">
-            <legend className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Personal details</legend>
+            <legend className="mb-2 text-xs font-semibold text-muted-foreground">Personal details</legend>
             {shared && (
               <p className="flex items-start gap-2 rounded-lg bg-sage px-3 py-2 text-sm text-foreground/80">
                 <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
@@ -417,7 +417,7 @@ function EditContactDialog({
           </fieldset>
           <fieldset className="flex flex-col gap-3 border-t border-border/60 pt-4">
             <legend className="sr-only">At this company</legend>
-            <p aria-hidden="true" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <p aria-hidden="true" className="text-xs font-semibold text-muted-foreground">
               At this company
             </p>
             <TextField

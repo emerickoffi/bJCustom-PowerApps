@@ -85,7 +85,7 @@ function Panel({
     <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h2 className="font-serif text-lg font-semibold text-foreground">{title}</h2>
+          <h2 className="type-section-title text-foreground">{title}</h2>
           {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
         {actions}
@@ -505,7 +505,7 @@ export function ContactsPanel({
         </div>
       )}
       <div className="flex flex-col gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Primary contact</h3>
+        <h3 className="text-xs font-semibold text-muted-foreground">Primary contact</h3>
         {primary ? (
           <ul className="flex flex-col gap-3">
             <ContactCard clientId={clientId} contact={primary} canEdit={canEdit} accountStatus={statusFor(primary.id)} />
@@ -523,7 +523,7 @@ export function ContactsPanel({
         )}
       </div>
       <div className="flex flex-col gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Secondary contacts</h3>
+        <h3 className="text-xs font-semibold text-muted-foreground">Secondary contacts</h3>
         {secondary.length ? (
           <ul className="flex flex-col gap-3">
             {secondary.map((c) => (

@@ -60,7 +60,7 @@ function Field({
 function Group({ title, children, columns = true }: { title: string; children: ReactNode; columns?: boolean }) {
   return (
     <section className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+      <h3 className="text-[11px] font-semibold text-muted-foreground">{title}</h3>
       <dl className={cn('grid gap-x-6 gap-y-4', columns && 'sm:grid-cols-2')}>{children}</dl>
     </section>
   )
@@ -93,15 +93,15 @@ export function ClientInformationCard({ info, identity }: { info: ClientInformat
         <div className="flex min-w-0 items-start gap-4">
           <span
             aria-hidden="true"
-            className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary font-serif text-base font-semibold text-white md:size-14 md:text-lg"
+            className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-base font-semibold text-white md:size-14 md:text-lg"
           >
             {identity.initials || <ContactRound className="size-5" aria-hidden />}
           </span>
           <div className="flex min-w-0 flex-col gap-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">Client profile</p>
+            <p className="text-[11px] font-semibold text-primary">Client profile</p>
             <h1
               id="client-profile-heading"
-              className="text-balance break-words font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]"
+              className="text-balance break-words type-page-title text-foreground"
             >
               {identity.name}
             </h1>
@@ -182,7 +182,7 @@ export function ClientInformationCard({ info, identity }: { info: ClientInformat
 
       {info.notes && (
         <div className="flex flex-col gap-1 rounded-lg bg-muted p-4">
-          <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <h3 className="text-xs font-medium text-muted-foreground">
             Internal notes · staff only
           </h3>
           <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{info.notes}</p>

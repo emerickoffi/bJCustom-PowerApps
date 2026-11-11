@@ -109,7 +109,7 @@ export function ScheduleCalendar({ activities, onSelect }: ViewProps) {
     <div className="grid gap-6 xl:grid-cols-[1fr_18rem]">
       <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="font-serif text-lg font-semibold text-foreground" aria-live="polite">
+          <h3 className="type-section-title text-foreground" aria-live="polite">
             {month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </h3>
           <div className="flex gap-1">
@@ -160,7 +160,7 @@ export function ScheduleCalendar({ activities, onSelect }: ViewProps) {
         </div>
       </div>
       <aside className="flex flex-col gap-3 rounded-xl border bg-card p-4">
-        <h3 className="font-serif text-lg font-semibold text-foreground">Upcoming</h3>
+        <h3 className="type-section-title text-foreground">Upcoming</h3>
         <p className="text-xs text-muted-foreground">Milestones, inspections, and meetings.</p>
         {upcoming.length ? (
           <ul className="flex flex-col divide-y">

@@ -266,7 +266,7 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
           <Sparkles className="size-5" aria-hidden="true" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
-          <SheetTitle className="font-serif text-lg font-semibold leading-tight text-foreground">
+          <SheetTitle className="type-section-title text-foreground">
             B &amp; J AI Assistant
           </SheetTitle>
           <SheetDescription className="text-xs">Your construction copilot</SheetDescription>
@@ -374,7 +374,7 @@ function WelcomeState({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1.5">
-        <h3 className="text-balance font-serif text-xl font-semibold text-foreground">How can I help today?</h3>
+        <h3 className="text-balance type-section-title text-foreground">How can I help today?</h3>
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
           {project
             ? `Ask about ${project.name}, or start with a suggestion below.`
@@ -383,7 +383,7 @@ function WelcomeState({
       </div>
       {suggestions.length > 0 && (
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Suggested for this page</span>
+          <span className="text-xs font-semibold text-muted-foreground">Suggested for this page</span>
           <ul className="flex flex-wrap gap-2">
             {suggestions.map((s) => (
               <li key={s}>

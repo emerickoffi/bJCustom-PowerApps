@@ -62,7 +62,7 @@ export function HomeownerAccountList({
       )}
 
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id="homeowners-heading" className="font-serif text-lg font-semibold text-foreground">
+        <h2 id="homeowners-heading" className="type-section-title text-foreground">
           Homeowner accounts
         </h2>
         <span className="text-sm text-[#526173]">

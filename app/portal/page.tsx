@@ -141,7 +141,7 @@ export default async function PortalPage() {
           <span className="h-px w-6 bg-link" aria-hidden="true" />
           Your home
         </div>
-        <h1 className="text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
+        <h1 className="text-balance type-page-title text-foreground">
           {firstName ? `Welcome home, ${firstName}.` : 'Welcome home.'}
         </h1>
       </div>
@@ -179,7 +179,7 @@ export default async function PortalPage() {
                           <span className="font-mono text-xs text-white/70">{p.project_number}</span>
                           <ProjectStatusBadge status={p.status} />
                         </div>
-                        <h2 className="text-balance font-serif text-2xl font-semibold leading-tight sm:text-3xl">{p.name}</h2>
+                        <h2 className="text-balance type-section-title">{p.name}</h2>
                         <p className="flex items-start gap-1.5 text-sm text-white/80">
                           <MapPin className="mt-0.5 size-4 shrink-0 text-link-border" aria-hidden="true" />
                           {`${p.address_line1}, ${p.city}, ${p.state} ${p.postal_code}`}
@@ -249,7 +249,7 @@ export default async function PortalPage() {
                         <ClipboardCheck className="size-4" aria-hidden="true" />
                       </span>
                       <div className="flex flex-col">
-                        <h3 id={`walk-${p.id}`} className="font-serif text-lg font-semibold text-foreground">
+                        <h3 id={`walk-${p.id}`} className="type-section-title text-foreground">
                           Walkthroughs & issues
                         </h3>
                         <p className="text-sm text-muted-foreground">Review your home and track any repairs</p>

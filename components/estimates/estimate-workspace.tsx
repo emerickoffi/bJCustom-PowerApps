@@ -209,7 +209,7 @@ export function EstimateWorkspaceHeader({
         </div>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 flex-col gap-0.5 lg:flex-1">
-            <h1 title={title} className="truncate font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">{title}</h1>
+            <h1 title={title} className="truncate type-page-title text-foreground">{title}</h1>
             {subtitle && <div className="hidden truncate text-sm text-muted-foreground sm:block">{subtitle}</div>}
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:flex-nowrap">
@@ -316,8 +316,8 @@ function CompactTotals({ serverTotals, editable }: { serverTotals: EstimateTotal
     <details className="surface group overflow-hidden">
       <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
         <span className="flex items-baseline gap-2">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Construction total</span>
-          <span className="font-serif text-lg font-semibold tabular-nums text-foreground">
+          <span className="text-xs font-medium text-muted-foreground">Construction total</span>
+          <span className="type-financial text-foreground">
             {formatCentsExact(totals.construction_total_cents)}
           </span>
         </span>

@@ -37,7 +37,7 @@ function ManagerRow({ name, membershipRole, note }: { name: string | null; membe
     <div className="flex items-center gap-3">
       <ManagerAvatar name={name} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-primary">Project manager</span>
+        <span className="text-[11px] font-medium text-primary">Project manager</span>
         <span className="truncate font-medium text-foreground">{name ?? 'Unassigned'}</span>
         {membershipRole && membershipRole !== 'project_manager' && (
           <span className="text-xs text-muted-foreground">{`Project role: ${roleLabel(membershipRole)}`}</span>
@@ -203,7 +203,7 @@ export function ProjectTeamPanel({
           className="w-full gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-md"
         >
           <SheetHeader className="gap-1 border-b p-4 pr-12">
-            <SheetTitle className="font-serif text-xl font-semibold text-foreground">
+            <SheetTitle className="type-section-title text-foreground">
               {canEdit ? 'Manage team' : 'Project team'}
             </SheetTitle>
             <SheetDescription>{projectName}</SheetDescription>

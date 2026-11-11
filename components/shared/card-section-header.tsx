@@ -60,7 +60,7 @@ export function CardSectionHeader({
       <div className="flex min-w-0 items-center gap-3">
         <CardSectionIcon icon={Icon} tone={tone} />
         <div className="flex min-w-0 flex-col">
-          <h2 id={id} className="font-serif text-lg font-semibold leading-tight tracking-tight text-foreground">
+          <h2 id={id} className="type-section-title text-foreground">
             {title}
           </h2>
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}

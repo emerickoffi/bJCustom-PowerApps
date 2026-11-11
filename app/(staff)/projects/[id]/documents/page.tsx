@@ -34,7 +34,7 @@ function CompactEmptyState({
         <Icon className="size-4" aria-hidden="true" />
       </span>
       <div className="flex max-w-sm flex-col gap-1">
-        <h2 className="font-serif text-base font-semibold text-foreground">{title}</h2>
+        <h2 className="type-section-title text-foreground">{title}</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
       </div>
       {action}

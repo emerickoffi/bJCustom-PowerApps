@@ -176,7 +176,7 @@ export function VettingStatusPanel({
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <dt className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-[11px] font-medium text-muted-foreground">{label}</dt>
       <dd className="min-w-0 text-sm font-medium text-foreground">{children}</dd>
     </div>
   )

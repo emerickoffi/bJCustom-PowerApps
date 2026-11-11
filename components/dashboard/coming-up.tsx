@@ -24,8 +24,8 @@ function DateChip({ iso, tentative }: { iso: string; tentative: boolean }) {
         tentative ? 'border border-dashed border-primary/40 bg-transparent text-primary' : 'bg-[rgba(33,113,181,0.12)] text-[#2171B5]',
       )}
     >
-      <span className="text-[0.6rem] font-semibold uppercase tracking-wide leading-none">{month}</span>
-      <span className="tabular font-serif text-lg font-semibold leading-tight">{d}</span>
+      <span className="text-[0.6rem] font-semibold leading-none">{month}</span>
+      <span className="tabular text-lg font-semibold leading-tight">{d}</span>
     </time>
   )
 }
@@ -114,7 +114,7 @@ export function ComingUp({
         <section key={group.date} aria-labelledby={`coming-up-${group.date}`} className="flex flex-col">
         <h3
           id={`coming-up-${group.date}`}
-          className="text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground"
+          className="text-[0.7rem] font-semibold text-muted-foreground"
         >
           {group.label}
         </h3>
@@ -130,7 +130,7 @@ export function ComingUp({
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate text-sm font-semibold text-foreground group-hover:text-primary">{e.title}</span>
                     {e.tentative && (
-                      <span className="shrink-0 rounded border border-dashed border-muted-foreground/50 px-1 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                      <span className="shrink-0 rounded border border-dashed border-muted-foreground/50 px-1 text-[0.65rem] font-medium text-muted-foreground">
                         Tentative
                       </span>
                     )}

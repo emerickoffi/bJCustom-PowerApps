@@ -62,7 +62,7 @@ export default async function CompletionReviewPage({ params }: { params: Promise
       </section>
 
       <section aria-labelledby="review-submit" className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
-        <h2 id="review-submit" className="font-serif text-lg font-semibold text-foreground">Completion</h2>
+        <h2 id="review-submit" className="type-section-title text-foreground">Completion</h2>
         {blockedReason ? (
           <p className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
             <ShieldX className="mt-0.5 size-4 shrink-0" aria-hidden="true" />

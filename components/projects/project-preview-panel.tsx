@@ -31,7 +31,7 @@ export type PreviewLeaveGuard = (proceed: () => void) => boolean
 type PanelView = 'summary' | 'subcontractors' | 'assign'
 
 const MIN_PANEL_HEIGHT = 256
-const TITLE_CLASS = 'min-w-0 flex-1 text-pretty break-words font-serif text-lg font-semibold leading-snug text-foreground'
+const TITLE_CLASS = 'min-w-0 flex-1 text-pretty break-words type-section-title text-foreground'
 const SCROLL_CLASS = 'min-h-0 flex-1 overflow-y-auto overscroll-contain'
 const DRAWER_INSETS = 'pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]'
 

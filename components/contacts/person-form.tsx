@@ -160,7 +160,7 @@ export function PersonForm({
       >
         {currentCompanies.length > 0 && (
           <div className="flex flex-col gap-2 sm:col-span-2">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Current companies</p>
+            <p className="text-xs font-medium text-muted-foreground">Current companies</p>
             <ul className="flex flex-col divide-y divide-border/60 rounded-lg border border-border/80">
               {currentCompanies.map((c) => (
                 <li key={c.company_id} className="flex items-center gap-3 px-3 py-2.5 text-sm">

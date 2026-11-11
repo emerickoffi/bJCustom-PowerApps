@@ -263,7 +263,7 @@ export function ChecklistForm({
         {category ? (
           <>
             <div className="flex items-baseline justify-between gap-3">
-              <h2 className="font-serif text-2xl font-semibold text-foreground">{category.name}</h2>
+              <h2 className="type-section-title text-foreground">{category.name}</h2>
               <span className="text-sm text-muted-foreground">{`Section ${active + 1} of ${categories.length}`}</span>
             </div>
             <ul className="flex flex-col gap-4">
@@ -541,7 +541,7 @@ function ReviewPanel({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h2 className="font-serif text-2xl font-semibold text-foreground">Review & submit</h2>
+        <h2 className="type-section-title text-foreground">Review & submit</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
           {ready
             ? `All ${total} items have a response. Each item marked Needs Attention will be sent to your builder as a repair request with your description, exactly as written.`

@@ -269,7 +269,7 @@ export default async function ClientDetailPage({
           />
 
           <section aria-labelledby="client-projects" className="flex flex-col gap-3">
-            <h2 id="client-projects" className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
+            <h2 id="client-projects" className="flex items-center gap-2 type-section-title text-foreground">
               <House className="size-5 text-primary" aria-hidden="true" />
               Projects
             </h2>

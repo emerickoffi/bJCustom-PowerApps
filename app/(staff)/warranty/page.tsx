@@ -203,7 +203,7 @@ export default async function WarrantyPage({ searchParams }: { searchParams: Pro
 
       {openTasks.length > 0 && (
         <section aria-labelledby="followups" className="surface flex flex-col gap-3 p-5">
-          <h2 id="followups" className="font-serif text-lg font-semibold">
+          <h2 id="followups" className="type-section-title">
             Anniversary cards to send
           </h2>
           <ul className="flex flex-col divide-y">

@@ -7,7 +7,7 @@ function Metric({ label, value, emphasis }: { label: string; value: number; emph
   return (
     <div className="flex items-baseline gap-1.5">
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className={cn('tabular font-serif text-lg font-semibold leading-none', emphasis ? 'text-primary' : 'text-foreground')}>
+      <dd className={cn('tabular text-lg font-semibold leading-none', emphasis ? 'text-primary' : 'text-foreground')}>
         {value}
       </dd>
     </div>
@@ -23,7 +23,7 @@ function PipelineHeading() {
       >
         <GitBranch className="size-[18px]" />
       </span>
-      <h2 id="pipeline-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+      <h2 id="pipeline-heading" className="type-section-title text-foreground">
         Project Pipeline
       </h2>
     </div>

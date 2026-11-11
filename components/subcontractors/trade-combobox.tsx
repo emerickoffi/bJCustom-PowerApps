@@ -101,7 +101,7 @@ export function TradeCombobox({ defaultValue = '', error }: { defaultValue?: str
               <Combobox.List className="outline-none">
                 {(group: TradeGroup) => (
                   <Combobox.Group key={group.value} items={group.items} className="pb-1 last:pb-0">
-                    <Combobox.GroupLabel className="sticky top-0 z-10 bg-popover px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <Combobox.GroupLabel className="sticky top-0 z-10 bg-popover px-2 pb-1 pt-2 text-xs font-semibold text-muted-foreground">
                       {group.value}
                     </Combobox.GroupLabel>
                     <Combobox.Collection>

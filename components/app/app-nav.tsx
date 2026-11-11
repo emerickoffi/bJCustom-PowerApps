@@ -181,7 +181,7 @@ export function AppNav({
               aria-controls={panelId}
               disabled={containsActive}
               className={cn(
-                'flex h-7 items-center justify-between rounded-md px-3.5 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-sidebar-muted transition-colors',
+                'flex h-7 items-center justify-between rounded-md px-3.5 text-[0.6875rem] font-semibold text-sidebar-muted transition-colors',
                 'hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/45',
                 'disabled:cursor-default disabled:hover:text-sidebar-muted',
               )}
@@ -211,7 +211,7 @@ export function AppNav({
       })}
       {!collapsed && UPCOMING.length > 0 && (
         <details open={upcomingActive} className="group/soon">
-          <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-3.5 py-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-sidebar-muted transition-colors hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/45 [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-3.5 py-1.5 text-[0.6875rem] font-semibold text-sidebar-muted transition-colors hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/45 [&::-webkit-details-marker]:hidden">
             Coming soon
             <ChevronDown className="size-3.5 transition-transform group-open/soon:rotate-180" aria-hidden="true" />
           </summary>

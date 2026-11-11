@@ -104,7 +104,7 @@ function ChangeOrdersEmpty() {
         <FileDiff className="size-5" />
       </span>
       <div className="flex min-w-0 flex-col gap-0.5">
-        <h2 id="co-empty-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+        <h2 id="co-empty-heading" className="type-section-title text-foreground">
           No change orders yet
         </h2>
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">

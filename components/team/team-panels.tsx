@@ -54,7 +54,7 @@ export function MemberList({ members }: { members: MemberRow[] }) {
   return (
     <section aria-labelledby="members-heading" className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id="members-heading" className="font-serif text-lg font-semibold text-foreground">
+        <h2 id="members-heading" className="type-section-title text-foreground">
           Members
         </h2>
         <span className="text-sm text-[#526173]">{`${members.length} ${members.length === 1 ? 'person' : 'people'}`}</span>
@@ -130,7 +130,7 @@ function MemberItem({ member: m }: { member: MemberRow }) {
             <Dialog open={dialog === 'role'} onOpenChange={(open) => !open && setDialog(null)}>
               <DialogContent finalFocus={manageRef} className="gap-5 p-5 sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle className="font-serif text-lg font-semibold">Change role</DialogTitle>
+                  <DialogTitle className="type-section-title">Change role</DialogTitle>
                   <DialogDescription>
                     {`${name} is currently ${ROLE_LABELS[m.role]}.`}
                   </DialogDescription>
@@ -142,7 +142,7 @@ function MemberItem({ member: m }: { member: MemberRow }) {
             <Dialog open={dialog === 'access'} onOpenChange={(open) => !open && setDialog(null)}>
               <DialogContent finalFocus={manageRef} className="gap-5 p-5 sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle className="font-serif text-lg font-semibold">
+                  <DialogTitle className="type-section-title">
                     {isActive ? 'Suspend account' : 'Reactivate account'}
                   </DialogTitle>
                   <DialogDescription>

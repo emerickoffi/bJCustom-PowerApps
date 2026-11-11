@@ -13,7 +13,7 @@ export function DailyLogStatusBadge({ status, className }: { status: DailyLogSta
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex break-inside-avoid flex-col gap-3 border-t border-border/70 pt-5 first:border-t-0 first:pt-0">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
+      <h2 className="text-xs font-semibold text-muted-foreground">{title}</h2>
       {children}
     </section>
   )

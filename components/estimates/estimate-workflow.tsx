@@ -265,7 +265,7 @@ export function EstimateReadiness({
     <section aria-labelledby="workflow-heading" className="surface flex flex-col gap-4 p-4 md:p-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
         <div className="flex flex-col gap-1">
-          <h2 id="workflow-heading" tabIndex={-1} className="font-serif text-lg font-semibold text-foreground outline-none">
+          <h2 id="workflow-heading" tabIndex={-1} className="type-section-title text-foreground outline-none">
             {heading}
           </h2>
           {!isLatest ? (

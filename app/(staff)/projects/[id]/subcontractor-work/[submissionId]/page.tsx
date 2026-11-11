@@ -87,7 +87,7 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
       />
 
       <Surface aria-labelledby="scope-heading" className="gap-3">
-        <h2 id="scope-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+        <h2 id="scope-heading" className="type-section-title text-foreground">
           {current.kind === 'work' ? 'Assigned scope' : 'Requested correction'}
         </h2>
         <p className="whitespace-pre-wrap text-sm text-foreground">{scope || 'No scope details recorded.'}</p>
@@ -107,7 +107,7 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
       {awaiting && (
         <Surface aria-labelledby="verify-heading" className="gap-4">
           <div className="flex flex-col gap-0.5">
-            <h2 id="verify-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+            <h2 id="verify-heading" className="type-section-title text-foreground">
               Verify this submission
             </h2>
             <p className="text-sm text-muted-foreground">
@@ -128,7 +128,7 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
       {current.status === 'accepted' && current.kind === 'work' && current.assignmentId && (
         <Surface aria-labelledby="rate-heading" className="gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-0.5">
-            <h2 id="rate-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+            <h2 id="rate-heading" className="type-section-title text-foreground">
               Rate this work
             </h2>
             <p className="text-sm text-muted-foreground">
@@ -146,7 +146,7 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
       )}
 
       <Surface aria-labelledby="history-heading" className="gap-4">
-        <h2 id="history-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+        <h2 id="history-heading" className="type-section-title text-foreground">
           Submission history
         </h2>
         <SubmissionHistory cycles={cycles} names={names} audience="builder" issueLabels={issueLabels} />

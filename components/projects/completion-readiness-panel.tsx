@@ -40,7 +40,7 @@ export function ReadinessChecklist({ items }: { items: ReadinessItem[] }) {
               </span>
               <span className="text-xs leading-relaxed text-muted-foreground">{item.detail}</span>
               {item.policy !== 'not_applicable' && (
-                <span className="text-[0.7rem] uppercase tracking-wider text-muted-foreground/80">{READINESS_POLICY_LABELS[item.policy]}</span>
+                <span className="text-[0.7rem] text-muted-foreground/80">{READINESS_POLICY_LABELS[item.policy]}</span>
               )}
             </span>
           </>
@@ -94,7 +94,7 @@ export function CompletionReadinessPanel({
     <section aria-labelledby="readiness-heading" className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-2">
-          <h2 id="readiness-heading" className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
+          <h2 id="readiness-heading" className="flex items-center gap-2 type-section-title text-foreground">
             <ClipboardCheck className="size-4.5 text-primary" aria-hidden="true" />
             Completion readiness
           </h2>

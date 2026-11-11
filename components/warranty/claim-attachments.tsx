@@ -211,7 +211,7 @@ function AttachmentTile({ item, disabled, onRemove }: { item: ClaimAttachment; d
         ) : (
           <div className="flex size-full flex-col items-center justify-center gap-1 text-muted-foreground">
             {isPdf ? <FileText className="size-7" aria-hidden="true" /> : <ImageIcon className="size-7" aria-hidden="true" />}
-            <span className="text-[11px] font-medium uppercase tracking-wide">
+            <span className="text-[11px] font-medium">
               {isPdf ? 'PDF' : item.file.type === 'image/heic' ? 'HEIC · no preview' : 'Image'}
             </span>
           </div>

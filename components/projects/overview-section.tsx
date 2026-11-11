@@ -50,8 +50,8 @@ export function OverviewSection({
               <h2
                 id={id}
                 className={cn(
-                  'scroll-mt-36 font-serif font-semibold leading-snug tracking-tight text-foreground',
-                  identity ? 'text-xl md:text-2xl' : 'text-lg',
+                  'scroll-mt-36 text-foreground',
+                  identity ? 'type-page-title' : 'type-section-title',
                 )}
               >
                 {title}

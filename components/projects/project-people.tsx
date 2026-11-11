@@ -62,7 +62,7 @@ export function Panel({
   return (
     <section className={cn('flex min-w-0 flex-col rounded-xl border bg-card', compact ? 'gap-2 px-4 py-3' : 'gap-3 p-4')}>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-serif text-lg font-semibold text-foreground">{title}</h2>
+        <h2 className="type-section-title text-foreground">{title}</h2>
         {action}
       </div>
       {children}
@@ -205,7 +205,7 @@ export function ProjectClientsPanel({
               <div key={group.linkId} className={cn('flex flex-col gap-2', !isPrimaryLink && 'border-t pt-4')}>
                 {!isPrimaryLink && (
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <span className="text-[11px] font-medium text-muted-foreground">
                       {'Linked homeowner · '}
                       {PROJECT_CLIENT_RELATIONSHIP_LABELS[group.linkRelationship] ?? group.linkRelationship}
                     </span>

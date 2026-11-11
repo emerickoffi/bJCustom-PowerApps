@@ -20,7 +20,7 @@ export function PortalSignatureTasks({ tasks }: { tasks: MySignatureTask[] }) {
           <PenLine className="size-4" aria-hidden="true" />
         </span>
         <div>
-          <h2 id="sign-heading" className="font-serif text-lg font-semibold text-foreground">Documents to sign</h2>
+          <h2 id="sign-heading" className="type-section-title text-foreground">Documents to sign</h2>
           <p className="text-xs text-muted-foreground">
             {pending.length ? `${pending.length} waiting for your signature` : 'You are all caught up.'}
           </p>

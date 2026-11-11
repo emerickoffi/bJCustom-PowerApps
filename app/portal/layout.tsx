@@ -59,7 +59,7 @@ export default async function PortalLayout({ children }: { children: React.React
             children
           ) : (
             <div className="surface mx-auto flex max-w-xl flex-col gap-2 p-8 text-center">
-              <h1 className="font-serif text-2xl font-semibold text-foreground">The homeowner portal is unavailable</h1>
+              <h1 className="type-page-title text-foreground">The homeowner portal is unavailable</h1>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {`${brand.displayName} has paused online access. Your project information is safe. Contact your builder${brand.phone ? ` at ${brand.phone}` : ''} for updates.`}
               </p>

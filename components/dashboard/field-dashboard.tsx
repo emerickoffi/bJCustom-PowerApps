@@ -84,7 +84,7 @@ export async function FieldDashboard({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <p className="text-sm text-muted-foreground">{session.brand.displayName}</p>
-          <h1 className="text-balance font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
+          <h1 className="text-balance type-page-title text-foreground">
             {firstName ? `${greeting()}, ${firstName}.` : `${greeting()}.`}
           </h1>
         </div>
@@ -177,8 +177,8 @@ function CurrentJobCard({ data }: { data: FieldDashboardData }) {
       className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between sm:p-5"
     >
       <div className="flex min-w-0 flex-col gap-1.5">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Current job</span>
-        <h2 id="current-job-heading" className="truncate font-serif text-xl font-semibold">
+        <span className="text-xs font-medium text-muted-foreground">Current job</span>
+        <h2 id="current-job-heading" className="truncate type-section-title">
           {job.name}
         </h2>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -229,7 +229,7 @@ function FocusCard({ data }: { data: FieldDashboardData }) {
   return (
     <section aria-labelledby="focus-heading" className="flex flex-col gap-4 rounded-2xl bg-brand-deep p-5 text-white shadow-lift sm:p-6">
       <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
-        <span className="uppercase tracking-wide text-link-border">Focus</span>
+        <span className="text-link-border">Focus</span>
         <span
           className={cn(
             'rounded-badge px-2.5 py-0.5',
@@ -241,7 +241,7 @@ function FocusCard({ data }: { data: FieldDashboardData }) {
         <span className="text-white/65">{ACTION_CATEGORY_LABELS[focus.category]}</span>
       </div>
       <div className="flex flex-col gap-1.5">
-        <h2 id="focus-heading" className="text-pretty font-serif text-xl font-semibold leading-snug sm:text-2xl">
+        <h2 id="focus-heading" className="text-pretty type-section-title">
           {focus.title}
         </h2>
         <p className="text-pretty text-sm leading-relaxed text-white/80">{focus.description}</p>

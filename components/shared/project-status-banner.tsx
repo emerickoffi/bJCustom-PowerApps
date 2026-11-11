@@ -62,7 +62,7 @@ export function ProjectStatusBanner({
     return (
       <span
         className={cn(
-          'inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wide',
+          'inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-[0.7rem] font-semibold',
           style.className,
           className,
         )}
@@ -76,7 +76,7 @@ export function ProjectStatusBanner({
   return (
     <div
       className={cn(
-        'flex w-full items-center gap-2 px-4 py-2 text-sm font-semibold uppercase tracking-wider',
+        'flex w-full items-center gap-2 px-4 py-2 text-sm font-semibold',
         style.className,
         className,
       )}

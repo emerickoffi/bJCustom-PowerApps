@@ -78,7 +78,7 @@ export function InvoicePayments({
   return (
     <section aria-labelledby="payments-heading" className="surface flex flex-col gap-5 p-5 md:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="payments-heading" className="font-serif text-xl">
+        <h2 id="payments-heading" className="type-section-title">
           Payments
         </h2>
         <p className="text-sm text-muted-foreground">

@@ -43,7 +43,7 @@ export function DashboardSectionHeader({
           <h2
             id={id}
             className={cn(
-              'font-serif text-xl font-semibold tracking-tight text-foreground',
+              'type-section-title text-foreground',
               compact && 'leading-tight',
             )}
           >

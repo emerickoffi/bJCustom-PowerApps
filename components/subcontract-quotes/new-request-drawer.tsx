@@ -100,7 +100,7 @@ export function NewQuoteRequestDrawer({ projectId, projectName, currency, initia
         >
           <header className="flex shrink-0 items-start gap-3 border-b border-border py-3 pr-2 pl-5 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pl-6">
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 pt-1.5">
-              <SheetTitle className="font-serif text-xl font-semibold text-foreground">New quote request</SheetTitle>
+              <SheetTitle className="type-section-title text-foreground">New quote request</SheetTitle>
               <SheetDescription className="truncate">
                 {reviewing ? `Review before sending · ${projectName}` : projectName}
               </SheetDescription>

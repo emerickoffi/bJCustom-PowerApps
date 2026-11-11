@@ -124,7 +124,7 @@ export function InvitationList({ invitations }: { invitations: InvitationRow[] }
   if (!invitations.length) return null
   return (
     <section aria-labelledby="invites-heading" className="flex flex-col gap-4">
-      <h2 id="invites-heading" className="font-serif text-lg font-semibold text-foreground">
+      <h2 id="invites-heading" className="type-section-title text-foreground">
         Pending invitations
       </h2>
       <ul className="divide-y overflow-hidden rounded-xl border bg-card">

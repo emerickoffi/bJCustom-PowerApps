@@ -44,7 +44,7 @@ export function RouteError({ reset, homeHref }: { reset: () => void; homeHref: s
         <AlertTriangle className="size-5" aria-hidden="true" />
       </span>
       <div className="flex flex-col gap-1.5">
-        <h1 className="font-serif text-xl font-semibold text-foreground">This page couldn&apos;t load</h1>
+        <h1 className="type-page-title text-foreground">This page couldn&apos;t load</h1>
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
           Something went wrong while retrieving this information. Your data has not been changed. Try again, or
           return to the start page.

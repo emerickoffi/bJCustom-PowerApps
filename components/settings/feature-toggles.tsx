@@ -62,7 +62,7 @@ export function FeatureToggles({
       {GROUPS.map(({ name: group, icon: Icon, note }) => (
         <section key={group} aria-labelledby={`group-${group}`} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <h2 id={`group-${group}`} className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
+            <h2 id={`group-${group}`} className="flex items-center gap-2 type-section-title text-foreground">
               <span className="flex size-7 items-center justify-center rounded-md bg-secondary text-primary">
                 <Icon className="size-4" aria-hidden="true" />
               </span>

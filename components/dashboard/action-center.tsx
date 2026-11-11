@@ -349,7 +349,7 @@ export function ActionCenter({
         <div className="flex min-w-0 items-center gap-3">
         <CardSectionIcon icon={ClipboardList} tone="teal" size="lg" />
         <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-          <Heading id="action-center-heading" className="font-serif text-xl font-semibold leading-tight tracking-tight text-[#17212B]">
+          <Heading id="action-center-heading" className="type-section-title text-[#17212B]">
             Action Center
           </Heading>
           {items.length > 0 && (

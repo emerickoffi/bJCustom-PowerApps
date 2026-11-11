@@ -156,7 +156,7 @@ export function QualificationSection(props: Props) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 id="qualification-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+            <h2 id="qualification-heading" className="type-section-title text-foreground">
               Qualification
             </h2>
             {availability === 'ready' && <QualificationBadge summary={summary} />}
@@ -934,7 +934,7 @@ export function QualificationHistory({ events, availability }: { events: Qualifi
     <Surface aria-labelledby="history-heading" className="gap-4">
       <div className="flex items-center gap-2">
         <History className="size-4 text-primary" aria-hidden="true" />
-        <h2 id="history-heading" className="font-serif text-lg font-semibold tracking-tight text-foreground">
+        <h2 id="history-heading" className="type-section-title text-foreground">
           Vetting history
         </h2>
         {events.length > 0 && <span className="ml-auto text-xs text-muted-foreground">{events.length} most recent</span>}

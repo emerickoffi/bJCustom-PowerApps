@@ -179,7 +179,7 @@ export function QuickCreateMenu({
         {jobActions.length > 0 && scope && (
           <DropdownMenuGroup>
             <DropdownMenuLabel className="flex flex-col gap-0.5 px-2.5 py-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">For this job</span>
+              <span className="text-xs font-semibold text-muted-foreground">For this job</span>
               <span className="truncate text-sm font-medium text-foreground">{scope.projectName}</span>
             </DropdownMenuLabel>
             {jobActions.map((a) => (
@@ -190,7 +190,7 @@ export function QuickCreateMenu({
         {jobActions.length > 0 && globalActions.length > 0 && <DropdownMenuSeparator />}
         {globalActions.length > 0 && (
           <DropdownMenuGroup>
-            <DropdownMenuLabel className="px-2.5 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <DropdownMenuLabel className="px-2.5 py-2 text-xs font-semibold text-muted-foreground">
               Create
             </DropdownMenuLabel>
             {globalActions.map((a) => (

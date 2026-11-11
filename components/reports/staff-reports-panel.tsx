@@ -107,7 +107,7 @@ function ReportCard({ report, canManage, isLatest }: { report: StaffReport; canM
       </dl>
 
       <div className="flex flex-col gap-2 border-t pt-3">
-        <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Homeowner responses</h4>
+        <h4 className="text-xs font-medium text-muted-foreground">Homeowner responses</h4>
         {report.acknowledgments.length === 0 ? (
           <p className="text-sm text-muted-foreground">No response yet.</p>
         ) : (
@@ -124,7 +124,7 @@ function ReportCard({ report, canManage, isLatest }: { report: StaffReport; canM
       </div>
 
       <div className="flex flex-col gap-2 border-t pt-3">
-        <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Builder verification</h4>
+        <h4 className="text-xs font-medium text-muted-foreground">Builder verification</h4>
         {latestSignoff ? (
           <p className="text-sm">
             <span className="font-medium">{latestSignoff.decision === 'verified' ? 'Verified' : 'Not verified'}</span> by {latestSignoff.reviewer} ·{' '}
@@ -182,7 +182,7 @@ export function StaffReportsPanel({
     <section aria-labelledby="reports-heading" className="flex flex-col gap-4 rounded-xl border bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h2 id="reports-heading" className="font-serif text-xl font-semibold text-foreground">
+          <h2 id="reports-heading" className="type-section-title text-foreground">
             Walkthrough reports
           </h2>
           <p className="text-sm text-muted-foreground">

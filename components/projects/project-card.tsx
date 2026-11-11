@@ -70,9 +70,9 @@ export function ProjectCard({ project, className }: { project: ProjectCardData; 
         <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3 text-white">
           <div className="flex min-w-0 flex-col gap-0.5">
             <span className="font-mono text-[0.7rem] text-white/70">{project.project_number}</span>
-            <span className="truncate font-serif text-xl font-semibold leading-tight">{project.name}</span>
+            <span className="truncate type-section-title">{project.name}</span>
           </div>
-          {progress !== null && <span className="tabular shrink-0 font-serif text-2xl font-semibold">{`${progress}%`}</span>}
+          {progress !== null && <span className="shrink-0 type-financial">{`${progress}%`}</span>}
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-4 p-5">

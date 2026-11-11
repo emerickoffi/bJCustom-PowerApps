@@ -52,7 +52,7 @@ export function ProjectAssignmentsField({
 
       {current.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Current projects</p>
+          <p className="text-xs font-medium text-muted-foreground">Current projects</p>
           <ul className="flex flex-col divide-y divide-border/60 rounded-lg border border-border/80">
             {current.map((c) => (
               <li key={c.project_id} className="flex items-center gap-3 px-3 py-2.5 text-sm">

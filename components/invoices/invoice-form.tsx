@@ -247,7 +247,7 @@ export function InvoiceForm({
         <div className="flex min-w-0 flex-col gap-3 sm:col-span-2">
           <div
             aria-hidden="true"
-            className={`hidden gap-3 border-b border-border/60 px-1 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground lg:grid ${LINE_GRID}`}
+            className={`hidden gap-3 border-b border-border/60 px-1 pb-2 text-xs font-medium text-muted-foreground lg:grid ${LINE_GRID}`}
           >
             <span>Description</span>
             <span className="text-right">Qty</span>

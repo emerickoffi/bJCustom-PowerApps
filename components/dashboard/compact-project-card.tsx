@@ -136,7 +136,7 @@ export function CompactProjectCard({
       <div className="flex items-start gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="font-mono text-xs text-muted-foreground">{project.project_number}</span>
-          <h3 className={cn('text-pretty break-words font-serif text-lg font-semibold leading-snug', !preview && 'line-clamp-2')}>
+          <h3 className={cn('text-pretty break-words type-section-title', !preview && 'line-clamp-2')}>
             {preview ? (
               <ProjectPreviewTrigger
                 projectId={project.id}

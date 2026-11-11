@@ -34,7 +34,7 @@ function Group({
   const more = entries.length - shown.length
   return (
     <div className="flex min-w-0 flex-col gap-2 py-3 first:pt-0 last:pb-0">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <h3 className="text-xs font-medium text-muted-foreground">
         {title} <span className="tabular-nums">({entries.length})</span>
       </h3>
       {entries.length === 0 ? (
@@ -113,7 +113,7 @@ export function ProjectPeopleSummary({
   return (
     <section id={id} aria-labelledby="project-people-heading" className="surface flex min-w-0 scroll-mt-36 flex-col gap-3 p-4">
       <header className="flex items-center justify-between gap-3">
-        <h2 id="project-people-heading" className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
+        <h2 id="project-people-heading" className="flex items-center gap-2 type-section-title text-foreground">
           <Users className="size-4 text-primary" aria-hidden="true" />
           People
         </h2>

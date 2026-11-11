@@ -30,7 +30,7 @@ export function TabletMyDay({
   return (
     <section aria-labelledby="tablet-my-day-heading" className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-xs">
       <div className="flex items-center justify-between gap-3">
-        <h2 id="tablet-my-day-heading" className="font-serif text-lg font-semibold">
+        <h2 id="tablet-my-day-heading" className="type-section-title">
           My day
         </h2>
         {todays.length > 0 && (

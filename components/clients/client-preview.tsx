@@ -110,7 +110,7 @@ function ContactRow({ label, contact }: { label: string; contact: ClientPreviewC
   return (
     <li className="flex min-w-0 items-center gap-1">
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+        <span className="text-[0.6875rem] font-medium text-muted-foreground">{label}</span>
         <span className="break-words text-sm font-medium text-foreground">{contact.name}</span>
         {detail && <span className="break-words text-xs text-muted-foreground">{detail}</span>}
         {!contact.phone && !contact.email && <span className="text-xs text-muted-foreground">No phone or email on file</span>}

@@ -33,7 +33,7 @@ type Entry = { key: string; href: string; title: string; project: string; meta?:
 function Section({ id, title, entries, empty }: { id: string; title: string; entries: Entry[]; empty: string }) {
   return (
     <section aria-labelledby={id} className="flex flex-col gap-3">
-      <h2 id={id} className="flex items-center justify-between font-serif text-lg font-semibold text-foreground">
+      <h2 id={id} className="flex items-center justify-between type-section-title text-foreground">
         {title}
         <span className="rounded-badge bg-sage/60 px-2 py-0.5 font-sans text-xs font-medium text-primary">{entries.length}</span>
       </h2>
@@ -128,7 +128,7 @@ export default async function SubWorkspacePage() {
       </Link>
 
       <section aria-labelledby="projects-heading" className="flex flex-col gap-3">
-        <h2 id="projects-heading" className="font-serif text-lg font-semibold text-foreground">
+        <h2 id="projects-heading" className="type-section-title text-foreground">
           My Assigned Projects
         </h2>
         {projects.size ? (

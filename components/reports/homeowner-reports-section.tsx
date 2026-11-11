@@ -20,7 +20,7 @@ export async function HomeownerReportsSection({ walkthroughId, userId }: { walkt
 
   return (
     <section aria-labelledby="portal-reports-heading" className="flex flex-col gap-4">
-      <h2 id="portal-reports-heading" className="font-serif text-xl font-semibold text-foreground">
+      <h2 id="portal-reports-heading" className="type-section-title text-foreground">
         Walkthrough report
       </h2>
       <ul className="flex flex-col gap-3">

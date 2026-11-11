@@ -68,7 +68,7 @@ export default async function InvoicePage({
           )}
 
           <section aria-labelledby="history-heading" className="surface flex flex-col gap-4 p-5 md:p-6">
-            <h2 id="history-heading" className="font-serif text-xl">
+            <h2 id="history-heading" className="type-section-title">
               History
             </h2>
             {events.length === 0 ? (

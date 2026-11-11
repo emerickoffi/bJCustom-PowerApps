@@ -79,31 +79,31 @@ export default async function HomeownerSchedulePage({ params }: { params: Promis
         <>
           <section aria-label="Summary" className="grid gap-4 sm:grid-cols-3">
             <div className="flex flex-col gap-3 rounded-xl border bg-card p-5">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Overall progress</span>
+              <span className="text-xs font-medium text-muted-foreground">Overall progress</span>
               {project.progress_percent === null ? (
                 <span className="text-sm text-muted-foreground">Your builder hasn&apos;t configured progress tracking yet.</span>
               ) : (
                 <>
-                  <span className="font-serif text-3xl font-semibold tabular-nums text-foreground">{`${Math.round(Number(project.progress_percent))}%`}</span>
+                  <span className="type-financial text-foreground">{`${Math.round(Number(project.progress_percent))}%`}</span>
                   <ProgressBar value={Number(project.progress_percent)} label="Overall progress" />
                 </>
               )}
             </div>
             <div className="flex flex-col gap-1 rounded-xl border bg-card p-5">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Current stage</span>
-              <span className="font-serif text-xl font-semibold text-foreground">{current?.name ?? 'Complete'}</span>
+              <span className="text-xs font-medium text-muted-foreground">Current stage</span>
+              <span className="type-section-title text-foreground">{current?.name ?? 'Complete'}</span>
               <span className="text-xs text-muted-foreground">{`${completed} of ${items.length} stages complete`}</span>
             </div>
             <div className="flex flex-col gap-1 rounded-xl border bg-card p-5">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Expected completion</span>
-              <span className="font-serif text-xl font-semibold text-foreground">{formatDate(expected ?? project.target_completion_date)}</span>
+              <span className="text-xs font-medium text-muted-foreground">Expected completion</span>
+              <span className="type-section-title text-foreground">{formatDate(expected ?? project.target_completion_date)}</span>
               <span className="text-xs text-muted-foreground">Based on the current schedule</span>
             </div>
           </section>
 
           {updates.length > 0 && (
             <section aria-labelledby="updates" className="flex flex-col gap-3 rounded-xl border bg-card p-5">
-              <h2 id="updates" className="font-serif text-lg font-semibold text-foreground">
+              <h2 id="updates" className="type-section-title text-foreground">
                 Schedule updates
               </h2>
               <ul className="flex flex-col gap-3">
@@ -125,13 +125,13 @@ export default async function HomeownerSchedulePage({ params }: { params: Promis
           )}
 
           <section aria-labelledby="stages" className="flex flex-col gap-4">
-            <h2 id="stages" className="font-serif text-lg font-semibold text-foreground">
+            <h2 id="stages" className="type-section-title text-foreground">
               Stages
             </h2>
             <ol className="flex flex-col gap-6">
               {phases.map((group) => (
                 <li key={group.phase} className="flex flex-col gap-2">
-                  <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{group.phase}</h3>
+                  <h3 className="text-xs font-medium text-muted-foreground">{group.phase}</h3>
                   <ol className="flex flex-col divide-y rounded-xl border bg-card">
                     {group.items.map((a) => {
                       const done = a.status === 'completed'

@@ -166,7 +166,7 @@ export default async function StaffWalkthroughPage({ params }: { params: Promise
       <div className="flex flex-col gap-6">
         {Object.entries(grouped).map(([category, list]) => (
           <section key={category} aria-labelledby={`cat-${category}`} className="flex flex-col gap-3">
-            <h2 id={`cat-${category}`} className="font-serif text-lg font-semibold text-foreground">
+            <h2 id={`cat-${category}`} className="type-section-title text-foreground">
               {category}
             </h2>
             <ul className="flex flex-col divide-y rounded-xl border bg-card">

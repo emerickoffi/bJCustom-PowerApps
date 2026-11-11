@@ -56,7 +56,7 @@ export function ProjectScheduleSnapshot({
   return (
     <section aria-labelledby="schedule-snapshot-heading" className="surface flex min-w-0 flex-col gap-4 p-4">
       <header className="flex items-center justify-between gap-3">
-        <h2 id="schedule-snapshot-heading" className="flex items-center gap-2 font-serif text-lg font-semibold text-foreground">
+        <h2 id="schedule-snapshot-heading" className="flex items-center gap-2 type-section-title text-foreground">
           <CalendarDays className="size-4 text-primary" aria-hidden="true" />
           Schedule
         </h2>
@@ -77,7 +77,7 @@ export function ProjectScheduleSnapshot({
           <div className="flex flex-col gap-1.5 rounded-xl border border-[#D6DDE5] p-3">
             {next ? (
               <>
-                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <span className="text-xs font-medium text-muted-foreground">
                   {next.activity_type === 'milestone' ? 'Next milestone' : 'Next activity'}
                 </span>
                 <span className="break-words text-sm font-semibold text-foreground">{next.name}</span>

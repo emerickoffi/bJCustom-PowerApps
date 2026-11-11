@@ -367,7 +367,7 @@ export function ScheduleStageList({ projectId, phases, activities, conflictIds, 
                       <ul id={panelId} className="divide-y divide-secondary border-t border-secondary">
                         <li
                           aria-hidden="true"
-                          className="hidden bg-[#F8F9F7] text-[11px] font-semibold uppercase tracking-wide text-brand-deep/65 tablet:md:flex"
+                          className="hidden bg-[#F8F9F7] text-[11px] font-semibold text-brand-deep/65 tablet:md:flex"
                         >
                           {canManage && <span className="w-8 shrink-0" />}
                           <span
@@ -532,7 +532,7 @@ export function ScheduleStageList({ projectId, phases, activities, conflictIds, 
             <div className="flex items-center gap-3 rounded-xl border border-primary/40 bg-white px-4 py-3 shadow-lg">
               <GripVertical className="size-4 text-brand-deep/50" aria-hidden="true" />
               <span className="font-mono text-xs tabular-nums text-brand-deep/65">{String(draggingPhase.number).padStart(2, '0')}</span>
-              <span className="font-serif text-base font-semibold text-brand-deep">{draggingPhase.name}</span>
+              <span className="type-record-name text-brand-deep">{draggingPhase.name}</span>
               <span className="text-xs text-muted-foreground">
                 {`${draggingPhase.items.length} ${draggingPhase.items.length === 1 ? 'activity' : 'activities'}`}
               </span>
@@ -683,7 +683,7 @@ function SortablePhase({
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="font-mono text-xs font-medium tabular-nums text-brand-deep/65">{String(phase.number).padStart(2, '0')}</span>
-                  <span className="font-serif text-base font-semibold text-brand-deep">{phase.name}</span>
+                  <span className="type-record-name text-brand-deep">{phase.name}</span>
                   {isCurrent && <span className="rounded-badge bg-primary px-2 py-0.5 text-[11px] font-medium text-white">Current phase</span>}
                   {phase.complete && (
                     <span className="rounded-badge bg-[#E2F3E9] px-2 py-0.5 text-[11px] font-medium text-[#187542]">Complete</span>
@@ -818,7 +818,7 @@ function PhaseNameEditor({
           }}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : undefined}
-          className="h-10 min-w-0 flex-1 rounded-md border border-input bg-white px-3 font-serif text-base font-semibold text-brand-deep focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive sm:h-9"
+          className="h-10 min-w-0 flex-1 rounded-md border border-input bg-white px-3 text-base font-semibold text-brand-deep md:text-sm focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive sm:h-9"
         />
         <button
           type="submit"

@@ -28,7 +28,7 @@ type PageHeaderProps = {
 
 export function CountChip({ value, noun, plural }: NonNullable<PageHeaderProps['count']>) {
   return (
-    <span className="inline-flex h-6 items-center rounded-badge bg-interactive-soft px-2.5 text-xs font-semibold tabular-nums text-interactive-strong ring-1 ring-inset ring-interactive-border md:text-sm">
+    <span className="inline-flex h-6 items-center rounded-badge bg-interactive-soft px-2.5 type-badge tabular-nums text-interactive-strong ring-1 ring-inset ring-interactive-border md:text-sm">
       {`${value.toLocaleString()} ${value === 1 ? noun : (plural ?? `${noun}s`)}`}
     </span>
   )
@@ -63,12 +63,12 @@ export function PageHeader({
           {avatar ?? (icon && <PageHeaderIcon icon={icon} />)}
           <div className="flex min-w-0 flex-col gap-0.5">
             {eyebrow && (
-              <div className="flex min-w-0 items-center gap-2 truncate text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="flex min-w-0 items-center gap-2 truncate text-xs font-medium text-muted-foreground">
                 {eyebrow}
               </div>
             )}
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              <h1 className="min-w-0 text-balance break-words font-serif text-xl font-semibold leading-tight tracking-tight text-foreground md:text-[26px]">
+              <h1 className="min-w-0 text-balance break-words type-page-title text-foreground">
                 {title}
               </h1>
               {count && <CountChip {...count} />}
@@ -188,7 +188,7 @@ export function SectionHeading({
       <div className="flex min-w-0 flex-col gap-1">
         {/* The popover anchors to this row, not the button, so it stays on screen at phone widths. */}
         <div className="relative flex min-w-0 items-center gap-1.5">
-          <h2 id={id} className="font-serif text-xl font-semibold tracking-tight text-foreground">
+          <h2 id={id} className="type-section-title text-foreground">
             {title}
           </h2>
           {help && (
@@ -233,7 +233,7 @@ export function EmptyState({
         <Icon className="size-5" aria-hidden="true" />
       </div>
       <div className="flex max-w-sm flex-col gap-1.5">
-        <h2 className="font-serif text-lg font-semibold text-foreground">{title}</h2>
+        <h2 className="type-section-title text-foreground">{title}</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
       </div>
       {action}

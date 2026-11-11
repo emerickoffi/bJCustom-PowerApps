@@ -135,7 +135,7 @@ export function EstimateDraftPreview({
   return (
     <section aria-label="Draft estimate preview" className="flex flex-col gap-3 rounded-xl border bg-card px-3 py-3">
       <div className="flex flex-col gap-0.5">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Draft estimate preview</span>
+        <span className="text-xs font-semibold text-muted-foreground">Draft estimate preview</span>
         <span className="text-xs text-muted-foreground">Nothing is saved until you click Create draft estimate. Totals are calculated by the app.</span>
       </div>
 

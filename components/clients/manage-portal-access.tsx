@@ -120,7 +120,7 @@ export function ManagePortalAccessPanel({
   return (
     <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
       <div className="flex flex-col gap-1">
-        <h2 className="font-serif text-lg font-semibold text-foreground">Manage portal access</h2>
+        <h2 className="type-section-title text-foreground">Manage portal access</h2>
         <p className="text-sm text-muted-foreground">
           Homeowners see only the projects you tick here, and only documents shared with clients.
         </p>
