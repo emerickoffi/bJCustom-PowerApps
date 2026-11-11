@@ -1,24 +1,34 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { Landmark } from 'lucide-react'
 import { requireManager } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
-import { BASELINE_REASON_LABELS, formatMoney } from '@/lib/financials'
+import { BASELINE_REASON_LABELS, formatMoney, type Baseline, type BudgetSummary } from '@/lib/financials'
 import { loadProjectFinancials } from '@/lib/job-costing-data'
-import { PageHeader, SectionHeading, Surface } from '@/components/shared/page-header'
+import { BUDGET_COLUMNS_COOKIE, parseBudgetColumns } from '@/lib/budget-columns'
+import { PageHeader, Surface } from '@/components/shared/page-header'
 import { SemanticBadge } from '@/components/shared/semantic-badge'
 import { FinancialSummary } from '@/components/financials/financial-summary'
-import { BudgetTable } from '@/components/financials/budget-table'
+import { BudgetCosts } from '@/components/financials/budget-costs'
+import { FinancialsNav, parseFinancialsView } from '@/components/financials/financials-nav'
 import { ProjectInvoicesPanel } from '@/components/invoices/project-invoices-panel'
 
 export const metadata: Metadata = { title: 'Project financials' }
 
-export default async function ProjectFinancialsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectFinancialsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ view?: string | string[] }>
+}) {
   const session = await requireManager()
   const features = await requireFeature(session.organizationId, 'estimates')
-  const { id } = await params
+  const [{ id }, { view: rawView }] = await Promise.all([params, searchParams])
+  const view = parseFinancialsView(rawView, features.invoices)
   const supabase = await createClient()
 
   const [{ data: project }, { data: canViewInternal }] = await Promise.all([
@@ -27,67 +37,101 @@ export default async function ProjectFinancialsPage({ params }: { params: Promis
   ])
   if (!project || !canViewInternal) notFound()
 
-  const { baseline, budget, summary } = await loadProjectFinancials(project.id)
-  const showProfit = session.role === 'org_admin'
-
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Financials"
-        icon={Landmark}
-        titleAddon={<SemanticBadge tone="neutral">Internal only</SemanticBadge>}
-      />
+      <PageHeader title="Financials" icon={Landmark} titleAddon={<SemanticBadge tone="neutral">Internal only</SemanticBadge>} />
+      <FinancialsNav projectId={project.id} current={view} invoicesEnabled={features.invoices} />
 
-      <Surface aria-label="Budget baseline">
-        {baseline.state === 'established' ? (
-          <p className="text-sm text-muted-foreground">
-            Baseline: estimate <span className="font-medium text-foreground">{baseline.estimate.estimate_number || 'untitled'}</span> revision {baseline.estimate.revision}.{' '}
-            {budget.approvedCount} approved change order{budget.approvedCount === 1 ? '' : 's'} applied.
-            {features.change_orders && (
-              <>
-                {' '}
-                <Link href={`/projects/${encodeURIComponent(project.id)}/change-orders`} className="font-medium text-primary underline-offset-4 hover:underline">
-                  View change orders
-                </Link>
-              </>
-            )}
-            {budget.pendingCount > 0 && (
-              <>
-                {' '}
-                {budget.pendingCount} pending ({formatMoney(budget.pendingCostAdjustmentsCents, { signed: true })} cost) not included until approved.
-              </>
-            )}
-          </p>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {BASELINE_REASON_LABELS[baseline.reason]}{' '}
-            <Link href={`/projects/${encodeURIComponent(project.id)}/estimates`} className="font-medium text-primary underline-offset-4 hover:underline">
-              Open estimates
-            </Link>
-          </p>
-        )}
-        {!summary.costTrackingAvailable && (
-          <p className="text-sm text-muted-foreground">
-            Commitments, vendor bills and vendor payments are not set up in this environment yet, so actual cost, forecasts and profit are not calculated.
-          </p>
-        )}
-      </Surface>
-
-      <FinancialSummary summary={summary} showProfit={showProfit} />
-
-      <section aria-labelledby="budget-heading" className="flex flex-col gap-3">
-        <SectionHeading
-          id="budget-heading"
-          title="Budget versus actual"
-          help={{
-            label: 'How budget lines are grouped',
-            content: 'Grouped by cost code. Estimate categories map to cost codes; historical labels are kept as recorded.',
-          }}
+      {view === 'invoices' ? (
+        <ProjectInvoicesPanel projectId={project.id} canManage />
+      ) : (
+        <FinancialsBody
+          view={view}
+          project={project}
+          showProfit={session.role === 'org_admin'}
+          changeOrdersEnabled={features.change_orders}
         />
-        <BudgetTable summary={summary} />
-      </section>
-
-      {features.invoices && <ProjectInvoicesPanel projectId={project.id} canManage />}
+      )}
     </div>
+  )
+}
+
+async function FinancialsBody({
+  view,
+  project,
+  showProfit,
+  changeOrdersEnabled,
+}: {
+  view: 'summary' | 'budget'
+  project: { id: string; name: string }
+  showProfit: boolean
+  changeOrdersEnabled: boolean
+}) {
+  const [{ baseline, budget, summary, sources }, cookieStore] = await Promise.all([loadProjectFinancials(project.id), cookies()])
+
+  return (
+    <>
+      <BaselineNote projectId={project.id} baseline={baseline} budget={budget} trackingAvailable={summary.costTrackingAvailable} changeOrdersEnabled={changeOrdersEnabled} />
+      {view === 'summary' ? (
+        <FinancialSummary summary={summary} showProfit={showProfit} />
+      ) : (
+        <BudgetCosts
+          key={project.id}
+          projectName={project.name}
+          summary={summary}
+          sources={sources}
+          initialColumns={parseBudgetColumns(cookieStore.get(BUDGET_COLUMNS_COOKIE)?.value)}
+        />
+      )}
+    </>
+  )
+}
+
+function BaselineNote({
+  projectId,
+  baseline,
+  budget,
+  trackingAvailable,
+  changeOrdersEnabled,
+}: {
+  projectId: string
+  baseline: Baseline
+  budget: BudgetSummary
+  trackingAvailable: boolean
+  changeOrdersEnabled: boolean
+}) {
+  const base = `/projects/${encodeURIComponent(projectId)}`
+  return (
+    <Surface aria-label="Budget baseline">
+      {baseline.state === 'established' ? (
+        <p className="text-sm text-muted-foreground">
+          Baseline: estimate <span className="font-medium text-foreground">{baseline.estimate.estimate_number || 'untitled'}</span> revision {baseline.estimate.revision}.{' '}
+          {budget.approvedCount} approved change order{budget.approvedCount === 1 ? '' : 's'} applied.
+          {budget.pendingCount > 0 && (
+            <> {budget.pendingCount} pending ({formatMoney(budget.pendingCostAdjustmentsCents, { signed: true })} cost) not included until approved.</>
+          )}
+          {changeOrdersEnabled && (
+            <>
+              {' '}
+              <Link href={`${base}/change-orders`} className="font-medium text-primary underline-offset-4 hover:underline">
+                View change orders
+              </Link>
+            </>
+          )}
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Budget not established. {BASELINE_REASON_LABELS[baseline.reason]}{' '}
+          <Link href={`${base}/estimates`} className="font-medium text-primary underline-offset-4 hover:underline">
+            Open estimates
+          </Link>
+        </p>
+      )}
+      {!trackingAvailable && (
+        <p className="text-sm text-muted-foreground">
+          Commitments, vendor bills and vendor payments are not set up in this environment yet, so committed, actual cost, forecasts and profit are unavailable.
+        </p>
+      )}
+    </Surface>
   )
 }
