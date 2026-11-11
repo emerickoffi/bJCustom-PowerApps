@@ -54,9 +54,9 @@ test('legacy #project-team links remain a recognized overview section', () => {
   assert.ok(isProjectSectionId('project-team'))
 })
 
-test('estimates tab opens the existing Estimates module filtered to the project', () => {
+test('estimates tab stays inside the project shell', () => {
   const items = getProjectNavItems(ID, allOn)
-  assert.equal(items.find((i) => i.key === 'estimates')?.href, `/estimates?project=${ID}`)
+  assert.equal(items.find((i) => i.key === 'estimates')?.href, `${BASE}/estimates`)
 })
 
 test('extracts only known overview section ids from hrefs', () => {
