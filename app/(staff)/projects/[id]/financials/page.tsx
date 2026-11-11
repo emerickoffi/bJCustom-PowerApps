@@ -15,6 +15,9 @@ import { FinancialSummary } from '@/components/financials/financial-summary'
 import { BudgetCosts } from '@/components/financials/budget-costs'
 import { FinancialsNav, parseFinancialsView } from '@/components/financials/financials-nav'
 import { ProjectInvoicesPanel } from '@/components/invoices/project-invoices-panel'
+import { loadProjectBills } from '@/lib/vendor-bills-data'
+import { BillsWorkspace } from '@/components/financials/bills-workspace'
+import { CommitmentsWorkspace } from '@/components/financials/commitments-workspace'
 
 export const metadata: Metadata = { title: 'Project financials' }
 
@@ -44,6 +47,8 @@ export default async function ProjectFinancialsPage({
 
       {view === 'invoices' ? (
         <ProjectInvoicesPanel projectId={project.id} canManage />
+      ) : view === 'bills' ? (
+        <VendorBillsBody project={project} />
       ) : (
         <FinancialsBody
           view={view}
@@ -52,6 +57,31 @@ export default async function ProjectFinancialsPage({
           changeOrdersEnabled={features.change_orders}
         />
       )}
+    </div>
+  )
+}
+
+async function VendorBillsBody({ project }: { project: { id: string; name: string } }) {
+  const data = await loadProjectBills(project.id)
+  if (!data.available) {
+    return (
+      <Surface aria-label="Vendor bills">
+        <p className="text-sm text-muted-foreground">Vendor bills are not set up in this environment yet.</p>
+      </Surface>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-10">
+      <BillsWorkspace
+        projectId={project.id}
+        projectName={project.name}
+        bills={data.bills}
+        commitments={data.commitments}
+        overview={data.overview}
+        vendors={data.vendorSuggestions}
+        today={data.today}
+      />
+      <CommitmentsWorkspace projectId={project.id} projectName={project.name} commitments={data.commitments} vendors={data.vendorSuggestions} />
     </div>
   )
 }
