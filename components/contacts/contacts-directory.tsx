@@ -1,6 +1,6 @@
 'use client'
 
-import { useDeferredValue, useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSWRConfig } from 'swr'
@@ -8,6 +8,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  BookUser,
   Building2,
   ChevronLeft,
   ChevronRight,
@@ -18,6 +19,7 @@ import {
   Mail,
   MoreHorizontal,
   Phone,
+  Plus,
   Search,
   User,
   UserPlus,
@@ -46,6 +48,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { NativeSelect } from '@/components/shared/form-field'
+import { HeaderHelp, PageHeader } from '@/components/shared/page-header'
+import { worksheetFillerClass, worksheetStripClass, worksheetTabClass } from '@/components/shared/worksheet-tabs'
+import { useOverlayHref } from '@/components/contacts/contact-overlays'
 import { DIRECTORY_TH_TEXT, DIRECTORY_THEAD_ROW } from '@/lib/directory-table-styles'
 import { formatPhone } from '@/lib/format'
 import {
@@ -58,7 +63,6 @@ import {
   categoryCounts,
   companySummary,
   defaultSort,
-  sortForView,
   filterByAttributes,
   filterRows,
   paginate,
@@ -161,6 +165,37 @@ const DEFAULT_HIDDEN: Record<DirectoryView, ColumnKey[]> = {
   companies: ['products'],
 }
 
+const SEARCH_DEBOUNCE_MS = 250
+
+const VIEW_NOUNS: Record<DirectoryView, { one: string; many: string }> = {
+  people: { one: 'person', many: 'people' },
+  companies: { one: 'company', many: 'companies' },
+}
+
+type ViewState = {
+  query: string
+  category: CategoryKey | null
+  status: StatusFilter
+  projectId: string
+  advanced: AdvancedFilters
+  sort: { key: SortKey; dir: SortDir }
+  page: number
+  pageSize: number
+}
+
+function initialViewState(view: DirectoryView, category: CategoryKey | null): ViewState {
+  return {
+    query: '',
+    category,
+    status: DEFAULT_FILTERS.status,
+    projectId: '',
+    advanced: EMPTY_ADVANCED,
+    sort: defaultSort(view),
+    page: 1,
+    pageSize: 25,
+  }
+}
+
 function uniqueSorted(values: (string | null | undefined)[]) {
   const seen = new Map<string, string>()
   for (const v of values) {
@@ -194,20 +229,35 @@ export function ContactsDirectory({
 }) {
   const router = useRouter()
   const { mutate } = useSWRConfig()
+  const overlayHref = useOverlayHref()
   const [view, setView] = useState<DirectoryView>(initialView)
-  const [category, setCategory] = useState<CategoryKey | null>(initialCategory)
-  const [query, setQuery] = useState('')
-  const deferredQuery = useDeferredValue(query)
-  const [status, setStatus] = useState<StatusFilter>('active')
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>(() => defaultSort(initialView))
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState<number>(25)
+  const [states, setStates] = useState<Record<DirectoryView, ViewState>>(() => ({
+    people: initialViewState('people', initialView === 'people' ? initialCategory : null),
+    companies: initialViewState('companies', initialView === 'companies' ? initialCategory : null),
+  }))
+  const { query, category, status, projectId: projectFilter, advanced, sort, page, pageSize } = states[view]
+  const [searchInput, setSearchInput] = useState('')
   const [hidden, setHidden] = useState(DEFAULT_HIDDEN)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [edits, setEdits] = useState<Record<string, Partial<PersonView> & { updated_at: string }>>({})
   const [projectsFor, setProjectsFor] = useState<{ title: string; projects: ProjectLink[] } | null>(null)
   const [confirm, setConfirm] = useState<{ rows: DirectoryRow[]; status: 'active' | 'inactive' } | null>(null)
   const [confirmPending, startConfirm] = useTransition()
+
+  /** Each tab keeps its own search, filters, sort, and page, so switching back restores where the user left off. */
+  function update(patch: Partial<ViewState>, target: DirectoryView = view) {
+    setStates((s) => ({ ...s, [target]: { ...s[target], ...patch } }))
+  }
+  const setPage = (next: number) => update({ page: next })
+  const setPageSize = (next: number) => update({ pageSize: next, page: 1 })
+
+  useEffect(() => {
+    if (searchInput === query) return
+    const timer = window.setTimeout(() => {
+      setStates((s) => ({ ...s, [view]: { ...s[view], query: searchInput, page: 1 } }))
+    }, SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [searchInput, query, view])
 
   const mergedPeople = useMemo(
     () =>
@@ -218,7 +268,6 @@ export function ContactsDirectory({
     [people, edits],
   )
 
-  const [projectFilter, setProjectFilter] = useState('')
   const projectOptions = useMemo(() => {
     const map = new Map<string, string>()
     for (const p of [...people.flatMap((x) => x.projects), ...companies.flatMap((x) => x.projects)]) {
@@ -227,7 +276,6 @@ export function ContactsDirectory({
     return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]))
   }, [people, companies])
 
-  const [advanced, setAdvanced] = useState<AdvancedFilters>(EMPTY_ADVANCED)
   const specialtyOptions = useMemo(() => uniqueSorted(people.map((p) => p.specialty)), [people])
   const productOptions = useMemo(() => uniqueSorted(companies.flatMap((c) => c.product_categories)), [companies])
   const companyOptions = useMemo(
@@ -240,11 +288,11 @@ export function ContactsDirectory({
   const scoped = useMemo(
     () =>
       filterByAttributes(
-        filterRows(allRows, { query: deferredQuery, status, category: null }),
+        filterRows(allRows, { query, status, category: null }),
         { specialty: advanced.specialty, product: advanced.product, companyId: advanced.companyId, projectId: projectFilter },
         companies,
       ),
-    [allRows, deferredQuery, status, projectFilter, advanced, companies],
+    [allRows, query, status, projectFilter, advanced, companies],
   )
   const filtered = useMemo(
     () => sortRows(category ? filterRows(scoped, { query: '', status: 'all', category }) : scoped, sort.key, sort.dir),
@@ -277,51 +325,34 @@ export function ContactsDirectory({
     window.history.replaceState(null, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
   }
 
-  /**
-   * Search, status, and product category carry over. Category and project are kept only if the new view
-   * still has matching records; company and profession filters are view-specific and always reset.
-   */
+  /** Selection and the open preview never carry across tabs, so actions cannot target records the user cannot see. */
   function changeView(next: DirectoryView) {
     if (next === view) return
-    const nextRows = buildRows(next, mergedPeople, companies)
-    const nextCounts = categoryCounts(filterRows(nextRows, { query: '', status, category: null }))
-    const nextCategory = category && nextCounts.byCat[category] > 0 ? category : null
+    if (searchInput !== query) update({ query: searchInput, page: 1 })
     setView(next)
-    setCategory(nextCategory)
-    setSort((s) => sortForView(next, s))
-    setPage(1)
+    setSearchInput(states[next].query)
     setSelected(new Set())
-    setAdvanced((a) => ({ ...EMPTY_ADVANCED, product: a.product }))
-    if (projectFilter && !nextRows.some((r) => (r.kind === 'person' ? r.person.projects : r.company.projects).some((p) => p.project_id === projectFilter))) {
-      setProjectFilter('')
-    }
-    syncUrl(next, nextCategory)
+    syncUrl(next, states[next].category)
   }
 
   function clearFilters() {
-    setQuery('')
-    setStatus('active')
-    setProjectFilter('')
-    setAdvanced(EMPTY_ADVANCED)
-    changeCategory(null)
+    setSearchInput('')
+    update({ query: '', status: DEFAULT_FILTERS.status, projectId: '', advanced: EMPTY_ADVANCED, category: null, page: 1 })
+    syncUrl(view, null)
   }
 
   /** Applies the Filters popover fields only; search, category, and the URL are left as they are. */
   function applyFilters({ status: nextStatus, projectId, ...nextAdvanced }: DirectoryFilterValues) {
-    setStatus(nextStatus)
-    setProjectFilter(projectId)
-    setAdvanced(nextAdvanced)
-    setPage(1)
+    update({ status: nextStatus, projectId, advanced: nextAdvanced, page: 1 })
   }
 
   function changeCategory(next: CategoryKey | null) {
-    setCategory(next)
-    setPage(1)
+    update({ category: next, page: 1 })
     syncUrl(view, next)
   }
 
   function toggleSort(key: SortKey) {
-    setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'projects' ? 'desc' : 'asc' }))
+    update({ sort: sort.key === key ? { key, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'projects' ? 'desc' : 'asc' } })
   }
 
   function toggleRow(key: string) {
@@ -413,212 +444,259 @@ export function ContactsDirectory({
   }
 
   const filters: DirectoryFilterValues = { ...advanced, status, projectId: projectFilter }
-  const filterChips: { key: string; label: string; cleared: Partial<DirectoryFilterValues> }[] = []
+  const filterChips: { key: string; label: string; onRemove: () => void }[] = []
+  if (category) filterChips.push({ key: 'category', label: `Category: ${CATEGORY_LABELS[category]}`, onRemove: () => changeCategory(null) })
   if (status !== 'all') {
-    filterChips.push({ key: 'status', label: `Status: ${status === 'active' ? 'Active' : 'Inactive'}`, cleared: { status: 'all' } })
+    filterChips.push({ key: 'status', label: `Status: ${status === 'active' ? 'Active' : 'Inactive'}`, onRemove: () => applyFilters({ ...filters, status: 'all' }) })
   }
   if (projectFilter) {
     const project = projectOptions.find(([id]) => id === projectFilter)?.[1]
-    filterChips.push({ key: 'projectId', label: `Project: ${project ?? 'Selected project'}`, cleared: { projectId: '' } })
+    filterChips.push({ key: 'projectId', label: `Project: ${project ?? 'Selected project'}`, onRemove: () => applyFilters({ ...filters, projectId: '' }) })
   }
   if (advanced.companyId) {
     const company = companies.find((c) => c.id === advanced.companyId)?.company_name
-    filterChips.push({ key: 'companyId', label: `Company: ${company ?? 'Selected company'}`, cleared: { companyId: '' } })
+    filterChips.push({ key: 'companyId', label: `Company: ${company ?? 'Selected company'}`, onRemove: () => applyFilters({ ...filters, companyId: '' }) })
   }
-  if (advanced.specialty) filterChips.push({ key: 'specialty', label: `Trade: ${advanced.specialty}`, cleared: { specialty: '' } })
-  if (advanced.product) filterChips.push({ key: 'product', label: `Product: ${advanced.product}`, cleared: { product: '' } })
-  const filtersAtDefault = isDefaultFilters(filters)
-  const isNarrowed = Boolean(query || category || filterChips.length)
+  if (advanced.specialty) filterChips.push({ key: 'specialty', label: `Trade: ${advanced.specialty}`, onRemove: () => applyFilters({ ...filters, specialty: '' }) })
+  if (advanced.product) filterChips.push({ key: 'product', label: `Product: ${advanced.product}`, onRemove: () => applyFilters({ ...filters, product: '' }) })
+  const canClear = !isDefaultFilters(filters) || Boolean(category) || Boolean(query)
   const sortMenuValue = SORT_OPTIONS[view].some((o) => o.value === `${sort.key}:${sort.dir}`) ? `${sort.key}:${sort.dir}` : ''
-  const noun = view === 'people' ? 'contacts' : 'companies'
-  const resultNoun = filtered.length === 1 ? (view === 'people' ? 'contact' : 'company') : noun
-  const directoryEmpty = allRows.length === 0
+  const nouns = VIEW_NOUNS[view]
+  const total = allRows.length
+  const matching = filtered.length
+  const directoryEmpty = total === 0
+  const resultsText =
+    matching === 0
+      ? directoryEmpty
+        ? `No ${nouns.many} yet`
+        : `No matching ${nouns.many}`
+      : pages > 1
+        ? `Showing ${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, matching)} of ${matching} ${matching < total ? 'matching ' : ''}${nouns.many}`
+        : matching < total
+          ? `${matching} of ${total} ${total === 1 ? nouns.one : nouns.many}`
+          : null
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-        <div role="tablist" aria-label="Directory view" className="inline-flex w-fit shrink-0 rounded-lg border border-border bg-card p-1 shadow-xs">
-          {DIRECTORY_VIEWS.map((v) => (
-            <button
-              key={v.value}
-              type="button"
-              role="tab"
-              aria-selected={view === v.value}
-              onClick={() => changeView(v.value)}
-              className={cn(
-                'rounded-md px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                view === v.value ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
-        <span aria-hidden="true" className="hidden h-6 w-px shrink-0 bg-border sm:block" />
-        <div role="group" aria-label="Filter by category" className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <CategoryChip active={!category} onClick={() => changeCategory(null)} label="All" count={counts.total} />
-          {CATEGORY_KEYS.map((k) => (
-            <CategoryChip key={k} active={category === k} onClick={() => changeCategory(category === k ? null : k)} label={CATEGORY_LABELS[k]} count={counts.byCat[k]} />
-          ))}
-        </div>
-      </div>
-
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <div className="relative w-full min-w-0 sm:w-auto sm:min-w-56 sm:flex-[0_1_26rem]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <label htmlFor="contacts-search" className="sr-only">
-            {view === 'people'
-              ? 'Search contacts by name, company, email, phone, or trade'
-              : 'Search companies by name, contact, email, phone, or product'}
-          </label>
-          <Input
-            id="contacts-search"
-            type="search"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setPage(1)
-            }}
-            placeholder={view === 'people' ? 'Search names, companies, emails, trades' : 'Search companies, contacts, products'}
-            className="h-10 bg-card pl-9"
-          />
-        </div>
-        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:shrink-0">
-          <label htmlFor="contacts-sort" className="sr-only md:hidden">
-            Sort by
-          </label>
-          <NativeSelect
-            id="contacts-sort"
-            value={sortMenuValue}
-            onChange={(e) => {
-              if (!e.target.value) return
-              const [key, dir] = e.target.value.split(':') as [SortKey, SortDir]
-              setSort({ key, dir })
-              setPage(1)
-            }}
-            className="min-w-0 flex-1 bg-card md:hidden"
-          >
-            {!sortMenuValue && (
-              <option value="" disabled>
-                Custom sort
-              </option>
-            )}
-            {SORT_OPTIONS[view].map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </NativeSelect>
-          <DirectoryFilters
-            key={view}
-            view={view}
-            value={filters}
-            onApply={applyFilters}
-            projectOptions={projectOptions}
-            companyOptions={companyOptions}
-            specialtyOptions={specialtyOptions}
-            productOptions={productOptions}
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="lg" className="hidden bg-card md:inline-flex" />}>
-              <Columns3 data-icon="inline-start" />
-              Columns
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>Show columns</DropdownMenuLabel>
-                {COLUMNS[view].map((c) => (
-                  <DropdownMenuCheckboxItem
-                    key={c.key}
-                    checked={!hidden[view].includes(c.key)}
-                    onCheckedChange={(checked) =>
-                      setHidden((h) => ({
-                        ...h,
-                        [view]: checked ? h[view].filter((k) => k !== c.key) : [...h[view], c.key],
-                      }))
-                    }
-                  >
-                    {c.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="icon" className="size-10 shrink-0 bg-card" aria-label="More contact actions" />}>
-              <MoreHorizontal />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem render={<Link href="/contacts/import" />}>
-                <FileUp />
-                Import CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => exportCsv(filtered)}>
-                <Download />
-                Export
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-      {(filterChips.length > 0 || !filtersAtDefault) && (
-        <div role="group" aria-label="Applied filters" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
-          {filterChips.map((chip) => (
-            <span
-              key={chip.key}
-              className="inline-flex max-w-full items-center gap-1 rounded-badge border border-primary/20 bg-sage py-0.5 pl-2.5 pr-1 text-xs font-medium text-foreground"
-            >
-              <span className="truncate">{chip.label}</span>
-              <button
-                type="button"
-                onClick={() => applyFilters({ ...filters, ...chip.cleared })}
-                aria-label={`Remove filter ${chip.label}`}
-                className="shrink-0 rounded-full p-0.5 text-muted-foreground hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <X className="size-3" aria-hidden="true" />
-              </button>
-            </span>
-          ))}
-          {status === 'all' && <span className="text-xs text-muted-foreground">Active and inactive shown</span>}
-          {!filtersAtDefault && (
-            <button
-              type="button"
-              onClick={() => applyFilters(DEFAULT_FILTERS)}
-              className="inline-flex items-center gap-1 rounded text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <X className="size-3.5" aria-hidden="true" />
-              Clear filters
-            </button>
-          )}
-        </div>
-      )}
-        <p className="text-muted-foreground" aria-live="polite">
-          {filtered.length === 0
-            ? directoryEmpty
-              ? `No ${noun} yet`
-              : `No matching ${noun}`
-            : `Showing ${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length} ${isNarrowed ? 'matching ' : ''}${resultNoun}`}
-        </p>
-        {selectedRows.length > 0 && (
-          <div className="ml-auto flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-sage px-3 py-1.5" role="region" aria-label="Bulk actions">
-            <span className="font-medium text-foreground">{selectedRows.length} selected</span>
-            <Button size="sm" variant="ghost" onClick={() => exportCsv(selectedRows)}>
-              Export selected
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setConfirm({ rows: selectedRows, status: 'inactive' })}>
-              Deactivate
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setConfirm({ rows: selectedRows, status: 'active' })}>
-              Activate
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} aria-label="Clear selection">
-              <X />
-            </Button>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        icon={BookUser}
+        title="Contacts"
+        count={{ value: total, noun: nouns.one, plural: nouns.many }}
+        titleAddon={
+          <div className="relative flex items-center">
+            <HeaderHelp label="About directory scope" className="static">
+              <p>Contacts is a company-wide directory. The project selector in the top bar does not narrow it.</p>
+              <p className="mt-2">To see who works on one project, use Filters, then Project. Counts include active and inactive records; the list starts on Active only.</p>
+            </HeaderHelp>
           </div>
-        )}
-      </div>
+        }
+        actions={
+          <Button size="lg" render={<Link href={overlayHref({ new: view === 'people' ? 'contact' : 'company' })} scroll={false} />} nativeButton={false}>
+            <Plus data-icon="inline-start" />
+            {view === 'people' ? 'Add contact' : 'Add company'}
+          </Button>
+        }
+      />
+
+      <div className="flex min-w-0 flex-col">
+        <div role="tablist" aria-label="Directory view" className={worksheetStripClass}>
+          <div className="flex w-max min-w-full items-end">
+            {DIRECTORY_VIEWS.map((v, index) => (
+              <button
+                key={v.value}
+                id={`contacts-tab-${v.value}`}
+                type="button"
+                role="tab"
+                aria-selected={view === v.value}
+                aria-controls="contacts-workspace"
+                tabIndex={view === v.value ? 0 : -1}
+                onClick={() => changeView(v.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+                  e.preventDefault()
+                  const nextIndex = (index + (e.key === 'ArrowRight' ? 1 : -1) + DIRECTORY_VIEWS.length) % DIRECTORY_VIEWS.length
+                  const next = DIRECTORY_VIEWS[nextIndex].value
+                  changeView(next)
+                  document.getElementById(`contacts-tab-${next}`)?.focus()
+                }}
+                className={worksheetTabClass(view === v.value, index === 0)}
+              >
+                {v.label}
+              </button>
+            ))}
+            <div aria-hidden="true" className={worksheetFillerClass} />
+          </div>
+        </div>
+
+        <div
+          id="contacts-workspace"
+          role="tabpanel"
+          aria-labelledby={`contacts-tab-${view}`}
+          className="flex min-w-0 flex-col gap-3 rounded-b-surface rounded-tr-surface border border-t-0 border-border bg-card p-3 sm:p-4"
+        >
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="relative w-full min-w-0 sm:w-auto sm:min-w-64 sm:flex-[0_1_28rem]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <label htmlFor="contacts-search" className="sr-only">
+                {view === 'people' ? 'Search people by name, company, email, or trade' : 'Search companies by name, contact, email, or product'}
+              </label>
+              <Input
+                id="contacts-search"
+                type="search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder={view === 'people' ? 'Search name, company, email, trade' : 'Search company, contact, email, product'}
+                className="h-10 bg-card pl-9"
+              />
+            </div>
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
+              <label htmlFor="contacts-category" className="sr-only">
+                Category
+              </label>
+              <NativeSelect
+                id="contacts-category"
+                value={category ?? ''}
+                onChange={(e) => changeCategory((e.target.value || null) as CategoryKey | null)}
+                className="h-10 min-w-0 flex-1 bg-card sm:w-48 sm:flex-none"
+              >
+                <option value="">{`All categories (${counts.total})`}</option>
+                {CATEGORY_KEYS.map((k) => (
+                  <option key={k} value={k}>
+                    {`${CATEGORY_LABELS[k]} (${counts.byCat[k]})`}
+                  </option>
+                ))}
+              </NativeSelect>
+              <label htmlFor="contacts-sort" className="sr-only">
+                Sort by
+              </label>
+              <NativeSelect
+                id="contacts-sort"
+                value={sortMenuValue}
+                onChange={(e) => {
+                  if (!e.target.value) return
+                  const [key, dir] = e.target.value.split(':') as [SortKey, SortDir]
+                  update({ sort: { key, dir }, page: 1 })
+                }}
+                className="h-10 min-w-0 flex-1 bg-card md:hidden"
+              >
+                {!sortMenuValue && (
+                  <option value="" disabled>
+                    Custom sort
+                  </option>
+                )}
+                {SORT_OPTIONS[view].map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </NativeSelect>
+              <DirectoryFilters
+                key={view}
+                view={view}
+                value={filters}
+                onApply={applyFilters}
+                projectOptions={projectOptions}
+                companyOptions={companyOptions}
+                specialtyOptions={specialtyOptions}
+                productOptions={productOptions}
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button variant="outline" size="lg" className="hidden bg-card md:inline-flex" />}>
+                  <Columns3 data-icon="inline-start" />
+                  Columns
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>Show columns</DropdownMenuLabel>
+                    {COLUMNS[view].map((c) => (
+                      <DropdownMenuCheckboxItem
+                        key={c.key}
+                        checked={!hidden[view].includes(c.key)}
+                        onCheckedChange={(checked) =>
+                          setHidden((h) => ({
+                            ...h,
+                            [view]: checked ? h[view].filter((k) => k !== c.key) : [...h[view], c.key],
+                          }))
+                        }
+                      >
+                        {c.label}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button variant="outline" size="icon" className="size-10 shrink-0 bg-card" aria-label="More contact actions" />}>
+                  <MoreHorizontal />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem render={<Link href="/contacts/import" />}>
+                    <FileUp />
+                    Import CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportCsv(filtered)}>
+                    <Download />
+                    Export
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          {(filterChips.length > 0 || canClear || resultsText || selectedRows.length > 0) && (
+            <div className="flex min-h-8 min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+              {filterChips.length > 0 && (
+                <div role="group" aria-label="Applied filters" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+                  {filterChips.map((chip) => (
+                    <span
+                      key={chip.key}
+                      className="inline-flex max-w-full items-center gap-1 rounded-badge border border-primary/20 bg-sage py-0.5 pl-2.5 pr-1 text-xs font-medium text-foreground"
+                    >
+                      <span className="truncate">{chip.label}</span>
+                      <button
+                        type="button"
+                        onClick={chip.onRemove}
+                        aria-label={`Remove filter ${chip.label}`}
+                        className="shrink-0 rounded-full p-0.5 text-muted-foreground hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <X className="size-3" aria-hidden="true" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {canClear && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="inline-flex items-center gap-1 rounded text-sm font-medium text-link underline-offset-4 hover:text-link-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  Clear filters
+                </button>
+              )}
+              <p className="text-muted-foreground tabular-nums" aria-live="polite">
+                {resultsText}
+              </p>
+              {selectedRows.length > 0 && (
+                <div className="ml-auto flex flex-wrap items-center gap-1 rounded-lg border border-primary/20 bg-sage py-1 pl-3 pr-1" role="region" aria-label="Bulk actions">
+                  <span className="mr-1 font-medium text-foreground">{selectedRows.length} selected</span>
+                  <Button size="sm" variant="ghost" onClick={() => exportCsv(selectedRows)}>
+                    Export selected
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirm({ rows: selectedRows, status: 'inactive' })}>
+                    Deactivate
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirm({ rows: selectedRows, status: 'active' })}>
+                    Activate
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                    <X data-icon="inline-start" />
+                    Clear selection
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
       <RecordPreviewLayout
         records={previewRecords}
@@ -743,6 +821,8 @@ export function ContactsDirectory({
         </div>
       )}
       </RecordPreviewLayout>
+        </div>
+      </div>
 
       <Dialog open={Boolean(projectsFor)} onOpenChange={(open) => !open && setProjectsFor(null)}>
         <DialogContent>
@@ -789,23 +869,6 @@ export function ContactsDirectory({
         </DialogContent>
       </Dialog>
     </div>
-  )
-}
-
-function CategoryChip({ active, onClick, label, count }: { active: boolean; onClick: () => void; label: string; count: number }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground/80 hover:border-primary/40 hover:text-foreground',
-      )}
-    >
-      {label}
-      <span className={cn('tabular-nums text-xs', active ? 'text-primary-foreground/80' : 'text-muted-foreground')}>{count}</span>
-    </button>
   )
 }
 
