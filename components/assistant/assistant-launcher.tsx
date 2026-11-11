@@ -19,7 +19,7 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ArrowUpRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import {
@@ -76,7 +76,17 @@ function parseMarket(raw: unknown): MarketPanel | undefined {
 type Message =
   | { id: string; role: 'user'; text: string }
   | { id: string; role: 'assistant'; status: 'loading' }
-  | { id: string; role: 'assistant'; status: 'error'; text: string; question: string; reviewDraft?: boolean; requestId?: string }
+  | {
+      id: string
+      role: 'assistant'
+      status: 'error'
+      text: string
+      question: string
+      reviewDraft?: boolean
+      requestId?: string
+      code?: string
+      retryable: boolean
+    }
   | {
       id: string
       role: 'assistant'
@@ -210,6 +220,8 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
         market?: unknown
         estimateDraft?: unknown
         requestId?: string
+        code?: string
+        retryable?: boolean
       } | null
       if (!res.ok || !data?.text) {
         settle({
@@ -220,6 +232,8 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
           question,
           reviewDraft,
           requestId: typeof data?.requestId === 'string' ? data.requestId : undefined,
+          code: typeof data?.code === 'string' ? data.code : undefined,
+          retryable: data?.retryable !== false,
         })
         return
       }
@@ -243,7 +257,7 @@ function AssistantPanel({ configured, onClose }: { configured: boolean; onClose:
       settle({ id: loadingId, role: 'assistant', status: 'answer', text: answerText, reviewDraft, links, sources, health, market, options, estimateDraft })
     } catch {
       if (controller.signal.aborted) return
-      settle({ id: loadingId, role: 'assistant', status: 'error', text: 'Network problem. Check your connection and try again.', question, reviewDraft })
+      settle({ id: loadingId, role: 'assistant', status: 'error', text: 'Network problem. Check your connection and try again.', question, reviewDraft, retryable: true })
     } finally {
       if (inFlight.current === controller) inFlight.current = null
     }
@@ -495,11 +509,16 @@ function MessageBubble({
               <span>{message.text}</span>
             </p>
             <div className="flex flex-wrap items-center gap-2 pl-6">
-              {actionable && (
+              {actionable && message.retryable && (
                 <Button type="button" size="sm" variant="outline" className="h-7 gap-1.5 bg-card" onClick={() => onRetry(message)}>
                   <RotateCcw className="size-3.5" aria-hidden="true" />
                   Retry
                 </Button>
+              )}
+              {message.code === 'session_expired' && (
+                <Link href="/auth/login" className={cn(buttonVariants({ size: 'sm', variant: 'outline' }), 'h-7 bg-card')}>
+                  Sign in again
+                </Link>
               )}
               {message.requestId && (
                 <span className="font-mono text-xs text-muted-foreground">{`Ref ${message.requestId.slice(0, 8)}`}</span>
