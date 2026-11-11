@@ -1,4 +1,4 @@
-import { APP_TIME_ZONE } from '@/lib/format'
+import { APP_TIME_ZONE } from './format.ts'
 import type { DraftInput } from '@/app/actions/subcontract-quotes'
 
 export function emptyRequestDraft(): DraftInput {

@@ -97,8 +97,12 @@ test('retry resubmits only failed work and merges back into earlier results', ()
 })
 
 test('project role suggestions only use approved roles', () => {
-  assert.equal(suggestProjectRole('Foreman'), 'Foreman')
-  assert.equal(suggestProjectRole('owner'), 'Owner/Company Representative')
+  assert.equal(suggestProjectRole('Engineer'), 'Engineer')
+  assert.equal(suggestProjectRole('architect'), 'Architect')
+  assert.equal(suggestProjectRole('Account Manager'), 'Supplier Representative')
+  // A company job title doesn't say which project responsibility someone holds, so these never pre-fill.
+  assert.equal(suggestProjectRole('Foreman'), '')
+  assert.equal(suggestProjectRole('owner'), '')
   assert.equal(suggestProjectRole('Billing Contact'), '')
   assert.equal(suggestProjectRole(null), '')
 })
