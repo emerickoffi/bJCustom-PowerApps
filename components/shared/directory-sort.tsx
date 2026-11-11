@@ -7,9 +7,12 @@ import { NativeSelect } from '@/components/shared/form-field'
 export function DirectorySort({
   value,
   options,
+  hideLabel = false,
 }: {
   value: string
   options: { value: string; label: string }[]
+  /** Keep the label for screen readers only, for compact toolbars. */
+  hideLabel?: boolean
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -18,7 +21,7 @@ export function DirectorySort({
 
   return (
     <div className="flex items-center gap-2">
-      <label htmlFor="directory-sort" className="text-sm text-muted-foreground">
+      <label htmlFor="directory-sort" className={hideLabel ? 'sr-only' : 'text-sm text-muted-foreground'}>
         Sort
       </label>
       <NativeSelect

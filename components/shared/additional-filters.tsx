@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal, flushSync } from 'react-dom'
 import { Popover } from '@base-ui/react/popover'
 import { SlidersHorizontal, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -29,10 +29,17 @@ const LABEL_CLASS = 'text-xs font-medium text-muted-foreground'
 export function AdditionalFilters({
   selects,
   location,
+  chipsSlotId,
 }: {
   selects: FilterSelect[]
   location?: { options: LocationOption[]; defaultState: string; defaultCity: string }
+  /** Render the chips into this element (outside the form) instead of on their own row inside it. */
+  chipsSlotId?: string
 }) {
+  const [chipsSlot, setChipsSlot] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setChipsSlot(chipsSlotId ? document.getElementById(chipsSlotId) : null)
+  }, [chipsSlotId])
   const defaults: Values = {}
   for (const select of selects) defaults[select.name] = select.defaultValue
   if (location) {
@@ -147,8 +154,15 @@ export function AdditionalFilters({
           </Popover.Positioner>
         </Popover.Portal>
       </Popover.Root>
-      {active > 0 && (
-        <div className="order-last flex basis-full flex-wrap items-center gap-2">
+      {active > 0 && renderChips()}
+    </>
+  )
+
+  function renderChips() {
+    // Until the slot is found after mount, render nothing rather than flashing the chips inline first.
+    if (chipsSlotId && !chipsSlot) return null
+    const chipsRow = (
+        <div className={chipsSlot ? 'flex flex-wrap items-center gap-2' : 'order-last flex basis-full flex-wrap items-center gap-2'}>
           <ul aria-label="Applied filters" className="flex flex-wrap items-center gap-2">
             {chips.map((chip) => (
               <li
@@ -176,7 +190,7 @@ export function AdditionalFilters({
             Clear additional filters
           </Button>
         </div>
-      )}
-    </>
-  )
+    )
+    return chipsSlot ? createPortal(chipsRow, chipsSlot) : chipsRow
+  }
 }

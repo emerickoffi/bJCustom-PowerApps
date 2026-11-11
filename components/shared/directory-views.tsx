@@ -76,6 +76,9 @@ export function DirectoryViews({
   controls,
   cards,
   table,
+  leading,
+  summaryAddon,
+  empty,
 }: {
   module: DirectoryModule
   initialView: DirectoryView | null
@@ -85,6 +88,12 @@ export function DirectoryViews({
   controls?: ReactNode
   cards: ReactNode
   table: ReactNode
+  /** Search and filters placed on the left of one shared toolbar row; the summary moves to a line beneath it. */
+  leading?: ReactNode
+  /** Extra content on the summary line, such as applied-filter chips (with `leading`). */
+  summaryAddon?: ReactNode
+  /** Shown instead of the views and view controls when there are no results (with `leading`). */
+  empty?: ReactNode
 }) {
   const [chosen, setChosen] = useState<DirectoryView | null>(initialView)
   const isDesktop = useIsDesktop()
@@ -103,6 +112,45 @@ export function DirectoryViews({
     if (desktopDefault === mobileDefault) return desktopDefault === view ? '' : 'hidden'
     const showDesktop = desktopDefault === view
     return showDesktop ? 'hidden lg:block' : 'lg:hidden'
+  }
+
+  const switcher = (
+    <DirectoryViewSwitcher
+      value={active}
+      onChange={choose}
+      label={`${module === 'clients' ? 'Clients' : 'Projects'} directory view`}
+    />
+  )
+
+  if (leading !== undefined) {
+    // The leading filters keep one stable position in the tree, so typing a search that empties the list never remounts it.
+    return (
+      <div data-view={active} className="group/views flex flex-col gap-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="min-w-0 flex-[1_1_30rem]">{leading}</div>
+          {!empty && (
+            <div className="flex flex-wrap items-center gap-2">
+              {controls}
+              {switcher}
+            </div>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 empty:hidden">
+          {!empty && (
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {summary}
+            </p>
+          )}
+          {summaryAddon}
+        </div>
+        {empty ?? (
+          <>
+            <div className={visibility('cards')}>{cards}</div>
+            <div className={visibility('table')}>{table}</div>
+          </>
+        )}
+      </div>
+    )
   }
 
   return (
