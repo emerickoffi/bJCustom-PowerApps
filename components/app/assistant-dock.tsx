@@ -51,7 +51,11 @@ import { useLauncherRegistry, useRegisteredLauncherActions, type LauncherAction 
 import { useProjectQuickActionsScope, useQuickActionDrawer } from '@/components/app/quick-actions'
 import { LauncherProjectPicker } from '@/components/app/launcher-project-picker'
 import { confirmLeave } from '@/components/app/navigation-guard'
-import { AssistantSheet } from '@/components/assistant/assistant-launcher'
+import dynamic from 'next/dynamic'
+
+// The chat sheet carries the markdown renderer and draft schemas; keep it out of every page's first load.
+const loadAssistantSheet = () => import('@/components/assistant/assistant-launcher').then((m) => m.AssistantSheet)
+const AssistantSheet = dynamic(loadAssistantSheet, { ssr: false })
 
 const ICONS: Record<LauncherIcon, LucideIcon> = {
   project: FolderPlus,
@@ -192,6 +196,7 @@ function Dock({ assistant, globalActions, pickerActions }: DockProps) {
   const openDrawer = useQuickActionDrawer()
   const [mode, setMode] = useState<Mode | null>(null)
   const [aiOpen, setAiOpen] = useState(false)
+  const [aiMounted, setAiMounted] = useState(false)
   const [pending, setPending] = useState<ProjectPickerAction | null>(null)
   const timer = useRef<number | null>(null)
   const lastPointer = useRef('')
@@ -223,8 +228,15 @@ function Dock({ assistant, globalActions, pickerActions }: DockProps) {
 
   const openAi = useCallback(() => {
     dismiss()
+    setAiMounted(true)
     setAiOpen(true)
   }, [dismiss])
+
+  // Fetch the chat code (not any AI request) once the launcher is engaged so the sheet opens without a wait.
+  const launcherEngaged = mode !== null
+  useEffect(() => {
+    if (launcherEngaged && assistant) void loadAssistantSheet()
+  }, [launcherEngaged, assistant])
 
   // Route, query (filters, tabs, previewed project) or project changes close the pills and drop a pending pick.
   const projectKey = scope?.projectId ?? ''
@@ -445,7 +457,7 @@ function Dock({ assistant, globalActions, pickerActions }: DockProps) {
         </div>
       </div>
 
-      {assistant && <AssistantSheet configured={assistant.configured} open={aiOpen} onOpenChange={setAiOpen} />}
+      {assistant && aiMounted && <AssistantSheet configured={assistant.configured} open={aiOpen} onOpenChange={setAiOpen} />}
       <LauncherProjectPicker
         actionLabel={pending?.label ?? null}
         onCancel={() => setPending(null)}
