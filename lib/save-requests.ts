@@ -64,7 +64,7 @@ export function isConflictMessage(message: string | undefined | null) {
 
 export type ThrownSaveError = { kind: 'auth' | 'redirect' | 'forbidden' | 'network'; location?: string }
 
-const AUTH_PATHS = ['/auth/login', '/onboarding', '/account/activate']
+const AUTH_PATHS = ['/auth/login', '/no-access', '/account/activate']
 
 /** Classifies what a server-action call threw. Anything unrecognised is treated as an unconfirmed network outcome. */
 export function classifyThrown(error: unknown): ThrownSaveError {

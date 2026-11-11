@@ -10,10 +10,8 @@ export async function GET(request: NextRequest) {
   if (code) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      await supabase.rpc('accept_pending_invitations')
-      return NextResponse.redirect(`${origin}${safeNext}`)
-    }
+    // Workspace access is granted only by accepting a token-bound invitation, never by email match here.
+    if (!error) return NextResponse.redirect(`${origin}${safeNext}`)
   }
 
   return NextResponse.redirect(`${origin}/auth/error`)

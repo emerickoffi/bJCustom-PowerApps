@@ -15,7 +15,7 @@ function loginErrorMessage(error: unknown): string {
   return 'Something went wrong. Please try again.'
 }
 
-export function LoginForm() {
+export function LoginForm({ next = '/' }: { next?: string }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +33,7 @@ export function LoginForm() {
       return
     }
     // "/" is a redirect-only route handler with no RSC payload, so a client-router push always fails its fetch.
-    window.location.assign('/')
+    window.location.assign(next)
   }
 
   return (
@@ -70,12 +70,12 @@ export function LoginForm() {
       <Button type="submit" size="lg" className="h-10" disabled={isLoading}>
         {isLoading ? 'Signing in...' : 'Sign in'}
       </Button>
-      <p className="text-center text-sm text-muted-foreground">
-        {'New to the platform? '}
-        <Link href="/auth/sign-up" className="font-medium text-primary underline-offset-4 hover:underline">
-          Create an account
+      <div className="flex flex-col items-center gap-2 text-center text-sm text-muted-foreground">
+        <Link href="/auth/forgot-password" className="font-medium text-primary underline-offset-4 hover:underline">
+          Forgot password?
         </Link>
-      </p>
+        <p>{'Access is by invitation. Use the link your administrator sent you to create an account.'}</p>
+      </div>
     </form>
   )
 }

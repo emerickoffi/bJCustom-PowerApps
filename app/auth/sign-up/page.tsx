@@ -1,16 +1,6 @@
-import type { Metadata } from 'next'
-import { AuthShell } from '@/components/auth/auth-shell'
-import { SignUpForm } from '@/components/auth/sign-up-form'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = { title: 'Create account' }
-
+// Accounts are created from an invitation link (/invite/[token]); there is no open sign-up.
 export default function SignUpPage() {
-  return (
-    <AuthShell
-      title="Create your account"
-      description="If you were invited by your builder, sign up with the same email address that received the invitation."
-    >
-      <SignUpForm />
-    </AuthShell>
-  )
+  redirect('/auth/login')
 }

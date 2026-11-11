@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Provider webhooks carry no session; each route authenticates the sender itself (e.g. HMAC verification).
-const PUBLIC_PREFIXES = ['/auth', '/api/webhooks/']
+const PUBLIC_PREFIXES = ['/auth', '/invite/', '/api/webhooks/']
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })

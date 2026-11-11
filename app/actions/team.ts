@@ -3,33 +3,105 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/session'
+import { INVITATION_DAYS, invitationUrl, newInvitationToken } from '@/lib/invitations'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { staffInviteSchema } from '@/lib/validation'
 
 const uuid = z.uuid()
 
-export async function inviteStaffAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+export type InviteState = ActionState & { inviteUrl?: string; inviteEmail?: string }
+
+function escapeLike(value: string) {
+  return value.replace(/[\\%_]/g, (c) => `\\${c}`)
+}
+
+function expiryFromNow() {
+  return new Date(Date.now() + INVITATION_DAYS * 24 * 60 * 60 * 1000).toISOString()
+}
+
+export async function inviteStaffAction(_prev: InviteState, formData: FormData): Promise<InviteState> {
   const session = await requireAdmin()
-  const parsed = staffInviteSchema.safeParse(formValues(formData))
-  if (!parsed.success) return fromZodError(parsed.error)
+  const values = formValues(formData)
+  const parsed = staffInviteSchema.safeParse(values)
+  if (!parsed.success) return { ...fromZodError(parsed.error), values }
+  const { email, role } = parsed.data
 
   const supabase = await createClient()
+  const requested = [...new Set(formData.getAll('project_ids').map(String))].filter((id) => uuid.safeParse(id).success)
+  const { data: projects } = requested.length
+    ? await supabase
+        .from('projects')
+        .select('id')
+        .eq('organization_id', session.organizationId)
+        .is('archived_at', null)
+        .in('id', requested)
+    : { data: [] as { id: string }[] }
+
+  const admin = createAdminClient()
+  const { data: existing } = await admin.from('profiles').select('id').ilike('email', escapeLike(email)).limit(1).maybeSingle()
+  if (existing) {
+    const { data: membership } = await admin
+      .from('organization_memberships')
+      .select('id')
+      .eq('organization_id', session.organizationId)
+      .eq('user_id', existing.id)
+      .maybeSingle()
+    if (membership) return { error: 'This person already has access to your workspace.', values }
+  }
+
+  // An expired invitation would otherwise block a fresh one through the one-pending-per-email rule.
+  await supabase
+    .from('invitations')
+    .update({ status: 'revoked', revoked_at: new Date().toISOString(), revoked_by: session.userId })
+    .eq('organization_id', session.organizationId)
+    .eq('status', 'pending')
+    .ilike('email', escapeLike(email))
+    .lt('expires_at', new Date().toISOString())
+
+  const { token, hash } = newInvitationToken()
   const { error } = await supabase.from('invitations').insert({
     organization_id: session.organizationId,
-    email: parsed.data.email,
-    role: parsed.data.role,
+    email,
+    role,
     invited_by: session.userId,
+    token_hash: hash,
+    project_ids: (projects ?? []).map((p) => p.id),
+    expires_at: expiryFromNow(),
   })
   if (error) {
-    if (error.code === '23505') return { error: 'An invitation is already pending for this email.' }
-    return { error: friendlyDbError(error) }
+    if (error.code === '23505') {
+      return { error: 'An invitation is already pending for this email. Issue a new link from the pending list instead.', values }
+    }
+    return { error: friendlyDbError(error), values }
   }
 
   revalidatePath('/team')
-  return {
-    success: `Invitation created. Ask ${parsed.data.email} to sign up with that address to join your organization.`,
-  }
+  return { success: `Invitation created for ${email}.`, inviteUrl: await invitationUrl(token), inviteEmail: email }
+}
+
+export async function reissueInvitationLinkAction(_prev: InviteState, formData: FormData): Promise<InviteState> {
+  const session = await requireAdmin()
+  const invitationId = String(formData.get('invitation_id') ?? '')
+  if (!uuid.safeParse(invitationId).success) return { error: 'Invalid invitation.' }
+
+  const { token, hash } = newInvitationToken()
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('invitations')
+    .update({ token_hash: hash, expires_at: expiryFromNow() })
+    .eq('id', invitationId)
+    .eq('organization_id', session.organizationId)
+    .eq('status', 'pending')
+    .neq('role', 'client')
+    .select('email')
+    .maybeSingle()
+  if (error) return { error: friendlyDbError(error) }
+  if (!data) return { error: 'This invitation is no longer pending.' }
+
+  revalidatePath('/team')
+  return { success: 'New link issued. The previous link no longer works.', inviteUrl: await invitationUrl(token), inviteEmail: data.email }
 }
 
 export async function revokeInvitationAction(invitationId: string): Promise<ActionState> {
@@ -39,7 +111,7 @@ export async function revokeInvitationAction(invitationId: string): Promise<Acti
   const supabase = await createClient()
   const { error } = await supabase
     .from('invitations')
-    .update({ status: 'revoked' })
+    .update({ status: 'revoked', revoked_at: new Date().toISOString(), revoked_by: session.userId })
     .eq('id', invitationId)
     .eq('organization_id', session.organizationId)
     .eq('status', 'pending')

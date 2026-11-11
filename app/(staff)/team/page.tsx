@@ -2,16 +2,12 @@ import type { Metadata } from 'next'
 import { requireAdmin } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader, pageLayout } from '@/components/shared/page-header'
-import { InviteStaffForm, InvitationList, MemberList, type InvitationRow, type MemberRow } from '@/components/team/team-panels'
+import { MemberList, type MemberRow } from '@/components/team/team-panels'
+import { InviteStaffForm, InvitationList, type InvitationRow, type ProjectOption } from '@/components/team/staff-invitations'
 import type { OrgRole } from '@/lib/domain'
 import { UsersRound as UsersRoundIcon } from 'lucide-react'
 import { TeamActionDrawer } from '@/components/team/team-action-drawer'
-import {
-  CreateStaffAccountForm,
-  PendingActivationList,
-  type PendingActivation,
-  type ProjectOption,
-} from '@/components/team/create-staff-account'
+import { PendingActivationList, type PendingActivation } from '@/components/team/create-staff-account'
 import { UsersAccessTabs } from '@/components/team/users-access-tabs'
 import { HomeownerAccountList, type HomeownerFilter } from '@/components/team/homeowner-account-list'
 import { loadHomeownerAccounts } from '@/lib/homeowner-accounts'
@@ -69,7 +65,7 @@ export default async function TeamPage({
       .order('created_at'),
     supabase
       .from('invitations')
-      .select('id, email, role, created_at, expires_at')
+      .select('id, email, role, created_at, expires_at, project_ids, token_hash')
       .eq('organization_id', session.organizationId)
       .eq('status', 'pending')
       .neq('role', 'client')
@@ -104,6 +100,15 @@ export default async function TeamPage({
       name: byId.get(m.user_id)?.full_name ?? byId.get(m.user_id)?.email ?? 'Staff member',
       email: byId.get(m.user_id)?.email ?? null,
     }))
+  const invitations: InvitationRow[] = (invitesRes.data ?? []).map((inv) => ({
+    id: inv.id,
+    email: inv.email,
+    role: inv.role as OrgRole,
+    created_at: inv.created_at,
+    expires_at: inv.expires_at,
+    project_count: (inv.project_ids as string[] | null)?.length ?? 0,
+    has_link: Boolean(inv.token_hash),
+  }))
   const projectOptions: ProjectOption[] = (projectsRes.data ?? []).map((p) => ({
     id: p.id,
     label: [p.project_number && `#${p.project_number}`, p.name].filter(Boolean).join(' '),
@@ -116,20 +121,11 @@ export default async function TeamPage({
           <>
             <TeamActionDrawer
               kind="invite"
-              variant="outline"
-              label="Invite by email"
-              title="Invite staff by email"
-              description="Send an invitation link. The person sets their own password when they accept."
+              label="Invite staff"
+              title="Invite staff"
+              description="Creates a one-time invitation link for a specific email address. The person signs up or signs in with that email and chooses their own password."
             >
-              <InviteStaffForm />
-            </TeamActionDrawer>
-            <TeamActionDrawer
-              kind="create"
-              label="Create staff account"
-              title="Create staff account"
-              description="Creates a login directly, with no email needed. You hand over a one-time temporary password, so copy it before closing this panel."
-            >
-              <CreateStaffAccountForm projects={projectOptions} />
+              <InviteStaffForm projects={projectOptions} />
             </TeamActionDrawer>
           </>
         }
@@ -138,7 +134,7 @@ export default async function TeamPage({
       <div className="flex flex-col gap-8">
         <MemberList members={members} />
         <PendingActivationList accounts={pending} />
-        <InvitationList invitations={(invitesRes.data ?? []) as InvitationRow[]} />
+        <InvitationList invitations={invitations} />
       </div>
     </div>
   )
