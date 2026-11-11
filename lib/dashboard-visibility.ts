@@ -74,11 +74,11 @@ export const DASHBOARD_VISIBILITY_ITEMS = [
     attention: null,
   },
   {
-    id: 'warranty',
+    id: 'my_todos',
     kind: 'section',
-    label: 'Warranty',
-    records: 'Shown while at least one warranty is active.',
-    attention: 'Shown only while at least one warranty claim is open.',
+    label: 'My To-dos',
+    records: 'Shown while you have at least one open to-do.',
+    attention: 'Shown only while one of your to-dos is overdue or due today.',
   },
   {
     id: 'recent_activity',
@@ -190,7 +190,7 @@ const DEFAULT_LAYOUT: DashboardLayout = {
   summary: ['card_approval', 'card_contract', 'card_schedule', 'card_receivables'],
   above: [],
   main: ['attention', 'priority_jobs', 'pipeline'],
-  side: ['coming_up', 'warranty', 'recent_activity'],
+  side: ['my_todos', 'coming_up', 'recent_activity'],
   below: [],
 }
 
@@ -203,7 +203,7 @@ const LEGACY_DEFAULT_LAYOUT: DashboardLayout = {
   summary: ['card_approval', 'card_contract', 'card_schedule', 'card_receivables'],
   above: [],
   main: ['attention', 'priority_jobs'],
-  side: ['coming_up', 'warranty', 'recent_activity'],
+  side: ['my_todos', 'coming_up', 'recent_activity'],
   below: ['pipeline'],
 }
 
@@ -217,7 +217,7 @@ export const ALLOWED_AREAS: Record<VisibilityItemId, readonly LayoutArea[]> = {
   attention: ['main'],
   priority_jobs: ['main'],
   coming_up: ['main', 'side'],
-  warranty: ['main', 'side'],
+  my_todos: ['main', 'side'],
   recent_activity: ['main', 'side'],
   pipeline: ['above', 'main', 'below'],
 }

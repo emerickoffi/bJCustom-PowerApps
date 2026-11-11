@@ -17,14 +17,14 @@ test('each section lands in exactly one tablet tab', () => {
   const today = tabletSections(layout, 'today', all)
   const jobs = tabletSections(layout, 'jobs', all)
   const overview = tabletSections(layout, 'overview', all)
-  assert.deepEqual([...today].sort(), ['attention', 'coming_up'])
+  assert.deepEqual([...today].sort(), ['attention', 'coming_up', 'my_todos'])
   assert.deepEqual(jobs, ['priority_jobs'])
-  assert.deepEqual([...overview].sort(), ['pipeline', 'recent_activity', 'warranty'])
+  assert.deepEqual([...overview].sort(), ['pipeline', 'recent_activity'])
 })
 
 test('tablet tabs keep the relative saved order across desktop areas', () => {
-  const layout = { ...defaultLayout(), above: ['recent_activity' as const], main: ['warranty' as const], side: ['pipeline' as const], below: [] }
-  assert.deepEqual(tabletSections(layout, 'overview', all), ['recent_activity', 'warranty', 'pipeline'])
+  const layout = { ...defaultLayout(), above: ['coming_up' as const], main: ['my_todos' as const], side: ['attention' as const], below: [] }
+  assert.deepEqual(tabletSections(layout, 'today', all), ['coming_up', 'my_todos', 'attention'])
 })
 
 test('hidden sections leave no slot', () => {

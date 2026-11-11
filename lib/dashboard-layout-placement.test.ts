@@ -20,9 +20,21 @@ const allIds = (l: DashboardLayout) => LAYOUT_AREAS.flatMap((a) => l[a])
 test('organizations without a saved layout keep the original arrangement', () => {
   assert.ok(isDefaultLayout(parseLayout(null)))
   assert.ok(isDefaultLayout(parseDashboardSettings(null).layout))
-  const legacy = parseDashboardSettings({ warranty: { enabled: false, showWhen: 'always' } })
+  const legacy = parseDashboardSettings({ my_todos: { enabled: false, showWhen: 'always' } })
   assert.ok(isDefaultLayout(legacy.layout))
-  assert.equal(legacy.visibility.warranty.enabled, false)
+  assert.equal(legacy.visibility.my_todos.enabled, false)
+})
+
+test('a saved layout from before My to-dos replaced Warranty follows the new default', () => {
+  const saved = {
+    summary: ['card_approval', 'card_contract', 'card_schedule', 'card_receivables'],
+    above: [],
+    main: ['attention', 'priority_jobs', 'pipeline'],
+    side: ['coming_up', 'warranty', 'recent_activity'],
+    below: [],
+  }
+  assert.ok(isDefaultLayout(parseLayout(saved)))
+  assert.deepEqual(parseLayout(saved).side, ['my_todos', 'coming_up', 'recent_activity'])
 })
 
 test('stored layout drops unknown, duplicate, and incompatible entries, then restores missing items', () => {
@@ -47,7 +59,7 @@ test('placing an item shifts others and keeps every item exactly once', () => {
   assert.deepEqual(l.summary, ['card_receivables', 'card_approval', 'card_contract', 'card_schedule'])
   const moved = placeItem(defaultLayout(), 'coming_up', 'main', 1)
   assert.deepEqual(moved.main, ['coming_up', 'attention', 'priority_jobs', 'pipeline'])
-  assert.deepEqual(moved.side, ['warranty', 'recent_activity'])
+  assert.deepEqual(moved.side, ['my_todos', 'recent_activity'])
   assert.equal(allIds(moved).length, new Set(allIds(moved)).size)
 })
 
@@ -55,9 +67,9 @@ test('incompatible placements are refused locally and rejected on save', () => {
   const base = defaultLayout()
   assert.equal(placeItem(base, 'attention', 'side', 1), base)
   assert.equal(placeItem(base, 'pipeline', 'side', 1), base)
-  const bad = { ...defaultLayout(), main: ['priority_jobs'], side: ['attention', 'coming_up', 'warranty', 'recent_activity'] }
+  const bad = { ...defaultLayout(), main: ['priority_jobs'], side: ['attention', 'my_todos', 'coming_up', 'recent_activity'] }
   assert.ok('error' in validateLayout(bad))
-  const dup = { ...defaultLayout(), side: ['coming_up', 'coming_up', 'warranty', 'recent_activity'] }
+  const dup = { ...defaultLayout(), side: ['coming_up', 'coming_up', 'my_todos', 'recent_activity'] }
   assert.ok('error' in validateLayout(dup))
   const missing = { ...defaultLayout(), main: ['attention', 'priority_jobs'] }
   assert.ok('error' in validateLayout(missing))
@@ -75,7 +87,7 @@ test('a stored copy of the previous default follows the new default; custom arra
     summary: ['card_approval', 'card_contract', 'card_schedule', 'card_receivables'],
     above: [],
     main: ['attention', 'priority_jobs'],
-    side: ['coming_up', 'warranty', 'recent_activity'],
+    side: ['my_todos', 'coming_up', 'recent_activity'],
     below: ['pipeline'],
   }
   assert.ok(isDefaultLayout(parseLayout(legacy)))
