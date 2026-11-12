@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { ALL_PROJECT_STATUSES } from '@/lib/domain'
 import { addBusinessDays, parseBusinessDays } from '@/lib/business-days'
+import { INVALID_STATE_MESSAGE, isUsCountry, normalizeUsState, optionalUsState, requiredUsState } from './us-states.ts'
 
 const optionalText = (max: number) =>
   z
@@ -46,7 +47,7 @@ export const organizationOnboardingSchema = z.object({
   phone: optionalPhone,
   email: optionalEmail,
   city: optionalText(80),
-  state: optionalText(40),
+  state: optionalUsState,
   project_prefix: z
     .string()
     .trim()
@@ -66,7 +67,7 @@ export const organizationSettingsSchema = z.object({
   address_line1: optionalText(160),
   address_line2: optionalText(160),
   city: optionalText(80),
-  state: optionalText(40),
+  state: optionalUsState,
   postal_code: optionalText(20),
   phone: optionalPhone,
   email: optionalEmail,
@@ -95,6 +96,15 @@ export const clientSchema = z.object({
   preferred_communication: z.enum(['email', 'phone', 'text', 'any']),
   status: z.enum(['lead', 'active', 'inactive', 'archived']),
   notes: optionalText(4000),
+}).transform((data, ctx) => {
+  // U.S. addresses store the two-letter code; other countries keep their own state/province/region text.
+  if (!data.state || !isUsCountry(data.country)) return data
+  const code = normalizeUsState(data.state)
+  if (!code) {
+    ctx.addIssue({ code: 'custom', path: ['state'], message: INVALID_STATE_MESSAGE })
+    return z.NEVER
+  }
+  return { ...data, state: code }
 })
 
 const checkbox = z.preprocess((v) => v === 'on' || v === 'true' || v === true, z.boolean())
@@ -151,7 +161,7 @@ export const projectSchema = z
     address_line1: z.string().trim().min(1, 'Street address is required').max(160),
     address_line2: optionalText(160),
     city: z.string().trim().min(1, 'City is required').max(80),
-    state: z.string().trim().min(2, 'State is required').max(40),
+    state: requiredUsState,
     postal_code: z.string().trim().min(3, 'ZIP code is required').max(20),
     lot: optionalText(40),
     block: optionalText(40),

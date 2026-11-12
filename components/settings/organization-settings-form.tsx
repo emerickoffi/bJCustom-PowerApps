@@ -6,6 +6,7 @@ import { updateOrganizationAction } from '@/app/actions/organization'
 import { initialActionState, type ActionState } from '@/lib/action-state'
 import { FormActions, FormSection, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
+import { StateSelect } from '@/components/shared/state-select'
 import { CompanyBrandingSection } from '@/components/settings/company-branding-section'
 
 type Defaults = {
@@ -60,7 +61,7 @@ export function OrganizationSettingsForm({
         <TextField name="address_line2" label="Suite / Unit" autoComplete="address-line2" defaultValue={d(defaults.address_line2)} error={fe.address_line2} className="sm:col-span-2" />
         <div className="grid gap-5 sm:col-span-2 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr]">
           <TextField name="city" label="City" autoComplete="address-level2" defaultValue={d(defaults.city)} error={fe.city} className="sm:col-span-2 lg:col-span-1" />
-          <TextField name="state" label="State" autoComplete="address-level1" defaultValue={d(defaults.state)} error={fe.state} />
+          <StateSelect name="state" defaultValue={d(defaults.state)} error={fe.state} />
           <TextField name="postal_code" label="ZIP code" autoComplete="postal-code" defaultValue={d(defaults.postal_code)} error={fe.postal_code} />
         </div>
       </FormSection>

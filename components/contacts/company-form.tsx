@@ -10,6 +10,7 @@ import { CATEGORY_KEYS, CATEGORY_LABELS, type CategoryKey } from '@/lib/contacts
 import type { CompanyOption } from '@/lib/contacts-data'
 import { FormActions, FormSection, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
+import { StateSelect } from '@/components/shared/state-select'
 import { OverlayBody, OverlayFooter, useFormOverlay } from '@/components/shared/form-overlay'
 import { ProductCategoryPicker } from '@/components/contacts/product-category-picker'
 
@@ -184,7 +185,7 @@ export function CompanyForm({
       >
         <TextField name="address_line1" label="Street address" defaultValue={v.address_line1} error={fe.address_line1} autoComplete="street-address" maxLength={160} className="sm:col-span-2" />
         <TextField name="city" label="City" defaultValue={v.city} error={fe.city} autoComplete="address-level2" maxLength={80} />
-        <TextField name="state" label="State / province" defaultValue={v.state} error={fe.state} autoComplete="address-level1" maxLength={40} />
+        <StateSelect name="state" defaultValue={v.state} error={fe.state} />
         <TextField name="postal_code" label="Postal code" defaultValue={v.postal_code} error={fe.postal_code} autoComplete="postal-code" maxLength={20} />
       </Disclosure>
 
@@ -219,7 +220,7 @@ export function CompanyForm({
 
   if (overlay) {
     return (
-      <form key={formKey} action={formAction} onChange={overlay.markDirty} className="flex min-h-0 flex-1 flex-col" noValidate>
+      <form key={formKey} action={formAction} onChange={overlay.markDirty} onInput={overlay.markDirty} className="flex min-h-0 flex-1 flex-col" noValidate>
         <OverlayBody className="py-0">{sections}</OverlayBody>
         <OverlayFooter message={message}>
           <p className="mr-auto hidden text-xs text-muted-foreground sm:block">Fields marked * are required.</p>
