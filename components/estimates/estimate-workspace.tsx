@@ -332,7 +332,7 @@ function CompactTotals({
       {showBar && (
         <div className="flex min-h-12 flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5">
           <span className="flex items-baseline gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Estimate total:</span>
+            <span className="text-xs font-medium text-muted-foreground">Client price:</span>
             <span className="type-financial text-foreground">{formatCentsExact(totals.construction_total_cents)}</span>
           </span>
           <span className="text-xs text-muted-foreground">
