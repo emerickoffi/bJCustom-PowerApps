@@ -21,6 +21,7 @@ import {
   selectionPath,
   selectionsPath,
 } from '@/lib/selections'
+import { MAX_SELECTIONS_PER_BATCH, validateDraft, type DraftErrors, type SelectionDraft, type ValidDraft } from '@/lib/selection-drafts'
 
 const optionalText = (max: number) =>
   z
@@ -142,6 +143,63 @@ export async function saveSelectionAction(_prev: ActionState, formData: FormData
   }
   revalidateSelection(d.project_id, d.id)
   return { success: 'Selection saved.' }
+}
+
+export type CreateSelectionsResult =
+  | { ok: true; created: { key: string; id: string }[] }
+  | { ok: false; error: string; entryErrors?: Record<string, DraftErrors> }
+
+/**
+ * Creates every drawer entry in one INSERT statement, so the batch is all-or-nothing.
+ * Each entry's request_key makes a retried submit a no-op instead of a duplicate.
+ */
+export async function createSelectionsAction(input: { project_id: string; entries: Partial<SelectionDraft>[] }): Promise<CreateSelectionsResult> {
+  const session = await requireSelectionsAccess()
+  const projectId = z.uuid().safeParse(input?.project_id)
+  if (!projectId.success) return { ok: false, error: 'Missing project.' }
+  const entries = Array.isArray(input.entries) ? input.entries : []
+  if (entries.length === 0) return { ok: false, error: 'Add at least one selection.' }
+  if (entries.length > MAX_SELECTIONS_PER_BATCH) return { ok: false, error: `Create up to ${MAX_SELECTIONS_PER_BATCH} selections at a time.` }
+
+  const valid: ValidDraft[] = []
+  const entryErrors: Record<string, DraftErrors> = {}
+  for (const entry of entries) {
+    const { value, errors } = validateDraft(entry)
+    if (value) valid.push(value)
+    else entryErrors[typeof entry.key === 'string' ? entry.key : ''] = errors
+  }
+  if (Object.keys(entryErrors).length) return { ok: false, error: 'Please check the highlighted fields.', entryErrors }
+  if (new Set(valid.map((v) => v.request_key)).size !== valid.length) return { ok: false, error: 'Refresh and try again.' }
+
+  const supabase = await createClient()
+  // RLS also enforces this; the explicit check gives a clear message for a foreign or hidden project.
+  const { data: project } = await supabase.from('projects').select('id').eq('id', projectId.data).eq('organization_id', session.organizationId).maybeSingle()
+  if (!project) return { ok: false, error: 'Project not found.' }
+
+  // The category index is case-insensitive (an expression index), so known names are skipped
+  // up front and any race is absorbed by ignoring the unique-violation error.
+  const { data: known } = await supabase.from('selection_categories').select('name')
+  const knownNames = new Set((known ?? []).map((c) => (c.name as string).trim().toLowerCase()))
+  const newCategories = [...new Map(valid.map((v) => [v.category.toLowerCase(), v.category])).entries()].filter(([k]) => !knownNames.has(k)).map(([, name]) => name)
+  await Promise.all(newCategories.map((name) => supabase.from('selection_categories').insert({ organization_id: session.organizationId, name }).then(() => undefined)))
+
+  const rows = valid.map((v) => ({ ...v, organization_id: session.organizationId, project_id: projectId.data }))
+  const { error } = await supabase.from('selections').upsert(rows, { onConflict: 'organization_id,request_key', ignoreDuplicates: true })
+  if (error) return { ok: false, error: friendlyDbError(error) }
+
+  // Read back by key so a retried batch still reports the rows the first attempt created.
+  const { data: saved, error: readError } = await supabase
+    .from('selections')
+    .select('id, request_key')
+    .eq('project_id', projectId.data)
+    .in(
+      'request_key',
+      valid.map((v) => v.request_key),
+    )
+  if (readError) return { ok: false, error: friendlyDbError(readError) }
+  const byKey = new Map((saved ?? []).map((r) => [r.request_key as string, r.id as string]))
+  revalidateSelection(projectId.data)
+  return { ok: true, created: valid.flatMap((v) => (byKey.has(v.request_key) ? [{ key: v.request_key, id: byKey.get(v.request_key)! }] : [])) }
 }
 
 export async function deleteSelectionAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

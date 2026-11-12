@@ -147,6 +147,7 @@ export type SelectionListRow = {
   status: SelectionStatus
   allowance_cents: number | null
   selected_price_cents: number | null
+  selected_option_id?: string | null
   due_date: string | null
   updated_at: string
 }
