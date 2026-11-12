@@ -165,7 +165,15 @@ export const SheetRowView = memo(function SheetRowView({
       <ReadCell numeric className="bg-muted/30 text-muted-foreground">
         {formatCentsExact(math.unitCostCents)}
       </ReadCell>
-      <ReadCell numeric className="bg-muted/30 font-semibold">
+      {/* Sticky so the calculated total stays in view while scrolling the wide grid horizontally. */}
+      <ReadCell
+        numeric
+        className={cn(
+          'sticky z-[2] border-l bg-card font-semibold shadow-[-6px_0_8px_-6px_rgb(0_0_0/0.12)]',
+          editable ? 'right-[5.5rem]' : 'right-0',
+        )}
+      >
+        <span className="sr-only">{`Item total, ${row.description || 'new line item'}: `}</span>
         {math.valid ? formatCentsExact(math.totalCents) : '—'}
       </ReadCell>
       <td className="h-10 border-r border-border/60 text-center">
