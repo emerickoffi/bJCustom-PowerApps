@@ -33,6 +33,7 @@ import { buildProjectSetup, setupDismissCookie } from '@/lib/project-setup'
 import { ProjectSetupChecklist, ShowSetupChecklistButton } from '@/components/projects/project-setup-checklist'
 import { lifecycleGroup } from '@/lib/project-lifecycle'
 import { todayIso } from '@/lib/schedule'
+import { buildJobTimeline, type TimelineActivityInput, type TimelinePhaseInput } from '@/lib/job-timeline'
 import { showsCompletionReadiness } from '@/lib/completion-readiness'
 import { loadCompletionReadiness, loadCompletionRecord } from '@/lib/completion-readiness-data'
 import { CompletionReadinessPanel } from '@/components/projects/completion-readiness-panel'
@@ -82,7 +83,7 @@ export default async function ProjectDetailPage({
     loadProjectHomeowners(supabase, session.organizationId, id),
     supabase
       .from('schedule_activities')
-      .select('id, name, status, planned_start, planned_end, sort_order, assigned_to, activity_type')
+      .select('id, name, status, planned_start, planned_end, sort_order, assigned_to, activity_type, phase, phase_id')
       .eq('project_id', id)
       .order('sort_order'),
     supabase
@@ -128,12 +129,15 @@ export default async function ProjectDetailPage({
       : Promise.resolve(null),
   ])
   const isCompleted = project.status === 'completed'
-  const [readiness, completionRecord, warrantyRes] = await Promise.all([
+  const [readiness, completionRecord, warrantyRes, phasesRes] = await Promise.all([
     showsCompletionReadiness(project.status) ? loadCompletionReadiness(supabase, id, features, manager) : Promise.resolve(null),
     isCompleted ? loadCompletionRecord(supabase, id) : Promise.resolve(null),
     isCompleted && features.warranty
       ? supabase.from('project_warranties').select('start_date').eq('project_id', id).maybeSingle()
       : Promise.resolve({ data: null as { start_date: string } | null }),
+    features.schedule
+      ? supabase.from('schedule_phases').select('id, name, sort_order').eq('project_id', id).order('sort_order')
+      : Promise.resolve({ data: [] as TimelinePhaseInput[], error: null }),
   ])
   const warrantyStart = warrantyRes.data?.start_date ?? null
 
@@ -153,6 +157,15 @@ export default async function ProjectDetailPage({
   /** `null` when the lookup failed, so the header never shows an unavailable count as zero. */
   const openIssues = openIssuesRes.error ? null : (openIssuesRes.count ?? 0)
   const today = todayIso()
+  const timeline =
+    features.schedule && !activitiesRes.error && !phasesRes.error
+      ? buildJobTimeline(
+          (phasesRes.data ?? []) as TimelinePhaseInput[],
+          activities as unknown as TimelineActivityInput[],
+          today,
+          (project.target_completion_date as string | null) ?? null,
+        )
+      : null
   const lateActivities = counted
     .filter((a) => a.status !== 'completed' && (a.status === 'delayed' || (!!a.planned_end && a.planned_end < today)))
     .sort((a, b) => (a.planned_end ?? '9999-12-31').localeCompare(b.planned_end ?? '9999-12-31'))
@@ -428,6 +441,7 @@ export default async function ProjectDetailPage({
             activities={activities}
             loadError={Boolean(activitiesRes.error)}
             progress={progress}
+            timeline={timeline}
           />
         )}
         {people}
