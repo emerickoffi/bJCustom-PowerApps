@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils'
 import { FieldShell, FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { SmartFormLayout, useSmartForm } from '@/components/shared/smart-form'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
+import { StateSelect, setStateSelectValue } from '@/components/shared/state-select'
 
 export type ProjectFormValues = {
   name?: string
@@ -133,7 +134,8 @@ export function ProjectForm({
     // Fills the site fields only on request; the builder reviews before saving.
     for (const [name, value] of Object.entries(selectedAddress)) {
       const input = form.elements.namedItem(name) as HTMLInputElement | null
-      if (input) input.value = value
+      if (input?.hasAttribute('data-state-select')) setStateSelectValue(input, value)
+      else if (input) input.value = value
     }
     setAddressNotice({
       tone: 'success',
@@ -316,8 +318,8 @@ export function ProjectForm({
         <TextField name="address_line1" label="Street address" required autoComplete="off" defaultValue={v('address_line1', defaults.address_line1)} error={fe.address_line1} className="sm:col-span-2" />
         <TextField name="address_line2" label="Address line 2" autoComplete="off" defaultValue={v('address_line2', defaults.address_line2)} error={fe.address_line2} className="sm:col-span-2" />
         <div className="grid gap-5 sm:col-span-2 sm:grid-cols-6">
-          <TextField name="city" label="City" required defaultValue={v('city', defaults.city)} error={fe.city} className="sm:col-span-3" />
-          <TextField name="state" label="State" required defaultValue={v('state', defaults.state)} error={fe.state} className="sm:col-span-1" />
+          <TextField name="city" label="City" required defaultValue={v('city', defaults.city)} error={fe.city} className="sm:col-span-2" />
+          <StateSelect name="state" required defaultValue={v('state', defaults.state)} error={fe.state} className="sm:col-span-2" />
           <TextField name="postal_code" label="ZIP" required inputMode="numeric" defaultValue={v('postal_code', defaults.postal_code)} error={fe.postal_code} className="sm:col-span-2" />
         </div>
         <div className="grid grid-cols-3 gap-5 sm:col-span-2 lg:grid-cols-6">

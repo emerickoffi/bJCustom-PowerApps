@@ -1,195 +1,236 @@
 'use client'
 
-import { ClipboardList as ClipboardListIcon, ListChecks as ListChecksIcon } from 'lucide-react'
 import { useActionState, useState } from 'react'
-import { Plus, X } from 'lucide-react'
+import { flushSync } from 'react-dom'
+import Link from 'next/link'
+import { AlertCircle, Check, ClipboardList as ClipboardListIcon, ListChecks as ListChecksIcon, Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createWalkthroughAction } from '@/app/actions/walkthroughs'
 import { initialActionState } from '@/lib/action-state'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
-import { FormActions, FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
+import { FieldShell, FormSection, NativeSelect, TextAreaField, TextField } from '@/components/shared/form-field'
+import { useSmartForm } from '@/components/shared/smart-form'
 import { DEFAULT_CHECKLIST, WALKTHROUGH_TYPE_LABELS } from '@/lib/walkthroughs'
-import { ITEM_NUMBER_HINT, LOCATION_MAX, assignItemNumbers, findDuplicateNumber, isValidItemNumber } from '@/lib/punch-list'
+import {
+  buildChecklistPayload,
+  checklistSummary,
+  findChecklistProblem,
+  previewItemNumbers,
+  suggestTitle,
+  type BuilderItem,
+  type BuilderSection,
+} from '@/lib/walkthrough-builder'
+import { ChecklistBuilderSection, itemLabelId, newItemId, sectionNameId } from '@/components/walkthroughs/checklist-builder-section'
 
-type Item = { key: string; label: string; number: string; location: string }
-type Section = { key: string; category: string; items: Item[] }
+const DISCARD_PROMPT = 'You have unsaved changes. Discard them and leave this page?'
+const DEFAULT_TYPE = 'final'
 
 let counter = 0
 const key = () => `k${++counter}`
 
+function defaultSections(): BuilderSection[] {
+  return DEFAULT_CHECKLIST.map((s) => ({
+    key: key(),
+    category: s.category,
+    items: s.items.map((label) => ({ key: key(), label, number: '', location: '' })),
+  }))
+}
+
 export function WalkthroughBuilder({ projectId }: { projectId: string }) {
   const [state, formAction] = useActionState(createWalkthroughAction.bind(null, projectId), initialActionState)
-  const [sections, setSections] = useState<Section[]>(() =>
-    DEFAULT_CHECKLIST.map((s) => ({
-      key: key(),
-      category: s.category,
-      items: s.items.map((label) => ({ key: key(), label, number: '', location: '' })),
-    })),
-  )
-  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const { dirty, formProps } = useSmartForm(state, 'walkthrough-new')
+  const v = state.values ?? {}
+  const fe = state.fieldErrors ?? {}
+
+  const [type, setType] = useState(v.walkthrough_type ?? DEFAULT_TYPE)
+  const [title, setTitle] = useState(v.title ?? suggestTitle(DEFAULT_TYPE, '', false))
+  const [titleEdited, setTitleEdited] = useState(false)
+  const [titleError, setTitleError] = useState<string>()
+
+  const [sections, setSections] = useState<BuilderSection[]>(defaultSections)
+  const [open, setOpen] = useState<Set<string>>(() => new Set())
+  const [editing, setEditing] = useState(false)
+  const [checklistError, setChecklistError] = useState<string>()
+  const [showErrors, setShowErrors] = useState(false)
   const [newCategory, setNewCategory] = useState('')
 
-  const filled = sections.flatMap((s) => s.items.filter((i) => i.label.trim()).map((i) => ({ section: s, item: i })))
-  const numbers = assignItemNumbers(filled.map(({ item }) => item.number))
-  const payload = filled.map(({ section, item }) => ({
-    category: section.category.trim(),
-    label: item.label.trim(),
-    item_number: item.number.trim() || undefined,
-    location: item.location.trim() || undefined,
-  }))
-  const invalidNumber = filled.find(({ item }) => item.number.trim() && !isValidItemNumber(item.number.trim()))?.item.number
-  const duplicateNumber = findDuplicateNumber(numbers)
-  const previewNumber = new Map(filled.map(({ item }, idx) => [item.key, numbers[idx]]))
+  const payload = buildChecklistPayload(sections)
+  const numbers = previewItemNumbers(sections)
+  const allOpen = sections.length > 0 && sections.every((s) => open.has(s.key))
+  const cancelHref = `/projects/${projectId}/walkthroughs`
 
-  function updateSection(sectionKey: string, change: (s: Section) => Section) {
+  function toggle(sectionKey: string) {
+    setOpen((prev) => {
+      const next = new Set(prev)
+      if (next.has(sectionKey)) next.delete(sectionKey)
+      else next.add(sectionKey)
+      return next
+    })
+  }
+
+  function updateSection(sectionKey: string, change: (s: BuilderSection) => BuilderSection) {
     setSections((prev) => prev.map((s) => (s.key === sectionKey ? change(s) : s)))
   }
 
-  function updateItem(sectionKey: string, itemKey: string, patch: Partial<Item>) {
+  function updateItem(sectionKey: string, itemKey: string, patch: Partial<BuilderItem>) {
     updateSection(sectionKey, (s) => ({ ...s, items: s.items.map((i) => (i.key === itemKey ? { ...i, ...patch } : i)) }))
-  }
-
-  function addItem(sectionKey: string) {
-    const label = drafts[sectionKey]?.trim()
-    if (!label) return
-    updateSection(sectionKey, (s) => ({ ...s, items: [...s.items, { key: key(), label, number: '', location: '' }] }))
-    setDrafts((d) => ({ ...d, [sectionKey]: '' }))
   }
 
   function addCategory() {
     const name = newCategory.trim()
     if (!name) return
-    setSections((prev) => [...prev, { key: key(), category: name, items: [] }])
-    setNewCategory('')
+    const sectionKey = key()
+    flushSync(() => {
+      setSections((prev) => [...prev, { key: sectionKey, category: name, items: [] }])
+      setOpen((prev) => new Set(prev).add(sectionKey))
+      setNewCategory('')
+    })
+    document.getElementById(newItemId(sectionKey))?.focus()
   }
 
-  const v = state.values ?? {}
-  const fe = state.fieldErrors ?? {}
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const titleProblem = title.trim().length < 2 ? 'Enter a title' : undefined
+    const problem = findChecklistProblem(sections)
+    setTitleError(titleProblem)
+    setChecklistError(problem?.message)
+    if (!titleProblem && !problem) return
+
+    e.preventDefault()
+    setShowErrors(true)
+    if (titleProblem) {
+      document.getElementById('title')?.focus()
+      return
+    }
+    if (!problem) return
+    flushSync(() => {
+      setEditing(true)
+      if (problem.kind !== 'empty') setOpen((prev) => new Set(prev).add(problem.sectionKey))
+    })
+    const targetId =
+      problem.kind === 'section' ? sectionNameId(problem.sectionKey) : problem.kind === 'item' ? itemLabelId(problem.itemKey) : 'new-section'
+    const target = document.getElementById(targetId)
+    target?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    target?.focus({ preventScroll: true })
+  }
 
   return (
-    <form action={formAction} className="flex flex-col gap-5">
+    <form action={formAction} {...formProps} onSubmit={handleSubmit}>
       <input type="hidden" name="items" value={JSON.stringify(payload)} />
-      <FormSection icon={ClipboardListIcon} title="Details" description="The homeowner sees the title and instructions in their portal.">
-        <TextField name="title" label="Title" required defaultValue={v.title ?? 'Final homeowner walkthrough'} error={fe.title} maxLength={160} className="sm:col-span-2" />
-        <SelectField
-          name="walkthrough_type"
-          label="Type"
+
+      <FormSection icon={ClipboardListIcon} title="Details" description="The homeowner sees the title and message in their portal.">
+        <TextField
+          name="title"
+          label="Title"
           required
-          defaultValue={v.walkthrough_type ?? 'final'}
-          options={Object.entries(WALKTHROUGH_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
-          error={fe.walkthrough_type}
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value)
+            setTitleEdited(true)
+            if (titleError) setTitleError(undefined)
+          }}
+          error={titleError ?? fe.title}
+          maxLength={160}
+          className="sm:col-span-2"
         />
+        <FieldShell name="walkthrough_type" label="Type" required error={fe.walkthrough_type}>
+          <NativeSelect
+            id="walkthrough_type"
+            name="walkthrough_type"
+            required
+            value={type}
+            aria-invalid={fe.walkthrough_type ? true : undefined}
+            aria-describedby={fe.walkthrough_type ? 'walkthrough_type-error' : undefined}
+            onChange={(e) => {
+              setType(e.target.value)
+              setTitle((current) => suggestTitle(e.target.value, current, titleEdited))
+            }}
+          >
+            {Object.entries(WALKTHROUGH_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </NativeSelect>
+        </FieldShell>
         <TextField name="scheduled_date" label="Scheduled date" type="date" defaultValue={v.scheduled_date} error={fe.scheduled_date} />
         <TextAreaField
           name="instructions"
-          label="Instructions for the homeowner"
+          label="Message to homeowner (optional)"
           defaultValue={v.instructions}
+          error={fe.instructions}
           maxLength={2000}
           className="sm:col-span-2"
-          hint="Optional. For example: walk each room in order and test every door, drawer, and fixture."
+          inputClassName="min-h-20"
+          hint="For example: walk each room in order and test every door, drawer, and fixture."
         />
       </FormSection>
 
-      <FormSection
-        icon={ListChecksIcon} title="Checklist"
-        description={`${payload.length} items in ${sections.length} sections. Start from the standard template and adjust it for this home.`}
-      >
-        <div className="flex flex-col gap-4 sm:col-span-2">
-          <p className="text-sm text-muted-foreground">
-            Item numbers are optional. Leave one blank to number it automatically, or enter values like 1.1 or 10.5. Numbers lock once the homeowner submits.
-          </p>
-          {(invalidNumber || duplicateNumber) && (
-            <p role="alert" className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {invalidNumber
-                ? `"${invalidNumber}" is not a valid item number. ${ITEM_NUMBER_HINT}.`
-                : `Item number ${duplicateNumber} is used more than once.`}
+      <section aria-labelledby="checklist-heading" className="rounded-xl border border-border/80 bg-card shadow-xs">
+        <header className="flex flex-wrap items-center gap-3 border-b border-border/60 p-4 sm:px-5">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary ring-1 ring-inset ring-primary/10">
+            <ListChecksIcon className="size-4" aria-hidden="true" />
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <h2 id="checklist-heading" className="text-sm font-semibold text-foreground">
+              Checklist
+            </h2>
+            <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
+              {checklistSummary(sections)}
             </p>
-          )}
-          {sections.map((section) => (
-            <fieldset key={section.key} className="flex flex-col gap-3 rounded-xl border bg-card p-4">
-              <div className="flex items-center gap-2">
-                <legend className="sr-only">{section.category}</legend>
-                <Input
-                  aria-label="Section name"
-                  value={section.category}
-                  maxLength={80}
-                  onChange={(e) => updateSection(section.key, (s) => ({ ...s, category: e.target.value }))}
-                  className="h-9 font-medium"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSections((prev) => prev.filter((s) => s.key !== section.key))}
-                >
-                  Remove section
-                </Button>
-              </div>
-              <ul className="flex flex-col gap-1">
-                {section.items.map((item) => (
-                  <li key={item.key} className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-                    <Input
-                      aria-label={`Item number for ${item.label}`}
-                      placeholder={previewNumber.get(item.key) ?? '#'}
-                      value={item.number}
-                      maxLength={19}
-                      inputMode="decimal"
-                      aria-invalid={!!item.number.trim() && !isValidItemNumber(item.number.trim())}
-                      onChange={(e) => updateItem(section.key, item.key, { number: e.target.value })}
-                      className="h-9 w-20 shrink-0 font-mono"
-                    />
-                    <Input
-                      aria-label="Checklist item"
-                      value={item.label}
-                      maxLength={160}
-                      onChange={(e) => updateItem(section.key, item.key, { label: e.target.value })}
-                      className="h-9 min-w-0 flex-1"
-                    />
-                    <Input
-                      aria-label={`Location for ${item.label}`}
-                      placeholder="Location"
-                      value={item.location}
-                      maxLength={LOCATION_MAX}
-                      onChange={(e) => updateItem(section.key, item.key, { location: e.target.value })}
-                      className="h-9 w-full sm:w-44"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Remove ${item.label}`}
-                      onClick={() => updateSection(section.key, (s) => ({ ...s, items: s.items.filter((i) => i.key !== item.key) }))}
-                    >
-                      <X />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-              <div className="flex items-center gap-2">
-                <Input
-                  aria-label={`New item in ${section.category}`}
-                  placeholder="Add an item"
-                  value={drafts[section.key] ?? ''}
-                  maxLength={160}
-                  onChange={(e) => setDrafts((d) => ({ ...d, [section.key]: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) {
-                      e.preventDefault()
-                      addItem(section.key)
-                    }
-                  }}
-                  className="h-9"
-                />
-                <Button type="button" variant="outline" size="sm" onClick={() => addItem(section.key)}>
-                  <Plus data-icon="inline-start" />
-                  Add
-                </Button>
-              </div>
-            </fieldset>
-          ))}
-          <div className="flex items-center gap-2">
+          </div>
+          <div className="flex items-center gap-1">
+            {sections.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setOpen(allOpen ? new Set() : new Set(sections.map((s) => s.key)))}
+              >
+                {allOpen ? 'Collapse all' : 'Expand all'}
+              </Button>
+            )}
+            <Button type="button" variant={editing ? 'default' : 'outline'} size="sm" aria-pressed={editing} onClick={() => setEditing((e) => !e)}>
+              {editing ? <Check data-icon="inline-start" /> : <Pencil data-icon="inline-start" />}
+              {editing ? 'Done editing' : 'Edit checklist'}
+            </Button>
+          </div>
+        </header>
+
+        {(checklistError || fe.items) && (
+          <p role="alert" className="mx-4 mt-4 flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive sm:mx-5">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            {checklistError ?? fe.items}
+          </p>
+        )}
+
+        {sections.length > 0 && (
+          <ul className="flex flex-col divide-y divide-border/60">
+            {sections.map((section) => (
+              <ChecklistBuilderSection
+                key={section.key}
+                section={section}
+                open={open.has(section.key)}
+                editing={editing}
+                showErrors={showErrors}
+                numbers={numbers}
+                onToggle={() => toggle(section.key)}
+                onRename={(name) => updateSection(section.key, (s) => ({ ...s, category: name }))}
+                onRemove={() => setSections((prev) => prev.filter((s) => s.key !== section.key))}
+                onUpdateItem={(itemKey, patch) => updateItem(section.key, itemKey, patch)}
+                onRemoveItem={(itemKey) => updateSection(section.key, (s) => ({ ...s, items: s.items.filter((i) => i.key !== itemKey) }))}
+                onAddItem={(label) =>
+                  updateSection(section.key, (s) => ({ ...s, items: [...s.items, { key: key(), label, number: '', location: '' }] }))
+                }
+              />
+            ))}
+          </ul>
+        )}
+
+        {editing && (
+          <div className="flex items-center gap-2 border-t border-border/60 p-4 sm:px-5">
             <Input
+              id="new-section"
               aria-label="New section name"
               placeholder="New section, e.g. Basement"
               value={newCategory}
@@ -201,19 +242,41 @@ export function WalkthroughBuilder({ projectId }: { projectId: string }) {
                   addCategory()
                 }
               }}
-              className="h-10"
+              className="h-9 min-w-0 flex-1"
             />
-            <Button type="button" variant="outline" size="lg" onClick={addCategory}>
+            <Button type="button" variant="outline" size="sm" onClick={addCategory} disabled={!newCategory.trim()}>
               <Plus data-icon="inline-start" />
               Add section
             </Button>
           </div>
-        </div>
-      </FormSection>
+        )}
+      </section>
 
-      <FormActions message={<FormMessage state={state} />}>
-        <SubmitButton pendingLabel="Creating...">Create walkthrough</SubmitButton>
-      </FormActions>
+      <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 flex flex-col gap-3 rounded-xl border border-border/80 bg-card/95 p-3 shadow-md backdrop-blur max-[599.98px]:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] tablet:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] supports-backdrop-filter:bg-card/85 sm:p-4">
+        <FormMessage state={state} />
+        <div className="flex items-center justify-end gap-2">
+          <p className="mr-auto hidden text-xs text-muted-foreground sm:block" aria-live="polite">
+            {dirty ? 'Unsaved changes' : 'Fields marked * are required.'}
+          </p>
+          <Button
+            variant="outline"
+            size="lg"
+            render={
+              <Link
+                href={cancelHref}
+                data-skip-leave-guard
+                onClick={(e) => {
+                  if (dirty && !window.confirm(DISCARD_PROMPT)) e.preventDefault()
+                }}
+              />
+            }
+            nativeButton={false}
+          >
+            Cancel
+          </Button>
+          <SubmitButton pendingLabel="Creating...">Create walkthrough</SubmitButton>
+        </div>
+      </div>
     </form>
   )
 }

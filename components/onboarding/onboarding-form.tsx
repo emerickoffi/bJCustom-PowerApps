@@ -5,6 +5,7 @@ import { createOrganizationAction } from '@/app/actions/organization'
 import { initialActionState } from '@/lib/action-state'
 import { TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
+import { StateSelect } from '@/components/shared/state-select'
 
 export function OnboardingForm() {
   const [state, formAction] = useActionState(createOrganizationAction, initialActionState)
@@ -29,7 +30,7 @@ export function OnboardingForm() {
         <TextField name="phone" label="Phone" type="tel" autoComplete="tel" error={fe.phone} />
         <TextField name="email" label="Company email" type="email" error={fe.email} />
         <TextField name="city" label="City" error={fe.city} />
-        <TextField name="state" label="State" error={fe.state} />
+        <StateSelect name="state" error={fe.state} />
       </div>
       <TextField
         name="project_prefix"

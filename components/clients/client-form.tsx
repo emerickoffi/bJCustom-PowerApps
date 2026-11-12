@@ -14,6 +14,8 @@ import { OVERLAY_FIELD, initialActionState, type ActionState } from '@/lib/actio
 import { CLIENT_STATUS_LABELS, COMMUNICATION_LABELS } from '@/lib/domain'
 import type { ClientOption } from '@/lib/client-options'
 import { cn } from '@/lib/utils'
+import { isUsCountry } from '@/lib/us-states'
+import { StateSelect } from '@/components/shared/state-select'
 import { FormSection, SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { AdditionalContactsSection } from '@/components/clients/additional-contacts-section'
@@ -273,6 +275,7 @@ export function ClientFormFields({
 }) {
   const d = (v: string | null | undefined) => v ?? ''
   const id = (name: string) => (idPrefix ? `${idPrefix}${name}` : undefined)
+  const [country, setCountry] = useState(defaults.country ?? 'United States')
 
   return (
     <>
@@ -300,9 +303,13 @@ export function ClientFormFields({
         <TextField id={id('address_line1')} name="address_line1" label="Street address" defaultValue={d(defaults.address_line1)} error={fe.address_line1} className="sm:col-span-2" />
         <TextField id={id('address_line2')} name="address_line2" label="Apt, suite, etc." defaultValue={d(defaults.address_line2)} error={fe.address_line2} className="sm:col-span-2" />
         <TextField id={id('city')} name="city" label="City" defaultValue={d(defaults.city)} error={fe.city} />
-        <TextField id={id('state')} name="state" label="State" defaultValue={d(defaults.state)} error={fe.state} />
+        {isUsCountry(country) ? (
+          <StateSelect key="us-state" id={id('state')} name="state" defaultValue={d(defaults.state)} error={fe.state} />
+        ) : (
+          <TextField key="region" id={id('state')} name="state" label="State / province / region" autoComplete="address-level1" maxLength={40} defaultValue={d(defaults.state)} error={fe.state} />
+        )}
         <TextField id={id('postal_code')} name="postal_code" label="ZIP code" defaultValue={d(defaults.postal_code)} error={fe.postal_code} />
-        <TextField id={id('country')} name="country" label="Country" defaultValue={defaults.country ?? 'United States'} error={fe.country} />
+        <TextField id={id('country')} name="country" label="Country" defaultValue={defaults.country ?? 'United States'} error={fe.country} onChange={(e) => setCountry(e.currentTarget.value)} />
       </FormSection>
 
       {additionalContacts && <AdditionalContactsSection values={additionalContacts.values} fieldErrors={fe} flat={flat} />}

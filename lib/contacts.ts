@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { optionalUsState } from './us-states.ts'
 
 export type ContactStatus = 'active' | 'inactive'
 export type DirectoryView = 'people' | 'companies'
@@ -118,7 +119,7 @@ export const companySchema = z.object({
   ),
   address_line1: optionalText(160),
   city: optionalText(80),
-  state: optionalText(40),
+  state: optionalUsState,
   postal_code: optionalText(20),
   notes: optionalText(2000),
 })
