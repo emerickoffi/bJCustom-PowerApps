@@ -8,6 +8,8 @@ import { requireAdmin } from '@/lib/session'
 import { INVITATION_DAYS, invitationUrl, newInvitationToken } from '@/lib/invitations'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { staffInviteSchema } from '@/lib/validation'
+import { resolveEmailConfig } from '@/lib/email/config'
+import { queueAccountEmail, supersedeQueuedEmails } from '@/lib/email/worker'
 
 const uuid = z.uuid()
 
@@ -61,15 +63,20 @@ export async function inviteStaffAction(_prev: InviteState, formData: FormData):
     .lt('expires_at', new Date().toISOString())
 
   const { token, hash } = newInvitationToken()
-  const { error } = await supabase.from('invitations').insert({
-    organization_id: session.organizationId,
-    email,
-    role,
-    invited_by: session.userId,
-    token_hash: hash,
-    project_ids: (projects ?? []).map((p) => p.id),
-    expires_at: expiryFromNow(),
-  })
+  const expiresAt = expiryFromNow()
+  const { data: created, error } = await supabase
+    .from('invitations')
+    .insert({
+      organization_id: session.organizationId,
+      email,
+      role,
+      invited_by: session.userId,
+      token_hash: hash,
+      project_ids: (projects ?? []).map((p) => p.id),
+      expires_at: expiresAt,
+    })
+    .select('id')
+    .single()
   if (error) {
     if (error.code === '23505') {
       return { error: 'An invitation is already pending for this email. Issue a new link from the pending list instead.', values }
@@ -77,8 +84,39 @@ export async function inviteStaffAction(_prev: InviteState, formData: FormData):
     return { error: friendlyDbError(error), values }
   }
 
+  const emailed = await queueStaffInvitationEmail(session.organizationId, created.id, hash, email, role, token, expiresAt)
   revalidatePath('/team')
-  return { success: `Invitation created for ${email}.`, inviteUrl: await invitationUrl(token), inviteEmail: email }
+  return {
+    success: emailed ? `Invitation emailed to ${email}. You can also copy the link below.` : `Invitation created for ${email}.`,
+    inviteUrl: await invitationUrl(token),
+    inviteEmail: email,
+  }
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  org_admin: 'an admin',
+  project_manager: 'a project manager',
+  builder_staff: 'a team member',
+}
+
+async function queueStaffInvitationEmail(
+  organizationId: string,
+  invitationId: string,
+  tokenHash: string,
+  email: string,
+  role: string,
+  token: string,
+  expiresAt: string,
+) {
+  if (!resolveEmailConfig().ready) return false
+  return queueAccountEmail({
+    // Keyed by the token hash so each issued link is emailed at most once.
+    eventKey: `invitation:${invitationId}:${tokenHash.slice(0, 16)}`,
+    organizationId,
+    email,
+    template: 'staff_invitation',
+    payload: { link: `/invite/${token}`, role_label: ROLE_LABELS[role] ?? null, expires_at: expiresAt },
+  })
 }
 
 export async function reissueInvitationLinkAction(_prev: InviteState, formData: FormData): Promise<InviteState> {
@@ -88,20 +126,29 @@ export async function reissueInvitationLinkAction(_prev: InviteState, formData: 
 
   const { token, hash } = newInvitationToken()
   const supabase = await createClient()
+  const expiresAt = expiryFromNow()
   const { data, error } = await supabase
     .from('invitations')
-    .update({ token_hash: hash, expires_at: expiryFromNow() })
+    .update({ token_hash: hash, expires_at: expiresAt })
     .eq('id', invitationId)
     .eq('organization_id', session.organizationId)
     .eq('status', 'pending')
     .neq('role', 'client')
-    .select('email')
+    .select('email, role')
     .maybeSingle()
   if (error) return { error: friendlyDbError(error) }
   if (!data) return { error: 'This invitation is no longer pending.' }
 
+  await supersedeQueuedEmails(session.organizationId, `invitation:${invitationId}:`)
+  const emailed = await queueStaffInvitationEmail(session.organizationId, invitationId, hash, data.email, data.role, token, expiresAt)
   revalidatePath('/team')
-  return { success: 'New link issued. The previous link no longer works.', inviteUrl: await invitationUrl(token), inviteEmail: data.email }
+  return {
+    success: emailed
+      ? 'New link issued and emailed. The previous link no longer works.'
+      : 'New link issued. The previous link no longer works.',
+    inviteUrl: await invitationUrl(token),
+    inviteEmail: data.email,
+  }
 }
 
 export async function revokeInvitationAction(invitationId: string): Promise<ActionState> {
@@ -117,6 +164,7 @@ export async function revokeInvitationAction(invitationId: string): Promise<Acti
     .eq('status', 'pending')
   if (error) return { error: friendlyDbError(error) }
 
+  await supersedeQueuedEmails(session.organizationId, `invitation:${invitationId}:`)
   revalidatePath('/team')
   return { success: 'Invitation revoked.' }
 }
