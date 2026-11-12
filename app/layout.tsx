@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Inter, Source_Serif_4 } from 'next/font/google'
+import Script from 'next/script'
 import { Toaster } from '@/components/ui/sonner'
 import { PRODUCT_BRAND } from '@/lib/product-brand'
 import './globals.css'
@@ -65,8 +66,9 @@ export default function RootLayout({
             Rendered in <body> because the v0 preview injects its own scripts into <head>,
             which shifts head children and causes a hydration mismatch. */}
         {process.env.NODE_ENV === 'development' && (
-          <script
-            suppressHydrationWarning
+          <Script
+            id="v0-dev-performance-measure-guard"
+            strategy="beforeInteractive"
             dangerouslySetInnerHTML={{ __html: DEV_PERFORMANCE_MEASURE_GUARD }}
           />
         )}

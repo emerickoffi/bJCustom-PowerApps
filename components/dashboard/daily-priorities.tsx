@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useId, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
@@ -25,6 +25,8 @@ async function requestBriefing(projectId: string | null): Promise<Briefing> {
   return body.briefing
 }
 
+const subscribeNoop = () => () => {}
+
 function timeOf(iso: string) {
   return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(iso))
 }
@@ -36,6 +38,8 @@ function newer(a: Briefing | undefined | null, b: Briefing): Briefing {
 export function DailyPriorities({ initial, viewAllHref }: { initial: Briefing; viewAllHref?: string }) {
   const router = useRouter()
   const listId = useId()
+  // The server renders in UTC; only format the clock time once we're in the user's timezone.
+  const hydrated = useSyncExternalStore(subscribeNoop, () => true, () => false)
   const [expanded, setExpanded] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
@@ -101,7 +105,7 @@ export function DailyPriorities({ initial, viewAllHref }: { initial: Briefing; v
           <p className="text-xs text-[#5B6775]">
             <span className="sr-only">Last checked </span>
             <span aria-hidden="true">Updated </span>
-            <time dateTime={briefing.dataCheckedAt}>{timeOf(briefing.dataCheckedAt)}</time>
+            <time dateTime={briefing.dataCheckedAt}>{hydrated ? timeOf(briefing.dataCheckedAt) : '—'}</time>
             {briefing.scope === 'mine' ? ' · My work' : ' · All work'}
           </p>
         </div>
