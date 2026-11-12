@@ -12,23 +12,23 @@ export type NavItem = {
 
 export type NavGroup = 'workspace' | 'financials' | 'people' | 'services' | 'admin'
 
-/** Comma-separated groups the user collapsed. Read on the server so the first paint matches. */
-export const NAV_GROUPS_COOKIE = 'sidebar_groups_closed'
+/** The one expandable group the user left open ("none" when all are closed). Read on the server so the first paint matches. */
+export const NAV_OPEN_GROUP_COOKIE = 'sidebar_group_open'
 
-/** Always-visible primary tools; every other group can be collapsed. */
+/** Always-visible primary tools; every other group is an accordion section. */
 export const PERSISTENT_NAV_GROUP: NavGroup = 'workspace'
 
-export function parseClosedNavGroups(value: string | undefined): NavGroup[] {
-  if (!value) return []
-  const known = new Set<string>(['financials', 'people', 'services', 'admin'])
-  return value.split(',').filter((key): key is NavGroup => known.has(key))
+const ACCORDION_GROUPS = new Set<string>(['financials', 'people', 'services', 'admin'])
+
+export function parseOpenNavGroup(value: string | undefined): NavGroup | null {
+  return value && ACCORDION_GROUPS.has(value) ? (value as NavGroup) : null
 }
 
 export const NAV_GROUPS: { key: NavGroup; label: string }[] = [
   { key: 'workspace', label: 'Workspace' },
   { key: 'financials', label: 'Financials' },
-  { key: 'people', label: 'People & partners' },
-  { key: 'services', label: 'Project services' },
+  { key: 'people', label: 'People' },
+  { key: 'services', label: 'Project Tools' },
   { key: 'admin', label: 'Administration' },
 ]
 

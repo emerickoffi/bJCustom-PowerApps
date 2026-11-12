@@ -29,11 +29,11 @@ const TAB_ICONS: Record<BottomTabKey, LucideIcon> = {
 export function TabletBottomNav({
   items,
   homeHref,
-  closedGroups,
+  openGroup,
 }: {
   items: NavItem[]
   homeHref: string
-  closedGroups: NavGroup[]
+  openGroup: NavGroup | null
 }) {
   const pathname = usePathname()
   const [moreOpen, setMoreOpen] = useState(false)
@@ -85,7 +85,7 @@ export function TabletBottomNav({
             <SheetDescription>Every area your role can open.</SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
-            <AppNav items={moreItems} closedGroups={closedGroups} onNavigate={() => setMoreOpen(false)} />
+            <AppNav items={moreItems} openGroup={openGroup} onNavigate={() => setMoreOpen(false)} />
           </div>
         </SheetContent>
       </Sheet>

@@ -17,13 +17,13 @@ export function Sidebar({
   homeLabel,
   homeHref = '/dashboard',
   defaultMode,
-  closedGroups,
+  openGroup,
 }: {
   items: NavItem[]
   homeLabel: string
   homeHref?: string
   defaultMode: SidebarMode
-  closedGroups?: NavGroup[]
+  openGroup?: NavGroup | null
 }) {
   const [mode, setMode] = useState<SidebarMode>(defaultMode)
 
@@ -75,7 +75,7 @@ export function Sidebar({
             </Link>
           </div>
           <div className={cn('flex-1 overflow-y-auto overflow-x-hidden py-6', collapsed ? 'px-3' : 'px-4')}>
-            <AppNav items={items} collapsed={collapsed} closedGroups={closedGroups} />
+            <AppNav items={items} collapsed={collapsed} openGroup={openGroup} />
           </div>
           <div className={cn('border-t border-sidebar-border', collapsed ? 'flex justify-center px-3 py-3' : 'p-4 py-3')}>
             {collapsed ? (
