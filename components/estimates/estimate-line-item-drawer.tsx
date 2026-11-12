@@ -8,8 +8,10 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { NativeSelect } from '@/components/shared/form-field'
 import { ESTIMATE_CATEGORIES, formatCentsExact, type EstimateCategory } from '@/lib/estimates'
-import { blankRow, rowMath, validateRow, type RowErrors, type SheetRow } from '@/lib/estimate-sheet'
+import { blankRow, itemTotalBreakdown, rowMath, validateRow, type RowErrors, type SheetRow } from '@/lib/estimate-sheet'
 import { cn } from '@/lib/utils'
+
+const formatQty = (q: number) => q.toLocaleString('en-US', { maximumFractionDigits: 3 })
 
 type Field = 'category' | 'description' | 'quantity' | 'unit' | 'material' | 'labor' | 'other' | 'notes'
 type DraftErrors = RowErrors & { category?: string }
@@ -65,6 +67,7 @@ export function EstimateLineItemDrawer({
 
   const errors = draftErrors(draft)
   const math = rowMath({ ...draft, category: draft.category || ESTIMATE_CATEGORIES[0] })
+  const calc = itemTotalBreakdown({ ...draft, category: draft.category || ESTIMATE_CATEGORIES[0] })
   const afterAdd = !isEdit && added.count > 0
   // After "Save & add another", only item-specific edits count; before that, any change (including category) does.
   const hasEntry = afterAdd ? !sameItem(draft, initial) : !sameDraft(draft, initial)
@@ -269,6 +272,38 @@ export function EstimateLineItemDrawer({
                 {moneyField('labor', 'Labor')}
                 {moneyField('other', 'Other')}
               </div>
+              <output
+                htmlFor={`${id('quantity')} ${id('material')} ${id('labor')} ${id('other')}`}
+                aria-live="off"
+                className="flex flex-col gap-1 rounded-lg bg-muted/50 px-3 py-2 text-sm"
+              >
+                {!calc.valid || calc.quantity === null ? (
+                  <span className="text-muted-foreground">Enter a valid quantity and costs to calculate the item total.</span>
+                ) : calc.simple ? (
+                  <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <span className="text-muted-foreground">Item total</span>
+                    <span className="tabular-nums">
+                      {`${formatQty(calc.quantity)} × ${formatCentsExact(calc.unitCostCents)} = `}
+                      <strong className="font-semibold text-foreground">{formatCentsExact(calc.totalCents)}</strong>
+                    </span>
+                  </span>
+                ) : (
+                  <>
+                    {calc.parts.map((p) => (
+                      <span key={p.label} className="flex flex-wrap items-baseline justify-between gap-x-3 text-muted-foreground">
+                        <span>{p.label}</span>
+                        <span className="tabular-nums">
+                          {`${formatQty(calc.quantity!)} × ${formatCentsExact(p.unitCents)} = ${formatCentsExact(p.totalCents)}`}
+                        </span>
+                      </span>
+                    ))}
+                    <span className="flex flex-wrap items-baseline justify-between gap-x-3 border-t pt-1">
+                      <span className="font-medium text-foreground">Item total</span>
+                      <strong className="font-semibold tabular-nums text-foreground">{formatCentsExact(calc.totalCents)}</strong>
+                    </span>
+                  </>
+                )}
+              </output>
             </fieldset>
 
             <label className="flex items-start gap-3 rounded-xl border p-4">
@@ -300,7 +335,7 @@ export function EstimateLineItemDrawer({
                 <dd className="font-medium tabular-nums">{formatCentsExact(math.unitCostCents)}</dd>
               </div>
               <div className="flex flex-col text-right">
-                <dt className="text-xs text-muted-foreground">Line total</dt>
+                <dt className="text-xs text-muted-foreground">Item total</dt>
                 <dd className="font-semibold tabular-nums">{math.valid ? formatCentsExact(math.totalCents) : '—'}</dd>
               </div>
             </dl>

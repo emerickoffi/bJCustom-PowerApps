@@ -1,4 +1,4 @@
-import { centsToInput, type EstimateCategory, type EstimateLineItem, type EstimateTotals } from '@/lib/estimates'
+import { centsToInput, type EstimateCategory, type EstimateLineItem, type EstimateTotals } from './estimates.ts'
 
 /** Editable draft row. Numeric fields stay as the user typed them until save. */
 export type SheetRow = {
@@ -135,6 +135,39 @@ export function rowMath(row: SheetRow): RowMath {
     otherCents,
     totalCents: materialCents + laborCents + otherCents,
     valid,
+  }
+}
+
+export type ItemTotalPart = { label: 'Material' | 'Labor' | 'Other'; unitCents: number; totalCents: number }
+export type ItemTotalBreakdown = {
+  valid: boolean
+  /** Parsed quantity, or null when the typed quantity is not a valid number. */
+  quantity: number | null
+  unitCostCents: number
+  totalCents: number
+  /** True when at most one cost component is used, so the total reads as quantity × unit price. */
+  simple: boolean
+  /** Cost components with a non-zero unit price, each rounded exactly as rowMath rounds them. */
+  parts: ItemTotalPart[]
+}
+
+/** Presentation data for a line item's total. Amounts come straight from rowMath, never a separate formula. */
+export function itemTotalBreakdown(row: SheetRow): ItemTotalBreakdown {
+  const math = rowMath(row)
+  const q = parseQuantityMilli(row.quantity)
+  const candidates: ItemTotalPart[] = [
+    { label: 'Material', unitCents: parseCents(row.material) ?? 0, totalCents: math.materialCents },
+    { label: 'Labor', unitCents: parseCents(row.labor) ?? 0, totalCents: math.laborCents },
+    { label: 'Other', unitCents: parseCents(row.other) ?? 0, totalCents: math.otherCents },
+  ]
+  const parts = candidates.filter((p) => p.unitCents !== 0)
+  return {
+    valid: math.valid,
+    quantity: q === null ? null : Number(q) / 1000,
+    unitCostCents: math.unitCostCents,
+    totalCents: math.totalCents,
+    simple: parts.length <= 1,
+    parts,
   }
 }
 

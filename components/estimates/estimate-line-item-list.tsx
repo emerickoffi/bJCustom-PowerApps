@@ -52,14 +52,14 @@ export function EstimateLineItemList({
   return (
     <table className="w-full table-fixed border-collapse text-left">
       <caption className="sr-only">
-        {'Estimate line items grouped by category. Line total equals quantity times unit cost.'}
+        {'Estimate line items grouped by category. Item total equals quantity times unit cost.'}
       </caption>
       <thead className="bg-table-head text-xs font-medium text-[#526173]">
         <tr className="border-b">
           <th scope="col" className="px-3 py-2 sm:px-4">Description</th>
           <th scope="col" className="hidden w-32 px-3 py-2 text-right sm:table-cell">Quantity</th>
           <th scope="col" className="hidden w-32 px-3 py-2 text-right md:table-cell">Unit cost</th>
-          <th scope="col" className="w-32 px-3 py-2 text-right">Line total</th>
+          <th scope="col" className="w-32 px-3 py-2 text-right">Item total</th>
           {editable && (
             <th scope="col" className="w-[5.25rem] px-2 py-2 text-center">
               <span className="sr-only">Actions</span>

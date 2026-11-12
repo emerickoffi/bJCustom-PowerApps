@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { BackLink } from '@/components/shared/page-header'
 import { EstimateSummary } from '@/components/estimates/estimate-summary'
 import { sameSettings, useEstimateDraft } from '@/components/estimates/estimate-draft-context'
+import { BREAKDOWN_PANEL_ID } from '@/components/estimates/estimate-total-toolbar'
 import { WORKSPACE_TABS, WORKSPACE_TAB_LABELS, type WorkspaceTab } from '@/lib/estimate-workspace'
 import { formatCentsExact, type EstimateTotals } from '@/lib/estimates'
 import { cn } from '@/lib/utils'
@@ -181,8 +182,8 @@ export function EstimateWorkspaceHeader({
       const app = appHeader?.offsetHeight ?? 0
       root.style.setProperty('--app-header-h', `${app}px`)
       root.style.setProperty('--estimate-sticky-top', `${app + el.offsetHeight}px`)
-      // Keeps focused fields and scrolled-to sections clear of both sticky headers.
-      root.style.scrollPaddingTop = `${app + el.offsetHeight + 16}px`
+      // Keeps focused fields and scrolled-to sections clear of both sticky headers and the line-items total bar.
+      root.style.scrollPaddingTop = `calc(${app + el.offsetHeight + 16}px + var(--estimate-toolbar-h, 0px))`
     }
     apply()
     const observer = new ResizeObserver(apply)
@@ -310,38 +311,66 @@ function useLiveTotals(serverTotals: EstimateTotals, editable: boolean) {
   return { totals, preview, note }
 }
 
-function CompactTotals({ serverTotals, editable }: { serverTotals: EstimateTotals; editable: boolean }) {
+/**
+ * Below 2xl, the cost breakdown collapses into this panel. On Cost items the sticky line-items toolbar
+ * shows the total and toggles it; elsewhere (Pricing) this renders its own compact total bar.
+ */
+function CompactTotals({
+  serverTotals,
+  editable,
+  showBar,
+}: {
+  serverTotals: EstimateTotals
+  editable: boolean
+  showBar: boolean
+}) {
+  const draft = useEstimateDraft()
+  const open = Boolean(draft?.breakdownOpen)
   const { totals, preview, note } = useLiveTotals(serverTotals, editable)
   return (
-    <details className="surface group overflow-hidden">
-      <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
-        <span className="flex items-baseline gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Construction total</span>
-          <span className="type-financial text-foreground">
-            {formatCentsExact(totals.construction_total_cents)}
+    <div className="surface overflow-hidden" hidden={!showBar && !open}>
+      {showBar && (
+        <div className="flex min-h-12 flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5">
+          <span className="flex items-baseline gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Estimate total:</span>
+            <span className="type-financial text-foreground">{formatCentsExact(totals.construction_total_cents)}</span>
           </span>
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {totals.land_cost_cents === null ? 'Land not included' : `Land ${formatCentsExact(totals.land_cost_cents)} separate`}
-        </span>
-        <span
-          className={cn(
-            'rounded-badge px-2 py-0.5 text-xs font-medium',
-            preview ? 'bg-champagne-soft text-warning' : 'bg-muted text-muted-foreground',
-          )}
-        >
-          {preview ? 'Unsaved preview' : 'Saved'}
-        </span>
-        <span className="ml-auto flex items-center gap-1 text-xs font-medium text-primary">
-          <span className="group-open:hidden">Show breakdown</span>
-          <span className="hidden group-open:inline">Hide breakdown</span>
-          <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
-        </span>
-      </summary>
-      <div className="border-t p-3">
+          <span className="text-xs text-muted-foreground">
+            {totals.land_cost_cents === null ? 'Excludes land' : `Excludes land (${formatCentsExact(totals.land_cost_cents)} separate)`}
+          </span>
+          <span
+            className={cn(
+              'rounded-badge px-2 py-0.5 text-xs font-medium',
+              preview ? 'bg-champagne-soft text-warning' : 'bg-muted text-muted-foreground',
+            )}
+          >
+            {preview ? 'Unsaved preview' : 'Saved'}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => draft?.setBreakdownOpen(!open)}
+            aria-expanded={open}
+            aria-controls={BREAKDOWN_PANEL_ID}
+            className="ml-auto text-primary"
+          >
+            {open ? 'Hide cost breakdown' : 'View cost breakdown'}
+            <ChevronDown data-icon="inline-end" className={cn('transition-transform', open && 'rotate-180')} />
+          </Button>
+        </div>
+      )}
+      <div
+        id={BREAKDOWN_PANEL_ID}
+        role="region"
+        aria-labelledby="compact-totals-heading"
+        tabIndex={-1}
+        hidden={!open}
+        className={cn('p-3 outline-none', showBar && 'border-t')}
+      >
         <EstimateSummary totals={totals} note={note} headingId="compact-totals-heading" className="border-0 p-2 shadow-none md:p-2" />
       </div>
-    </details>
+    </div>
   )
 }
 
@@ -371,7 +400,7 @@ export function EstimateWorkspaceBody({
       )}
     >
       <div className="flex min-w-0 flex-col gap-4">
-        {showTotals && !wide && <CompactTotals serverTotals={serverTotals} editable={editable} />}
+        {showTotals && !wide && <CompactTotals serverTotals={serverTotals} editable={editable} showBar={tab !== 'items'} />}
         {PANEL_TABS.map((t) => (
           <div
             key={t}

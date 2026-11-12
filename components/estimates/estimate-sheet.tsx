@@ -14,6 +14,7 @@ import {
   type DrawerSaveResult,
   type DrawerTarget,
 } from '@/components/estimates/estimate-line-item-drawer'
+import { EstimateTotalToolbar, type TotalStatus } from '@/components/estimates/estimate-total-toolbar'
 import { saveEstimateDraftAction, type SaveDraftResult } from '@/app/actions/estimates'
 import { sameSettings, useEstimateDraft } from '@/components/estimates/estimate-draft-context'
 import { fingerprint, resolveRequestId, type PendingSave } from '@/lib/save-requests'
@@ -674,6 +675,18 @@ export function EstimateSheet({
   const rowCount = rows.filter((r) => !isBlankNewRow(r)).length
   const emptyCount = groups.filter(([, list]) => list.length === 0).length
   const populatedCount = groups.length - emptyCount
+  // "Saved" only once the server confirmed the save and fresh data was adopted (dirty clears on adoption).
+  const totalStatus: TotalStatus = !editable
+    ? 'read-only'
+    : saving
+      ? 'saving'
+      : awaitingSync
+        ? 'refreshing'
+        : saveError
+          ? 'failed'
+          : dirty
+            ? 'unsaved'
+            : 'saved'
   const rowNumbers = new Map(groups.flatMap(([, list]) => list).map((r, i) => [r.key, i + 1]))
 
   return (
@@ -687,9 +700,6 @@ export function EstimateSheet({
               <p className="text-sm text-muted-foreground">
                 {`${rowCount} ${rowCount === 1 ? 'item' : 'items'} in ${populatedCount} ${populatedCount === 1 ? 'category' : 'categories'}`}
                 {emptyCount > 0 && ` (+${emptyCount} empty)`}
-                {' · '}
-                <span className="font-semibold text-foreground tabular-nums">{formatCentsExact(totals.construction_total_cents)}</span>
-                {' construction total'}
               </p>
             </div>
             {editable ? (
@@ -764,6 +774,8 @@ export function EstimateSheet({
           )}
         </div>
 
+        <EstimateTotalToolbar totals={totals} status={totalStatus} />
+
         {view === 'list' ? (
           <EstimateLineItemList
             groups={groups}
@@ -784,7 +796,7 @@ export function EstimateSheet({
         <div className="overflow-x-auto" onKeyDown={onKeyDown} onFocus={onFocus} onPaste={onPaste}>
           <table ref={tableRef} className="w-full table-fixed border-collapse text-left">
             <caption className="sr-only">
-              {'Estimate line items grouped by category. Line total equals quantity times material, labor, and other unit costs.'}
+              {'Estimate line items grouped by category. Item total equals quantity times material, labor, and other unit costs.'}
             </caption>
             <colgroup>
                 <col className="w-10" />
@@ -813,7 +825,15 @@ export function EstimateSheet({
                 <th scope="col" className="px-2 py-2.5 text-right">Labor / unit</th>
                 <th scope="col" className="px-2 py-2.5 text-right">Other / unit</th>
                 <th scope="col" className="px-2 py-2.5 text-right">Unit cost</th>
-                <th scope="col" className="px-2 py-2.5 text-right">Line total</th>
+                <th
+                  scope="col"
+                  className={cn(
+                    'sticky z-[2] border-l border-border/60 bg-table-head px-2 py-2.5 text-right text-foreground shadow-[-6px_0_8px_-6px_rgb(0_0_0/0.12)]',
+                    editable ? 'right-[5.5rem]' : 'right-0',
+                  )}
+                >
+                  Item total
+                </th>
                 <th scope="col" className="px-2 py-2.5 text-center">
                   <abbr title="Allowance: tracked separately from direct cost and excluded from markup" className="no-underline">
                     Allow.
@@ -982,7 +1002,7 @@ export function EstimateSheet({
             <span />
           )}
           <p className="text-xs text-muted-foreground">
-            {'Line total = Qty × (Material + Labor + Other). Unit cost = Material + Labor + Other.'}
+            {'Item total = Qty × (Material + Labor + Other). Unit cost = Material + Labor + Other.'}
           </p>
         </div>
         <Dialog

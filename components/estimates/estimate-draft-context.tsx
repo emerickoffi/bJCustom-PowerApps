@@ -48,6 +48,9 @@ type DraftContext = {
   save: () => Promise<boolean>
   /** Before a workflow step that uses the saved estimate, offers to save unsaved edits first. */
   ensureSaved: (action: string, onConfirmGesture?: () => ((ok: boolean) => void) | void) => Promise<EnsureSavedResult>
+  /** Whether the below-2xl cost breakdown is expanded. Shared so the line-items toolbar can toggle it. */
+  breakdownOpen: boolean
+  setBreakdownOpen: (open: boolean) => void
 }
 
 const Ctx = createContext<DraftContext | null>(null)
@@ -69,6 +72,7 @@ export function EstimateDraftProvider({ children, initialTab = 'items' }: { chil
   const [sheet, setSheet] = useState<SheetStatus | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
   const [confirming, setConfirming] = useState(false)
+  const [breakdownOpen, setBreakdownOpen] = useState(false)
   const saveRef = useRef<(() => Promise<boolean>) | null>(null)
   const dirtyRef = useRef(false)
   dirtyRef.current = Boolean(sheet?.dirty)
@@ -125,8 +129,10 @@ export function EstimateDraftProvider({ children, initialTab = 'items' }: { chil
       registerSave,
       save,
       ensureSaved,
+      breakdownOpen,
+      setBreakdownOpen,
     }),
-    [settings, baseline, fieldErrors, version, locked, tab, setTab, sheet, registerSave, save, ensureSaved],
+    [settings, baseline, fieldErrors, version, locked, tab, setTab, sheet, registerSave, save, ensureSaved, breakdownOpen],
   )
 
   return (
