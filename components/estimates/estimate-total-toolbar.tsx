@@ -5,6 +5,7 @@ import { Check, ChevronDown, Loader2, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useEstimateDraft } from '@/components/estimates/estimate-draft-context'
 import { formatCentsExact, type EstimateTotals } from '@/lib/estimates'
+import { estimateFinancials } from '@/lib/estimate-financials'
 import { cn } from '@/lib/utils'
 
 export const BREAKDOWN_PANEL_ID = 'estimate-cost-breakdown'
@@ -66,6 +67,7 @@ export function EstimateTotalToolbar({ totals, status }: { totals: EstimateTotal
       ? 'Construction total, excludes land'
       : `Excludes land (${formatCentsExact(totals.land_cost_cents)} tracked separately)`
   const s = STATUS[status]
+  const f = estimateFinancials(totals)
 
   return (
     <div
@@ -75,9 +77,19 @@ export function EstimateTotalToolbar({ totals, status }: { totals: EstimateTotal
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <p className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-sm font-medium text-muted-foreground">Estimate total:</span>
+            <span className="text-sm font-medium text-muted-foreground">Client price:</span>
             <span className="type-financial tabular-nums text-foreground">{formatCentsExact(totals.construction_total_cents)}</span>
           </p>
+          <dl className="hidden items-baseline gap-x-3 text-xs sm:flex">
+            <div className="flex gap-1">
+              <dt className="text-muted-foreground">Builder cost</dt>
+              <dd className="font-medium tabular-nums text-foreground">{formatCentsExact(f.builderCostCents)}</dd>
+            </div>
+            <div className="flex gap-1">
+              <dt className="text-muted-foreground">Profit</dt>
+              <dd className="font-medium tabular-nums text-foreground">{formatCentsExact(f.profitCents)}</dd>
+            </div>
+          </dl>
           <span className="text-xs text-muted-foreground">{land}</span>
           <span className={cn('inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-xs font-medium', s.className)}>
             <StatusIcon status={status} />

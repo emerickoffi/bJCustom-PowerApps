@@ -1,5 +1,16 @@
 import { formatCentsExact, formatPercent, type EstimateTotals } from '@/lib/estimates'
+import { estimateFinancials, formatTenths } from '@/lib/estimate-financials'
 import { cn } from '@/lib/utils'
+
+function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-sm font-semibold tabular-nums text-foreground">{value}</dd>
+      {hint && <dd className="text-[11px] leading-tight text-muted-foreground">{hint}</dd>}
+    </div>
+  )
+}
 
 function Row({ label, value, strong, muted }: { label: string; value: string; strong?: boolean; muted?: boolean }) {
   return (
@@ -14,7 +25,7 @@ export function EstimateSummary({
   totals,
   note = 'Excludes land. Calculated on the server.',
   headingId = 'summary-heading',
-  label = 'Estimated construction cost',
+  label = 'Client price',
   className,
 }: {
   totals: EstimateTotals
@@ -23,6 +34,7 @@ export function EstimateSummary({
   label?: string
   className?: string
 }) {
+  const f = estimateFinancials(totals)
   return (
     <section aria-labelledby={headingId} className={cn('surface flex flex-col gap-5 p-5 md:p-6', className)}>
       <div className="flex flex-col gap-1 rounded-2xl bg-brand-deep p-5 text-white">
@@ -34,6 +46,17 @@ export function EstimateSummary({
         </p>
         <p className="text-xs text-white/60">{note}</p>
       </div>
+
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border p-4">
+        <Metric label="Builder cost" value={formatCentsExact(f.builderCostCents)} hint="Direct costs plus allowances" />
+        <Metric label="Profit (markup)" value={formatCentsExact(f.profitCents)} />
+        <Metric
+          label="Markup on cost"
+          value={formatTenths(f.markupTenths)}
+          hint="Profit ÷ builder cost"
+        />
+        <Metric label="Gross margin" value={formatTenths(f.marginTenths)} hint="Profit ÷ client price" />
+      </dl>
 
       <dl className="flex flex-col gap-2.5">
         <Row label="Materials" value={formatCentsExact(totals.material_cents)} muted />

@@ -46,6 +46,7 @@ import {
 import { cn } from '@/lib/utils'
 
 const categoryIndex = (c: EstimateCategory) => ESTIMATE_CATEGORIES.indexOf(c)
+const VIEW_KEY = 'trefort:estimate-items-view'
 
 function initialRows(items: EstimateLineItem[]) {
   return items
@@ -111,7 +112,17 @@ export function EstimateSheet({
   const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null)
   const removalFocus = useRef<HTMLElement | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
-  const [view, setView] = useState<'list' | 'spreadsheet'>('list')
+  const [view, setViewState] = useState<'list' | 'spreadsheet'>('list')
+  // A UI preference only; estimate data is never stored client-side. Read after mount to keep SSR markup stable.
+  useEffect(() => {
+    if (window.localStorage.getItem(VIEW_KEY) === 'spreadsheet') setViewState('spreadsheet')
+  }, [])
+  const setView = (value: 'list' | 'spreadsheet') => {
+    setViewState(value)
+    try {
+      window.localStorage.setItem(VIEW_KEY, value)
+    } catch {}
+  }
   const [drawer, setDrawer] = useState<(DrawerTarget & { session: number }) | null>(null)
   const drawerReturnFocus = useRef<HTMLElement | null>(null)
 
@@ -724,7 +735,7 @@ export function EstimateSheet({
               {(
                 [
                   ['list', 'List', List],
-                  ['spreadsheet', 'Spreadsheet', Table2],
+                  ['spreadsheet', editable ? 'Edit in grid' : 'Grid', Table2],
                 ] as const
               ).map(([value, label, Icon]) => (
                 <button
