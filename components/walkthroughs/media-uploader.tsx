@@ -1,7 +1,9 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Camera, ChevronLeft, ChevronRight, ImagePlus, Loader2, Video, X } from 'lucide-react'
+import { Camera, ChevronLeft, ChevronRight, ImagePlus, Loader2, RotateCcw, Video, X } from 'lucide-react'
+import { preparePhotoForUpload } from '@/components/shared/prepare-photo'
+import { retryableItems, runUploadBatch, type UploadOutcome } from '@/lib/photo-upload'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -60,59 +62,50 @@ export function MediaUploader({
   })
   const [error, setError] = useState<string | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
+  const [retry, setRetry] = useState<File[]>([])
 
-  async function handleFiles(fileList: FileList | null) {
-    const files = Array.from(fileList ?? [])
-    if (!files.length) return
-    setError(null)
-    const supabase = createClient()
-    let current = items
-    const failures: string[] = []
-
-    for (const [index, file] of files.entries()) {
-      setProgress(`Uploading ${index + 1} of ${files.length}...`)
-      const kind = mediaKindFor(file.type)
-      if (!kind) {
-        failures.push(`${file.name} is not a photo or video.`)
-        continue
-      }
-      if (file.size > MAX_MEDIA_BYTES) {
-        failures.push(`${file.name} is larger than 50 MB.`)
-        continue
-      }
-      const fileName = safeFileName(file.name)
-      const path = pathFor(`${crypto.randomUUID()}-${fileName}`)
-      const { error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(path, file, { contentType: file.type, upsert: false })
-      if (uploadError) {
-        failures.push(`${file.name} could not be uploaded.`)
-        continue
-      }
-      const result = await register({
-        storage_path: path,
-        file_name: file.name.slice(0, 200),
-        mime_type: file.type,
-        size_bytes: file.size,
-        media_kind: kind,
-      })
-      if (!result.id) {
-        await supabase.storage.from(bucket).remove([path])
-        failures.push(result.error ?? `${file.name} could not be saved.`)
-        continue
-      }
-      const { data: signed } = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60)
-      current = [
-        ...current,
-        { id: result.id, storage_path: path, file_name: file.name, media_kind: kind, url: signed?.signedUrl ?? null },
-      ]
-      onItemsChange(current)
-    }
-
-    setProgress(null)
-    if (failures.length) setError(failures.join(' '))
+  async function handleFiles(input: FileList | File[] | null) {
+    const files = Array.from(input ?? [])
     if (cameraRef.current) cameraRef.current.value = ''
     if (libraryRef.current) libraryRef.current.value = ''
+    if (!files.length) return
+    setError(null)
+    setRetry([])
+    const supabase = createClient()
+    let current = items
+
+    const { failed } = await runUploadBatch(
+      files,
+      async (original): Promise<UploadOutcome> => {
+        const kind = mediaKindFor(original.type)
+        if (!kind) return { ok: false, reason: `${original.name} is not a photo or video.`, retryable: false }
+        const file = kind === 'photo' ? await preparePhotoForUpload(original) : original
+        if (file.size > MAX_MEDIA_BYTES) return { ok: false, reason: `${file.name} is larger than 50 MB.`, retryable: false }
+        const path = pathFor(`${crypto.randomUUID()}-${safeFileName(file.name)}`)
+        const { error: uploadError } = await supabase.storage.from(bucket).upload(path, file, { contentType: file.type, upsert: false })
+        if (uploadError) return { ok: false, reason: `${file.name} could not be uploaded.`, retryable: true }
+        const result = await register({
+          storage_path: path,
+          file_name: file.name.slice(0, 200),
+          mime_type: file.type,
+          size_bytes: file.size,
+          media_kind: kind,
+        })
+        if (!result.id) {
+          await supabase.storage.from(bucket).remove([path])
+          return { ok: false, reason: result.error ?? `${file.name} could not be saved.`, retryable: true }
+        }
+        const { data: signed } = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60)
+        current = [...current, { id: result.id, storage_path: path, file_name: file.name, media_kind: kind, url: signed?.signedUrl ?? null }]
+        onItemsChange(current)
+        return { ok: true }
+      },
+      (done, total) => setProgress(done < total ? `Uploading ${done + 1} of ${total}...` : null),
+    )
+
+    setProgress(null)
+    if (failed.length) setError(failed.map((f) => f.reason).join(' '))
+    setRetry(retryableItems(failed))
   }
 
   async function handleRemove(item: MediaItem) {
@@ -180,9 +173,15 @@ export function MediaUploader({
         </p>
       )}
       {error && (
-        <p role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
+        <div role="alert" className="flex flex-col gap-2 text-xs text-destructive sm:flex-row sm:items-center sm:justify-between">
+          <p>{error}</p>
+          {retry.length > 0 && (
+            <Button type="button" variant="outline" size="sm" className="h-10 shrink-0" disabled={busy} onClick={() => handleFiles(retry)}>
+              <RotateCcw data-icon="inline-start" />
+              {`Retry ${retry.length} ${retry.length === 1 ? 'file' : 'files'}`}
+            </Button>
+          )}
+        </div>
       )}
       {items.length > 0 && (
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">

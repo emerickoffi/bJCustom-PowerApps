@@ -76,7 +76,10 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
   const todayIso = (today as string | null) ?? new Date().toISOString().slice(0, 10)
   const signatureOptions = (signatures ?? []) as { id: string; title: string }[]
   const linkedSignature = signatureOptions.find((s) => s.id === co.signature_request_id)
-  const methodLabel = CHANGE_ORDER_DECISION_METHODS.find((m) => m.value === co.decision_method)?.label
+  const methodLabel =
+    co.decision_method === 'homeowner_portal'
+      ? 'Homeowner portal'
+      : CHANGE_ORDER_DECISION_METHODS.find((m) => m.value === co.decision_method)?.label
   const submittedEvent = events.find((e) => e.to_status === 'internal_review')
   const sentEvent = events.find((e) => e.to_status === 'awaiting_homeowner')
   const decisionEvent = events.find((e) => e.to_status === 'approved' || e.to_status === 'rejected')

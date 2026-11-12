@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { SelectField, TextAreaField, TextField } from '@/components/shared/form-field'
 import { createClient } from '@/lib/supabase/client'
 import { reportFieldIssueAction } from '@/app/actions/field-issues'
+import { useIssueDraft } from '@/components/issues/use-issue-draft'
 import { ISSUE_PRIORITIES, MAX_MEDIA_BYTES, MEDIA_BUCKET, PRIORITY_LABELS, mediaKindFor, safeFileName } from '@/lib/walkthroughs'
 import type { AssigneeOption, IssueSource } from '@/lib/field-issues'
 import type { ActionState } from '@/lib/action-state'
@@ -48,6 +49,14 @@ export function ReportIssueDrawer({
   const [dirty, setDirty] = useState(false)
   const [pending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
+  const draft = useIssueDraft({
+    open,
+    formRef,
+    userId,
+    orgId: organizationId,
+    projectId,
+    sourceId: source?.id ?? null,
+  })
 
   function reset() {
     setRequestId(crypto.randomUUID())
@@ -61,9 +70,14 @@ export function ReportIssueDrawer({
 
   function handleOpenChange(next: boolean) {
     if (!next && pending) return
-    if (!next && dirty && !saved && !window.confirm('Discard this issue? What you entered will be lost.')) return
+    if (!next && dirty && !saved && photos.length && !window.confirm('Close this issue? Your text is kept on this device as a draft, but the selected photos will need to be added again.')) return
     setOpen(next)
     if (!next) reset()
+  }
+
+  function discardDraft() {
+    draft.clear()
+    reset()
   }
 
   function addPhotos(files: FileList | null) {
@@ -120,6 +134,7 @@ export function ReportIssueDrawer({
       const result = await reportFieldIssueAction(formData)
       setState(result)
       if (!result.savedId) return
+      draft.clear()
       const photoWarning = await uploadPhotos(result.savedId)
       setSaved({ id: result.savedId, photoWarning })
       router.refresh()
@@ -166,8 +181,24 @@ export function ReportIssueDrawer({
               </div>
             </div>
           ) : (
-            <form ref={formRef} onSubmit={handleSubmit} onChange={() => setDirty(true)} className="flex flex-col gap-5 p-5" noValidate>
+            <form ref={formRef} onSubmit={handleSubmit} onChange={() => {
+                setDirty(true)
+                draft.save()
+              }}
+              className="flex flex-col gap-5 p-5"
+              noValidate
+            >
               <input type="hidden" name="request_id" value={requestId} />
+              {draft.restoredAt && (
+                <div role="status" className="flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-foreground">
+                    {`Unsent draft restored from ${new Date(draft.restoredAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}. It is only on this device until you report it. Photos are not kept.`}
+                  </p>
+                  <Button type="button" variant="ghost" size="sm" className="h-10 shrink-0" onClick={discardDraft}>
+                    Discard draft
+                  </Button>
+                </div>
+              )}
               <input type="hidden" name="project_id" value={projectId} />
               {source?.kind === 'daily_log' && <input type="hidden" name="source_daily_log_id" value={source.id} />}
               {source?.kind === 'walkthrough' && <input type="hidden" name="source_walkthrough_id" value={source.id} />}
