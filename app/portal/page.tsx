@@ -251,8 +251,13 @@ export default async function PortalPage() {
                           Approvals
                         </Button>
                       )}
-                      {features?.invoices && (
-                        <Button size="lg" variant="outline" render={<Link href="/portal/invoices" />} nativeButton={false}>
+  {features?.estimates && (
+  <Button size="lg" variant="outline" render={<Link href="/portal/selections" />} nativeButton={false}>
+  Selections
+  </Button>
+  )}
+  {features?.invoices && (
+  <Button size="lg" variant="outline" render={<Link href="/portal/invoices" />} nativeButton={false}>
                           Invoices
                         </Button>
                       )}

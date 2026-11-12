@@ -6,6 +6,7 @@ export type ProjectNavKey =
   | 'daily_logs'
   | 'client_updates'
   | 'estimates'
+  | 'selections'
   | 'change_orders'
   | 'financials'
   | 'documents'
@@ -80,6 +81,13 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
       // Stays inside the project shell; the org-wide /estimates?project= filter keeps working for existing links.
       href: `${base}/estimates`,
       activePrefix: `${base}/estimates`,
+    },
+    // Selections carry vendor costs, so they follow the same manager + internal access as financials.
+    Boolean(features.estimates && access.canViewFinancials && access.canViewInternal) && {
+      key: 'selections',
+      label: 'Selections',
+      href: `${base}/selections`,
+      activePrefix: `${base}/selections`,
     },
     Boolean(features.change_orders && access.canViewFinancials && access.canViewInternal) && {
         key: 'change_orders',
