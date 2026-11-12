@@ -24,6 +24,8 @@ import { FieldShell, FormSection, SelectField, TextAreaField, TextField } from '
 import { SmartFormLayout, useSmartForm } from '@/components/shared/smart-form'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { StateSelect, setStateSelectValue } from '@/components/shared/state-select'
+import { FormDisclosure } from '@/components/shared/form-disclosure'
+import { ProjectTemplatePicker, templateMeta } from '@/components/projects/project-template-picker'
 
 export type ProjectFormValues = {
   name?: string
@@ -57,7 +59,14 @@ export type ProjectTemplateOption = {
   description: string | null
   isStarter: boolean
   summary: string
+  phases: number
+  activities: number
+  milestones: number
+  /** Longest dependency chain, or null when the template has no durations. */
+  estimatedBusinessDays: number | null
 }
+
+export type StandardScheduleSummary = { phases: number; activities: number; milestones: number }
 
 export type ClientMailingAddress = {
   address_line1: string
@@ -87,6 +96,7 @@ export function ProjectForm({
   cancelHref,
   scheduleSetup,
   templates = [],
+  standardSchedule = null,
   cover,
   clientAddresses: initialClientAddresses,
   canCreateClient = false,
@@ -107,6 +117,8 @@ export function ProjectForm({
   scheduleSetup?: boolean
   /** Published templates offered as schedule setup options on create. */
   templates?: ProjectTemplateOption[]
+  /** Counts for the company's standard schedule catalog, when seeded. */
+  standardSchedule?: StandardScheduleSummary | null
   cover?: ProjectFormCover
   /** Mailing addresses keyed by client id. Copied into the site fields only when the user asks. */
   clientAddresses?: Record<string, ClientMailingAddress>
@@ -205,6 +217,18 @@ export function ProjectForm({
     if (next) setTargetDate(next)
   }
   const [scheduleMode, setScheduleMode] = useState(sv?.schedule_setup ?? 'standard')
+  const selectedTemplate = scheduleMode.startsWith('tpl:')
+    ? templates.find((t) => `tpl:${t.versionId}` === scheduleMode)
+    : undefined
+  const templateDays = selectedTemplate?.estimatedBusinessDays ?? null
+  const hasManualDuration = businessDays.trim() !== '' || (targetDate !== '' && !isCalculated)
+
+  // Collapsed groups open when they already hold values or a field inside them has an error.
+  const filled = (keys: (keyof ProjectFormValues)[]) =>
+    keys.some((k) => Boolean(fe[k]) || Boolean(String(v(k, defaults[k] as string | null | undefined)).trim()))
+  const siteMoreOpen = filled(['address_line2', 'community', 'lot', 'block', 'phase', 'legal_description'])
+  const optionalOpen =
+    filled(['internal_notes']) || Boolean(fe.cover_image) || Boolean(cover?.savedUrl) || Boolean(coverFile)
 
   return (
     <>
@@ -215,7 +239,7 @@ export function ProjectForm({
         message={<FormMessage state={state} />}
         submit={<SubmitButton pendingLabel={pendingLabel}>{submitLabel}</SubmitButton>}
       >
-      <FormSection flat={flat} icon={HouseIcon} title="Project" description="Name the project and choose the homeowner it is being built for.">
+      <FormSection flat={flat} icon={HouseIcon} title="Project details">
         <TextField name="name" label="Project name" required defaultValue={v('name', defaults.name)} error={fe.name} className="sm:col-span-2" />
         <FieldShell
           name="primary_client_id"
@@ -263,42 +287,15 @@ export function ProjectForm({
         />
         <TextAreaField
           name="description"
-          label="Description"
+          label="Description (optional)"
+          rows={2}
           defaultValue={v('description', defaults.description)}
           error={fe.description}
           className="sm:col-span-2"
         />
       </FormSection>
 
-      {cover && (
-        <FormSection flat={flat}
-          icon={ImageIcon}
-          title="Project Cover Image"
-          description="Upload an architectural rendering, 3D visualization, or photograph of the home."
-        >
-          <CoverImageField
-            previewUrl={coverFile?.url ?? (removeSavedCover ? null : (cover.savedUrl ?? null))}
-            fileName={coverFile?.file.name ?? null}
-            kindDefault={v('cover_image_kind', cover.savedKind)}
-            error={coverError ?? fe.cover_image}
-            onSelect={(file) => {
-              const invalid = validateCoverFile(file)
-              setCoverError(invalid)
-              if (invalid) return
-              coverRef.current = { file, remove: false }
-              setCoverFile({ file, url: URL.createObjectURL(file) })
-            }}
-            onRemove={() => {
-              setCoverError(null)
-              coverRef.current = { file: null, remove: Boolean(cover.savedUrl) }
-              setCoverFile(null)
-              setRemoveSavedCover(Boolean(cover.savedUrl))
-            }}
-          />
-        </FormSection>
-      )}
-
-      <FormSection flat={flat} icon={MapPinIcon} title="Site" description="Where the home is being built. This is separate from the homeowner's mailing address.">
+      <FormSection flat={flat} icon={MapPinIcon} title="Site" description="Where the home is being built, separate from the homeowner's mailing address.">
         {clientAddresses && (
           <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center">
             <Button
@@ -327,46 +324,26 @@ export function ProjectForm({
           </div>
         )}
         <TextField name="address_line1" label="Street address" required autoComplete="off" defaultValue={v('address_line1', defaults.address_line1)} error={fe.address_line1} className="sm:col-span-2" />
-        <TextField name="address_line2" label="Address line 2" autoComplete="off" defaultValue={v('address_line2', defaults.address_line2)} error={fe.address_line2} className="sm:col-span-2" />
-        <div className="grid gap-5 sm:col-span-2 sm:grid-cols-6">
+        <div className="grid gap-4 sm:col-span-2 sm:grid-cols-6">
           <TextField name="city" label="City" required defaultValue={v('city', defaults.city)} error={fe.city} className="sm:col-span-2" />
           <StateSelect name="state" required defaultValue={v('state', defaults.state)} error={fe.state} className="sm:col-span-2" />
           <TextField name="postal_code" label="ZIP" required inputMode="numeric" defaultValue={v('postal_code', defaults.postal_code)} error={fe.postal_code} className="sm:col-span-2" />
         </div>
-        <div className="grid grid-cols-3 gap-5 sm:col-span-2 lg:grid-cols-6">
-          <TextField name="community" label="Community / subdivision" defaultValue={v('community', defaults.community)} error={fe.community} className="col-span-3" />
-          <TextField name="lot" label="Lot" defaultValue={v('lot', defaults.lot)} error={fe.lot} />
-          <TextField name="block" label="Block" defaultValue={v('block', defaults.block)} error={fe.block} />
-          <TextField name="phase" label="Phase" defaultValue={v('phase', defaults.phase)} error={fe.phase} />
-        </div>
-        <TextAreaField name="legal_description" label="Legal description" defaultValue={v('legal_description', defaults.legal_description)} error={fe.legal_description} className="sm:col-span-2" />
+        <FormDisclosure title="Additional site details" hint="· Line 2, community, lot, legal" defaultOpen={siteMoreOpen}>
+          <TextField name="address_line2" label="Address line 2" autoComplete="off" defaultValue={v('address_line2', defaults.address_line2)} error={fe.address_line2} className="sm:col-span-2" />
+          <div className="grid grid-cols-3 gap-4 sm:col-span-2 lg:grid-cols-6">
+            <TextField name="community" label="Community / subdivision" defaultValue={v('community', defaults.community)} error={fe.community} className="col-span-3" />
+            <TextField name="lot" label="Lot" defaultValue={v('lot', defaults.lot)} error={fe.lot} />
+            <TextField name="block" label="Block" defaultValue={v('block', defaults.block)} error={fe.block} />
+            <TextField name="phase" label="Phase" defaultValue={v('phase', defaults.phase)} error={fe.phase} />
+          </div>
+          <TextAreaField name="legal_description" label="Legal description" rows={2} defaultValue={v('legal_description', defaults.legal_description)} error={fe.legal_description} className="sm:col-span-2" />
+        </FormDisclosure>
       </FormSection>
 
-      <FormSection flat={flat} icon={CalendarRangeIcon} title="Plan" description="Budget, target dates, and the project manager responsible.">
-        <div className="flex min-w-0 flex-col">
-          <TextField
-            name="estimated_budget"
-            label="Estimated project budget (USD)"
-            inputMode="decimal"
-            placeholder="e.g. 650,000"
-            defaultValue={budgetDefault}
-            error={fe.estimated_budget}
-            hint="Optional. Planning figure only; it does not create or change an estimate."
-            onBlur={(e) => {
-              e.currentTarget.value = formatBudget(e.currentTarget.value)
-            }}
-          />
-        </div>
-        <SelectField
-          name="project_manager_id"
-          label="Project manager"
-          options={[{ value: 'none', label: 'Unassigned' }, ...managerOptions]}
-          defaultValue={v('project_manager_id', defaults.project_manager_id ?? 'none') || 'none'}
-          error={fe.project_manager_id}
-          hint={managerOptions.length ? undefined : 'No active admins or project managers in your company yet.'}
-        />
+      <FormSection flat={flat} icon={CalendarRangeIcon} title="Project plan">
         <div className="@container min-w-0 sm:col-span-2">
-          <div className="grid gap-5 @xl:grid-cols-3">
+          <div className="grid gap-4 @xl:grid-cols-3">
             <TextField
               name="proposed_start_date"
               label="Proposed start"
@@ -384,7 +361,7 @@ export function ProjectForm({
               value={businessDays}
               onChange={(e) => updateSchedule(startDate, e.currentTarget.value)}
               error={businessDaysError ?? fe.planned_business_days}
-              hint="Mon–Fri · Start date counts as day 1."
+              hint="Mon–Fri · Start date is day 1."
             />
             <TextField
               name="target_completion_date"
@@ -397,83 +374,87 @@ export function ProjectForm({
                 setBusinessDays('')
               }}
               error={fe.target_completion_date}
-              hint={isCalculated ? 'Calculated automatically' : 'Must be on or after the proposed start.'}
+              hint={isCalculated ? 'Calculated automatically' : 'On or after the proposed start.'}
             />
           </div>
         </div>
-        <TextAreaField
-          name="internal_notes"
-          label="Internal notes"
-          hint="Visible to builder staff only, never to homeowners."
-          defaultValue={v('internal_notes', defaults.internal_notes)}
-          error={fe.internal_notes}
-          className="sm:col-span-2"
+        <TextField
+          name="estimated_budget"
+          label="Estimated project budget (USD)"
+          inputMode="decimal"
+          placeholder="e.g. 650,000"
+          defaultValue={budgetDefault}
+          error={fe.estimated_budget}
+          hint="Planning figure only; does not change an estimate."
+          onBlur={(e) => {
+            e.currentTarget.value = formatBudget(e.currentTarget.value)
+          }}
+        />
+        <SelectField
+          name="project_manager_id"
+          label="Project manager"
+          options={[{ value: 'none', label: 'Unassigned' }, ...managerOptions]}
+          defaultValue={v('project_manager_id', defaults.project_manager_id ?? 'none') || 'none'}
+          error={fe.project_manager_id}
+          hint={managerOptions.length ? undefined : 'No active admins or project managers in your company yet.'}
         />
       </FormSection>
 
       {scheduleSetup !== undefined && (
         <FormSection flat={flat}
           icon={ListChecksIcon}
-          title="Construction schedule setup"
-          description="Optional. Runs once after the project is saved, and you can change it later on the Schedule page."
+          title="Project template"
+          description="Start with a ready-made construction schedule or configure it later."
         >
           {scheduleSetup ? (
             <>
-              <fieldset className="flex min-w-0 flex-col gap-2 sm:col-span-2">
-                <legend className="mb-2 text-sm font-medium text-foreground">Schedule</legend>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {[
-                    { value: 'standard', label: 'Use standard construction schedule', hint: 'Adds the standard construction activities by phase.' },
-                    ...templates.map((t) => ({
-                      value: `tpl:${t.versionId}`,
-                      label: t.isStarter ? t.name : `${t.name} (company template)`,
-                      hint: `${t.summary}. Dates start from the proposed start date.`,
-                    })),
-                    { value: 'later', label: 'Configure later', hint: 'Start with an empty schedule.' },
-                  ].map((opt) => (
-                    <label
-                      key={opt.value}
-                      className={cn(
-                        'flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 transition-colors has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50',
-                        scheduleMode === opt.value ? 'border-primary bg-sage/60' : 'border-input hover:border-primary/40',
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="schedule_setup"
-                        value={opt.value}
-                        checked={scheduleMode === opt.value}
-                        onChange={() => setScheduleMode(opt.value)}
-                        className="mt-0.5 size-4 accent-primary"
-                      />
-                      <span className="flex flex-col gap-0.5">
-                        <span className="text-sm font-medium text-foreground">{opt.label}</span>
-                        <span className="text-xs leading-relaxed text-muted-foreground">{opt.hint}</span>
-                      </span>
-                    </label>
-                  ))}
+              <ProjectTemplatePicker
+                value={scheduleMode}
+                onChange={setScheduleMode}
+                templates={templates}
+                standardSchedule={standardSchedule}
+              />
+              {selectedTemplate && (
+                <div role="status" className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground sm:col-span-2">
+                  <p>
+                    <span className="font-medium text-foreground">{selectedTemplate.name}:</span>{' '}
+                    {templateMeta(selectedTemplate)}. Activity dates are laid out from the proposed start.
+                  </p>
+                  {templateDays !== null &&
+                    (hasManualDuration ? (
+                      <p>
+                        Your project plan sets the target completion. The template&apos;s {templateDays} business days are an estimate only.
+                      </p>
+                    ) : (
+                      <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        No target completion set.
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => updateSchedule(startDate, String(templateDays))}
+                        >
+                          Use the template&apos;s {templateDays} business days
+                        </Button>
+                      </p>
+                    ))}
                 </div>
-              </fieldset>
-              <label
-                className={cn(
-                  'flex min-h-11 items-start gap-3 rounded-lg border border-input bg-background p-3 sm:col-span-2',
-                  scheduleMode === 'standard' ? 'cursor-pointer' : 'cursor-not-allowed opacity-60',
-                )}
-              >
-                <input
-                  type="checkbox"
-                  name="include_sprinkler"
-                  defaultChecked={sv?.include_sprinkler === 'on'}
-                  disabled={scheduleMode !== 'standard'}
-                  className="mt-0.5 size-4 accent-primary"
-                />
-                <span className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium text-foreground">Include Sprinkler / Irrigation Installation</span>
-                  <span className="text-xs leading-relaxed text-muted-foreground">
-                    Lawn irrigation (not a fire-sprinkler system), added to the Exterior phase before Landscaping.
+              )}
+              {scheduleMode === 'standard' && (
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-input bg-background px-3 py-2.5 sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    name="include_sprinkler"
+                    defaultChecked={sv?.include_sprinkler === 'on'}
+                    className="mt-0.5 size-4 accent-primary"
+                  />
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium text-foreground">Include Sprinkler / Irrigation Installation</span>
+                    <span className="text-xs text-muted-foreground">Lawn irrigation, added to Exterior before Landscaping.</span>
                   </span>
-                </span>
-              </label>
+                </label>
+              )}
             </>
           ) : (
             <p className="flex items-start gap-2 text-sm leading-relaxed text-muted-foreground sm:col-span-2">
@@ -484,6 +465,54 @@ export function ProjectForm({
         </FormSection>
       )}
 
+      <section
+        className={
+          flat ? 'border-b border-border/60 py-4 last:border-b-0' : 'rounded-xl border border-border/80 bg-card p-5 shadow-xs sm:p-6'
+        }
+      >
+        <FormDisclosure
+          title="Optional details"
+          hint={cover ? '· Cover image, internal notes' : '· Internal notes'}
+          defaultOpen={optionalOpen}
+        >
+          {cover && (
+            <div className="flex min-w-0 flex-col gap-2 sm:col-span-2">
+              <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <ImageIcon className="size-4 text-primary" aria-hidden="true" />
+                Project cover image
+              </p>
+          <CoverImageField
+            previewUrl={coverFile?.url ?? (removeSavedCover ? null : (cover.savedUrl ?? null))}
+            fileName={coverFile?.file.name ?? null}
+            kindDefault={v('cover_image_kind', cover.savedKind)}
+            error={coverError ?? fe.cover_image}
+            onSelect={(file) => {
+              const invalid = validateCoverFile(file)
+              setCoverError(invalid)
+              if (invalid) return
+              coverRef.current = { file, remove: false }
+              setCoverFile({ file, url: URL.createObjectURL(file) })
+            }}
+            onRemove={() => {
+              setCoverError(null)
+              coverRef.current = { file: null, remove: Boolean(cover.savedUrl) }
+              setCoverFile(null)
+              setRemoveSavedCover(Boolean(cover.savedUrl))
+            }}
+          />
+            </div>
+          )}
+          <TextAreaField
+            name="internal_notes"
+            label="Internal notes"
+            hint="Visible to builder staff only, never to homeowners."
+            rows={3}
+            defaultValue={v('internal_notes', defaults.internal_notes)}
+            error={fe.internal_notes}
+            className="sm:col-span-2"
+          />
+        </FormDisclosure>
+      </section>
       </SmartFormLayout>
     </form>
     {canCreateClient && (

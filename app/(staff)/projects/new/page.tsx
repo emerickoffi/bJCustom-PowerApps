@@ -29,6 +29,7 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
         managerOptions={data.managerOptions}
         scheduleSetup={data.scheduleSetup}
         templates={data.templates}
+        standardSchedule={data.standardSchedule}
         cover={{ orgId: session.organizationId }}
         submitLabel="Create project"
         pendingLabel="Creating project…"

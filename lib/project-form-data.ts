@@ -2,7 +2,11 @@ import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { getClientOptions, getStaffMembers } from '@/lib/queries'
 import { getOrgFeatures } from '@/lib/features'
-import type { ClientMailingAddress, ProjectTemplateOption } from '@/components/projects/project-form'
+import type {
+  ClientMailingAddress,
+  ProjectTemplateOption,
+  StandardScheduleSummary,
+} from '@/components/projects/project-form'
 import { describeDuration, readTemplateContent, summarizeTemplate } from '@/lib/project-templates'
 
 async function getClientMailingAddresses(organizationId: string): Promise<Record<string, ClientMailingAddress>> {
@@ -45,24 +49,46 @@ async function getTemplateOptions(organizationId: string): Promise<ProjectTempla
       description: t.description,
       isStarter: t.organization_id === null,
       summary: `${summary.phases} phases · ${summary.activities} activities · ${describeDuration(summary.estimatedBusinessDays)}`,
+      phases: summary.phases,
+      activities: summary.activities,
+      milestones: summary.milestones,
+      estimatedBusinessDays: summary.estimatedBusinessDays,
     }
   })
 }
 
+/** Counts for the company's standard schedule catalog, or null before it has been seeded. */
+async function getStandardScheduleSummary(organizationId: string): Promise<StandardScheduleSummary | null> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('schedule_template_items')
+    .select('phase, activity_type')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+  if (!data?.length) return null
+  return {
+    phases: new Set(data.map((i) => (i.phase ?? '').toLowerCase())).size,
+    activities: data.length,
+    milestones: data.filter((i) => i.activity_type === 'milestone').length,
+  }
+}
+
 /** Everything the New Project form needs, shared by the full page and the drawer. */
 export async function loadNewProjectFormData(organizationId: string, client?: string) {
-  const [clientOptions, managers, features, clientAddresses, templates] = await Promise.all([
+  const [clientOptions, managers, features, clientAddresses, templates, standardSchedule] = await Promise.all([
     getClientOptions(organizationId),
     getStaffMembers(organizationId, ['org_admin', 'project_manager']),
     getOrgFeatures(organizationId),
     getClientMailingAddresses(organizationId),
     getTemplateOptions(organizationId),
+    getStandardScheduleSummary(organizationId),
   ])
   return {
     clientOptions,
     clientAddresses,
     scheduleSetup: features.schedule,
     templates: features.schedule ? templates : [],
+    standardSchedule: features.schedule ? standardSchedule : null,
     managerOptions: managers.map((m) => ({ value: m.user_id, label: m.full_name || m.email || 'Team member' })),
     preselected: clientOptions.some((o) => o.value === client) ? client : undefined,
   }
