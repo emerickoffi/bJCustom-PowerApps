@@ -1,6 +1,7 @@
 import { ActionCenter } from '@/components/dashboard/action-center'
 import { DailyPriorities } from '@/components/dashboard/daily-priorities'
 import { assembleBriefing, loadOverdueQuoteRequests, priorityAiAvailable } from '@/lib/ai/daily-priorities-server'
+import { uncheckedSources } from '@/lib/daily-priorities'
 import { CommandHeader } from '@/components/dashboard/command-header'
 import { ComingUp } from '@/components/dashboard/coming-up'
 import { FinancialKpis } from '@/components/dashboard/financial-kpis'
@@ -398,8 +399,14 @@ export async function OwnerDashboard({
       actionItems: attention.items,
       tasks: myTasks.state === 'available' ? myTasks.open : [],
       activities: agendaData.activities,
-      quoteRequests: overdueQuoteRequests,
+      quoteRequests: overdueQuoteRequests ?? [],
     },
+    unchecked: uncheckedSources({
+      modules: attention.unavailable.map((u) => u.module),
+      tasksFailed: myTasks.state === 'unavailable',
+      agendaFailed: !!agendaData.failed,
+      quotesFailed: overdueQuoteRequests === null,
+    }),
   }
   const [{ briefing: standardBriefing }, tabletBriefing] = await Promise.all([
     assembleBriefing({ ...priorityContext, projectId: null }),
@@ -419,7 +426,7 @@ export async function OwnerDashboard({
           viewAll: selectedAction ? `/actions?category=${selectedAction}` : '/actions',
         }}
         headerActions={<WorkScopeControl scope={workScope} />}
-        priorities={<DailyPriorities initial={standardBriefing} />}
+        priorities={<DailyPriorities initial={standardBriefing} viewAllHref="/actions" />}
       />
     ),
     priority_jobs: (
@@ -505,7 +512,7 @@ export async function OwnerDashboard({
             },
             viewAll: selectedAction ? `/actions?category=${selectedAction}` : '/actions',
           }}
-          priorities={<DailyPriorities initial={tabletBriefing ?? standardBriefing} />}
+          priorities={<DailyPriorities initial={tabletBriefing ?? standardBriefing} viewAllHref="/actions" />}
         />
       )
     if (id === 'coming_up')
