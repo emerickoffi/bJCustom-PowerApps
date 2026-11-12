@@ -16,10 +16,20 @@ export default async function ProjectTemplatesPage() {
   if (!features.schedule) redirect('/settings')
 
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('project_templates')
-    .select('id, organization_id, starter_key, name, description, status, draft, current_version_id, archived_at, updated_at, project_template_versions!project_template_versions_template_id_fkey(id, version, content)')
-    .order('name')
+  const [{ data, error }, projectsRes] = await Promise.all([
+    supabase
+      .from('project_templates')
+      .select('id, organization_id, starter_key, name, description, status, draft, current_version_id, archived_at, updated_at, project_template_versions!project_template_versions_template_id_fkey(id, version, content)')
+      .order('name'),
+    supabase
+      .from('projects')
+      .select('id, name, schedule_activities!inner(id)')
+      .eq('organization_id', session.organizationId)
+      .limit(1, { referencedTable: 'schedule_activities' })
+      .order('updated_at', { ascending: false })
+      .limit(100),
+  ])
+  const projects = (projectsRes.data ?? []).map((p) => ({ id: p.id as string, name: p.name as string }))
 
   const items: TemplateListItem[] = (data ?? []).map((t) => {
     const versions = (t.project_template_versions ?? []) as { id: string; version: number; content: unknown }[]
@@ -58,7 +68,7 @@ export default async function ProjectTemplatesPage() {
           Templates could not be loaded. Refresh the page to try again.
         </p>
       ) : (
-        <TemplateLibrary items={items} />
+        <TemplateLibrary items={items} projects={projects} />
       )}
     </div>
   )

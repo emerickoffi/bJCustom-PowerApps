@@ -40,6 +40,10 @@ export async function createTemplateAction(formData: FormData): Promise<Template
     description: formData.get('description') ?? '',
   })
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the template name' }
+  const sourceProjectId = String(formData.get('source_project_id') ?? '')
+  if (sourceProjectId) {
+    return createFromProject(session, sourceProjectId, parsed.data.name, parsed.data.description)
+  }
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('project_templates')
@@ -182,8 +186,12 @@ export async function duplicateTemplateAction(templateId: string): Promise<Templ
  * Turns a project's schedule structure into a new draft template for review. Only names, types,
  * durations, weights, and dependencies are copied; nothing project-specific is.
  */
-export async function saveProjectAsTemplateAction(projectId: string): Promise<TemplateActionResult> {
-  const session = await requireTemplateAdmin()
+async function createFromProject(
+  session: Awaited<ReturnType<typeof requireTemplateAdmin>>,
+  projectId: string,
+  name: string,
+  description: string,
+): Promise<TemplateActionResult> {
   if (!uuid.safeParse(projectId).success) return { ok: false, error: 'Project not found' }
   const supabase = await createClient()
   const { data: project } = await supabase
@@ -216,8 +224,8 @@ export async function saveProjectAsTemplateAction(projectId: string): Promise<Te
     .from('project_templates')
     .insert({
       organization_id: session.organizationId,
-      name: `${project.name} template`.slice(0, 120),
-      description: 'Created from a project schedule. Review durations and dependencies before publishing.',
+      name,
+      description: description || `Created from ${project.name}. Review durations and dependencies before publishing.`.slice(0, 1000),
       project_type: project.project_type,
       draft: content,
       source_project_id: project.id,

@@ -123,7 +123,17 @@ function TemplateCard({ item }: { item: TemplateListItem }) {
   )
 }
 
-function NewTemplateDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export type SourceProjectOption = { id: string; name: string }
+
+function NewTemplateDialog({
+  open,
+  onOpenChange,
+  projects,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  projects: SourceProjectOption[]
+}) {
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   return (
@@ -142,8 +152,26 @@ function NewTemplateDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         >
           <DialogHeader>
             <DialogTitle>New project template</DialogTitle>
-            <DialogDescription>Start from a blank template. You can add phases and activities next.</DialogDescription>
+            <DialogDescription>You can review phases and activities before publishing.</DialogDescription>
           </DialogHeader>
+          {projects.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="new-template-source">Start from</Label>
+              <select
+                id="new-template-source"
+                name="source_project_id"
+                defaultValue=""
+                className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                <option value="">Blank template</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {`Schedule of ${p.name}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="new-template-name">Name</Label>
             <Input id="new-template-name" name="name" required minLength={2} maxLength={120} autoComplete="off" aria-invalid={!!error} aria-describedby={error ? 'new-template-error' : undefined} />
@@ -171,7 +199,7 @@ function NewTemplateDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   )
 }
 
-export function TemplateLibrary({ items }: { items: TemplateListItem[] }) {
+export function TemplateLibrary({ items, projects = [] }: { items: TemplateListItem[]; projects?: SourceProjectOption[] }) {
   const [creating, setCreating] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const company = items.filter((i) => !i.isStarter && (showArchived || !i.archived))
@@ -204,8 +232,7 @@ export function TemplateLibrary({ items }: { items: TemplateListItem[] }) {
           <div className="flex flex-col items-start gap-2 rounded-xl border border-dashed border-border bg-white p-5">
             <p className="text-sm font-medium text-foreground">No company templates yet</p>
             <p className="text-sm text-muted-foreground">
-              Duplicate a starter below, start from scratch, or open a finished project&apos;s schedule and choose
-              &ldquo;Save as template&rdquo;.
+              Duplicate a starter below, or choose New template to start blank or from an existing project&apos;s schedule.
             </p>
           </div>
         ) : (
@@ -234,7 +261,7 @@ export function TemplateLibrary({ items }: { items: TemplateListItem[] }) {
           </ul>
         </section>
       )}
-      <NewTemplateDialog open={creating} onOpenChange={setCreating} />
+      <NewTemplateDialog open={creating} onOpenChange={setCreating} projects={projects} />
     </div>
   )
 }

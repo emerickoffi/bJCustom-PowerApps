@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { requireAdmin } from '@/lib/session'
+import { getOrgFeatures } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { OrganizationSettingsForm } from '@/components/settings/organization-settings-form'
@@ -16,7 +17,7 @@ const navButtonClass = 'border-[#D6E0D5] bg-white text-primary hover:bg-[#F3F4F6
 export default async function SettingsPage() {
   const session = await requireAdmin()
   const supabase = await createClient()
-  const [orgRes, settingsRes, deliveryRes] = await Promise.all([
+  const [orgRes, settingsRes, deliveryRes, features] = await Promise.all([
     supabase
       .from('organizations')
       .select(
@@ -30,6 +31,7 @@ export default async function SettingsPage() {
       .eq('organization_id', session.organizationId)
       .single(),
     supabase.rpc('email_delivery_overview', { p_org: session.organizationId }),
+    getOrgFeatures(session.organizationId),
   ])
   const emailConfig = resolveEmailConfig()
 
@@ -48,9 +50,11 @@ export default async function SettingsPage() {
             <Button variant="outline" className={navButtonClass} render={<Link href="/settings/features" />} nativeButton={false}>
               Feature management
             </Button>
-            <Button variant="outline" className={navButtonClass} render={<Link href="/settings/templates" />} nativeButton={false}>
-              Project templates
-            </Button>
+            {features.schedule && (
+              <Button variant="outline" className={navButtonClass} render={<Link href="/settings/templates" />} nativeButton={false}>
+                Project templates
+              </Button>
+            )}
             <Button variant="outline" className={navButtonClass} render={<Link href="/settings/roles" />} nativeButton={false}>
               Roles &amp; permissions
             </Button>

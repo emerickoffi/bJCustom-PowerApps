@@ -34,7 +34,6 @@ import { ProjectSetupChecklist, ShowSetupChecklistButton } from '@/components/pr
 import { lifecycleGroup } from '@/lib/project-lifecycle'
 import { todayIso } from '@/lib/schedule'
 import { buildJobTimeline, type TimelineActivityInput, type TimelinePhaseInput } from '@/lib/job-timeline'
-import { JobTimeline } from '@/components/projects/job-timeline'
 import { showsCompletionReadiness } from '@/lib/completion-readiness'
 import { loadCompletionReadiness, loadCompletionRecord } from '@/lib/completion-readiness-data'
 import { CompletionReadinessPanel } from '@/components/projects/completion-readiness-panel'
@@ -435,8 +434,6 @@ export default async function ProjectDetailPage({
         />
       )}
 
-      {timeline && <JobTimeline projectId={project.id} timeline={timeline} />}
-
       <div className={features.schedule ? 'grid items-start gap-6 lg:grid-cols-2' : 'grid gap-6'}>
         {features.schedule && (
           <ProjectScheduleSnapshot
@@ -444,6 +441,7 @@ export default async function ProjectDetailPage({
             activities={activities}
             loadError={Boolean(activitiesRes.error)}
             progress={progress}
+            timeline={timeline}
           />
         )}
         {people}

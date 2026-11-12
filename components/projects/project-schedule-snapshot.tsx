@@ -5,6 +5,8 @@ import { ActivityStatusBadge } from '@/components/schedule/schedule-badges'
 import { isOverdue, type ActivityStatus } from '@/lib/schedule'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import type { JobTimeline as Timeline } from '@/lib/job-timeline'
+import { JobTimeline } from '@/components/projects/job-timeline'
 
 export type SnapshotActivity = {
   id: string
@@ -36,11 +38,13 @@ export function ProjectScheduleSnapshot({
   activities,
   loadError,
   progress,
+  timeline = null,
 }: {
   projectId: string
   activities: SnapshotActivity[]
   loadError: boolean
   progress: number | null
+  timeline?: Timeline | null
 }) {
   const scheduleHref = `/projects/${projectId}/schedule`
   const counted = activities.filter((a) => a.status !== 'skipped')
@@ -95,6 +99,7 @@ export function ProjectScheduleSnapshot({
               </>
             )}
           </div>
+          {timeline && <JobTimeline timeline={timeline} />}
           <dl className="grid grid-cols-3 gap-2">
             <Stat label="Progress" value={progress === null ? 'Not set' : `${Math.round(progress)}%`} />
             <Stat label="Complete" value={`${completed} of ${counted.length}`} />
