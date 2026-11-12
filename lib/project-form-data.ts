@@ -2,7 +2,8 @@ import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { getClientOptions, getStaffMembers } from '@/lib/queries'
 import { getOrgFeatures } from '@/lib/features'
-import type { ClientMailingAddress } from '@/components/projects/project-form'
+import type { ClientMailingAddress, ProjectTemplateOption } from '@/components/projects/project-form'
+import { describeDuration, readTemplateContent, summarizeTemplate } from '@/lib/project-templates'
 
 async function getClientMailingAddresses(organizationId: string): Promise<Record<string, ClientMailingAddress>> {
   const supabase = await createClient()
@@ -24,18 +25,44 @@ async function getClientMailingAddresses(organizationId: string): Promise<Record
   return addresses
 }
 
+/** Published, active templates: the starter catalog plus this company's own. */
+async function getTemplateOptions(organizationId: string): Promise<ProjectTemplateOption[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('project_templates')
+    .select('organization_id, name, description, current_version_id, project_template_versions!project_templates_current_version_fkey(content)')
+    .eq('status', 'published')
+    .is('archived_at', null)
+    .not('current_version_id', 'is', null)
+    .or(`organization_id.is.null,organization_id.eq.${organizationId}`)
+    .order('name')
+  return (data ?? []).map((t) => {
+    const version = t.project_template_versions as unknown as { content: unknown } | null
+    const summary = summarizeTemplate(readTemplateContent(version?.content))
+    return {
+      versionId: t.current_version_id as string,
+      name: t.name,
+      description: t.description,
+      isStarter: t.organization_id === null,
+      summary: `${summary.phases} phases · ${summary.activities} activities · ${describeDuration(summary.estimatedBusinessDays)}`,
+    }
+  })
+}
+
 /** Everything the New Project form needs, shared by the full page and the drawer. */
 export async function loadNewProjectFormData(organizationId: string, client?: string) {
-  const [clientOptions, managers, features, clientAddresses] = await Promise.all([
+  const [clientOptions, managers, features, clientAddresses, templates] = await Promise.all([
     getClientOptions(organizationId),
     getStaffMembers(organizationId, ['org_admin', 'project_manager']),
     getOrgFeatures(organizationId),
     getClientMailingAddresses(organizationId),
+    getTemplateOptions(organizationId),
   ])
   return {
     clientOptions,
     clientAddresses,
     scheduleSetup: features.schedule,
+    templates: features.schedule ? templates : [],
     managerOptions: managers.map((m) => ({ value: m.user_id, label: m.full_name || m.email || 'Team member' })),
     preselected: clientOptions.some((o) => o.value === client) ? client : undefined,
   }

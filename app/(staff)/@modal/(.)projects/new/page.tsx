@@ -23,6 +23,7 @@ export default async function NewProjectDrawer({ searchParams }: { searchParams:
         clientOptions={data.clientOptions}
         managerOptions={data.managerOptions}
         scheduleSetup={data.scheduleSetup}
+        templates={data.templates}
         cover={{ orgId: session.organizationId }}
         submitLabel="Create project"
         pendingLabel="Creating project…"

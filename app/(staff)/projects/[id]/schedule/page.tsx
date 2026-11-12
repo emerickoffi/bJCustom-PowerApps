@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getStaffMembers } from '@/lib/queries'
 import { PageHeader } from '@/components/shared/page-header'
 import { ScheduleWorkspace } from '@/components/schedule/schedule-workspace'
+import { SaveAsTemplateButton } from '@/components/templates/save-as-template-button'
 import { BaselineForm, InitializeScheduleButton, OptionalActivitiesPanel } from '@/components/schedule/schedule-controls'
 import { ProgressBar } from '@/components/schedule/schedule-badges'
 import {
@@ -167,7 +168,14 @@ export default async function SchedulePage({
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Construction schedule"
-        actions={manager && activities.length > 0 && <InitializeScheduleButton projectId={project.id} label="Add missing template activities" />}
+        actions={
+          activities.length > 0 && (manager || session.role === 'org_admin') ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {session.role === 'org_admin' && <SaveAsTemplateButton projectId={project.id} />}
+              {manager && <InitializeScheduleButton projectId={project.id} label="Add missing template activities" />}
+            </div>
+          ) : null
+        }
       />
 
       {setup === 'incomplete' && (

@@ -51,6 +51,14 @@ export type ProjectFormValues = {
 
 type Option = { value: string; label: string }
 
+export type ProjectTemplateOption = {
+  versionId: string
+  name: string
+  description: string | null
+  isStarter: boolean
+  summary: string
+}
+
 export type ClientMailingAddress = {
   address_line1: string
   address_line2: string
@@ -78,6 +86,7 @@ export function ProjectForm({
   pendingLabel,
   cancelHref,
   scheduleSetup,
+  templates = [],
   cover,
   clientAddresses: initialClientAddresses,
   canCreateClient = false,
@@ -96,6 +105,8 @@ export function ProjectForm({
   cancelHref: string
   /** Only passed on create. `true` when the Schedule feature is on; `false` shows it as unavailable; omitted hides it. */
   scheduleSetup?: boolean
+  /** Published templates offered as schedule setup options on create. */
+  templates?: ProjectTemplateOption[]
   cover?: ProjectFormCover
   /** Mailing addresses keyed by client id. Copied into the site fields only when the user asks. */
   clientAddresses?: Record<string, ClientMailingAddress>
@@ -413,6 +424,11 @@ export function ProjectForm({
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
                     { value: 'standard', label: 'Use standard construction schedule', hint: 'Adds the standard construction activities by phase.' },
+                    ...templates.map((t) => ({
+                      value: `tpl:${t.versionId}`,
+                      label: t.isStarter ? t.name : `${t.name} (company template)`,
+                      hint: `${t.summary}. Dates start from the proposed start date.`,
+                    })),
                     { value: 'later', label: 'Configure later', hint: 'Start with an empty schedule.' },
                   ].map((opt) => (
                     <label

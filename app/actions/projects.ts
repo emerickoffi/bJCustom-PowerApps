@@ -113,6 +113,15 @@ export async function createProjectAction(_prev: ActionState, formData: FormData
         : null
     if (init.error || sprinkler?.error) redirect(`/projects/${data.id}/schedule?setup=incomplete`)
   }
+  const templateVersion = values.schedule_setup?.startsWith('tpl:') ? values.schedule_setup.slice(4) : null
+  if (features.schedule && templateVersion) {
+    // The RPC re-checks that the version is published and visible to this company.
+    const applied = uuid.safeParse(templateVersion).success
+      ? await supabase.rpc('apply_project_template', { p_project: data.id, p_version: templateVersion })
+      : { error: { message: 'invalid template' } }
+    if (applied.error) redirect(`/projects/${data.id}/schedule?setup=incomplete`)
+    revalidatePath(`/projects/${data.id}`)
+  }
 
   redirect(`/projects/${data.id}`)
 }
