@@ -51,6 +51,7 @@ import { useLauncherRegistry, useRegisteredLauncherActions, type LauncherAction 
 import { useProjectQuickActionsScope, useQuickActionDrawer } from '@/components/app/quick-actions'
 import { LauncherProjectPicker } from '@/components/app/launcher-project-picker'
 import { confirmLeave } from '@/components/app/navigation-guard'
+import { useIdleGlow } from '@/components/app/use-idle-glow'
 import dynamic from 'next/dynamic'
 
 // The chat sheet carries the markdown renderer and draft schemas; keep it out of every page's first load.
@@ -203,6 +204,7 @@ function Dock({ assistant, globalActions, pickerActions }: DockProps) {
   const focusFirstPill = useRef(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
+  const glowRef = useRef<HTMLSpanElement>(null)
   const listId = useId()
 
   const touch = mode === 'touch'
@@ -234,6 +236,7 @@ function Dock({ assistant, globalActions, pickerActions }: DockProps) {
 
   // Fetch the chat code (not any AI request) once the launcher is engaged so the sheet opens without a wait.
   const launcherEngaged = mode !== null
+  const stopGlow = useIdleGlow(glowRef, rootRef, !launcherEngaged && !aiOpen && !pending)
   useEffect(() => {
     if (launcherEngaged && assistant) void loadAssistantSheet()
   }, [launcherEngaged, assistant])
@@ -297,6 +300,7 @@ function Dock({ assistant, globalActions, pickerActions }: DockProps) {
 
   const onPointerEnter = (event: PointerEvent) => {
     if (event.pointerType !== 'mouse') return
+    stopGlow()
     clearTimer()
     if (mode === null && hasActions && !aiOpen) {
       timer.current = window.setTimeout(() => setMode((m) => m ?? 'hover'), OPEN_DELAY_MS)
@@ -432,6 +436,12 @@ function Dock({ assistant, globalActions, pickerActions }: DockProps) {
               Show quick actions
             </button>
           )}
+          {/* Idle glow halo: sits behind the launcher and is driven only by useIdleGlow. */}
+          <span
+            ref={glowRef}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-2xl bg-primary opacity-0 will-change-[transform,opacity]"
+          />
           <button
             ref={registry.launcherRef}
             type="button"
@@ -441,8 +451,12 @@ function Dock({ assistant, globalActions, pickerActions }: DockProps) {
             aria-controls={assistant ? undefined : listId}
             onPointerDown={(event) => {
               lastPointer.current = event.pointerType
+              stopGlow()
             }}
-            onClick={(event) => onLauncherClick(event.detail)}
+            onClick={(event) => {
+              stopGlow()
+              onLauncherClick(event.detail)
+            }}
             className={cn(
               'relative flex size-14 touch-manipulation items-center justify-center rounded-2xl bg-primary text-primary-foreground [-webkit-tap-highlight-color:transparent]',
               'shadow-[0_8px_20px_-6px_rgb(0_88_103/0.55),0_2px_6px_-2px_rgb(23_33_43/0.2)] transition-[translate,box-shadow,background-color] duration-200 ease-out',
