@@ -322,9 +322,12 @@ export function ActionCenter({
   page = 1,
   headingLevel = 'h2',
   headerActions,
+  priorities,
 }: {
   /** Controls shown at the right of the header, e.g. the work-scope selector. */
   headerActions?: ReactNode
+  /** Daily Priorities briefing shown above the category filters. */
+  priorities?: ReactNode
   items: ActionItem[]
   totalIsLowerBound: boolean
   unavailable: ActionModuleIssue[]
@@ -364,6 +367,7 @@ export function ActionCenter({
       </div>
 
       <div className="flex flex-col gap-3 rounded-b-[inherit] bg-white px-4 pb-4 pt-2">
+      {priorities && <div className="pt-2">{priorities}</div>}
       <CategoryFilters items={items} selected={selected} links={links} />
 
       {visible.length === 0 ? (

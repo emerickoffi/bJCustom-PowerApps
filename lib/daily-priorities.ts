@@ -452,7 +452,7 @@ export function composeBriefing(args: {
     total: args.total,
     fingerprint,
     dataCheckedAt: args.dataCheckedAt,
-    generatedAt: args.stored?.generatedAt ?? null,
+    generatedAt: items.some((i) => i.summarized) ? (args.stored?.generatedAt ?? null) : null,
     aiAvailable: args.aiAvailable,
     scope: args.scope,
     projectId: args.projectId,

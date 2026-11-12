@@ -1,4 +1,6 @@
 import { ActionCenter } from '@/components/dashboard/action-center'
+import { DailyPriorities } from '@/components/dashboard/daily-priorities'
+import { assembleBriefing, loadOverdueQuoteRequests, priorityAiAvailable } from '@/lib/ai/daily-priorities-server'
 import { CommandHeader } from '@/components/dashboard/command-header'
 import { ComingUp } from '@/components/dashboard/coming-up'
 import { FinancialKpis } from '@/components/dashboard/financial-kpis'
@@ -126,6 +128,7 @@ export async function OwnerDashboard({
     weatherChoice,
     workScope,
     myTasks,
+    overdueQuoteRequests,
   ] = await Promise.all([
       projectsPromise,
       supabase
@@ -145,6 +148,7 @@ export async function OwnerDashboard({
       readWeatherChoice(session.userId, orgId),
       readWorkScope(session.userId),
       tasksPromise,
+      loadOverdueQuoteRequests(orgId, Boolean(features.subcontractors)),
     ])
 
   /** My work keeps only items explicitly assigned to the signed-in user; the header count follows the same scope. */
@@ -383,6 +387,25 @@ export async function OwnerDashboard({
   const kpiOrder = layout.summary.filter((id): id is KpiCardId => id.startsWith('card_'))
   const kpiCards = new Set(kpiOrder.filter((id) => show[id]))
 
+  const priorityContext = {
+    orgId,
+    userId: session.userId,
+    manager: canManage(session.role),
+    today: agendaData.today,
+    scope: workScope,
+    aiAvailable: priorityAiAvailable(features),
+    inputs: {
+      actionItems: attention.items,
+      tasks: myTasks.state === 'available' ? myTasks.open : [],
+      activities: agendaData.activities,
+      quoteRequests: overdueQuoteRequests,
+    },
+  }
+  const [{ briefing: standardBriefing }, tabletBriefing] = await Promise.all([
+    assembleBriefing({ ...priorityContext, projectId: null }),
+    selectedRow ? assembleBriefing({ ...priorityContext, projectId: selectedRow.id }).then((r) => r.briefing) : null,
+  ])
+
   const sections: Partial<Record<VisibilityItemId, ReactNode>> = {
     attention: (
       <ActionCenter
@@ -396,6 +419,7 @@ export async function OwnerDashboard({
           viewAll: selectedAction ? `/actions?category=${selectedAction}` : '/actions',
         }}
         headerActions={<WorkScopeControl scope={workScope} />}
+        priorities={<DailyPriorities initial={standardBriefing} />}
       />
     ),
     priority_jobs: (
@@ -481,6 +505,7 @@ export async function OwnerDashboard({
             },
             viewAll: selectedAction ? `/actions?category=${selectedAction}` : '/actions',
           }}
+          priorities={<DailyPriorities initial={tabletBriefing ?? standardBriefing} />}
         />
       )
     if (id === 'coming_up')
