@@ -79,7 +79,7 @@ export default async function SelectionDetailPage({ params }: { params: Promise<
             </Surface>
           )}
 
-          <section aria-labelledby="options-heading" className="flex flex-col gap-3">
+          <section id="options" aria-labelledby="options-heading" className="flex scroll-mt-24 flex-col gap-3">
             <h2 id="options-heading" className="type-section-title text-foreground">
               Options
             </h2>

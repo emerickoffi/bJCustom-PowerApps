@@ -33,7 +33,7 @@ export async function getProjectSelections(projectId: string): Promise<{ rows: S
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('selections')
-    .select('id, name, category, location, status, allowance_cents, selected_price_cents, due_date, updated_at')
+    .select('id, name, category, location, status, allowance_cents, selected_price_cents, selected_option_id, due_date, updated_at')
     .eq('project_id', projectId)
     .order('due_date', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true })
@@ -47,6 +47,37 @@ export async function getProjectSelections(projectId: string): Promise<{ rows: S
       selected_price_cents: num(r.selected_price_cents),
     }))
   return { rows, error: Boolean(error) }
+}
+
+/**
+ * One photo per selection for card view: the homeowner's chosen option when it has a photo,
+ * otherwise the first option that does. Runs one query and one bulk signing call.
+ */
+export async function getSelectionThumbnails(rows: Pick<SelectionListRow, 'id'>[], selectedOptionIds: Map<string, string | null>): Promise<Record<string, string>> {
+  if (rows.length === 0) return {}
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('selection_options')
+    .select('id, selection_id, photo_path, sort_order')
+    .in(
+      'selection_id',
+      rows.map((r) => r.id),
+    )
+    .not('photo_path', 'is', null)
+    .order('sort_order')
+  const chosen = new Map<string, string>()
+  for (const o of data ?? []) {
+    const sid = o.selection_id as string
+    if (selectedOptionIds.get(sid) === o.id) chosen.set(sid, o.photo_path as string)
+    else if (!chosen.has(sid)) chosen.set(sid, o.photo_path as string)
+  }
+  const urls = await signPaths([...chosen.values()])
+  const out: Record<string, string> = {}
+  for (const [sid, path] of chosen) {
+    const url = urls.get(path)
+    if (url) out[sid] = url
+  }
+  return out
 }
 
 export async function getSelectionCategories(): Promise<string[]> {
