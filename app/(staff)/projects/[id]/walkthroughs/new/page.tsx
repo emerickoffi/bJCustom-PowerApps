@@ -6,7 +6,7 @@ import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { WalkthroughBuilder } from '@/components/walkthroughs/walkthrough-builder'
 import { ClipboardPlus as ClipboardPlusIcon } from 'lucide-react'
 
-export const metadata: Metadata = { title: 'New walkthrough' }
+export const metadata: Metadata = { title: 'Create walkthrough' }
 
 export default async function NewWalkthroughPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireManager()
@@ -21,12 +21,13 @@ export default async function NewWalkthroughPage({ params }: { params: Promise<{
   if (!project) notFound()
 
   return (
-    <div className={pageLayout('form')}>
+    <div className={pageLayout('form', 'mx-auto max-w-5xl')}>
       <PageHeader icon={ClipboardPlusIcon}
         backHref={`/projects/${project.id}`}
         backLabel={project.name}
         eyebrow={<span className="font-mono normal-case tracking-normal">{project.project_number}</span>}
-        title="New homeowner walkthrough"
+        title="Create walkthrough"
+        meta={<span className="text-sm text-muted-foreground">{project.name}</span>}
       />
       <WalkthroughBuilder projectId={project.id} />
     </div>
