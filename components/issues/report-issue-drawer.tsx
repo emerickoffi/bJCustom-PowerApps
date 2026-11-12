@@ -10,6 +10,7 @@ import { SelectField, TextAreaField, TextField } from '@/components/shared/form-
 import { createClient } from '@/lib/supabase/client'
 import { reportFieldIssueAction } from '@/app/actions/field-issues'
 import { useIssueDraft } from '@/components/issues/use-issue-draft'
+import { VoicePunchDraft } from '@/components/issues/voice-punch-draft'
 import { ISSUE_PRIORITIES, MAX_MEDIA_BYTES, MEDIA_BUCKET, PRIORITY_LABELS, mediaKindFor, safeFileName } from '@/lib/walkthroughs'
 import type { AssigneeOption, IssueSource } from '@/lib/field-issues'
 import type { ActionState } from '@/lib/action-state'
@@ -218,6 +219,17 @@ export function ReportIssueDrawer({
                   </div>
                 )}
               </dl>
+
+              <VoicePunchDraft
+                projectId={projectId}
+                formRef={formRef}
+                assignees={assignees}
+                disabled={pending}
+                onApplied={() => {
+                  setDirty(true)
+                  draft.save()
+                }}
+              />
 
               <TextField name="title" label="Title" required maxLength={160} autoFocus error={fieldError('title')} placeholder="e.g. Cracked tile at front entry" />
               <TextAreaField
