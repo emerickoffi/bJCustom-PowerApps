@@ -2,7 +2,9 @@
 
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, ImagePlus, Loader2, Trash2 } from 'lucide-react'
+import { Camera, ImagePlus, Loader2, RotateCcw, Trash2 } from 'lucide-react'
+import { preparePhotoForUpload } from '@/components/shared/prepare-photo'
+import { retryableItems, runUploadBatch, uploadSummary, type UploadOutcome } from '@/lib/photo-upload'
 import { createClient } from '@/lib/supabase/client'
 import { MEDIA_BUCKET, safeFileName } from '@/lib/walkthroughs'
 import { DAILY_LOG_PHOTO_LIMIT, DAILY_LOG_PHOTO_MAX_BYTES, DAILY_LOG_PHOTO_TYPES, dailyLogPhotoPath } from '@/lib/daily-logs'
@@ -20,6 +22,7 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState<{ tone: 'error' | 'status'; text: string } | null>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
+  const [retry, setRetry] = useState<File[]>([])
   const remaining = DAILY_LOG_PHOTO_LIMIT - photos.length
   const busy = uploading || remaining <= 0
   const inlineRef = useRef<HTMLDivElement>(null)
@@ -32,45 +35,52 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
     inline: inlineRef,
   })
 
-  async function handleFiles(files: FileList | null) {
-    if (!files?.length) return
-    const list = Array.from(files).slice(0, remaining)
-    const failures: string[] = []
-    setUploading(true)
-    setMessage({ tone: 'status', text: `Uploading ${list.length} photo${list.length === 1 ? '' : 's'}...` })
-    const supabase = createClient()
-    for (const file of list) {
-      if (!ALLOWED.has(file.type)) {
-        failures.push(`${file.name}: use JPEG, PNG, WebP or HEIC.`)
-        continue
-      }
-      if (file.size > DAILY_LOG_PHOTO_MAX_BYTES) {
-        failures.push(`${file.name}: larger than 15 MB.`)
-        continue
-      }
-      const path = dailyLogPhotoPath(logId, `${crypto.randomUUID()}-${safeFileName(file.name)}`)
-      const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(path, file, { contentType: file.type, upsert: false })
-      if (error) {
-        failures.push(`${file.name} could not be uploaded.`)
-        continue
-      }
-      const result = await registerDailyLogPhotoAction({
-        project_id: projectId,
-        log_id: logId,
-        storage_path: path,
-        file_name: file.name.slice(0, 200),
-        mime_type: file.type as (typeof DAILY_LOG_PHOTO_TYPES)[number],
-        size_bytes: file.size,
-        caption: '',
-      })
-      if (result.error) failures.push(`${file.name}: ${result.error}`)
-    }
-    if (Array.from(files).length > list.length) failures.push(`Only ${DAILY_LOG_PHOTO_LIMIT} photos can be attached to one log.`)
-    setUploading(false)
+  async function handleFiles(input: FileList | File[] | null) {
+    const picked = Array.from(input ?? [])
     if (inputRef.current) inputRef.current.value = ''
     if (cameraRef.current) cameraRef.current.value = ''
-    setMessage(failures.length ? { tone: 'error', text: failures.join(' ') } : { tone: 'status', text: 'Photos added.' })
-    router.refresh()
+    if (!picked.length) return
+    const list = picked.slice(0, remaining)
+    setUploading(true)
+    setRetry([])
+    setMessage({ tone: 'status', text: `Uploading ${list.length} photo${list.length === 1 ? '' : 's'}...` })
+    const supabase = createClient()
+    const { uploaded, failed } = await runUploadBatch(
+      list,
+      async (original): Promise<UploadOutcome> => {
+        if (!ALLOWED.has(original.type)) return { ok: false, reason: `${original.name}: use JPEG, PNG, WebP or HEIC.`, retryable: false }
+        const file = await preparePhotoForUpload(original)
+        if (file.size > DAILY_LOG_PHOTO_MAX_BYTES) return { ok: false, reason: `${file.name}: larger than 15 MB.`, retryable: false }
+        const path = dailyLogPhotoPath(logId, `${crypto.randomUUID()}-${safeFileName(file.name)}`)
+        const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(path, file, { contentType: file.type, upsert: false })
+        if (error) return { ok: false, reason: `${file.name} could not be uploaded.`, retryable: true }
+        const result = await registerDailyLogPhotoAction({
+          project_id: projectId,
+          log_id: logId,
+          storage_path: path,
+          file_name: file.name.slice(0, 200),
+          mime_type: file.type as (typeof DAILY_LOG_PHOTO_TYPES)[number],
+          size_bytes: file.size,
+          caption: '',
+        })
+        if (result.error) {
+          await supabase.storage.from(MEDIA_BUCKET).remove([path])
+          return { ok: false, reason: `${file.name}: ${result.error}`, retryable: true }
+        }
+        return { ok: true }
+      },
+      (done, total) => done < total && setMessage({ tone: 'status', text: `Uploading ${done + 1} of ${total}...` }),
+    )
+    const notes = failed.map((f) => f.reason)
+    if (picked.length > list.length) notes.push(`Only ${DAILY_LOG_PHOTO_LIMIT} photos can be attached to one log.`)
+    setUploading(false)
+    setRetry(retryableItems(failed))
+    setMessage(
+      notes.length
+        ? { tone: 'error', text: `${uploadSummary(uploaded.length, failed.length)} ${notes.join(' ')}` }
+        : { tone: 'status', text: uploadSummary(uploaded.length, 0) },
+    )
+    if (uploaded.length) router.refresh()
   }
 
   return (
@@ -118,9 +128,17 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
         </div>
       )}
       {message && (
-        <p role={message.tone === 'error' ? 'alert' : 'status'} className={message.tone === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}>
-          {message.text}
-        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p role={message.tone === 'error' ? 'alert' : 'status'} className={message.tone === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}>
+            {message.text}
+          </p>
+          {editable && retry.length > 0 && (
+            <Button type="button" variant="outline" className="h-11 shrink-0" disabled={uploading} onClick={() => handleFiles(retry)}>
+              <RotateCcw aria-hidden="true" />
+              {`Retry ${retry.length} ${retry.length === 1 ? 'photo' : 'photos'}`}
+            </Button>
+          )}
+        </div>
       )}
       {photos.length === 0 ? (
         <p className="text-sm text-muted-foreground">No photos attached.</p>

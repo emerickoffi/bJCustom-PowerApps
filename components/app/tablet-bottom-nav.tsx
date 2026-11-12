@@ -3,19 +3,27 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { CalendarDays, FolderKanban, House, Menu } from 'lucide-react'
+import { CalendarDays, ClipboardList, FolderKanban, House, Menu, type LucideIcon } from 'lucide-react'
 import { AppNav } from '@/components/app/app-nav'
+import { bottomNavTabs, isTabActive, type BottomTabKey } from '@/lib/bottom-nav'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import type { NavGroup, NavItem } from '@/lib/navigation'
 import { cn } from '@/lib/utils'
 
 const tabClass =
-  'flex min-h-14 min-w-16 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50'
+  'flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50'
 const activeClass = 'bg-link-soft text-link'
 const idleClass = 'text-muted-foreground hover:bg-muted hover:text-foreground'
 
+const TAB_ICONS: Record<BottomTabKey, LucideIcon> = {
+  home: House,
+  projects: FolderKanban,
+  'my-work': ClipboardList,
+  schedule: CalendarDays,
+}
+
 /**
- * Tablet primary navigation: Home, Projects, Schedule (when the module is available to this role), More.
+ * Phone and tablet primary navigation: Home, Projects, My Work and Schedule (when the role can open them), More.
  * Everything else the role can reach is in More, built from the same permission-filtered list as the sidebar.
  */
 export function TabletBottomNav({
@@ -29,13 +37,12 @@ export function TabletBottomNav({
 }) {
   const pathname = usePathname()
   const [moreOpen, setMoreOpen] = useState(false)
-  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+  const isActive = (href: string) => isTabActive(pathname, href)
 
-  const primary = [
-    { href: homeHref, label: 'Home', Icon: House },
-    { href: '/projects', label: 'Projects', Icon: FolderKanban },
-    ...(items.some((i) => i.href === '/schedule') ? [{ href: '/schedule', label: 'Schedule', Icon: CalendarDays }] : []),
-  ]
+  const primary = bottomNavTabs(
+    items.map((i) => i.href),
+    homeHref,
+  ).map((tab) => ({ ...tab, Icon: TAB_ICONS[tab.key] }))
   const primaryHrefs = new Set(primary.map((p) => p.href))
   const moreItems = items.filter((i) => !primaryHrefs.has(i.href))
   const moreActive = !primary.some((p) => isActive(p.href)) && moreItems.some((i) => isActive(i.href))
@@ -44,7 +51,7 @@ export function TabletBottomNav({
     <nav
       data-tablet-bottom-nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-30 hidden border-t border-[#D6DDE5] bg-white/95 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] shadow-[0_-1px_2px_rgba(23,77,50,0.04)] backdrop-blur tablet:block print:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 hidden max-[599.98px]:block border-t border-[#D6DDE5] bg-white/95 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] shadow-[0_-1px_2px_rgba(23,77,50,0.04)] backdrop-blur tablet:block print:hidden"
     >
       <ul className="mx-auto flex max-w-xl items-stretch gap-1 px-3 py-1.5">
         {primary.map(({ href, label, Icon }) => {
