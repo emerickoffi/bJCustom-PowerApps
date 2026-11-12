@@ -7,6 +7,7 @@ const ESTIMATE_SEMANTIC_TONE: Record<EstimateStatus, SemanticTone> = {
   submitted: 'cobalt',
   approved: 'success',
   rejected: 'danger',
+  changes_requested: 'orange',
 }
 
 export function EstimateStatusBadge({ status, className }: { status: EstimateStatus; className?: string }) {

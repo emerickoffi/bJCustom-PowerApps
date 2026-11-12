@@ -24,7 +24,7 @@ export const ESTIMATE_CATEGORIES = [
 ] as const
 export type EstimateCategory = (typeof ESTIMATE_CATEGORIES)[number]
 
-export const ESTIMATE_STATUSES = ['draft', 'internal_review', 'submitted', 'approved', 'rejected'] as const
+export const ESTIMATE_STATUSES = ['draft', 'internal_review', 'submitted', 'approved', 'rejected', 'changes_requested'] as const
 export type EstimateStatus = (typeof ESTIMATE_STATUSES)[number]
 
 export const ESTIMATE_STATUS_LABELS: Record<EstimateStatus, string> = {
@@ -33,6 +33,7 @@ export const ESTIMATE_STATUS_LABELS: Record<EstimateStatus, string> = {
   submitted: 'Submitted to homeowner',
   approved: 'Approved',
   rejected: 'Rejected',
+  changes_requested: 'Changes requested',
 }
 
 export const ESTIMATE_STATUS_TONES: Record<EstimateStatus, StatusTone> = {
@@ -41,15 +42,18 @@ export const ESTIMATE_STATUS_TONES: Record<EstimateStatus, StatusTone> = {
   submitted: 'warning',
   approved: 'solid',
   rejected: 'danger',
+  changes_requested: 'warning',
 }
 
+/** Methods staff can record. Homeowner portal decisions are recorded only by the homeowner. */
 export const DECISION_METHODS = ['in_person', 'email', 'phone', 'paper_signature', 'other'] as const
-export const DECISION_METHOD_LABELS: Record<(typeof DECISION_METHODS)[number], string> = {
+export const DECISION_METHOD_LABELS: Record<(typeof DECISION_METHODS)[number] | 'homeowner_portal', string> = {
   in_person: 'In person',
   email: 'Email',
   phone: 'Phone',
   paper_signature: 'Signed paper copy',
   other: 'Other',
+  homeowner_portal: 'Homeowner portal',
 }
 
 export const ESTIMATE_UNITS = ['ea', 'lot', 'sq ft', 'ln ft', 'cu yd', 'hr', 'day', 'allow'] as const

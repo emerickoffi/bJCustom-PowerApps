@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { getMySignatureTasks } from '@/app/actions/signatures'
 import { buildHomeownerActions } from '@/lib/next-actions'
 import { HomeownerActions } from '@/components/portal/homeowner-actions'
+import { getPortalApprovals } from '@/lib/portal-approvals-data'
 
 export const metadata: Metadata = { title: 'Your home' }
 
@@ -132,6 +133,12 @@ export default async function PortalPage() {
     repairsAwaitingConfirmation: repairRows ?? [],
     signatureTasks: signatureTaskLists.flat(),
   })
+  const approvalsEnabled = Boolean(features?.estimates || features?.change_orders)
+  const approvals = approvalsEnabled && ids.length ? await getPortalApprovals() : []
+  const pendingByProject = new Map<string, number>()
+  for (const a of approvals) {
+    if (a.status === 'pending') pendingByProject.set(a.project_id, (pendingByProject.get(a.project_id) ?? 0) + 1)
+  }
   const firstName = session?.fullName?.split(' ')[0]
 
   return (
@@ -201,6 +208,12 @@ export default async function PortalPage() {
                       <Fact icon={CalendarClock} label="Target completion" value={formatDate(p.target_completion_date)} />
                     </dl>
                     <div className="flex flex-wrap gap-2 border-t pt-6">
+                      {(pendingByProject.get(p.id) ?? 0) > 0 && (
+                        <Button size="lg" render={<Link href="/portal/approvals" />} nativeButton={false}>
+                          {`Review approvals (${pendingByProject.get(p.id)})`}
+                          <ArrowRight data-icon="inline-end" />
+                        </Button>
+                      )}
                       {features?.schedule && (
                         <Button size="lg" render={<Link href={`/portal/projects/${p.id}/schedule`} />} nativeButton={false}>
                           Construction progress
@@ -231,6 +244,11 @@ export default async function PortalPage() {
                       {warrantyProjects.has(p.id) && (
                         <Button size="lg" variant="outline" render={<Link href={`/portal/projects/${p.id}/warranty`} />} nativeButton={false}>
                           Warranty
+                        </Button>
+                      )}
+                      {approvalsEnabled && !pendingByProject.get(p.id) && (
+                        <Button size="lg" variant="outline" render={<Link href="/portal/approvals" />} nativeButton={false}>
+                          Approvals
                         </Button>
                       )}
                       {features?.invoices && (
