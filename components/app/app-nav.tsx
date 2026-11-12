@@ -25,14 +25,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import {
-  NAV_GROUPS,
-  NAV_GROUPS_COOKIE,
-  PERSISTENT_NAV_GROUP,
-  PLANNED_MODULES,
-  type NavGroup,
-  type NavItem,
-} from '@/lib/navigation'
+import { NAV_GROUPS, NAV_OPEN_GROUP_COOKIE, PERSISTENT_NAV_GROUP, type NavGroup, type NavItem } from '@/lib/navigation'
 
 export const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
@@ -54,14 +47,12 @@ export const ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   organization: Building2,
 }
 
-const UPCOMING = PLANNED_MODULES
-
 function NavLink({
   href,
   label,
   icon,
   active,
-  muted,
+  nested,
   collapsed,
   onNavigate,
 }: {
@@ -69,7 +60,7 @@ function NavLink({
   label: string
   icon: string
   active: boolean
-  muted?: boolean
+  nested?: boolean
   collapsed?: boolean
   onNavigate?: () => void
 }) {
@@ -80,28 +71,24 @@ function NavLink({
       onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'group relative flex h-11 items-center gap-3 rounded-nav px-3.5 text-sm transition-colors duration-150',
+        'group relative flex items-center rounded-nav transition-colors duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
-        collapsed && 'justify-center px-0',
+        nested ? 'h-10 gap-2.5 px-3 text-[0.8125rem] lg:h-9' : 'h-11 gap-3 px-3.5 text-sm',
+        collapsed && 'h-11 justify-center px-0',
         active
           ? 'bg-sidebar-selected font-semibold text-sidebar-selected-foreground'
           : 'font-medium text-sidebar-foreground hover:bg-sidebar-hover',
-        muted && !active && 'text-sidebar-muted',
       )}
     >
       <Icon
         className={cn(
-          'size-[1.125rem] shrink-0',
-          active ? 'text-sidebar-selected-icon' : muted ? 'text-current' : 'text-sidebar-icon',
+          'shrink-0',
+          nested && !collapsed ? 'size-4' : 'size-[1.125rem]',
+          active ? 'text-sidebar-selected-icon' : 'text-sidebar-icon',
         )}
         aria-hidden="true"
       />
       <span className={cn('truncate', collapsed && 'sr-only')}>{label}</span>
-      {muted && !collapsed && (
-        <span className="ml-auto rounded-badge bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
-          Soon
-        </span>
-      )}
     </Link>
   )
   if (!collapsed) return link
@@ -120,41 +107,56 @@ export function AppNav({
   items,
   onNavigate,
   collapsed,
-  closedGroups = [],
+  openGroup: initialOpenGroup = null,
 }: {
   items: NavItem[]
   onNavigate?: () => void
   collapsed?: boolean
-  /** Groups the user collapsed, read from the cookie on the server so the first paint matches. */
-  closedGroups?: NavGroup[]
+  /** The single expanded group, read from the cookie on the server so the first paint matches. */
+  openGroup?: NavGroup | null
 }) {
   const pathname = usePathname()
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
-  const [closed, setClosed] = useState<NavGroup[]>(closedGroups)
   const idPrefix = useId()
 
   const sections = NAV_GROUPS.map((group) => ({
     ...group,
     items: items.filter((item) => (item.group ?? 'workspace') === group.key),
   })).filter((section) => section.items.length > 0)
-  const upcomingActive = UPCOMING.some((module) => isActive(`/modules/${module.slug}`))
+  const activeGroup =
+    sections.find((section) => section.key !== PERSISTENT_NAV_GROUP && section.items.some((item) => isActive(item.href)))
+      ?.key ?? null
+
+  const [openGroup, setOpenGroup] = useState<NavGroup | null>(activeGroup ?? initialOpenGroup)
+  // Navigating into a group opens it (closing the others); navigating to an ungrouped page leaves the accordion alone.
+  const [syncedPath, setSyncedPath] = useState(pathname)
+  if (pathname !== syncedPath) {
+    setSyncedPath(pathname)
+    if (activeGroup && activeGroup !== openGroup) setOpenGroup(activeGroup)
+  }
 
   function toggleGroup(key: NavGroup) {
-    const next = closed.includes(key) ? closed.filter((k) => k !== key) : [...closed, key]
-    setClosed(next)
-    document.cookie = `${NAV_GROUPS_COOKIE}=${next.join(',')}; path=/; max-age=31536000; samesite=lax`
+    const next = openGroup === key ? null : key
+    setOpenGroup(next)
+    document.cookie = `${NAV_OPEN_GROUP_COOKIE}=${next ?? 'none'}; path=/; max-age=31536000; samesite=lax`
   }
 
   return (
-    <nav aria-label="Main" className="flex flex-col gap-4">
+    <nav aria-label="Main" className={cn('flex flex-col', collapsed ? 'gap-3' : 'gap-1')}>
       {sections.map((section, index) => {
         const persistent = section.key === PERSISTENT_NAV_GROUP
-        const containsActive = section.items.some((item) => isActive(item.href))
-        // The group holding the current page always stays open, so navigating never hides the active link.
-        const open = collapsed || persistent || containsActive || !closed.includes(section.key)
+        const containsActive = section.key === activeGroup
+        const open = openGroup === section.key
         const panelId = `${idPrefix}-${section.key}`
         const links = section.items.map((item) => (
-          <NavLink key={item.href} {...item} active={isActive(item.href)} collapsed={collapsed} onNavigate={onNavigate} />
+          <NavLink
+            key={item.href}
+            {...item}
+            active={isActive(item.href)}
+            nested={!persistent}
+            collapsed={collapsed}
+            onNavigate={onNavigate}
+          />
         ))
 
         if (collapsed) {
@@ -167,7 +169,7 @@ export function AppNav({
         }
         if (persistent) {
           return (
-            <div key={section.key} role="group" aria-label={section.label} className="flex flex-col gap-1">
+            <div key={section.key} role="group" aria-label={section.label} className="mb-2 flex flex-col gap-0.5">
               {links}
             </div>
           )
@@ -179,20 +181,23 @@ export function AppNav({
               onClick={() => toggleGroup(section.key)}
               aria-expanded={open}
               aria-controls={panelId}
-              disabled={containsActive}
               className={cn(
-                'flex h-7 items-center justify-between rounded-md px-3.5 text-[0.6875rem] font-semibold text-sidebar-muted transition-colors',
-                'hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/45',
-                'disabled:cursor-default disabled:hover:text-sidebar-muted',
+                'flex h-9 items-center justify-between rounded-nav px-3.5 text-xs font-medium transition-colors duration-150',
+                'hover:bg-sidebar-hover hover:text-sidebar-foreground',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
+                open || containsActive ? 'text-sidebar-foreground' : 'text-sidebar-muted',
               )}
             >
-              {section.label}
-              {!containsActive && (
-                <ChevronDown
-                  className={cn('size-3.5 transition-transform duration-200', !open && '-rotate-90')}
-                  aria-hidden="true"
-                />
-              )}
+              <span className="flex items-center gap-2">
+                {section.label}
+                {containsActive && !open && (
+                  <span className="size-1.5 rounded-full bg-sidebar-selected-icon" aria-label="contains current page" />
+                )}
+              </span>
+              <ChevronDown
+                className={cn('size-3.5 transition-transform duration-150', !open && '-rotate-90')}
+                aria-hidden="true"
+              />
             </button>
             <div
               id={panelId}
@@ -200,36 +205,15 @@ export function AppNav({
               aria-label={section.label}
               inert={!open || undefined}
               className={cn(
-                'grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none',
+                'grid transition-[grid-template-rows,opacity] duration-150 ease-out motion-reduce:transition-none',
                 open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
               )}
             >
-              <div className="flex min-h-0 flex-col gap-1 overflow-hidden pt-1">{links}</div>
+              <div className="flex min-h-0 flex-col gap-0.5 overflow-hidden pb-1 pl-2 pt-0.5">{links}</div>
             </div>
           </div>
         )
       })}
-      {!collapsed && UPCOMING.length > 0 && (
-        <details open={upcomingActive} className="group/soon">
-          <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-3.5 py-1.5 text-[0.6875rem] font-semibold text-sidebar-muted transition-colors hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/45 [&::-webkit-details-marker]:hidden">
-            Coming soon
-            <ChevronDown className="size-3.5 transition-transform group-open/soon:rotate-180" aria-hidden="true" />
-          </summary>
-          <div className="mt-1 flex flex-col gap-1">
-            {UPCOMING.map((module) => (
-              <NavLink
-                key={module.slug}
-                href={`/modules/${module.slug}`}
-                label={module.label}
-                icon={module.icon}
-                active={isActive(`/modules/${module.slug}`)}
-                muted
-                onNavigate={onNavigate}
-              />
-            ))}
-          </div>
-        </details>
-      )}
     </nav>
   )
 }

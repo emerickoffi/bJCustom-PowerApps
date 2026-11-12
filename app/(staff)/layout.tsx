@@ -6,7 +6,7 @@ import { JobSwitcher } from '@/components/app/job-switcher'
 import { buildGlobalQuickActions, buildProjectPickerActions } from '@/lib/quick-actions'
 import { dashboardKeyForRole } from '@/lib/dashboard-layout'
 import type { ProjectFilterRoute } from '@/lib/route-job'
-import { landingPathForRole, NAV_GROUPS_COOKIE, navForRole, parseClosedNavGroups } from '@/lib/navigation'
+import { landingPathForRole, NAV_OPEN_GROUP_COOKIE, navForRole, parseOpenNavGroup } from '@/lib/navigation'
 import { WorkspaceSwitcher } from '@/components/app/workspace-switcher'
 import { getOrgFeatures } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
@@ -97,7 +97,7 @@ export default async function StaffLayout({ children, modal }: { children: React
   ]
   const layoutPreference = await readLayoutPreference(session.userId, session.organizationId)
   const sidebarMode = parseSidebarMode(cookieStore.get(SIDEBAR_COOKIE)?.value)
-  const closedGroups = parseClosedNavGroups(cookieStore.get(NAV_GROUPS_COOKIE)?.value)
+  const openGroup = parseOpenNavGroup(cookieStore.get(NAV_OPEN_GROUP_COOKIE)?.value)
   const items = navForRole(session.role, features)
   const homeHref = landingPathForRole(session.role)
   const homeLabel = `${PRODUCT_BRAND.name} ${homeHref === '/my-work' ? 'my work' : 'dashboard'}`
@@ -126,14 +126,14 @@ export default async function StaffLayout({ children, modal }: { children: React
             homeLabel={homeLabel}
             homeHref={homeHref}
             defaultMode={sidebarMode}
-            closedGroups={closedGroups}
+            openGroup={openGroup}
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
           <header data-app-header className="sticky top-0 z-30 border-b border-[#D6DDE5] bg-white pt-[env(safe-area-inset-top)] shadow-[0_1px_2px_rgba(23,77,50,0.04)]">
             <div className="flex h-14 min-w-0 items-center gap-2 pl-[max(var(--page-gutter-x),env(safe-area-inset-left))] pr-[max(var(--page-gutter-x),env(safe-area-inset-right))] sm:h-16 sm:gap-3">
               <div className="contents tablet:hidden">
-                <MobileNav items={items} closedGroups={closedGroups} />
+                <MobileNav items={items} openGroup={openGroup} />
               </div>
               <Link
                 href={homeHref}
@@ -174,7 +174,7 @@ export default async function StaffLayout({ children, modal }: { children: React
           </main>
         </div>
       </div>
-      <TabletBottomNav items={items} homeHref={homeHref} closedGroups={closedGroups} />
+      <TabletBottomNav items={items} homeHref={homeHref} openGroup={openGroup} />
       <AssistantDock
         assistant={showAssistant ? { configured: getAssistantProviderConfig().configured } : null}
         globalActions={globalQuickActions}

@@ -9,10 +9,10 @@ import type { NavGroup, NavItem } from '@/lib/navigation'
 
 export function MobileNav({
   items,
-  closedGroups,
+  openGroup,
 }: {
   items: NavItem[]
-  closedGroups?: NavGroup[]
+  openGroup?: NavGroup | null
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -31,7 +31,7 @@ export function MobileNav({
           </div>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto px-4 py-6">
-          <AppNav items={items} onNavigate={() => setOpen(false)} closedGroups={closedGroups} />
+          <AppNav items={items} onNavigate={() => setOpen(false)} openGroup={openGroup} />
         </div>
       </SheetContent>
     </Sheet>
