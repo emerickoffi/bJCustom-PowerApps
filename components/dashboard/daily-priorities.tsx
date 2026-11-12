@@ -1,31 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
-import { ArrowRight, CheckCircle2, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowRight, ChevronDown, CircleAlert, CircleCheck, ListOrdered, Loader2, RefreshCw } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { formatShortDate } from '@/lib/greeting'
 import { cn } from '@/lib/utils'
-import type { Briefing, BriefingItem, PriorityCategory } from '@/lib/daily-priorities'
+import type { Briefing, BriefingItem } from '@/lib/daily-priorities'
 
-const TONE: Record<PriorityCategory, string> = {
-  overdue: 'border-[#FECACA] bg-[#FEF2F2] text-[#B42318]',
-  blocking: 'border-[#FDBA74] bg-[#FFF1E6] text-[#B54708]',
-  due_today: 'border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]',
-  upcoming: 'border-[#BFDBFE] bg-[#EFF6FF] text-[#1D4ED8]',
-  waiting: 'border-[#D6DDE5] bg-[#F5F7FA] text-[#475467]',
-}
+const INITIAL_ROWS = 3
+const FOCUS_RECHECK_MS = 120_000
 
-async function requestBriefing(mode: 'auto' | 'manual', projectId: string | null): Promise<Briefing> {
+async function requestBriefing(projectId: string | null): Promise<Briefing> {
+  // "auto" re-ranks from live records every time and only asks the model when the ranked facts changed.
   const res = await fetch('/api/priorities', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode, projectId }),
+    body: JSON.stringify({ mode: 'auto', projectId }),
   })
   const body = (await res.json().catch(() => null)) as { briefing?: Briefing; error?: string } | null
-  if (!res.ok || !body?.briefing) throw new Error(body?.error ?? 'Couldn’t load priorities.')
+  if (!res.ok || !body?.briefing) throw new Error(body?.error ?? 'Couldn’t check priorities.')
   return body.briefing
 }
 
@@ -37,122 +33,268 @@ function newer(a: Briefing | undefined | null, b: Briefing): Briefing {
   return a && a.dataCheckedAt > b.dataCheckedAt ? a : b
 }
 
-export function DailyPriorities({ initial }: { initial: Briefing }) {
+export function DailyPriorities({ initial, viewAllHref }: { initial: Briefing; viewAllHref?: string }) {
   const router = useRouter()
-  const [manual, setManual] = useState<Briefing | null>(null)
+  const listId = useId()
+  const [expanded, setExpanded] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
+  const [announcement, setAnnouncement] = useState('')
 
   const wantsSummary = initial.aiAvailable && (initial.state === 'needs_summary' || initial.state === 'stale')
-  const { data: auto, isLoading: writing } = useSWR(
-    wantsSummary ? ['priorities', initial.fingerprint, initial.projectId ?? 'all'] : null,
-    () => requestBriefing('auto', initial.projectId),
-    { revalidateOnFocus: false, revalidateOnReconnect: false, shouldRetryOnError: false, dedupingInterval: 60_000 },
+  const { data, error, isValidating, mutate } = useSWR(
+    ['priorities', initial.scope, initial.projectId ?? 'all'],
+    () => requestBriefing(initial.projectId),
+    {
+      fallbackData: initial,
+      revalidateOnMount: wantsSummary,
+      revalidateIfStale: false,
+      revalidateOnFocus: true,
+      focusThrottleInterval: FOCUS_RECHECK_MS,
+      revalidateOnReconnect: false,
+      shouldRetryOnError: false,
+      dedupingInterval: 10_000,
+      onSuccess: (fresh) => {
+        setRefreshError(null)
+        // Keep the category list in step when a focus re-check finds resolved or new work.
+        if (fresh.fingerprint !== initial.fingerprint) router.refresh()
+      },
+    },
   )
 
-  const briefing = newer(manual, newer(auto, initial))
+  const briefing = newer(data, initial)
+  const busy = refreshing || isValidating
+  const writing = isValidating && !refreshing && wantsSummary && !briefing.items.some((i) => i.summarized)
+  const failure = refreshError ?? (error ? 'Couldn’t refresh priorities.' : null)
 
   async function refresh() {
-    if (refreshing) return
+    if (busy) return
     setRefreshing(true)
-    setError(null)
+    setAnnouncement('')
     try {
-      setManual(await requestBriefing('manual', initial.projectId))
+      const fresh = await requestBriefing(initial.projectId)
+      await mutate(fresh, { revalidate: false })
+      setRefreshError(null)
+      setAnnouncement(fresh.items.length ? `Priorities updated. ${fresh.items.length} shown.` : 'Priorities updated.')
       router.refresh()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Couldn’t refresh priorities.')
+      setRefreshError(e instanceof Error ? e.message : 'Couldn’t refresh priorities.')
+      setAnnouncement('Couldn’t refresh priorities. Showing the last update.')
     } finally {
       setRefreshing(false)
     }
   }
 
-  const busy = refreshing || writing
-  const scopeLabel = briefing.scope === 'mine' ? 'your work' : 'all work you can see'
+  const items = briefing.items
+  const visible = expanded ? items : items.slice(0, INITIAL_ROWS)
+  const partial = briefing.unchecked.length > 0
+  const aiFellBack = briefing.aiAvailable && items.length > 0 && !items.some((i) => i.summarized) && !writing
 
   return (
-    <section aria-labelledby="daily-priorities-heading" aria-busy={busy} className="rounded-lg border border-[#D6DDE5] bg-[#F8FAFC]">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-4 pb-2 pt-3">
-        <div className="min-w-0">
-          <h3 id="daily-priorities-heading" className="text-sm font-semibold text-[#17212B]">
-            Today&apos;s priorities
+    <section aria-labelledby={`${listId}-heading`} aria-busy={busy} className="flex flex-col border-b border-[#E4E9EF] pb-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <h3 id={`${listId}-heading`} className="flex items-center gap-1.5 text-sm font-semibold text-[#17212B]">
+            <ListOrdered className="size-4 text-[#007F95]" aria-hidden="true" />
+            Your priorities
           </h3>
           <p className="text-xs text-[#5B6775]">
-            Ranked from {scopeLabel} · checked {timeOf(briefing.dataCheckedAt)}
-            {briefing.generatedAt ? ` · summary written ${timeOf(briefing.generatedAt)}` : ''}
+            <span className="sr-only">Last checked </span>
+            <span aria-hidden="true">Updated </span>
+            <time dateTime={briefing.dataCheckedAt}>{timeOf(briefing.dataCheckedAt)}</time>
+            {briefing.scope === 'mine' ? ' · My work' : ' · All work'}
           </p>
         </div>
-        {briefing.aiAvailable && briefing.items.length > 0 && (
-          <Button type="button" variant="outline" size="sm" onClick={refresh} disabled={busy} className="h-8 bg-white">
-            {refreshing ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <RefreshCw className="size-3.5" aria-hidden />}
-            Refresh summary
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={refresh}
+          disabled={busy}
+          aria-label={refreshing ? 'Refreshing priorities' : 'Refresh priorities'}
+          title="Refresh priorities"
+          className="size-8 shrink-0 text-[#526173] hover:text-[#007F95]"
+        >
+          {refreshing ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
+        </Button>
       </div>
 
-      <div aria-live="polite" className="px-4 text-xs text-[#5B6775]">
-        {writing && !refreshing && <p className="pb-2">Writing a short summary…</p>}
-        {error && <p className="pb-2 text-[#B42318]">{error}</p>}
-        {!error && briefing.notice && <p className="pb-2">{briefing.notice}</p>}
-        {!briefing.aiAvailable && briefing.items.length > 0 && (
-          <p className="pb-2">AI summaries are off, so items show their original details.</p>
-        )}
-      </div>
+      <p className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </p>
 
-      {briefing.items.length === 0 ? (
-        <div className="flex items-center gap-2 px-4 pb-4 pt-1 text-sm text-[#344054]">
-          <CheckCircle2 className="size-4 text-[#0F766E]" aria-hidden />
-          Nothing is overdue, blocked, or due this week for {scopeLabel}.
-        </div>
+      <StatusNotes
+        writing={writing}
+        failure={failure}
+        lastChecked={timeOf(briefing.dataCheckedAt)}
+        onRetry={refresh}
+        retryDisabled={busy}
+        partial={partial}
+        unchecked={briefing.unchecked}
+        notice={briefing.notice}
+        aiFellBack={aiFellBack}
+      />
+
+      {items.length === 0 ? (
+        partial ? null : (
+          <p className="mt-2 flex items-center gap-2 text-sm text-[#344054]">
+            <CircleCheck className="size-4 text-[#0F766E]" aria-hidden="true" />
+            No urgent actions found.
+          </p>
+        )
       ) : (
-        <ol className="flex flex-col divide-y divide-[#E4E9EF] px-4 pb-2">
-          {briefing.items.map((item, index) => (
-            <PriorityRow key={item.id} item={item} index={index} />
+        <ol id={listId} className="mt-1 flex flex-col divide-y divide-[#EEF1F4]">
+          {visible.map((item, index) => (
+            <PriorityRow key={item.id} item={item} rank={index + 1} />
           ))}
         </ol>
       )}
 
-      {briefing.total > briefing.items.length && (
-        <p className="border-t border-[#E4E9EF] px-4 py-2 text-xs text-[#5B6775]">
-          Top {briefing.items.length} of {briefing.total}. The full list is below.
-        </p>
+      {(items.length > INITIAL_ROWS || (viewAllHref && briefing.total > items.length)) && (
+        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+          {items.length > INITIAL_ROWS && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+              aria-controls={listId}
+              className="inline-flex min-h-8 items-center gap-1 rounded-sm text-xs font-medium text-[#007F95] hover:text-[#006B7E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007F95]"
+            >
+              <ChevronDown className={cn('size-3.5 transition-transform', expanded && 'rotate-180')} aria-hidden="true" />
+              {expanded ? 'Show less' : 'Show all priorities'}
+            </button>
+          )}
+          {viewAllHref && briefing.total > items.length && (
+            <Link
+              href={viewAllHref}
+              className="inline-flex min-h-8 items-center gap-1 rounded-sm text-xs font-medium text-[#007F95] underline-offset-4 hover:text-[#006B7E] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007F95]"
+            >
+              View all actions
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          )}
+        </div>
       )}
     </section>
   )
 }
 
-function PriorityRow({ item, index }: { item: BriefingItem; index: number }) {
-  const meta = [
-    item.projectName,
-    item.owner.kind === 'you' ? 'Assigned to you' : item.owner.label,
-    item.dueDate ? `Due ${formatShortDate(item.dueDate)}` : null,
-  ].filter(Boolean)
+function StatusNotes(props: {
+  writing: boolean
+  failure: string | null
+  lastChecked: string
+  onRetry: () => void
+  retryDisabled: boolean
+  partial: boolean
+  unchecked: string[]
+  notice: string | null
+  aiFellBack: boolean
+}) {
+  const notes: React.ReactNode[] = []
+  if (props.failure) {
+    notes.push(
+      <p key="stale" className="flex flex-wrap items-center gap-x-2 text-[#B54708]">
+        <CircleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+        {`${props.failure} Showing priorities from ${props.lastChecked}.`}
+        <button
+          type="button"
+          onClick={props.onRetry}
+          disabled={props.retryDisabled}
+          className="rounded-sm font-medium text-[#007F95] underline underline-offset-2 hover:text-[#006B7E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007F95] disabled:opacity-60"
+        >
+          Retry
+        </button>
+      </p>,
+    )
+  }
+  if (props.partial) {
+    notes.push(
+      <p key="partial" className="flex items-center gap-1.5" title={`Not checked: ${props.unchecked.join(', ')}`}>
+        <CircleAlert className="size-3.5 shrink-0 text-[#B54708]" aria-hidden="true" />
+        Some sources could not be checked.
+        <span className="sr-only">{`Not checked: ${props.unchecked.join(', ')}.`}</span>
+      </p>,
+    )
+  }
+  if (props.writing) notes.push(<p key="writing">Writing short summaries…</p>)
+  else if (props.notice) notes.push(<p key="notice">{props.notice}</p>)
+  else if (props.aiFellBack) notes.push(<p key="fallback">Showing standard priority text.</p>)
+  if (!notes.length) return null
+  return <div className="mt-1.5 flex flex-col gap-1 text-xs text-[#5B6775]">{notes}</div>
+}
+
+function ownerLabel(item: BriefingItem): { text: string; yours: boolean } {
+  if (item.owner.kind === 'you') return { text: 'Assigned to you', yours: true }
+  if (item.owner.kind === 'approver') return { text: 'Team · Manager approval', yours: false }
+  return { text: `Team · ${item.owner.label}`, yours: false }
+}
+
+function rankReason(item: BriefingItem, rank: number): string {
+  const owner = item.owner.kind === 'you' ? 'assigned to you' : item.owner.kind === 'approver' ? 'waiting on a manager approval' : `owned by ${item.owner.label === 'Unassigned' ? 'no one yet' : item.owner.label}`
+  const due = item.dueDate ? `, due ${formatShortDate(item.dueDate)}` : ''
+  return `Ranked #${rank} because it is ${item.categoryLabel.toLowerCase()}${due}, and ${owner}. Source: ${item.source}.`
+}
+
+function PriorityRow({ item, rank }: { item: BriefingItem; rank: number }) {
+  const urgent = item.category === 'overdue' || item.category === 'due_today' || item.category === 'blocking'
+  const owner = ownerLabel(item)
 
   return (
-    <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-3">
-      <span
-        aria-hidden
-        className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold tabular-nums text-[#17212B] ring-1 ring-[#D6DDE5]"
-      >
-        {index + 1}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={cn('rounded-badge border px-1.5 py-0.5 text-[11px] font-medium leading-4', TONE[item.category])}>
-            {item.categoryLabel}
-          </span>
-          <p className="min-w-0 text-sm font-medium text-[#17212B] text-pretty">{item.heading}</p>
+    <li className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-start sm:gap-4">
+      <div className="flex min-w-0 flex-1 gap-2.5">
+        <span aria-hidden="true" className="mt-px w-4 shrink-0 text-right text-xs font-semibold tabular-nums text-[#8592A3]">
+          {rank}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-pretty text-sm font-medium leading-snug text-[#17212B]">{item.heading}</p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-[#526173]">
+            {urgent && (
+              <span className="inline-flex items-center gap-1 font-medium text-[#B54708]">
+                <span className="size-1.5 rounded-full bg-[#F97316]" aria-hidden="true" />
+                {item.categoryLabel}
+              </span>
+            )}
+            {item.projectName && <Sep show={urgent} />}
+            {item.projectName && <span className="font-medium text-[#17212B]/80">{item.projectName}</span>}
+            <Sep show={urgent || !!item.projectName} />
+            <span className={cn(owner.yours && 'font-medium text-[#007F95]')}>{owner.text}</span>
+            {item.dueDate && (
+              <>
+                <Sep show />
+                <time dateTime={item.dueDate} className={cn('tabular-nums', item.category === 'overdue' && 'font-medium text-[#B54708]')}>
+                  {`Due ${formatShortDate(item.dueDate)}`}
+                </time>
+              </>
+            )}
+          </p>
+          <p className="mt-1 line-clamp-2 text-pretty text-xs leading-relaxed text-[#344054]">{item.why}</p>
+          <details className="group/why mt-0.5 text-xs text-[#526173]">
+            <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-sm font-medium text-[#526173] hover:text-[#007F95] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007F95] [&::-webkit-details-marker]:hidden">
+              <ChevronDown className="size-3 transition-transform group-open/why:rotate-180" aria-hidden="true" />
+              Why this matters
+            </summary>
+            <p className="mt-0.5 text-pretty leading-relaxed">{rankReason(item, rank)}</p>
+          </details>
         </div>
-        <p className="mt-1 text-sm text-[#344054] text-pretty">{item.why}</p>
-        {meta.length > 0 && <p className="mt-1 text-xs text-[#5B6775]">{meta.join(' · ')}</p>}
       </div>
       <Link
         href={item.href}
-        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 shrink-0 self-start text-[#0F766E] hover:text-[#0B5F59]')}
+        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-8 shrink-0 self-start bg-white pl-[26px] sm:pl-3')}
+        title={item.actionLabel}
       >
-        {item.actionLabel}
-        <ArrowRight className="size-3.5" aria-hidden />
-        <span className="sr-only">: {item.heading}</span>
+        {item.verb}
+        <ArrowRight className="size-3.5" aria-hidden="true" />
+        <span className="sr-only">{`: ${item.heading}`}</span>
       </Link>
     </li>
+  )
+}
+
+function Sep({ show }: { show: boolean }) {
+  if (!show) return null
+  return (
+    <span aria-hidden="true" className="text-[#A3ADB9]">
+      ·
+    </span>
   )
 }

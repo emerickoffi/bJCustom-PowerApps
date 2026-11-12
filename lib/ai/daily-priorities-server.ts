@@ -36,8 +36,11 @@ export function priorityAiAvailable(features: Features): boolean {
   return Boolean(features.ai_assistant) && getAssistantProviderConfig().configured
 }
 
-/** Open quote requests whose response deadline has passed, limited to what RLS lets this user read. */
-export async function loadOverdueQuoteRequests(orgId: string, enabled: boolean): Promise<PriorityQuoteRequest[]> {
+/**
+ * Open quote requests whose response deadline has passed, limited to what RLS lets this user read.
+ * Returns null when the query failed so callers can report the source as unchecked.
+ */
+export async function loadOverdueQuoteRequests(orgId: string, enabled: boolean): Promise<PriorityQuoteRequest[] | null> {
   if (!enabled) return []
   const supabase = await createClient()
   const [{ data, error }, orgTz] = await Promise.all([
@@ -53,7 +56,7 @@ export async function loadOverdueQuoteRequests(orgId: string, enabled: boolean):
       .limit(50),
     getOrgTimeZone(supabase, orgId),
   ])
-  if (error || !data) return []
+  if (error || !data) return null
   return data.map((row) => {
     const project = Array.isArray(row.projects) ? row.projects[0] : row.projects
     return {
@@ -93,6 +96,7 @@ export type PriorityContextArgs = {
   scope: 'mine' | 'all'
   projectId: string | null
   inputs: CandidateInputs
+  unchecked?: string[]
 }
 
 /** Ranks from live data, then overlays any still-valid cached wording. Never calls the model. */
@@ -126,6 +130,7 @@ export async function assembleBriefing(
     scope: args.scope,
     projectId: args.projectId,
     notice: args.notice,
+    unchecked: args.unchecked,
   })
   return { briefing, top }
 }

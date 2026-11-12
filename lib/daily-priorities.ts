@@ -373,6 +373,37 @@ export function parseStoredSummaries(value: unknown): BriefingSummary[] {
 
 /* ------------------------------ Display model ------------------------------ */
 
+export type PriorityVerb = 'Review' | 'Respond' | 'Verify' | 'Open'
+
+const VERB_BY_TYPE: Record<string, PriorityVerb> = {
+  estimate: 'Review',
+  change_order: 'Review',
+  quote_request: 'Review',
+  rfi: 'Respond',
+  project_issue: 'Verify',
+  schedule_activity: 'Verify',
+}
+
+export function priorityVerb(entityType: string): PriorityVerb {
+  return VERB_BY_TYPE[entityType] ?? 'Open'
+}
+
+/** Action Center modules the briefing ranks from; a failure in any of them means the briefing is incomplete. */
+export const PRIORITY_SOURCE_MODULES = new Set(['Schedule', 'Punch List', 'Change Orders', 'Questions (RFIs)', 'Estimates', 'Projects'])
+
+export function uncheckedSources(args: {
+  modules: string[]
+  tasksFailed: boolean
+  agendaFailed: boolean
+  quotesFailed: boolean
+}): string[] {
+  const list = args.modules.filter((m) => PRIORITY_SOURCE_MODULES.has(m))
+  if (args.agendaFailed) list.push('Schedule')
+  if (args.tasksFailed) list.push('To-dos')
+  if (args.quotesFailed) list.push('Quote requests')
+  return [...new Set(list)]
+}
+
 export type BriefingItem = {
   id: string
   heading: string
@@ -384,6 +415,7 @@ export type BriefingItem = {
   owner: PriorityOwner
   href: string
   actionLabel: string
+  verb: PriorityVerb
   source: string
   summarized: boolean
 }
@@ -401,6 +433,8 @@ export type Briefing = {
   scope: 'mine' | 'all'
   projectId: string | null
   notice: string | null
+  /** Sources that failed to load; an empty briefing is only "all clear" when this is empty. */
+  unchecked: string[]
 }
 
 /**
@@ -417,6 +451,7 @@ export function composeBriefing(args: {
   scope: 'mine' | 'all'
   projectId: string | null
   notice?: string | null
+  unchecked?: string[]
 }): Briefing {
   const fingerprint = briefingFingerprint(args.top, args.today)
   const summaries = new Map((args.stored?.summaries ?? []).map((s) => [s.id, s]))
@@ -434,6 +469,7 @@ export function composeBriefing(args: {
       owner: c.owner,
       href: c.href,
       actionLabel: c.actionLabel,
+      verb: priorityVerb(c.entityType),
       source: c.source,
       summarized,
     }
@@ -457,5 +493,6 @@ export function composeBriefing(args: {
     scope: args.scope,
     projectId: args.projectId,
     notice: args.notice ?? null,
+    unchecked: [...new Set(args.unchecked ?? [])],
   }
 }

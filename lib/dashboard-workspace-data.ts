@@ -38,12 +38,12 @@ export async function loadAgenda(
   orgId: string,
   scheduleEnabled: boolean,
   days: number = AGENDA_WEEK_DAYS,
-): Promise<{ agenda: Agenda; today: string; activities: AgendaActivity[] }> {
+): Promise<{ agenda: Agenda; today: string; activities: AgendaActivity[]; failed?: boolean }> {
   const today = await getOrgToday(orgId)
   if (!scheduleEnabled) return { agenda: { today: [], week: [] }, today, activities: [] }
   const supabase = await createClient()
   const weekEnd = addIsoDays(today, days - 1)
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('schedule_activities')
     .select(
       'id, project_id, name, activity_type, status, planned_start, planned_end, assigned_to, projects!inner(name, archived_at)',
@@ -67,7 +67,7 @@ export async function loadAgenda(
     planned_end: a.planned_end,
     assigned_to: a.assigned_to,
   }))
-  return { agenda: buildAgenda(rows, today, days), today, activities: rows }
+  return { agenda: buildAgenda(rows, today, days), today, activities: rows, failed: !!error }
 }
 
 /**

@@ -14,7 +14,7 @@ import {
   loadOverdueQuoteRequests,
   priorityAiAvailable,
 } from '@/lib/ai/daily-priorities-server'
-import { UPCOMING_DAYS, scopeKey } from '@/lib/daily-priorities'
+import { UPCOMING_DAYS, scopeKey, uncheckedSources } from '@/lib/daily-priorities'
 
 export const maxDuration = 30
 
@@ -79,8 +79,14 @@ export async function POST(request: NextRequest) {
       actionItems: actions.items,
       tasks: tasks.state === 'available' ? tasks.open : [],
       activities: agenda.activities,
-      quoteRequests,
+      quoteRequests: quoteRequests ?? [],
     },
+    unchecked: uncheckedSources({
+      modules: actions.unavailable.map((u) => u.module),
+      tasksFailed: tasks.state === 'unavailable',
+      agendaFailed: !!agenda.failed,
+      quotesFailed: quoteRequests === null,
+    }),
   }
 
   const first = await assembleBriefing({ ...ctx, aiAvailable })
