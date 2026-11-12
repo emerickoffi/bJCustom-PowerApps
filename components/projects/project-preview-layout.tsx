@@ -60,7 +60,9 @@ export function ProjectPreviewLayout({ projects, children }: { projects: Preview
   // Only a project on the displayed page can be previewed, so unknown or malformed IDs never reach the server.
   const selected = requestedId ? (projects.find((p) => p.id === requestedId) ?? null) : null
   const selectedId = selected?.id ?? null
-  const isWide = useIsWide()
+  const [overlay, setOverlay] = useState(false)
+  const viewportWide = useIsWide()
+  const isWide = overlay ? false : viewportWide
   const inlineOpen = Boolean(selected) && isWide === true
 
   useEffect(() => {
@@ -123,7 +125,7 @@ export function ProjectPreviewLayout({ projects, children }: { projects: Preview
     })
   }, [holdInPlace, selectedId, urlId, whenClear])
 
-  const context = useMemo(() => ({ selectedId, select }), [selectedId, select])
+  const context = useMemo(() => ({ selectedId, select, setOverlay }), [selectedId, select])
 
   return (
     <ProjectPreviewContext.Provider value={context}>

@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 export type ProjectPreviewContextValue = {
   selectedId: string | null
   select: (projectId: string) => void
+  /** While on, the preview opens as an overlay drawer at every width instead of an in-layout column. */
+  setOverlay?: (on: boolean) => void
 }
 
 export const ProjectPreviewContext = createContext<ProjectPreviewContextValue | null>(null)

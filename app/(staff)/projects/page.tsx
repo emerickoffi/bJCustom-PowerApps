@@ -7,6 +7,9 @@ import { DirectorySort } from '@/components/shared/directory-sort'
 import { DirectoryPagination } from '@/components/shared/directory-pagination'
 import { ProjectTable } from '@/components/projects/project-table'
 import { ProjectPreviewLayout } from '@/components/projects/project-preview-layout'
+import { ProjectListMap } from '@/components/projects/project-list-map'
+import { buildNextAction } from '@/lib/project-next-action'
+import { siteAddressLine } from '@/lib/project-locations'
 import { ProjectColumns, ProjectColumnsMenu } from '@/components/projects/project-columns'
 import { PREVIEW_PARAM } from '@/lib/project-preview'
 import { PROJECT_COLUMNS_COOKIE, parseProjectColumns } from '@/lib/project-columns'
@@ -238,6 +241,24 @@ export default async function ProjectsPage({
             </>
           }
           table={<ProjectTable rows={rows} />}
+          map={
+            <ProjectListMap
+              canEdit={manager}
+              rows={rows.map((row) => {
+                const action = buildNextAction(row, row.details)
+                return {
+                  id: row.id,
+                  name: row.name,
+                  project_number: row.project_number,
+                  status: row.status,
+                  locationLabel: row.locationLabel,
+                  address: siteAddressLine(row),
+                  nextAction: action.kind === 'unavailable' ? null : action.title,
+                  behindSchedule: row.details.behindSchedule,
+                }
+              })}
+            />
+          }
           cards={
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 xl:group-data-preview-open/preview:grid-cols-1 xl:group-data-preview-open/preview:@2xl:grid-cols-2 xl:group-data-preview-open/preview:@5xl:grid-cols-3">
           {rows.map((row) => {

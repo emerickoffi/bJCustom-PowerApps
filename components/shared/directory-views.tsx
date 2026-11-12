@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useSyncExternalStore, type ReactNode } from 'react'
-import { LayoutGrid, Rows3 } from 'lucide-react'
+import { LayoutGrid, Map as MapIcon, Rows3 } from 'lucide-react'
 import { DIRECTORY_VIEW_COOKIE, type DirectoryModule, type DirectoryView } from '@/lib/directory'
 import { cn } from '@/lib/utils'
 import { segmentClass } from '@/lib/interaction-styles'
@@ -25,20 +25,23 @@ function useIsDesktop() {
 const VIEW_OPTIONS: { value: DirectoryView; label: string; icon: typeof LayoutGrid }[] = [
   { value: 'cards', label: 'Cards', icon: LayoutGrid },
   { value: 'table', label: 'Table', icon: Rows3 },
+  { value: 'map', label: 'Map', icon: MapIcon },
 ]
 
 export function DirectoryViewSwitcher({
   value,
   onChange,
   label,
+  withMap = false,
 }: {
   value: DirectoryView
   onChange: (view: DirectoryView) => void
   label: string
+  withMap?: boolean
 }) {
   return (
     <div role="group" aria-label={label} className="inline-flex shrink-0 rounded-lg border border-[#D6DDE5] bg-card p-0.5">
-      {VIEW_OPTIONS.map(({ value: option, label: optionLabel, icon: Icon }) => {
+      {VIEW_OPTIONS.filter((o) => withMap || o.value !== 'map').map(({ value: option, label: optionLabel, icon: Icon }) => {
         const active = option === value
         return (
           <button
@@ -76,6 +79,7 @@ export function DirectoryViews({
   controls,
   cards,
   table,
+  map,
   leading,
   summaryAddon,
   empty,
@@ -88,6 +92,8 @@ export function DirectoryViews({
   controls?: ReactNode
   cards: ReactNode
   table: ReactNode
+  /** Rendered only while the Map view is active, so its map library loads on demand. Omit to hide the Map option. */
+  map?: ReactNode
   /** Search and filters placed on the left of one shared toolbar row; the summary moves to a line beneath it. */
   leading?: ReactNode
   /** Extra content on the summary line, such as applied-filter chips (with `leading`). */
@@ -95,7 +101,9 @@ export function DirectoryViews({
   /** Shown instead of the views and view controls when there are no results (with `leading`). */
   empty?: ReactNode
 }) {
-  const [chosen, setChosen] = useState<DirectoryView | null>(initialView)
+  const withMap = map !== undefined
+  const [chosenState, setChosen] = useState<DirectoryView | null>(initialView)
+  const chosen = chosenState === 'map' && !withMap ? null : chosenState
   const isDesktop = useIsDesktop()
   const active = chosen ?? (isDesktop ? desktopDefault : mobileDefault)
 
@@ -119,8 +127,10 @@ export function DirectoryViews({
       value={active}
       onChange={choose}
       label={`${module === 'clients' ? 'Clients' : 'Projects'} directory view`}
+      withMap={withMap}
     />
   )
+  const mapView = chosen === 'map' ? map : null
 
   if (leading !== undefined) {
     // The leading filters keep one stable position in the tree, so typing a search that empties the list never remounts it.
@@ -147,6 +157,7 @@ export function DirectoryViews({
           <>
             <div className={visibility('cards')}>{cards}</div>
             <div className={visibility('table')}>{table}</div>
+            {mapView}
           </>
         )}
       </div>
@@ -166,11 +177,13 @@ export function DirectoryViews({
             value={active}
             onChange={choose}
             label={`${module === 'clients' ? 'Clients' : 'Projects'} directory view`}
+            withMap={withMap}
           />
         </div>
       </div>
       <div className={visibility('cards')}>{cards}</div>
       <div className={visibility('table')}>{table}</div>
+      {mapView}
     </div>
   )
 }
