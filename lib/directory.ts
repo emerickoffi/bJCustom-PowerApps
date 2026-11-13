@@ -1,4 +1,5 @@
-export type DirectoryView = 'cards' | 'table'
+/** `map` is offered only by directories that pass a map view; elsewhere a stored `map` falls back to the default. */
+export type DirectoryView = 'cards' | 'table' | 'map'
 export type DirectoryModule = 'clients' | 'projects'
 
 export const DIRECTORY_PAGE_SIZE = 20
@@ -11,7 +12,7 @@ export const DIRECTORY_VIEW_COOKIE: Record<DirectoryModule, string> = {
 }
 
 export function parseView(value: string | null | undefined): DirectoryView | null {
-  return value === 'cards' || value === 'table' ? value : null
+  return value === 'cards' || value === 'table' || value === 'map' ? value : null
 }
 
 export function parsePage(value: string | null | undefined): number {
