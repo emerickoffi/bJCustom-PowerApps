@@ -1,6 +1,7 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { categoryChoices, locationChoices, type CategoryRecord } from '@/lib/selection-option-lists'
 import {
   SELECTIONS_BUCKET,
   isSelectionStatus,
@@ -80,10 +81,30 @@ export async function getSelectionThumbnails(rows: Pick<SelectionListRow, 'id'>[
   return out
 }
 
-export async function getSelectionCategories(): Promise<string[]> {
+/**
+ * Company category records. `manageable` is false until the category-management migration
+ * (archived_at column) is applied; the picker still works from the plain name list.
+ */
+export async function getSelectionCategoryRecords(): Promise<{ records: CategoryRecord[]; manageable: boolean }> {
   const supabase = await createClient()
-  const { data } = await supabase.from('selection_categories').select('name').order('name')
-  return (data ?? []).map((r) => r.name as string)
+  const full = await supabase.from('selection_categories').select('id, name, archived_at').order('name')
+  if (!full.error) {
+    return { records: (full.data ?? []).map((r) => ({ id: r.id as string, name: r.name as string, archived: r.archived_at !== null })), manageable: true }
+  }
+  const basic = await supabase.from('selection_categories').select('id, name').order('name')
+  return { records: (basic.data ?? []).map((r) => ({ id: r.id as string, name: r.name as string, archived: false })), manageable: false }
+}
+
+export async function getSelectionCategories(): Promise<string[]> {
+  const { records } = await getSelectionCategoryRecords()
+  return categoryChoices(records)
+}
+
+/** Default rooms plus every custom location already used on this company's selections. */
+export async function getSelectionLocations(): Promise<string[]> {
+  const supabase = await createClient()
+  const { data } = await supabase.from('selections').select('location').not('location', 'is', null).limit(5000)
+  return locationChoices((data ?? []).map((r) => r.location as string | null))
 }
 
 export type LinkedChangeOrder = { id: string; co_number: string | null; number: number; title: string; status: string; price_adjustment_cents: number; selection_revision: number | null }

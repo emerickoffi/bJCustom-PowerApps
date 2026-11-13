@@ -2,12 +2,12 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ListChecks } from 'lucide-react'
-import { requireManager } from '@/lib/session'
+import { canManage, requireManager } from '@/lib/session'
 import { getOrgFeatures, requireFeature } from '@/lib/features'
 import { formatMoney } from '@/lib/financials'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { changeOrderPath } from '@/lib/change-orders'
-import { getSelectionCategories, getSelectionDetail } from '@/lib/selections-data'
+import { getSelectionCategories, getSelectionDetail, getSelectionLocations } from '@/lib/selections-data'
 import { STATUS_LABELS, STATUS_TONES, availableActions, isOverdue, selectionsPath } from '@/lib/selections'
 import { PageHeader, Surface } from '@/components/shared/page-header'
 import { SemanticBadge } from '@/components/shared/semantic-badge'
@@ -24,9 +24,10 @@ export default async function SelectionDetailPage({ params }: { params: Promise<
   const session = await requireManager()
   await requireFeature(session.organizationId, 'estimates')
   const { id, selectionId } = await params
-  const [s, categories, features] = await Promise.all([
+  const [s, categories, locations, features] = await Promise.all([
     getSelectionDetail(id, selectionId),
     getSelectionCategories(),
+    getSelectionLocations(),
     getOrgFeatures(session.organizationId),
   ])
   const coEnabled = Boolean(features.change_orders)
@@ -101,7 +102,7 @@ export default async function SelectionDetailPage({ params }: { params: Promise<
               <details>
                 <summary className="cursor-pointer type-section-title text-foreground">Edit details</summary>
                 <div className="mt-4">
-                  <SelectionForm projectId={id} categories={categories} initial={s} />
+                  <SelectionForm projectId={id} categories={categories} locations={locations} canCreateCategory={canManage(session.role)} initial={s} />
                 </div>
               </details>
             </Surface>
