@@ -1,5 +1,6 @@
 import 'server-only'
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { assertTestIsolation, isTestEnvironment } from '@/lib/test-env/guard'
 
 const API = 'https://api.hellosign.com/v3'
 
@@ -18,7 +19,7 @@ export function getProviderConfig(): ProviderConfig {
     configured: Boolean(apiKey),
     embeddedAvailable: Boolean(apiKey && clientId),
     clientId,
-    testMode: process.env.DROPBOX_SIGN_TEST_MODE?.trim().toLowerCase() !== 'false',
+    testMode: isTestEnvironment() || process.env.DROPBOX_SIGN_TEST_MODE?.trim().toLowerCase() !== 'false',
   }
 }
 
@@ -88,6 +89,7 @@ export async function createSignatureRequest(input: {
   filename: string
   metadata: Record<string, string>
 }): Promise<ProviderSignatureRequest> {
+  if (isTestEnvironment()) assertTestIsolation()
   const config = getProviderConfig()
   const form = new FormData()
   form.set('title', input.title)

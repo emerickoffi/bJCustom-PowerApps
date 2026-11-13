@@ -1,3 +1,5 @@
+import { checkTestIsolation, isTestEnvironment } from '../test-env/guard.ts'
+
 export type EmailEnv = Record<string, string | undefined>
 
 export type EmailConfig = {
@@ -73,7 +75,11 @@ export function resolveEmailConfig(env: EmailEnv = process.env): EmailConfig {
   else if (!senderAddress(from)) problems.push('EMAIL_FROM is not a valid sender address.')
   if (replyTo && !isValidEmailAddress(replyTo)) problems.push('EMAIL_REPLY_TO is not a valid address.')
   if (!appUrl) problems.push('APP_BASE_URL is not set to the https origin used in email links.')
-  if (environment !== 'production' && allowlist.length === 0) {
+  if (isTestEnvironment(env)) {
+    if (allowlist.length === 0) problems.push('TREFORT_ENV=test requires EMAIL_ALLOWED_RECIPIENTS so only sandbox inboxes receive mail.')
+    const isolation = checkTestIsolation(env)
+    if (!isolation.ok) problems.push(...isolation.problems.map((p) => `Test isolation: ${p}`))
+  } else if (environment !== 'production' && allowlist.length === 0) {
     problems.push('Outside production, EMAIL_ALLOWED_RECIPIENTS must list test addresses or @domains so real customers are never emailed.')
   }
   if (env.NODE_ENV === 'test') problems.push('Email sending is disabled while automated tests run.')

@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
 import { runEmailDispatch } from '@/lib/email/worker'
+import { checkTestIsolation, isTestEnvironment } from '@/lib/test-env/guard'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -15,6 +16,9 @@ function authorized(request: Request) {
 
 export async function GET(request: Request) {
   if (!authorized(request)) return new Response('Unauthorized', { status: 401 })
+  if (isTestEnvironment() && !checkTestIsolation().ok) {
+    return Response.json({ error: 'test_isolation_failed' }, { status: 503 })
+  }
   try {
     const summary = await runEmailDispatch()
     return Response.json(summary)
