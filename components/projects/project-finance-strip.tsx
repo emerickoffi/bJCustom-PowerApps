@@ -6,6 +6,7 @@ import { formatCents } from '@/lib/format'
 import { balanceCents, isOverdue, type InvoiceStatus } from '@/lib/invoices'
 import { latestApprovedEstimate } from '@/components/estimates/project-estimates-panel'
 import { cn } from '@/lib/utils'
+import { BUDGET_VARIANCE_HELP, describeBudgetVariance } from '@/lib/budget-variance-display'
 
 type Figure = {
   key: string
@@ -15,6 +16,7 @@ type Figure = {
   href: string
   unavailable?: boolean
   tone?: 'danger' | 'good'
+  title?: string
 }
 
 type EstimateRow = { id: string; status: string; construction_total_cents: number; decision_at: string | null; estimate_number: string; revision: number }
@@ -78,17 +80,8 @@ export async function ProjectFinanceStrip({
         label: 'Budget variance',
         value: estRes.error ? 'Unavailable' : variance === null ? 'Not available' : `${variance > 0 ? '+' : ''}${formatCentsExact(variance)}`,
         unavailable: Boolean(estRes.error) || variance === null,
-        tone: variance === null ? undefined : variance > 0 ? 'danger' : 'good',
-        note:
-          variance !== null
-            ? variance > 0
-              ? 'Over budget'
-              : variance < 0
-                ? 'Within budget'
-                : 'On budget'
-            : estRes.error
-              ? undefined
-              : 'Needs a budget and an approved estimate',
+        ...describeBudgetVariance(variance, Boolean(estRes.error)),
+        title: variance !== null ? BUDGET_VARIANCE_HELP : undefined,
         href: estimatesHref,
       },
     )
@@ -159,6 +152,7 @@ export async function ProjectFinanceStrip({
                 {f.value}
               </span>
               {f.note && <span className="mt-auto text-xs text-muted-foreground">{f.note}</span>}
+              {f.title && <span className="sr-only">{f.title}</span>}
             </Link>
           </li>
         ))}

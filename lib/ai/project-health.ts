@@ -3,21 +3,22 @@
  * results but never overrides them. Pure and dependency-free so the rules are unit tested.
  */
 
-export type HealthLevel = 'on_track' | 'needs_attention' | 'at_risk' | 'insufficient_data'
+export type HealthLevel = 'on_track' | 'needs_attention' | 'at_risk' | 'insufficient_data' | 'not_assessed'
 
 export const HEALTH_LABELS: Record<HealthLevel, string> = {
   on_track: 'On Track',
   needs_attention: 'Needs Attention',
   at_risk: 'At Risk',
   insufficient_data: 'Insufficient Data',
+  not_assessed: 'Not Assessed',
 }
 
 export const HEALTH_RULES = {
-  version: 1,
-  overall: 'The worst level among assessed dimensions. Dimensions with insufficient data are listed but never lower the result. If no dimension can be assessed, the result is Insufficient Data.',
+  version: 2,
+  overall: 'The worst level among assessed dimensions. Dimensions with Insufficient Data or Not Assessed are listed but never lower or raise the result. If no dimension can be assessed, the result is Insufficient Data.',
   schedule:
     'Overdue = planned_end before today and status not completed or skipped (the app rule). At Risk: 3+ overdue activities, or the target completion date has passed without a recorded completion. Needs Attention: any overdue or delayed activity, or the project is on hold. Insufficient Data: schedule off, unavailable, or empty. Completed projects are On Track for schedule and are never treated as delayed; cancelled projects are not assessed.',
-  financial: `Compares the most relevant estimate's construction total (approved first, then submitted, then internal review; drafts and rejected excluded) with the project's recorded estimated budget. At Risk: estimate more than ${10}% over budget. Needs Attention: more than ${5}% over. Insufficient Data: no budget or no comparable estimate.`,
+  financial: `Verified cost evidence means at least one approved commitment, approved vendor bill, or cost forecast. At Risk: approved vendor bills exceed the recorded budget, or the estimate is more than ${10}% over budget. Needs Attention: approved commitments exceed the recorded budget, or the estimate is more than ${5}% over. On Track only when verified cost evidence exists and none of these apply. Without verified cost evidence, the estimate-vs-budget comparison is a preliminary projection: it can raise Needs Attention or At Risk (labeled preliminary) but never On Track; otherwise the result is Not Assessed and names the missing evidence. Insufficient Data: no budget, or neither a comparable estimate nor cost evidence.`,
   issues_and_approvals:
     'At Risk: any open critical-priority issue, or 3+ overdue open issues. Needs Attention: any overdue or high-priority open issue, or a declined, expired, or failed signature request. Pending approvals and awaiting signatures are reported but do not change the level. Insufficient Data: issues and signatures both unavailable.',
 } as const
@@ -38,6 +39,14 @@ export type HealthEstimate = {
   estimate_date: string | null
 }
 export type HealthIssue = { priority: string; status: string; due_date: string | null }
+/** Recorded job-cost evidence, in dollars. null or omitted means it was not loaded and is treated as missing. */
+export type HealthCostEvidence = {
+  approvedCommitments: number
+  committedTotal: number
+  approvedBills: number
+  actualTotal: number
+  forecastLines: number
+}
 
 export type HealthInput = {
   today: string
@@ -47,7 +56,7 @@ export type HealthInput = {
   /** null when the schedule module is off or failed to load. */
   schedule: HealthActivity[] | null
   /** null when the estimates module is off or failed to load. */
-  financial: { budget: number | null; estimates: HealthEstimate[] } | null
+  financial: { budget: number | null; estimates: HealthEstimate[]; costEvidence?: HealthCostEvidence | null } | null
   /** null when issues are off or failed to load. */
   issues: { open: HealthIssue[]; awaitingBuilderApproval: number; awaitingHomeownerConfirmation: number } | null
   /** null when e-signatures are off or failed to load. */
@@ -62,7 +71,7 @@ export type HealthAssessment = {
   dimensions: { schedule: HealthDimension; financial: HealthDimension; issues_and_approvals: HealthDimension }
 }
 
-const SEVERITY: Record<HealthLevel, number> = { insufficient_data: -1, on_track: 0, needs_attention: 1, at_risk: 2 }
+const SEVERITY: Record<HealthLevel, number> = { insufficient_data: -1, not_assessed: -1, on_track: 0, needs_attention: 1, at_risk: 2 }
 
 export const isActivityOverdue = (a: Pick<HealthActivity, 'status' | 'planned_end'>, today: string) =>
   !!a.planned_end && a.planned_end < today && !CLOSED_ACTIVITY.has(a.status)
@@ -120,29 +129,72 @@ function financialHealth(input: HealthInput): HealthDimension {
   if (!input.financial) return dim('insufficient_data', ['Estimates are not available for this project.'])
   const { budget, estimates } = input.financial
   if (budget == null || budget <= 0) return dim('insufficient_data', ['No estimated budget is recorded on the project.'])
+  const evidence = input.financial.costEvidence ?? null
+  const verified = hasVerifiedCostEvidence(evidence)
   const estimate = comparableEstimate(estimates)
-  if (!estimate) {
+  if (!estimate && !verified) {
     return dim('insufficient_data', ['No submitted, approved, or in-review estimate with a construction total to compare.'], {
       recorded_budget: budget,
+      ...costEvidenceFacts(evidence),
     })
   }
-  const total = estimate.construction_total as number
-  const variance = total - budget
-  const variancePct = Math.round((variance / budget) * 1000) / 10
-  const facts = {
-    recorded_budget: budget,
-    compared_estimate: estimate.estimate_number,
-    compared_estimate_status: estimate.status,
-    estimate_construction_total: total,
-    variance,
-    variance_percent: variancePct,
-    comparison: 'estimate construction total minus project estimated budget',
+
+  const facts: Record<string, unknown> = { recorded_budget: budget, ...costEvidenceFacts(evidence) }
+  const risk: string[] = []
+  const attention: string[] = []
+  let estimateReason: string | null = null
+
+  if (estimate) {
+    const total = estimate.construction_total as number
+    const variance = total - budget
+    const variancePct = Math.round((variance / budget) * 1000) / 10
+    Object.assign(facts, {
+      compared_estimate: estimate.estimate_number,
+      compared_estimate_status: estimate.status,
+      estimate_construction_total: total,
+      variance,
+      variance_percent: variancePct,
+      comparison: 'estimate construction total minus project estimated budget',
+      estimate_comparison_basis: verified ? 'estimate vs. budget' : 'preliminary budget-based projection (not verified against costs)',
+    })
+    const label = estimate.estimate_number ? `Estimate ${estimate.estimate_number}` : 'The latest estimate'
+    const prefix = verified ? '' : 'Preliminary budget-based projection: '
+    estimateReason = variance > 0 ? `${prefix}${label} is ${variancePct}% over the recorded budget.` : `${prefix}${label} is within the recorded budget.`
+    if (variancePct > OVER_BUDGET_RISK_PCT) risk.push(estimateReason)
+    else if (variancePct > OVER_BUDGET_ATTENTION_PCT) attention.push(estimateReason)
   }
-  const label = estimate.estimate_number ? `Estimate ${estimate.estimate_number}` : 'The latest estimate'
-  const reason = variance > 0 ? `${label} is ${variancePct}% over the recorded budget.` : `${label} is within the recorded budget.`
-  if (variancePct > OVER_BUDGET_RISK_PCT) return dim('at_risk', [reason], facts)
-  if (variancePct > OVER_BUDGET_ATTENTION_PCT) return dim('needs_attention', [reason], facts)
-  return dim('on_track', [reason], facts)
+
+  if (verified && evidence) {
+    if (evidence.actualTotal > budget) risk.unshift('Approved vendor bills exceed the recorded budget.')
+    else if (evidence.committedTotal > budget) attention.unshift('Approved commitments exceed the recorded budget.')
+  }
+
+  if (risk.length) return dim('at_risk', [...risk, ...attention], facts)
+  if (attention.length) return dim('needs_attention', attention, facts)
+  if (!verified) {
+    return dim('not_assessed', [missingCostEvidenceReason(evidence), ...(estimateReason ? [estimateReason] : [])], facts)
+  }
+  return dim('on_track', ['Approved commitments and vendor bills are within the recorded budget.', ...(estimateReason ? [estimateReason] : [])], facts)
+}
+
+export function hasVerifiedCostEvidence(e: HealthCostEvidence | null | undefined): e is HealthCostEvidence {
+  return !!e && (e.approvedCommitments > 0 || e.approvedBills > 0 || e.forecastLines > 0)
+}
+
+function missingCostEvidenceReason(e: HealthCostEvidence | null): string {
+  if (!e) return 'Not Assessed: commitments, vendor bills, and cost forecasts could not be loaded, so financial health cannot be verified.'
+  return 'Not Assessed: no approved commitments, approved vendor bills, or cost forecasts are recorded, so financial health cannot be verified against actual or committed costs.'
+}
+
+function costEvidenceFacts(e: HealthCostEvidence | null): Record<string, unknown> {
+  if (!e) return { cost_evidence: 'not available' }
+  return {
+    approved_commitments: e.approvedCommitments,
+    approved_committed_total: e.committedTotal,
+    approved_vendor_bills: e.approvedBills,
+    approved_actual_total: e.actualTotal,
+    cost_forecast_lines: e.forecastLines,
+  }
 }
 
 function issuesHealth(input: HealthInput): HealthDimension {
@@ -179,7 +231,7 @@ export function assessProjectHealth(input: HealthInput): HealthAssessment {
     financial: financialHealth(input),
     issues_and_approvals: issuesHealth(input),
   }
-  const assessed = Object.values(dimensions).filter((d) => d.level !== 'insufficient_data')
+  const assessed = Object.values(dimensions).filter((d) => d.level !== 'insufficient_data' && d.level !== 'not_assessed')
   const indicator = assessed.length
     ? assessed.reduce((worst, d) => (SEVERITY[d.level] > SEVERITY[worst] ? d.level : worst), 'on_track' as HealthLevel)
     : 'insufficient_data'

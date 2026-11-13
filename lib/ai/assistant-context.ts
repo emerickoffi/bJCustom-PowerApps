@@ -7,13 +7,28 @@ import { OPEN_STATUSES } from '@/lib/signatures'
 import { getProjectNavItems } from '@/lib/project-nav'
 import { navForRole } from '@/lib/navigation'
 import type { AssistantLink, AssistantModule } from '@/lib/ai/assistant-scope'
-import { assessProjectHealth, HEALTH_RULES, type HealthLevel } from '@/lib/ai/project-health'
+import { assessProjectHealth, HEALTH_RULES, type HealthCostEvidence, type HealthLevel } from '@/lib/ai/project-health'
 import { latestSignatureRequests } from '@/lib/next-actions'
 
 const clip = (value: unknown, max = 280) =>
   typeof value === 'string' ? (value.length > max ? `${value.slice(0, max)}…` : value) : value
 
 const dollars = (cents: number | null | undefined) => (cents == null ? null : Math.round(cents) / 100)
+
+type CostRows = { data: Record<string, unknown>[] | null; error: unknown } | null
+
+/** Any missing or failed source makes the evidence unavailable, so financial health fails closed to Not Assessed. */
+function costEvidence(commitments: CostRows, bills: CostRows, forecasts: CostRows): HealthCostEvidence | null {
+  if (!commitments || !bills || !forecasts || commitments.error || bills.error || forecasts.error) return null
+  const sum = (rows: Record<string, unknown>[] | null) => (rows ?? []).reduce((s, r) => s + (Number(r.amount_cents) || 0), 0)
+  return {
+    approvedCommitments: commitments.data?.length ?? 0,
+    committedTotal: sum(commitments.data) / 100,
+    approvedBills: bills.data?.length ?? 0,
+    actualTotal: sum(bills.data) / 100,
+    forecastLines: forecasts.data?.length ?? 0,
+  }
+}
 
 export type AssistantRequestScope = {
   organizationId: string
@@ -696,7 +711,7 @@ export async function loadProjectHealth(
 
   const id = project.id
   const signing = Boolean(features.documents && features.e_signatures)
-  const [{ data: canViewInternal }, schedule, estimates, issues, signatures, managerNames] = await Promise.all([
+  const [{ data: canViewInternal }, schedule, estimates, issues, signatures, managerNames, commitments, bills, forecasts] = await Promise.all([
     supabase.rpc('can_view_project_internal', { p_project: id }),
     features.schedule
       ? supabase.from('schedule_activities').select('name, status, planned_start, planned_end').eq('project_id', id).order('sort_order').limit(300)
@@ -711,6 +726,9 @@ export async function loadProjectHealth(
       ? supabase.from('signature_requests').select('document_id, status, created_at').eq('project_id', id).order('created_at', { ascending: false }).limit(200)
       : null,
     project.project_manager_id ? profileNames(supabase, [project.project_manager_id]) : Promise.resolve(new Map<string, string>()),
+    features.estimates ? supabase.from('project_commitments').select('amount_cents').eq('project_id', id).eq('status', 'approved').limit(1000) : null,
+    features.estimates ? supabase.from('vendor_bills').select('amount_cents').eq('project_id', id).eq('status', 'approved').limit(1000) : null,
+    features.estimates ? supabase.from('project_cost_forecasts').select('etc_cents').eq('project_id', id).limit(100) : null,
   ])
 
   const unavailable: string[] = []
@@ -738,6 +756,7 @@ export async function loadProjectHealth(
       ? {
           budget: dollars(project.estimated_budget_cents),
           estimates: estimateRows.map((e) => ({ estimate_number: e.estimate_number, status: e.status, estimate_date: e.estimate_date, construction_total: dollars(e.construction_total_cents) })),
+          costEvidence: costEvidence(commitments, bills, forecasts),
         }
       : null,
     issues: issueRows

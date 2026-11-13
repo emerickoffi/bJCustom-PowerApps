@@ -47,6 +47,7 @@ const HEALTH_STYLES = {
   needs_attention: 'border-amber-300 bg-amber-50 text-amber-900',
   at_risk: 'border-destructive/30 bg-destructive/5 text-destructive',
   insufficient_data: 'border-border bg-muted text-muted-foreground',
+  not_assessed: 'border-border bg-muted text-muted-foreground',
 } as const
 
 type MarketIndicator = { label: string; value: string; geography: string; period: string; change: string | null; preliminary: boolean; stale: boolean }
