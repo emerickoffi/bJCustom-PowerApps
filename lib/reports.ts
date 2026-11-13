@@ -1,6 +1,5 @@
 import 'server-only'
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
+import { detectLogoMime, logoSource } from '@/lib/company-logo'
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { RESPONSE_LABELS, ISSUE_STATUS_LABELS, PRIORITY_LABELS, VALIDATION_LABELS, WALKTHROUGH_TYPE_LABELS } from '@/lib/walkthroughs'
@@ -11,6 +10,8 @@ export const REPORTS_BUCKET = 'project-documents'
 
 export type ReportSnapshot = {
   organization: string
+  // Optional so snapshots stored before company logo uploads still render (they show the name only).
+  organizationLogoUrl?: string | null
   project: { id: string; name: string; number: string; address: string }
   homeowner: string
   walkthrough: { id: string; title: string; type: string; scheduledDate: string | null; submittedAt: string | null }
@@ -51,7 +52,7 @@ export async function buildWalkthroughSnapshot(supabase: SupabaseClient, walkthr
   }
 
   const [orgRes, clientRes, itemsRes, respRes, issuesRes, wAttRes, staff] = await Promise.all([
-    supabase.from('organizations').select('display_name').eq('id', organizationId).maybeSingle(),
+    supabase.from('organizations').select('display_name, logo_url').eq('id', organizationId).maybeSingle(),
     project.primary_client_id
       ? supabase.from('clients').select('first_name, last_name').eq('id', project.primary_client_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -110,7 +111,8 @@ export async function buildWalkthroughSnapshot(supabase: SupabaseClient, walkthr
 
   const client = clientRes.data as { first_name: string | null; last_name: string | null } | null
   const snapshot: ReportSnapshot = {
-    organization: orgRes.data?.display_name ?? 'B & J Custom Homes',
+    organization: orgRes.data?.display_name ?? 'Builder',
+    organizationLogoUrl: orgRes.data?.logo_url ?? null,
     project: {
       id: project.id,
       name: project.name,
@@ -162,6 +164,26 @@ const fmtDate = (v: string | null) =>
 const fmtDateTime = (v: string | null) =>
   v ? new Date(v).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Chicago' }) + ' CT' : 'Not set'
 
+/**
+ * Embeds the organization's own uploaded logo. Only files in this project's company-logos bucket are
+ * fetched, so an admin-entered URL can never make the server request an arbitrary host. Any other
+ * logo, a WebP file (unsupported by pdf-lib), or a fetch failure falls back to the company name only.
+ */
+async function embedOrganizationLogo(doc: PDFDocument, logoUrl: string | null | undefined) {
+  if (logoSource(logoUrl, process.env.NEXT_PUBLIC_SUPABASE_URL) !== 'uploaded' || !logoUrl) return null
+  try {
+    const res = await fetch(logoUrl, { signal: AbortSignal.timeout(5000) })
+    if (!res.ok) return null
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    const mime = detectLogoMime(bytes)
+    if (mime === 'image/png') return await doc.embedPng(bytes)
+    if (mime === 'image/jpeg') return await doc.embedJpg(bytes)
+    return null
+  } catch {
+    return null
+  }
+}
+
 export async function renderWalkthroughPdf(s: ReportSnapshot, version: number): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
   doc.setTitle(pdfSafe(`${s.walkthrough.title} - Report v${version}`))
@@ -174,12 +196,7 @@ export async function renderWalkthroughPdf(s: ReportSnapshot, version: number): 
   const rule = rgb(0.85, 0.86, 0.88)
   const W = 612, H = 792, M = 54, contentW = W - M * 2
 
-  let logo: Awaited<ReturnType<PDFDocument['embedPng']>> | null = null
-  try {
-    logo = await doc.embedPng(await readFile(path.join(process.cwd(), 'public/branding/bj-custom-homes-logo.png')))
-  } catch {
-    logo = null
-  }
+  const logo = await embedOrganizationLogo(doc, s.organizationLogoUrl)
 
   let page: PDFPage = doc.addPage([W, H])
   let y = H - M

@@ -15,14 +15,14 @@ export type OrganizationBrand = {
 }
 
 /**
- * Initial tenant identity. Used only when an organization has not configured
- * its own logo or before a user belongs to an organization.
+ * Neutral identity used before a user belongs to an organization. It intentionally carries no
+ * customer branding: an empty `logoUrl` renders the neutral placeholder in CompanyLogo.
  */
 export const DEFAULT_BRAND: OrganizationBrand = {
   id: null,
-  displayName: 'B & J Custom Homes',
-  legalName: 'B & J Custom Homes, Inc.',
-  logoUrl: '/branding/bj-custom-homes-logo.png',
+  displayName: 'Your company',
+  legalName: 'Your company',
+  logoUrl: '',
   primaryColor: '#174D32',
   secondaryColor: '#103B27',
   addressLine1: null,
@@ -34,7 +34,7 @@ export const DEFAULT_BRAND: OrganizationBrand = {
   website: null,
 }
 
-/** Intrinsic dimensions of the supplied logo asset, used to preserve aspect ratio. */
+/** Nominal dimensions for company logos; the rendered image keeps its own aspect ratio via object-contain. */
 export const DEFAULT_LOGO_DIMENSIONS = { width: 2016, height: 780 }
 
 export type OrganizationRow = {
@@ -59,7 +59,7 @@ export function brandFromOrganization(org: OrganizationRow | null | undefined): 
     id: org.id,
     displayName: org.display_name,
     legalName: org.legal_name || org.display_name,
-    logoUrl: org.logo_url || DEFAULT_BRAND.logoUrl,
+    logoUrl: org.logo_url?.trim() ?? '',
     primaryColor: org.primary_color,
     secondaryColor: org.secondary_color,
     addressLine1: org.address_line1,
