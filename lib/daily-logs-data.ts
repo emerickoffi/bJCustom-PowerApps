@@ -88,7 +88,16 @@ export async function getCrewCompanyOptions(organizationId: string, projectId?: 
   return ((data ?? []) as CrewCompanyOption[]).map((c) => ({ ...c, assigned: assignedIds.has(c.id) }))
 }
 export type DailyLogPhoto = { id: string; storage_path: string; file_name: string; caption: string | null; created_at: string; url: string | null }
-export type ScheduleActivityOption = { id: string; name: string; phase: string | null; status: string | null }
+export type ScheduleActivityOption = {
+  id: string
+  name: string
+  phase: string | null
+  status: string | null
+  planned_start?: string | null
+  planned_end?: string | null
+  actual_start?: string | null
+  actual_end?: string | null
+}
 
 /** Guards every Daily Log route: staff session, the module switch, and internal access to this project (RLS-scoped). */
 export const requireDailyLogProject = cache(async (projectId: string): Promise<{ session: StaffSession; project: DailyLogProject }> => {
@@ -164,7 +173,7 @@ export async function getScheduleActivityOptions(projectId: string): Promise<Sch
   const supabase = await createClient()
   const { data } = await supabase
     .from('schedule_activities')
-    .select('id, name, phase, status')
+    .select('id, name, phase, status, planned_start, planned_end, actual_start, actual_end')
     .eq('project_id', projectId)
     .order('planned_start', { ascending: true, nullsFirst: false })
     .limit(300)

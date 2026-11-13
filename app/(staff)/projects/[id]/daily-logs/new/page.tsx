@@ -40,7 +40,7 @@ export default async function NewDailyLogPage({ params }: { params: Promise<{ id
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-[75rem] flex-col gap-6">
       <PageHeader title="New daily log" icon={ClipboardList} backHref={dailyLogsPath(project.id)} backLabel="Daily logs" />
       <DailyLogForm projectId={project.id} defaults={defaults} activities={activities} companies={companies} maxDate={addDays(today, 1)} cancelHref={dailyLogsPath(project.id)} />
     </div>

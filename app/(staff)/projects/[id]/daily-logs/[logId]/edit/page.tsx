@@ -43,7 +43,7 @@ export default async function EditDailyLogPage({ params }: { params: Promise<{ i
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-[75rem] flex-col gap-6">
       <PageHeader title={`Edit log for ${formatDate(log.log_date)}`} meta={project.name} icon={ClipboardList} backHref={detailHref} backLabel="Back to log" />
       <DailyLogForm projectId={project.id} defaults={defaults} activities={activities} companies={companies} maxDate={addDays(today, 1)} cancelHref={detailHref} />
     </div>
