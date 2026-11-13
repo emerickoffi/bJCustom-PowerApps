@@ -2,6 +2,7 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import { parseLayoutPreference, type LayoutPreference } from '@/lib/ui-layout'
 import { normalizePlaceQuery, type FixedWeatherChoice, type WeatherChoice } from '@/lib/weather'
+import { resolveWorkScope, type WorkScope } from '@/lib/work-scope'
 
 /**
  * Per-user dashboard preferences kept in cookies. Each value is bound to the user id so a shared browser never
@@ -11,7 +12,7 @@ export const WEATHER_LOCATION_COOKIE = 'dash_weather_location'
 export const WORK_SCOPE_COOKIE = 'dash_work_scope'
 export const LAYOUT_COOKIE = 'ui_layout'
 
-export type WorkScope = 'all' | 'mine'
+export type { WorkScope }
 
 const read = async (name: string, userId: string) => {
   const raw = (await cookies()).get(name)?.value
@@ -62,7 +63,7 @@ export const serializeWeatherChoice = (organizationId: string, choice: WeatherCh
     : `${organizationId}:${serializeFixed(choice)}`
 
 export async function readWorkScope(userId: string): Promise<WorkScope> {
-  return (await read(WORK_SCOPE_COOKIE, userId)) === 'mine' ? 'mine' : 'all'
+  return resolveWorkScope(await read(WORK_SCOPE_COOKIE, userId))
 }
 
 /** Layout is also scoped to the workspace, so switching organizations never carries the choice across. */

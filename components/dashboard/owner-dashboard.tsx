@@ -51,6 +51,7 @@ import { createClient } from '@/lib/supabase/server'
 import { WeatherStrip } from '@/components/dashboard/weather-strip'
 import { readWeatherChoice, readWorkScope } from '@/lib/dashboard-prefs'
 import { WorkScopeControl } from '@/components/dashboard/work-scope-control'
+import { actionListClear, briefingClear } from '@/lib/work-scope'
 import { formatJobsiteAddress, type JobsiteAddress } from '@/lib/weather-data'
 import { LayoutSwitch } from '@/components/app/layout-mode'
 import { TabletHome } from '@/components/dashboard/tablet-home'
@@ -426,7 +427,14 @@ export async function OwnerDashboard({
           viewAll: selectedAction ? `/actions?category=${selectedAction}` : '/actions',
         }}
         headerActions={<WorkScopeControl scope={workScope} />}
-        priorities={<DailyPriorities initial={standardBriefing} viewAllHref="/actions" />}
+        prioritiesClear={briefingClear({ itemCount: standardBriefing.items.length, uncheckedCount: standardBriefing.unchecked.length })}
+        priorities={
+          <DailyPriorities
+            initial={standardBriefing}
+            viewAllHref="/actions"
+            listClear={actionListClear({ itemCount: attention.items.length, unavailableCount: attention.unavailable.length })}
+          />
+        }
       />
     ),
     priority_jobs: (
@@ -512,7 +520,17 @@ export async function OwnerDashboard({
             },
             viewAll: selectedAction ? `/actions?category=${selectedAction}` : '/actions',
           }}
-          priorities={<DailyPriorities initial={tabletBriefing ?? standardBriefing} viewAllHref="/actions" />}
+          prioritiesClear={briefingClear({
+            itemCount: (tabletBriefing ?? standardBriefing).items.length,
+            uncheckedCount: (tabletBriefing ?? standardBriefing).unchecked.length,
+          })}
+          priorities={
+            <DailyPriorities
+              initial={tabletBriefing ?? standardBriefing}
+              viewAllHref="/actions"
+              listClear={actionListClear({ itemCount: tabletAttention.length, unavailableCount: attention.unavailable.length })}
+            />
+          }
         />
       )
     if (id === 'coming_up')

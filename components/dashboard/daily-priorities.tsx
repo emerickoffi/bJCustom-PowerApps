@@ -9,6 +9,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { formatShortDate } from '@/lib/greeting'
 import { cn } from '@/lib/utils'
 import type { Briefing, BriefingItem } from '@/lib/daily-priorities'
+import { briefingClear, briefingMatches, workScopeEmptyMessage } from '@/lib/work-scope'
 
 const INITIAL_ROWS = 3
 const FOCUS_RECHECK_MS = 120_000
@@ -35,7 +36,16 @@ function newer(a: Briefing | undefined | null, b: Briefing): Briefing {
   return a && a.dataCheckedAt > b.dataCheckedAt ? a : b
 }
 
-export function DailyPriorities({ initial, viewAllHref }: { initial: Briefing; viewAllHref?: string }) {
+export function DailyPriorities({
+  initial,
+  viewAllHref,
+  listClear = false,
+}: {
+  initial: Briefing
+  viewAllHref?: string
+  /** The Action Center list below loaded fully and is empty; when priorities are empty too, show one compact state. */
+  listClear?: boolean
+}) {
   const router = useRouter()
   const listId = useId()
   // The server renders in UTC; only format the clock time once we're in the user's timezone.
@@ -66,7 +76,8 @@ export function DailyPriorities({ initial, viewAllHref }: { initial: Briefing; v
     },
   )
 
-  const briefing = newer(data, initial)
+  // A response for the previous scope or project is never shown after a switch.
+  const briefing = newer(briefingMatches(data, initial) ? data : undefined, initial)
   const busy = refreshing || isValidating
   const writing = isValidating && !refreshing && wantsSummary && !briefing.items.some((i) => i.summarized)
   const failure = refreshError ?? (error ? 'Couldn’t refresh priorities.' : null)
@@ -77,6 +88,10 @@ export function DailyPriorities({ initial, viewAllHref }: { initial: Briefing; v
     setAnnouncement('')
     try {
       const fresh = await requestBriefing(initial.projectId)
+      if (!briefingMatches(fresh, initial)) {
+        router.refresh()
+        return
+      }
       await mutate(fresh, { revalidate: false })
       setRefreshError(null)
       setAnnouncement(fresh.items.length ? `Priorities updated. ${fresh.items.length} shown.` : 'Priorities updated.')
@@ -93,6 +108,43 @@ export function DailyPriorities({ initial, viewAllHref }: { initial: Briefing; v
   const visible = expanded ? items : items.slice(0, INITIAL_ROWS)
   const partial = briefing.unchecked.length > 0
   const aiFellBack = briefing.aiAvailable && items.length > 0 && !items.some((i) => i.summarized) && !writing
+  const scopeLabel = briefing.scope === 'mine' ? 'My work' : 'All work'
+
+  const allClear =
+    listClear && briefingClear({ itemCount: items.length, uncheckedCount: briefing.unchecked.length, failed: !!failure })
+  if (allClear) {
+    return (
+      <section aria-label="Action summary" aria-busy={busy} className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+          <p role="status" className="flex items-center gap-2 text-sm font-medium text-[#17212B]">
+            <CircleCheck className="size-4 shrink-0 text-[#0F766E]" aria-hidden="true" />
+            {workScopeEmptyMessage(briefing.scope)}
+          </p>
+          <p className="text-xs text-[#5B6775]">
+            <span className="sr-only">Last checked </span>
+            <span aria-hidden="true">Checked </span>
+            <time dateTime={briefing.dataCheckedAt}>{hydrated ? timeOf(briefing.dataCheckedAt) : '—'}</time>
+            {` · ${scopeLabel}`}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={refresh}
+          disabled={busy}
+          aria-label={refreshing ? 'Refreshing actions' : 'Refresh actions'}
+          title="Refresh"
+          className="size-8 shrink-0 text-[#526173] hover:text-[#007F95]"
+        >
+          {refreshing ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
+        </Button>
+        <p className="sr-only" role="status" aria-live="polite">
+          {announcement}
+        </p>
+      </section>
+    )
+  }
 
   return (
     <section aria-labelledby={`${listId}-heading`} aria-busy={busy} className="flex flex-col border-b border-[#E4E9EF] pb-3">
@@ -106,7 +158,7 @@ export function DailyPriorities({ initial, viewAllHref }: { initial: Briefing; v
             <span className="sr-only">Last checked </span>
             <span aria-hidden="true">Updated </span>
             <time dateTime={briefing.dataCheckedAt}>{hydrated ? timeOf(briefing.dataCheckedAt) : '—'}</time>
-            {briefing.scope === 'mine' ? ' · My work' : ' · All work'}
+            {` · ${scopeLabel}`}
           </p>
         </div>
         <Button
