@@ -9,6 +9,7 @@ import { getSignatureSummaries } from '@/lib/esign/queries'
 import { createClient } from '@/lib/supabase/server'
 import { DocumentLibrary } from '@/components/documents/document-library'
 import { DocumentUploadButton } from '@/components/documents/document-upload-button'
+import { CreateDocumentDialog } from '@/components/documents/create-document-dialog'
 import { DocumentToolbar } from '@/components/documents/document-toolbar'
 import { CategoryNav, DocumentPagination, browseHref, type BrowseParams } from '@/components/documents/document-browse'
 import { countArchivedDocuments, countSignedDocuments, getCategoryCounts, listDocuments } from '@/lib/document-queries'
@@ -75,6 +76,22 @@ export default async function ProjectDocumentsPage({
     list.ok ? getSignatureSummaries(list.rows.map((r) => r.id)) : Promise.resolve({}),
   ])
   const manager = canManage(session.role)
+  const creatableEstimates =
+    manager && features.estimates && !project.archived_at
+      ? await supabase
+          .from('estimates')
+          .select('id, estimate_number, name, revision, status')
+          .eq('project_id', id)
+          .order('created_at', { ascending: false })
+          .limit(25)
+          .then(({ data }) =>
+            (data ?? []).map((e) => ({
+              id: e.id as string,
+              label: [e.estimate_number, e.name].filter(Boolean).join(' · ') + (e.revision > 1 ? ` (rev ${e.revision})` : ''),
+              status: e.status as string,
+            })),
+          )
+      : null
   const searched = Boolean(sp.q || sp.visibility)
   const category = isDocumentCategory(sp.category) ? sp.category : undefined
   const canUpload = !project.archived_at && !archived
@@ -152,8 +169,18 @@ export default async function ProjectDocumentsPage({
         }
         actions={
           canUpload ? (
-            // Keyed by category so the dialog's preselected category follows the one being browsed.
-            <DocumentUploadButton key={category ?? 'all'} projectId={id} canShare={manager} openFromUrl defaultCategory={category} />
+            <div className="flex flex-wrap items-center gap-2">
+              {manager && (
+                <CreateDocumentDialog
+                  projectId={id}
+                  estimates={creatableEstimates}
+                  changeOrders={features.change_orders}
+                  bidRequests={features.subcontractors}
+                />
+              )}
+              {/* Keyed by category so the dialog's preselected category follows the one being browsed. */}
+              <DocumentUploadButton key={category ?? 'all'} projectId={id} canShare={manager} openFromUrl defaultCategory={category} />
+            </div>
           ) : undefined
         }
       />

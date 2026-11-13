@@ -3,13 +3,18 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Archive, ArchiveRestore, Loader2, Plus, Save, Star } from 'lucide-react'
+import { Archive, ArchiveRestore, Copy, EyeOff, Loader2, Plus, Save, Send, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SemanticBadge } from '@/components/shared/semantic-badge'
-import { saveProposalTemplate, setProposalTemplateState } from '@/app/actions/proposals'
+import {
+  duplicateProposalTemplate,
+  saveProposalTemplate,
+  setProposalTemplateState,
+  type TemplateStateChange,
+} from '@/app/actions/proposals'
 import { cn } from '@/lib/utils'
 import {
   PRICING_DISPLAYS,
@@ -22,7 +27,16 @@ import {
   type ProposalTemplate,
   type ProposalText,
   type ProposalTextField,
+  templateStatus,
 } from '@/lib/proposals'
+
+const STATE_MESSAGES: Record<TemplateStateChange, string> = {
+  default: 'Default template updated',
+  archive: 'Template archived',
+  restore: 'Template restored as a draft',
+  publish: 'Template published',
+  unpublish: 'Template moved back to draft',
+}
 
 type Draft = { name: string; pricing_display: PricingDisplay } & Record<ProposalTextField, string>
 
@@ -76,17 +90,34 @@ export function ProposalTemplateManager({
     })
   }
 
-  function changeState(id: string, change: 'default' | 'archive' | 'restore') {
+  function changeState(id: string, change: TemplateStateChange) {
     startTransition(async () => {
       const res = await setProposalTemplateState(id, change)
       if (!res.ok) {
         toast.error(res.error)
         return
       }
-      toast.success(change === 'default' ? 'Default template updated' : change === 'archive' ? 'Template archived' : 'Template restored')
+      toast.success(STATE_MESSAGES[change])
       router.refresh()
     })
   }
+
+  function duplicate(id: string) {
+    startTransition(async () => {
+      const res = await duplicateProposalTemplate(id)
+      if (!res.ok || !res.id) {
+        toast.error(res.ok ? 'Could not duplicate the template.' : res.error)
+        return
+      }
+      toast.success('Draft copy created')
+      const copy = templates.find((t) => t.id === id)
+      setSelectedId(res.id)
+      if (copy) setDraft({ ...toDraft(copy), name: `${copy.name} (copy)`.slice(0, 120) })
+      router.refresh()
+    })
+  }
+
+  const selectedStatus = selected ? templateStatus(selected) : null
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }))
 
@@ -115,7 +146,11 @@ export function ProposalTemplateManager({
                 )}
               >
                 <span className="truncate">{t.name}</span>
-                {t.is_default && <SemanticBadge tone="success">Default</SemanticBadge>}
+                {t.is_default ? (
+                  <SemanticBadge tone="success">Default</SemanticBadge>
+                ) : (
+                  !t.published_at && <SemanticBadge tone="neutral">Draft</SemanticBadge>
+                )}
               </button>
             </li>
           ))}
@@ -146,10 +181,36 @@ export function ProposalTemplateManager({
         }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="type-section-title text-foreground">{selected ? 'Edit template' : 'New template'}</h2>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <h2 className="type-section-title text-foreground">{selected ? 'Edit template' : 'New template'}</h2>
+              {selectedStatus === 'published' && <SemanticBadge tone="success">Published</SemanticBadge>}
+              {selectedStatus === 'draft' && <SemanticBadge tone="neutral">Draft</SemanticBadge>}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {selectedStatus === 'published'
+                ? 'Available when preparing proposals. Saving changes only affects proposals created afterward.'
+                : 'Drafts are hidden from proposals until you publish them.'}
+            </p>
+          </div>
           {selected && !selected.archived_at && (
             <div className="flex flex-wrap gap-2">
-              {!selected.is_default && (
+              {selectedStatus === 'draft' ? (
+                <Button type="button" size="sm" onClick={() => changeState(selected.id, 'publish')} disabled={pending}>
+                  <Send data-icon="inline-start" />
+                  Publish
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" size="sm" onClick={() => changeState(selected.id, 'unpublish')} disabled={pending}>
+                  <EyeOff data-icon="inline-start" />
+                  Unpublish
+                </Button>
+              )}
+              <Button type="button" variant="outline" size="sm" onClick={() => duplicate(selected.id)} disabled={pending}>
+                <Copy data-icon="inline-start" />
+                Duplicate
+              </Button>
+              {selectedStatus === 'published' && !selected.is_default && (
                 <Button type="button" variant="outline" size="sm" onClick={() => changeState(selected.id, 'default')} disabled={pending}>
                   <Star data-icon="inline-start" />
                   Make default

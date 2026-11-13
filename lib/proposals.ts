@@ -83,8 +83,17 @@ export type ProposalTemplate = ProposalText & {
   name: string
   pricing_display: PricingDisplay
   is_default: boolean
+  /** Null while the template is a draft; only published templates can be applied to a document. */
+  published_at: string | null
   archived_at: string | null
   updated_at: string
+}
+
+export type TemplateStatus = 'draft' | 'published' | 'archived'
+
+export function templateStatus(t: Pick<ProposalTemplate, 'archived_at' | 'published_at'>): TemplateStatus {
+  if (t.archived_at) return 'archived'
+  return t.published_at ? 'published' : 'draft'
 }
 
 const optionalText = (max: number) =>
