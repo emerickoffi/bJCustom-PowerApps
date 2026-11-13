@@ -15,6 +15,7 @@ import {
 import { ESTIMATE_CATEGORIES, formatCentsExact, formatQuantity, type EstimateCategory } from '@/lib/estimates'
 import { parseCents, rowMath, type RowErrors, type SheetColumn, type SheetRow } from '@/lib/estimate-sheet'
 import { cn } from '@/lib/utils'
+import { FROZEN_BODY, FROZEN_BODY_HIGHLIGHT, FROZEN_EDGE } from '@/components/shared/frozen-column'
 
 export type RowCommand =
   | { type: 'insert-above' | 'insert-below' | 'duplicate' | 'move-up' | 'move-down' | 'delete' | 'toggle-allowance' }
@@ -39,6 +40,7 @@ function Cell({
   showError,
   readOnly,
   onChange,
+  className,
 }: {
   row: SheetRow
   col: SheetColumn
@@ -46,13 +48,14 @@ function Cell({
   showError: boolean
   readOnly: boolean
   onChange: (key: string, col: SheetColumn, value: string) => void
+  className?: string
 }) {
   const numeric = NUMERIC.includes(col)
   const money = col === 'material' || col === 'labor' || col === 'other'
   const invalid = showError && Boolean(error)
   const errorId = invalid ? `err-${row.key}-${col}` : undefined
   return (
-    <td className={cn('relative border-r border-border/60 p-0', invalid && 'bg-destructive/5')}>
+    <td className={cn('relative border-r border-border/60 p-0', className, invalid && 'bg-destructive/5')}>
       {money && (
         <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-xs text-muted-foreground">
           $
@@ -136,14 +139,20 @@ export const SheetRowView = memo(function SheetRowView({
     onChange,
   })
 
+  const frozen = cn(FROZEN_BODY, row.is_allowance && FROZEN_BODY_HIGHLIGHT)
+  const frozenDescription = cn(frozen, FROZEN_EDGE, 'left-10')
+
   return (
     <tr className={cn('group border-b border-border/60 hover:bg-sage/30', row.is_allowance && 'bg-link-soft/60')}>
-      <th scope="row" className="h-10 border-r border-border/60 px-2 text-right text-xs font-normal tabular-nums text-muted-foreground">
+      <th
+        scope="row"
+        className={cn(frozen, 'left-0 h-10 border-r border-border/60 px-2 text-right text-xs font-normal tabular-nums text-muted-foreground')}
+      >
         {index}
       </th>
       {editable ? (
         <>
-          <Cell {...cellProps('description')} />
+          <Cell {...cellProps('description')} className={frozenDescription} />
           <Cell {...cellProps('quantity')} />
           <Cell {...cellProps('unit')} />
           <Cell {...cellProps('material')} />
@@ -152,7 +161,7 @@ export const SheetRowView = memo(function SheetRowView({
         </>
       ) : (
         <>
-          <ReadCell className="truncate">
+          <ReadCell className={cn('truncate', frozen, FROZEN_EDGE, 'left-10')}>
             <span className="font-medium">{row.description}</span>
           </ReadCell>
           <ReadCell numeric>{formatQuantity(row.quantity)}</ReadCell>

@@ -45,12 +45,16 @@ export async function getProposalPreview(estimateId: string): Promise<ProposalPr
 }
 
 const TEMPLATE_COLUMNS =
-  'id, name, pricing_display, introduction, exclusions, payment_terms, terms, acceptance_text, is_default, archived_at, updated_at'
+  'id, name, pricing_display, introduction, exclusions, payment_terms, terms, acceptance_text, is_default, published_at, archived_at, updated_at'
 
-export async function listProposalTemplates(organizationId: string, options: { includeArchived?: boolean } = {}): Promise<ProposalTemplate[]> {
+/**
+ * By default returns only templates a document can be prepared from (published, not archived).
+ * The settings manager passes `all` to see drafts and archived templates too.
+ */
+export async function listProposalTemplates(organizationId: string, options: { all?: boolean } = {}): Promise<ProposalTemplate[]> {
   const supabase = await createClient()
   let query = supabase.from('proposal_templates').select(TEMPLATE_COLUMNS).eq('organization_id', organizationId)
-  if (!options.includeArchived) query = query.is('archived_at', null)
+  if (!options.all) query = query.is('archived_at', null).not('published_at', 'is', null)
   const { data, error } = await query.order('is_default', { ascending: false }).order('name')
   if (error) {
     console.error('[proposals] templates failed', error.message)

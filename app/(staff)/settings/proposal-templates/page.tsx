@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: 'Proposal templates' }
 export default async function ProposalTemplatesPage() {
   const session = await requireAdmin()
   const [templates, starter] = await Promise.all([
-    listProposalTemplates(session.organizationId, { includeArchived: true }),
+    listProposalTemplates(session.organizationId, { all: true }),
     getStarterContent(),
   ])
   return (

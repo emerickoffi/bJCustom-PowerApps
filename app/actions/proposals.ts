@@ -56,7 +56,37 @@ export async function saveProposalTemplate(templateId: string | null, input: Tem
   return { ok: true, id: data.id }
 }
 
-export async function setProposalTemplateState(templateId: string, change: 'default' | 'archive' | 'restore'): Promise<Result> {
+export type TemplateStateChange = 'default' | 'archive' | 'restore' | 'publish' | 'unpublish'
+
+const TEMPLATE_COPY_COLUMNS = 'name, pricing_display, introduction, exclusions, payment_terms, terms, acceptance_text'
+
+/** Copies a template as a new draft so it can be reworked without touching the published original. */
+export async function duplicateProposalTemplate(templateId: string): Promise<Result & { id?: string }> {
+  const session = await requireAdmin()
+  if (!z.uuid().safeParse(templateId).success) return { ok: false, error: 'Template not found.' }
+  const supabase = await createClient()
+  const { data: source } = await supabase
+    .from('proposal_templates')
+    .select(TEMPLATE_COPY_COLUMNS)
+    .eq('id', templateId)
+    .eq('organization_id', session.organizationId)
+    .maybeSingle()
+  if (!source) return { ok: false, error: 'Template not found.' }
+  const name = `${source.name} (copy)`.slice(0, 120)
+  const { data, error } = await supabase
+    .from('proposal_templates')
+    .insert({ ...source, name, organization_id: session.organizationId, published_at: null })
+    .select('id')
+    .single()
+  if (error || !data) {
+    console.error('[proposals] template duplicate failed', error?.message)
+    return { ok: false, error: 'Could not duplicate the template.' }
+  }
+  revalidatePath('/settings/proposal-templates')
+  return { ok: true, id: data.id }
+}
+
+export async function setProposalTemplateState(templateId: string, change: TemplateStateChange): Promise<Result> {
   const session = await requireAdmin()
   if (!z.uuid().safeParse(templateId).success) return { ok: false, error: 'Template not found.' }
   const supabase = await createClient()
@@ -77,11 +107,22 @@ export async function setProposalTemplateState(templateId: string, change: 'defa
       .eq('id', templateId)
       .eq('organization_id', org)
       .is('archived_at', null)
+      .not('published_at', 'is', null)
     if (error) return { ok: false, error: 'Could not change the default template.' }
+  } else if (change === 'publish' || change === 'unpublish') {
+    // Proposals copy template content when applied, so unpublishing never alters an existing document.
+    const { error } = await supabase
+      .from('proposal_templates')
+      .update({ published_at: change === 'publish' ? new Date().toISOString() : null })
+      .eq('id', templateId)
+      .eq('organization_id', org)
+      .is('archived_at', null)
+    if (error) return { ok: false, error: 'Could not update the template.' }
   } else {
     const { error } = await supabase
       .from('proposal_templates')
-      .update({ archived_at: change === 'archive' ? new Date().toISOString() : null })
+      // Restored templates come back as drafts so they get a review before reaching proposals again.
+      .update(change === 'archive' ? { archived_at: new Date().toISOString() } : { archived_at: null, published_at: null })
       .eq('id', templateId)
       .eq('organization_id', org)
     if (error) return { ok: false, error: 'Could not update the template.' }
