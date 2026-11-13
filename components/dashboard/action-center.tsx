@@ -38,6 +38,7 @@ import {
   type ActionItem,
 } from '@/lib/action-items'
 import type { ActionModuleIssue } from '@/lib/attention-data'
+import { actionListClear } from '@/lib/work-scope'
 
 const CATEGORY_ICONS: Record<ActionCategory, LucideIcon> = {
   approvals: FileCheck2,
@@ -323,11 +324,14 @@ export function ActionCenter({
   headingLevel = 'h2',
   headerActions,
   priorities,
+  prioritiesClear = false,
 }: {
   /** Controls shown at the right of the header, e.g. the work-scope selector. */
   headerActions?: ReactNode
   /** Daily Priorities briefing shown above the category filters. */
   priorities?: ReactNode
+  /** The briefing loaded fully and is empty; with an empty list, the briefing renders the single empty state. */
+  prioritiesClear?: boolean
   items: ActionItem[]
   totalIsLowerBound: boolean
   unavailable: ActionModuleIssue[]
@@ -345,6 +349,8 @@ export function ActionCenter({
   const visible = filtered.slice((current - 1) * limit, current * limit)
   const countLabel = `${items.length}${totalIsLowerBound ? '+' : ''}`
   const today = new Date().toISOString().slice(0, 10)
+  const allClear =
+    !!priorities && prioritiesClear && actionListClear({ itemCount: items.length, unavailableCount: unavailable.length })
 
   return (
     <section aria-labelledby="action-center-heading" className="surface flex flex-col">
@@ -366,6 +372,9 @@ export function ActionCenter({
         {headerActions && <div className="ml-auto flex shrink-0 items-center">{headerActions}</div>}
       </div>
 
+      {allClear ? (
+        <div className="rounded-b-[inherit] bg-white px-4 py-3">{priorities}</div>
+      ) : (
       <div className="flex flex-col gap-3 rounded-b-[inherit] bg-white px-4 pb-4 pt-2">
       {priorities && <div className="pt-2">{priorities}</div>}
       <CategoryFilters items={items} selected={selected} links={links} />
@@ -414,6 +423,7 @@ export function ActionCenter({
         </nav>
       )}
       </div>
+      )}
     </section>
   )
 }

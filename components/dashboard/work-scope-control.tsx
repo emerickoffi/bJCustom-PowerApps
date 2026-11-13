@@ -4,13 +4,7 @@ import { useOptimistic, useTransition } from 'react'
 import { Info } from 'lucide-react'
 import { setWorkScopeAction } from '@/app/actions/dashboard-preferences'
 import { cn } from '@/lib/utils'
-
-type WorkScope = 'all' | 'mine'
-
-const OPTIONS: { value: WorkScope; label: string }[] = [
-  { value: 'all', label: 'All work' },
-  { value: 'mine', label: 'My work' },
-]
+import { WORK_SCOPE_OPTIONS as OPTIONS, type WorkScope } from '@/lib/work-scope'
 
 export function WorkScopeControl({ scope }: { scope: WorkScope }) {
   const [optimistic, setOptimistic] = useOptimistic(scope)

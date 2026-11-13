@@ -63,6 +63,7 @@ export async function setLayoutPreferenceAction(preference: string): Promise<{ o
 
 export async function setWorkScopeAction(scope: 'all' | 'mine'): Promise<void> {
   const session = await requireStaff()
-  await writePreference(WORK_SCOPE_COOKIE, session.userId, scope === 'mine' ? 'mine' : null)
+  // Stored explicitly so "All work" survives now that My work is the default.
+  await writePreference(WORK_SCOPE_COOKIE, session.userId, scope === 'all' ? 'all' : 'mine')
   revalidatePath('/dashboard')
 }
