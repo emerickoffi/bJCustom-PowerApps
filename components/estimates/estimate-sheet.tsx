@@ -44,6 +44,7 @@ import {
   type SheetRow,
 } from '@/lib/estimate-sheet'
 import { cn } from '@/lib/utils'
+import { FROZEN_EDGE, FROZEN_HEAD } from '@/components/shared/frozen-column'
 
 const categoryIndex = (c: EstimateCategory) => ESTIMATE_CATEGORIES.indexOf(c)
 const VIEW_KEY = 'trefort:estimate-items-view'
@@ -811,7 +812,7 @@ export function EstimateSheet({
             </caption>
             <colgroup>
                 <col className="w-10" />
-                <col className="w-80" />
+                <col className="w-52 sm:w-72 lg:w-80" />
               <col className="w-24" />
               <col className="w-20" />
               <col className="w-32" />
@@ -825,11 +826,14 @@ export function EstimateSheet({
             </colgroup>
             <thead className="bg-table-head text-xs font-medium text-[#526173]">
               <tr className="border-b">
-                <th scope="col" className="px-2 py-2.5 text-right">
+                <th scope="col" className={cn(FROZEN_HEAD, 'left-0 px-2 py-2.5 text-right')}>
                   <span className="sr-only">Row</span>
                   {'#'}
                 </th>
-                <th scope="col" className="px-2 py-2.5">Description</th>
+                {/* Frozen with the row number so the item being edited stays in view while scrolling costs. */}
+                <th scope="col" className={cn(FROZEN_HEAD, FROZEN_EDGE, 'left-10 px-2 py-2.5')}>
+                  Description
+                </th>
                 <th scope="col" className="px-2 py-2.5 text-right">Qty</th>
                 <th scope="col" className="px-2 py-2.5">Unit</th>
                 <th scope="col" className="px-2 py-2.5 text-right">Material / unit</th>
