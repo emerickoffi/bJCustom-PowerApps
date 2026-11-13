@@ -59,38 +59,44 @@ export function logoStoragePath(organizationId: string): string {
   return `${organizationId}/logo`
 }
 
-/** The stored URL carries a version so browsers and CDNs show a replaced logo immediately. */
-export function versionedLogoUrl(publicUrl: string, version: number): string {
-  const url = new URL(publicUrl)
-  url.searchParams.set('v', String(version))
-  return url.toString()
+/**
+ * Uploaded logos live in a private bucket and are served by this same-origin route, which always
+ * returns the signed-in user's own company logo. The URL deliberately carries no organization id, so
+ * it cannot be pointed at another company.
+ */
+export const UPLOADED_LOGO_ROUTE = '/api/company-logo'
+const UPLOADED_LOGO_PATTERN = /^\/api\/company-logo(?:\?v=\d{1,16})?$/
+
+/** The stored URL carries a version so browsers show a replaced logo immediately. */
+export function uploadedLogoUrl(version: number): string {
+  return `${UPLOADED_LOGO_ROUTE}?v=${Math.trunc(version)}`
 }
 
-/**
- * True only for this organization's own uploaded object, so Remove never deletes a file belonging to
- * another company or an externally hosted logo.
- */
-export function isOwnStoredLogo(logoUrl: string | null | undefined, organizationId: string, supabaseUrl: string): boolean {
-  if (!logoUrl) return false
-  try {
-    const url = new URL(logoUrl)
-    const base = new URL(supabaseUrl)
-    return (
-      url.origin === base.origin &&
-      url.pathname === `/storage/v1/object/public/${COMPANY_LOGOS_BUCKET}/${logoStoragePath(organizationId)}`
-    )
-  } catch {
-    return false
-  }
+export function isUploadedLogo(logoUrl: string | null | undefined): boolean {
+  return UPLOADED_LOGO_PATTERN.test(logoUrl?.trim() ?? '')
+}
+
+/** Hosted logo URLs must be https or a same-site path; protocol-relative `//host` URLs are rejected. */
+export function isAllowedLogoUrl(value: string | null): boolean {
+  return value === null || (value.startsWith('/') && !value.startsWith('//')) || /^https:\/\//.test(value)
 }
 
 export type LogoSource = 'none' | 'uploaded' | 'url'
 
-export function logoSource(logoUrl: string | null | undefined, supabaseUrl: string | undefined): LogoSource {
+export function logoSource(logoUrl: string | null | undefined): LogoSource {
   const value = logoUrl?.trim()
   if (!value) return 'none'
-  if (supabaseUrl && value.startsWith(`${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/public/${COMPANY_LOGOS_BUCKET}/`)) {
-    return 'uploaded'
+  return isUploadedLogo(value) ? 'uploaded' : 'url'
+}
+
+/** Headers for serving a stored logo: the type comes from the file's bytes, never from storage metadata. */
+export function logoResponseHeaders(mime: LogoMimeType): Record<string, string> {
+  return {
+    'Content-Type': mime,
+    'Content-Disposition': 'inline',
+    'Cache-Control': 'private, max-age=3600',
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "default-src 'none'; sandbox",
+    Vary: 'Cookie',
   }
-  return 'url'
 }

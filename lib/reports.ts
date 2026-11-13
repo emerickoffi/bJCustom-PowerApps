@@ -1,5 +1,5 @@
 import 'server-only'
-import { detectLogoMime, logoSource } from '@/lib/company-logo'
+import { COMPANY_LOGOS_BUCKET, detectLogoMime, logoSource, logoStoragePath } from '@/lib/company-logo'
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { RESPONSE_LABELS, ISSUE_STATUS_LABELS, PRIORITY_LABELS, VALIDATION_LABELS, WALKTHROUGH_TYPE_LABELS } from '@/lib/walkthroughs'
@@ -165,16 +165,29 @@ const fmtDateTime = (v: string | null) =>
   v ? new Date(v).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Chicago' }) + ' CT' : 'Not set'
 
 /**
- * Embeds the organization's own uploaded logo. Only files in this project's company-logos bucket are
- * fetched, so an admin-entered URL can never make the server request an arbitrary host. Any other
- * logo, a WebP file (unsupported by pdf-lib), or a fetch failure falls back to the company name only.
+ * Reads the organization's own uploaded logo from the private company-logos bucket with the caller's
+ * session, so storage policies still apply. Hosted URLs are never fetched, so an admin-entered URL
+ * can never make the server request an arbitrary host.
  */
-async function embedOrganizationLogo(doc: PDFDocument, logoUrl: string | null | undefined) {
-  if (logoSource(logoUrl, process.env.NEXT_PUBLIC_SUPABASE_URL) !== 'uploaded' || !logoUrl) return null
+export async function loadOrganizationLogo(
+  supabase: SupabaseClient,
+  organizationId: string,
+  logoUrl: string | null | undefined,
+): Promise<Uint8Array | null> {
+  if (logoSource(logoUrl) !== 'uploaded') return null
   try {
-    const res = await fetch(logoUrl, { signal: AbortSignal.timeout(5000) })
-    if (!res.ok) return null
-    const bytes = new Uint8Array(await res.arrayBuffer())
+    const { data, error } = await supabase.storage.from(COMPANY_LOGOS_BUCKET).download(logoStoragePath(organizationId))
+    if (error || !data) return null
+    return new Uint8Array(await data.arrayBuffer())
+  } catch {
+    return null
+  }
+}
+
+/** A WebP logo (unsupported by pdf-lib) or unreadable bytes fall back to the company name only. */
+async function embedOrganizationLogo(doc: PDFDocument, bytes: Uint8Array | null | undefined) {
+  if (!bytes) return null
+  try {
     const mime = detectLogoMime(bytes)
     if (mime === 'image/png') return await doc.embedPng(bytes)
     if (mime === 'image/jpeg') return await doc.embedJpg(bytes)
@@ -184,7 +197,11 @@ async function embedOrganizationLogo(doc: PDFDocument, logoUrl: string | null | 
   }
 }
 
-export async function renderWalkthroughPdf(s: ReportSnapshot, version: number): Promise<Uint8Array> {
+export async function renderWalkthroughPdf(
+  s: ReportSnapshot,
+  version: number,
+  logoBytes?: Uint8Array | null,
+): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
   doc.setTitle(pdfSafe(`${s.walkthrough.title} - Report v${version}`))
   doc.setAuthor(pdfSafe(s.organization))
@@ -196,7 +213,7 @@ export async function renderWalkthroughPdf(s: ReportSnapshot, version: number): 
   const rule = rgb(0.85, 0.86, 0.88)
   const W = 612, H = 792, M = 54, contentW = W - M * 2
 
-  const logo = await embedOrganizationLogo(doc, s.organizationLogoUrl)
+  const logo = await embedOrganizationLogo(doc, logoBytes)
 
   let page: PDFPage = doc.addPage([W, H])
   let y = H - M
