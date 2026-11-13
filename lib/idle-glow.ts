@@ -3,11 +3,17 @@ export const IDLE_GLOW_MIN_MS = 30_000
 export const IDLE_GLOW_MAX_MS = 90_000
 export const IDLE_GLOW_DURATION_MS = 1400
 
-/** Halo grows from the button's edge to 1.2x while it fades in to 0.3 and back out to nothing. */
+export const IDLE_GLOW_MAX_OPACITY = 0.35
+
+/**
+ * The halo sits behind an opaque launcher of the same color, so only the part past the button's edge is ever seen.
+ * It holds near full strength while it expands to 1.25x, then fades out, so the visible ring peaks while still bright.
+ */
 export const IDLE_GLOW_KEYFRAMES: Keyframe[] = [
   { opacity: 0, transform: 'scale(1)' },
-  { opacity: 0.3, transform: 'scale(1.06)', offset: 0.3 },
-  { opacity: 0, transform: 'scale(1.2)' },
+  { opacity: IDLE_GLOW_MAX_OPACITY, transform: 'scale(1.12)', offset: 0.35 },
+  { opacity: 0.28, transform: 'scale(1.22)', offset: 0.7 },
+  { opacity: 0, transform: 'scale(1.25)' },
 ]
 
 export function nextIdleGlowDelay(random: () => number = Math.random): number {

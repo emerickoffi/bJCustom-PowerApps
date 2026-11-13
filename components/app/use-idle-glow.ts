@@ -55,7 +55,7 @@ export function useIdleGlow(glowRef: RefObject<HTMLElement | null>, hoverRef: Re
         animation.current?.cancel()
         animation.current = glow.animate(IDLE_GLOW_KEYFRAMES, {
           duration: IDLE_GLOW_DURATION_MS,
-          easing: 'ease-in-out',
+          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
         })
       }
       schedule()
