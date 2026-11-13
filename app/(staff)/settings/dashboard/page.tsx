@@ -12,12 +12,11 @@ export default async function DashboardSettingsPage() {
   const { settings, customized, error } = await getDashboardVisibility(session.organizationId)
 
   return (
-    <div className={pageLayout('form')}>
+    <div className={pageLayout('form', 'max-w-5xl')}>
       <PageHeader
         icon={LayoutDashboard}
         title="Dashboard"
-        backHref="/settings"
-        backLabel="Company settings"
+        level={2}
       />
       <DashboardVisibilityForm initial={settings} customized={customized} loadError={error} />
     </div>

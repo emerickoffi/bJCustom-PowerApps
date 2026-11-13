@@ -24,6 +24,8 @@ type PageHeaderProps = {
   backLabel?: string
   /** Secondary actions first, primary (orange) action last. */
   actions?: React.ReactNode
+  /** 2 for a section heading under a shared layout title, e.g. a settings tab. */
+  level?: 1 | 2
 }
 
 export function CountChip({ value, noun, plural }: NonNullable<PageHeaderProps['count']>) {
@@ -54,7 +56,9 @@ export function PageHeader({
   backHref,
   backLabel,
   actions,
+  level = 1,
 }: PageHeaderProps) {
+  const Heading = level === 1 ? 'h1' : 'h2'
   return (
     <header className="flex min-w-0 flex-col gap-2">
       {backHref && <BackLink href={backHref} label={backLabel} />}
@@ -68,9 +72,14 @@ export function PageHeader({
               </div>
             )}
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              <h1 className="min-w-0 text-balance break-words type-page-title text-foreground">
+              <Heading
+                className={cn(
+                  'min-w-0 text-balance break-words text-foreground',
+                  level === 1 ? 'type-page-title' : 'type-section-title',
+                )}
+              >
                 {title}
-              </h1>
+              </Heading>
               {count && <CountChip {...count} />}
               {titleAddon}
             </div>

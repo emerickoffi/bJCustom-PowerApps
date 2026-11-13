@@ -54,8 +54,7 @@ export default async function ProjectTemplatesPage() {
       <PageHeader
         icon={LayoutTemplate}
         title="Project templates"
-        backHref="/settings"
-        backLabel="Company settings"
+        level={2}
         titleAddon={
           <HeaderHelp label="About project templates">
             Templates set up a new project&apos;s schedule phases, activities, durations, and dependencies. Editing a

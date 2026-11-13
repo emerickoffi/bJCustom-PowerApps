@@ -14,11 +14,10 @@ export default async function IntegrationsPage() {
   const status = getQuickBooksStatus()
 
   return (
-    <div className={pageLayout('form')}>
+    <div className={pageLayout('form', 'max-w-5xl')}>
       <PageHeader
         icon={Plug}
-        backHref="/settings"
-        backLabel="Company settings"
+        level={2}
         title="Integrations"
       />
 

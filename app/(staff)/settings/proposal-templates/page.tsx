@@ -18,8 +18,7 @@ export default async function ProposalTemplatesPage() {
       <PageHeader
         icon={FileText}
         title="Proposal templates"
-        backHref="/settings"
-        backLabel="Back to settings"
+        level={2}
         meta="Reusable introduction, exclusions, payment terms, and contract language for customer proposals."
       />
       <ProposalTemplateManager templates={templates} starter={starter} />
