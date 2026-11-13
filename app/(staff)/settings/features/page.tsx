@@ -46,11 +46,10 @@ export default async function FeaturesPage() {
   })
 
   return (
-    <div className={pageLayout('form')}>
+    <div className={pageLayout('form', 'max-w-5xl')}>
       <PageHeader icon={SlidersHorizontalIcon}
         title="Feature management"
-        backHref="/settings"
-        backLabel="Company settings"
+        level={2}
       />
       <FeatureToggles features={features} records={records} pendingSetup={{
           e_signatures: !getProviderConfig().configured,

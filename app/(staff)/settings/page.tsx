@@ -1,23 +1,17 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { requireAdmin } from '@/lib/session'
-import { getOrgFeatures } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader, pageLayout } from '@/components/shared/page-header'
+import { pageLayout } from '@/components/shared/page-header'
 import { OrganizationSettingsForm } from '@/components/settings/organization-settings-form'
 import { EmailDeliveryCard, type EmailDeliveryOverview } from '@/components/settings/email-delivery-card'
 import { resolveEmailConfig } from '@/lib/email/config'
-import { Settings as SettingsIcon } from 'lucide-react'
 
 export const metadata: Metadata = { title: 'Company settings' }
-
-const navButtonClass = 'border-[#D6E0D5] bg-white text-primary hover:bg-[#F3F4F6] hover:text-brand-deep'
 
 export default async function SettingsPage() {
   const session = await requireAdmin()
   const supabase = await createClient()
-  const [orgRes, settingsRes, deliveryRes, features] = await Promise.all([
+  const [orgRes, settingsRes, deliveryRes] = await Promise.all([
     supabase
       .from('organizations')
       .select(
@@ -31,46 +25,11 @@ export default async function SettingsPage() {
       .eq('organization_id', session.organizationId)
       .single(),
     supabase.rpc('email_delivery_overview', { p_org: session.organizationId }),
-    getOrgFeatures(session.organizationId),
   ])
   const emailConfig = resolveEmailConfig()
 
   return (
-    <div className={pageLayout('form')}>
-      <PageHeader icon={SettingsIcon}
-        title="Company settings"
-        actions={
-          <>
-            <Button variant="outline" className={navButtonClass} render={<Link href="/settings/integrations" />} nativeButton={false}>
-              Integrations
-            </Button>
-            <Button variant="outline" className={navButtonClass} render={<Link href="/settings/dashboard" />} nativeButton={false}>
-              Dashboard
-            </Button>
-            <Button variant="outline" className={navButtonClass} render={<Link href="/settings/features" />} nativeButton={false}>
-              Feature management
-            </Button>
-            {features.schedule && (
-              <Button variant="outline" className={navButtonClass} render={<Link href="/settings/templates" />} nativeButton={false}>
-                Project templates
-              </Button>
-            )}
-            {features.estimates && (
-              <Button variant="outline" className={navButtonClass} render={<Link href="/settings/proposal-templates" />} nativeButton={false}>
-                Document templates
-              </Button>
-            )}
-            {features.estimates && (
-              <Button variant="outline" className={navButtonClass} render={<Link href="/settings/selection-categories" />} nativeButton={false}>
-                Selection categories
-              </Button>
-            )}
-            <Button variant="outline" className={navButtonClass} render={<Link href="/settings/roles" />} nativeButton={false}>
-              Roles &amp; permissions
-            </Button>
-          </>
-        }
-      />
+    <div className={pageLayout('form', 'max-w-5xl')}>
       <OrganizationSettingsForm
         defaults={{ ...orgRes.data, project_number_prefix: settingsRes.data?.project_number_prefix ?? 'P' }}
         nextProjectNumber={settingsRes.data?.next_project_number ?? null}
