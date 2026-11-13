@@ -8,9 +8,11 @@ import {
   ClipboardList,
   FileBarChart,
   Home,
+  Info,
   Lock,
   ShieldCheck,
   Sparkles,
+  TriangleAlert,
   Users,
   Wallet,
   type LucideIcon,
@@ -33,6 +35,7 @@ import {
   type FeatureKey,
   type FeatureMap,
 } from '@/lib/feature-registry'
+import { activeDependents, canToggle, featureAvailability, rowMessage, type Availability } from '@/lib/feature-dependencies'
 import { cn } from '@/lib/utils'
 
 const GROUPS: { name: FeatureGroup; icon: LucideIcon; note?: string }[] = [
@@ -41,8 +44,8 @@ const GROUPS: { name: FeatureGroup; icon: LucideIcon; note?: string }[] = [
   { name: 'Homeowner experience', icon: Home },
   { name: 'After completion', icon: ShieldCheck },
   { name: 'Finance', icon: Wallet },
-  { name: 'AI & automation', icon: Sparkles, note: 'AI never writes or sends anything without your approval, and it only sees data your role already allows.' },
-  { name: 'Reporting & exports', icon: FileBarChart, note: 'Walkthrough reports are under Project workflow, and estimate PDFs come with Estimates.' },
+  { name: 'AI & automation', icon: Sparkles, note: 'AI never saves or sends anything without your approval, and only sees what your role allows.' },
+  { name: 'Reporting & exports', icon: FileBarChart },
 ]
 
 type Records = Partial<Record<FeatureKey, string>>
@@ -54,30 +57,24 @@ export function FeatureToggles({
 }: {
   features: FeatureMap
   records: Records
-  /** Features whose runtime credentials are missing. Unlike static setupRequired, the switch stays usable. */
+  /** Features whose runtime credentials or migrations are missing. */
   pendingSetup?: Partial<Record<FeatureKey, boolean>>
 }) {
+  const defs = FEATURES.map((f) => (pendingSetup[f.key] ? { ...f, setupRequired: true } : f))
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       {GROUPS.map(({ name: group, icon: Icon, note }) => (
-        <section key={group} aria-labelledby={`group-${group}`} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
+        <section key={group} aria-labelledby={`group-${group}`} className="flex flex-col gap-2">
+          <div className="flex flex-col gap-0.5">
             <h2 id={`group-${group}`} className="flex items-center gap-2 type-section-title text-foreground">
-              <span className="flex size-7 items-center justify-center rounded-md bg-secondary text-primary">
-                <Icon className="size-4" aria-hidden="true" />
-              </span>
+              <Icon className="size-4 text-primary" aria-hidden="true" />
               {group}
             </h2>
             {note && <p className="text-xs text-muted-foreground">{note}</p>}
           </div>
           <ul className="surface divide-y">
-            {FEATURES.filter((f) => f.group === group).map((f) => (
-              <FeatureRow
-                key={f.key}
-                feature={pendingSetup[f.key] ? { ...f, setupRequired: true } : f}
-                features={features}
-                recordSummary={records[f.key]}
-              />
+            {defs.filter((f) => f.group === group).map((f) => (
+              <FeatureRow key={f.key} feature={f} defs={defs} features={features} records={records} />
             ))}
           </ul>
         </section>
@@ -86,90 +83,94 @@ export function FeatureToggles({
   )
 }
 
-function StatusBadge({ feature, enabled }: { feature: FeatureDefinition; enabled: boolean }) {
-  const [label, tone] = feature.core
-    ? ['Core', 'bg-secondary text-primary']
-    : feature.setupRequired
-    ? ['Setup required', 'bg-champagne-soft text-warning']
-    : !feature.available
-    ? ['Coming later', 'bg-muted text-muted-foreground']
-    : enabled
-      ? ['On', 'bg-primary/10 text-primary']
-      : ['Off', 'bg-muted text-muted-foreground']
-  return <span className={cn('rounded-badge px-2 py-0.5 text-xs font-medium', tone)}>{label}</span>
+const BADGES: Partial<Record<Availability, [string, string]>> = {
+  core: ['Core', 'bg-secondary text-primary'],
+  partial: ['Partial', 'bg-accent-blue-soft text-accent-blue'],
+  setup_required: ['Setup required', 'bg-champagne-soft text-champagne-foreground'],
+  planned: ['Planned', 'bg-muted text-muted-foreground'],
 }
 
 function FeatureRow({
   feature,
+  defs,
   features,
-  recordSummary,
+  records,
 }: {
   feature: FeatureDefinition
+  defs: FeatureDefinition[]
   features: FeatureMap
-  recordSummary?: string
+  records: Records
 }) {
   const [pending, startTransition] = useTransition()
   const [optimistic, setOptimistic] = useState<boolean | null>(null)
   const [confirming, setConfirming] = useState(false)
   const enabled = optimistic ?? features[feature.key]
-  const missing = feature.requires.filter((r) => !features[r])
-  const dependents = FEATURES.filter((f) => f.requires.includes(feature.key) && features[f.key])
-  const blockedReason = !feature.available || feature.core
-    ? null
-    : !enabled && feature.setupRequired && feature.lockWhenSetupRequired
-      ? 'Finish setup before turning this on'
-      : !enabled && missing.length
-      ? `Turn on ${missing.map(featureLabel).join(', ')} first`
-      : enabled && dependents.length
-        ? `Turn off ${dependents.map((d) => d.label).join(', ')} first`
-        : null
+  const availability = featureAvailability(feature)
+  const badge = BADGES[availability]
+  const message = rowMessage(defs, features, feature, featureLabel)
+  const dependents = enabled ? activeDependents(defs, features, feature.key) : []
+  const recordSummary = records[feature.key]
+  const switchable = availability !== 'core' && availability !== 'planned' && !feature.includedWith
+  const usable = canToggle(defs, features, feature)
 
   const apply = (next: boolean) => {
     setConfirming(false)
     setOptimistic(next)
+    // Dependents first, deepest first, so the database dependency guard is never violated.
+    const sequence: FeatureKey[] = next ? [feature.key] : [...dependents, feature.key]
     startTransition(async () => {
-      const result = await setFeatureAction(feature.key, next)
+      for (const key of sequence) {
+        const result = await setFeatureAction(key, next)
+        if (result.error) {
+          setOptimistic(null)
+          toast.error(result.error)
+          return
+        }
+      }
       setOptimistic(null)
-      if (result.error) toast.error(result.error)
-      else if (result.success) toast.success(result.success)
+      toast.success(
+        sequence.length > 1
+          ? `${sequence.map(featureLabel).join(' and ')} turned off.`
+          : `${feature.label} ${next ? 'turned on' : 'turned off'}.`,
+      )
     })
   }
 
   const toggle = () => {
-    if (enabled && recordSummary) setConfirming(true)
+    if (enabled && (recordSummary || dependents.length)) setConfirming(true)
     else apply(!enabled)
   }
 
   const id = `feature-${feature.key}`
+  const showLink = feature.configHref && (availability === 'core' || availability === 'setup_required' || (switchable && enabled))
+  const MessageIcon = message?.tone === 'warning' ? TriangleAlert : Info
+
   return (
-    <li className="flex items-start justify-between gap-4 p-4 sm:gap-6 sm:p-5">
-      <div className="flex min-w-0 flex-col gap-1.5">
+    <li className="flex items-start justify-between gap-4 px-4 py-3 sm:px-5">
+      <div className="flex min-w-0 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor={id} className="font-medium text-foreground">
+          <label htmlFor={switchable ? id : undefined} className="text-sm font-medium text-foreground">
             {feature.label}
           </label>
-          <StatusBadge feature={feature} enabled={enabled} />
-          {blockedReason && (
-            <span className="flex items-center gap-1 rounded-badge bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-              <Lock className="size-3" aria-hidden="true" />
-              Locked by dependency
-            </span>
-          )}
+          {badge && <span className={cn('rounded-badge px-2 py-0.5 text-xs font-medium', badge[1])}>{badge[0]}</span>}
         </div>
-        <p className="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
-        {feature.requires.length > 0 && (
-          <p className="text-xs text-muted-foreground">{`Requires ${feature.requires.map(featureLabel).join(', ')}`}</p>
+        <p className={cn('text-sm text-muted-foreground', availability === 'planned' && 'text-muted-foreground/80')}>
+          {feature.description}
+        </p>
+        {message && (
+          <p
+            className={cn(
+              'flex items-start gap-1.5 text-xs',
+              message.tone === 'warning' ? 'font-medium text-champagne-foreground' : 'text-muted-foreground',
+            )}
+          >
+            <MessageIcon className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+            {message.text}
+          </p>
         )}
-        {blockedReason && <p className="text-xs font-medium text-warning">{blockedReason}</p>}
-        {feature.setupRequired && feature.setupNote && (
-          <p className="text-xs font-medium text-warning">{feature.setupNote}</p>
-        )}
-        {feature.core && feature.coreNote && (
-          <p className="text-xs text-muted-foreground">{feature.coreNote}</p>
-        )}
-        {((feature.available && enabled) || feature.setupRequired || feature.core) && feature.configHref && (
+        {showLink && (
           <Link
-            href={feature.configHref}
+            href={feature.configHref!}
             className="flex w-fit items-center gap-1 text-xs font-medium text-primary underline-offset-4 hover:underline"
           >
             {feature.configLabel ?? 'Configure'}
@@ -177,22 +178,33 @@ function FeatureRow({
           </Link>
         )}
       </div>
-      {feature.core && (
-        <span className="mt-1 flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground">
+
+      {availability === 'core' && (
+        <span className="mt-0.5 flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground">
           <Lock className="size-3.5" aria-hidden="true" />
           Always on
         </span>
       )}
-      {feature.available && !feature.core && (
+      {feature.includedWith && availability !== 'planned' && (
+        <span
+          className={cn(
+            'mt-0.5 shrink-0 rounded-badge px-2 py-0.5 text-xs font-medium',
+            features[feature.key] ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+          )}
+        >
+          {features[feature.key] ? 'On' : 'Off'}
+        </span>
+      )}
+      {switchable && (
         <button
           id={id}
           type="button"
           role="switch"
           aria-checked={enabled}
-          disabled={pending || Boolean(blockedReason)}
+          disabled={pending || !usable}
           onClick={toggle}
           className={cn(
-            'relative mt-1 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+            'relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
             enabled ? 'bg-primary' : 'bg-muted-foreground/30',
           )}
         >
@@ -210,16 +222,29 @@ function FeatureRow({
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{`Turn off ${feature.label}?`}</DialogTitle>
+            <DialogTitle>
+              {dependents.length
+                ? `Turn off ${[feature.key, ...dependents].map(featureLabel).join(' and ')}?`
+                : `Turn off ${feature.label}?`}
+            </DialogTitle>
             <DialogDescription>
-              {`Your company has ${recordSummary} in this module. ${feature.disableNote ?? 'They are hidden while the module is off.'} Nothing is deleted, and turning it back on restores access.`}
+              {[
+                dependents.length
+                  ? `${dependents.map(featureLabel).join(' and ')} ${dependents.length > 1 ? 'depend' : 'depends'} on ${feature.label} and will be turned off first.`
+                  : null,
+                recordSummary ? `Your company has ${recordSummary} in this module.` : null,
+                feature.disableNote ?? 'Records are hidden while the module is off.',
+                'Nothing is deleted, and turning it back on restores access.',
+              ]
+                .filter(Boolean)
+                .join(' ')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirming(false)}>
               Keep on
             </Button>
-            <Button onClick={() => apply(false)}>Turn off</Button>
+            <Button onClick={() => apply(false)}>{dependents.length ? `Turn off ${dependents.length + 1}` : 'Turn off'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
