@@ -1,10 +1,11 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveSelectionAction } from '@/app/actions/selections'
 import { initialActionState } from '@/lib/action-state'
-import { TextAreaField, TextField } from '@/components/shared/form-field'
+import { FieldShell, TextAreaField, TextField } from '@/components/shared/form-field'
+import { CategoryPicker, LocationPicker } from '@/components/selections/option-pickers'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { Button } from '@/components/ui/button'
 
@@ -27,11 +28,15 @@ const centsToInput = (c: number | null | undefined) => (c === null || c === unde
 export function SelectionForm({
   projectId,
   categories,
+  locations,
+  canCreateCategory,
   initial = {},
   onDone,
 }: {
   projectId: string
   categories: string[]
+  locations: string[]
+  canCreateCategory: boolean
   initial?: SelectionFormValues
   onDone?: () => void
 }) {
@@ -40,6 +45,8 @@ export function SelectionForm({
   const v = state.values ?? {}
   const err = state.fieldErrors ?? {}
   const pick = (key: string, fallback: string) => (key in v ? v[key] : fallback)
+  const [category, setCategory] = useState(initial.category ?? '')
+  const [location, setLocation] = useState(initial.location ?? '')
 
   return (
     <form action={action} className="flex flex-col gap-5">
@@ -57,30 +64,30 @@ export function SelectionForm({
           defaultValue={pick('name', initial.name ?? '')}
           error={err.name}
         />
-        <TextField
-          name="category"
-          label="Category"
-          required
-          maxLength={60}
-          list="selection-categories"
-          placeholder="Plumbing fixtures"
-          defaultValue={pick('category', initial.category ?? '')}
-          error={err.category}
-          hint="Pick a saved category or type a new one."
-        />
-        <datalist id="selection-categories">
-          {categories.map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
-        <TextField
-          name="location"
-          label="Room or location"
-          maxLength={160}
-          placeholder="Kitchen island"
-          defaultValue={pick('location', initial.location ?? '')}
-          error={err.location}
-        />
+        <FieldShell name="category" label="Category" required error={err.category}>
+          <CategoryPicker
+            id="category"
+            name="category"
+            value={category}
+            onValueChange={setCategory}
+            options={categories}
+            canCreate={canCreateCategory}
+            invalid={!!err.category}
+            describedBy={err.category ? 'category-error' : undefined}
+          />
+        </FieldShell>
+        <FieldShell name="location" label="Room or location" error={err.location} hint="Pick a room or type your own.">
+          <LocationPicker
+            id="location"
+            name="location"
+            value={location}
+            onValueChange={setLocation}
+            options={locations}
+            placeholder="Kitchen island"
+            invalid={!!err.location}
+            describedBy={err.location ? 'location-error' : 'location-hint'}
+          />
+        </FieldShell>
         <TextField
           name="due_date"
           label="Homeowner decision due"

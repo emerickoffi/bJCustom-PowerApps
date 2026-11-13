@@ -20,6 +20,7 @@ import {
 } from '@/lib/selection-drafts'
 import { STATUS_LABELS, STATUS_TONES, allowanceDelta, isOverdue, selectionPath, type SelectionListRow } from '@/lib/selections'
 import { NewSelectionDrawer } from '@/components/selections/new-selection-drawer'
+import { mergeOptionLists } from '@/lib/selection-option-lists'
 import { PageHeader, PageHeaderIcon, Surface } from '@/components/shared/page-header'
 import { SemanticBadge } from '@/components/shared/semantic-badge'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,8 @@ type Props = {
   rows: SelectionListRow[]
   loadError: boolean
   categories: string[]
+  locationOptions: string[]
+  canCreateCategory: boolean
   thumbnails: Record<string, string>
 }
 
@@ -47,7 +50,7 @@ const COLUMNS: { key: SortKey; label: string; className?: string; align?: 'right
   { key: 'allowance_cents', label: 'Allowance', className: 'hidden md:table-cell', align: 'right' },
 ]
 
-export function SelectionsWorkspace({ projectId, projectName, rows, loadError, categories, thumbnails }: Props) {
+export function SelectionsWorkspace({ projectId, projectName, rows, loadError, categories, locationOptions, canCreateCategory, thumbnails }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
@@ -100,7 +103,7 @@ export function SelectionsWorkspace({ projectId, projectName, rows, loadError, c
     [rows, filter, query, sort],
   )
 
-  const locations = useMemo(() => [...new Set(rows.map((r) => r.location?.trim()).filter((l): l is string => Boolean(l)))].sort((a, b) => a.localeCompare(b)), [rows])
+  const locations = useMemo(() => mergeOptionLists(locationOptions, rows.map((r) => r.location)), [locationOptions, rows])
 
   const openDrawer = () => setDrawerOpen(true)
   const hasRows = rows.length > 0
@@ -182,7 +185,7 @@ export function SelectionsWorkspace({ projectId, projectName, rows, loadError, c
         </div>
       )}
 
-      <NewSelectionDrawer open={drawerOpen} onOpenChange={setDrawerOpen} projectId={projectId} projectName={projectName} categories={categories} locations={locations} />
+      <NewSelectionDrawer open={drawerOpen} onOpenChange={setDrawerOpen} projectId={projectId} projectName={projectName} categories={categories} locations={locations} canCreateCategory={canCreateCategory} />
     </div>
   )
 }

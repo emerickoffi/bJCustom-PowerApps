@@ -16,6 +16,8 @@ import {
   type SelectionDraft,
 } from '@/lib/selection-drafts'
 import { selectionPath } from '@/lib/selections'
+import { mergeOptionLists } from '@/lib/selection-option-lists'
+import { CategoryPicker, LocationPicker } from '@/components/selections/option-pickers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,11 +32,12 @@ type Props = {
   projectName: string
   categories: string[]
   locations: string[]
+  canCreateCategory: boolean
 }
 
 const newKey = () => crypto.randomUUID()
 
-export function NewSelectionDrawer({ open, onOpenChange, projectId, projectName, categories, locations }: Props) {
+export function NewSelectionDrawer({ open, onOpenChange, projectId, projectName, categories, locations, canCreateCategory }: Props) {
   const [entries, setEntries] = useState<SelectionDraft[]>(() => [blankDraft(newKey())])
   const [errors, setErrors] = useState<Record<string, DraftErrors>>({})
   const [formError, setFormError] = useState<string | null>(null)
@@ -121,7 +124,7 @@ export function NewSelectionDrawer({ open, onOpenChange, projectId, projectName,
         setFormError(result.error)
         return
       }
-      setKnownCategories((list) => [...new Set([...list, ...entries.map((e) => e.category.trim())])].sort((a, b) => a.localeCompare(b)))
+      setKnownCategories((list) => mergeOptionLists(list, entries.map((e) => e.category)))
       const count = result.created.length
       const only = count === 1 ? result.created[0] : null
       toast.success(count === 1 ? 'Selection created' : `${count} selections created`, {
@@ -184,17 +187,6 @@ export function NewSelectionDrawer({ open, onOpenChange, projectId, projectName,
             </div>
           </SheetHeader>
 
-          <datalist id="sel-category-options">
-            {knownCategories.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
-          <datalist id="sel-location-options">
-            {locations.map((l) => (
-              <option key={l} value={l} />
-            ))}
-          </datalist>
-
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-5">
             {entries.map((entry, index) => (
               <DraftEntry
@@ -204,6 +196,8 @@ export function NewSelectionDrawer({ open, onOpenChange, projectId, projectName,
                 multiple={count > 1}
                 errors={errors[entry.key] ?? {}}
                 knownCategories={knownCategories}
+                locations={locations}
+                canCreateCategory={canCreateCategory}
                 disabled={pending}
                 onChange={(field, value) => update(entry.key, field, value)}
                 onRemove={() => removeEntry(entry.key)}
@@ -255,6 +249,8 @@ function DraftEntry({
   multiple,
   errors,
   knownCategories,
+  locations,
+  canCreateCategory,
   disabled,
   onChange,
   onRemove,
@@ -264,14 +260,14 @@ function DraftEntry({
   multiple: boolean
   errors: DraftErrors
   knownCategories: string[]
+  locations: string[]
+  canCreateCategory: boolean
   disabled: boolean
   onChange: (field: DraftField, value: string) => void
   onRemove: () => void
 }) {
   const [moreOpen, setMoreOpen] = useState(() => hasMoreDetails(entry))
   const id = (f: DraftField) => `sel-${entry.key}-${f}`
-  const typedCategory = entry.category.trim()
-  const isNewCategory = typedCategory.length >= 2 && !knownCategories.some((c) => c.toLowerCase() === typedCategory.toLowerCase())
   const hasErrors = Object.keys(errors).length > 0
   // Hidden fields with an error must be revealed so the user can find them.
   const showMore = moreOpen || Boolean(errors.description || errors.cost_code || errors.notes || errors.internal_notes)
@@ -300,11 +296,28 @@ function DraftEntry({
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id={id('category')} label="Category" required error={errors.category} hint={isNewCategory && !errors.category ? 'New category — it will be added to your list' : undefined}>
-          <Input id={id('category')} list="sel-category-options" value={entry.category} onChange={(e) => onChange('category', e.target.value)} placeholder="Plumbing fixtures" maxLength={60} autoComplete="off" disabled={disabled} aria-invalid={!!errors.category} aria-describedby={errors.category ? `${id('category')}-error` : isNewCategory ? `${id('category')}-hint` : undefined} />
+        <Field id={id('category')} label="Category" required error={errors.category}>
+          <CategoryPicker
+            id={id('category')}
+            value={entry.category}
+            onValueChange={(v) => onChange('category', v)}
+            options={knownCategories}
+            canCreate={canCreateCategory}
+            disabled={disabled}
+            invalid={!!errors.category}
+            describedBy={errors.category ? `${id('category')}-error` : undefined}
+          />
         </Field>
         <Field id={id('location')} label="Room / location" error={errors.location}>
-          <Input id={id('location')} list="sel-location-options" value={entry.location} onChange={(e) => onChange('location', e.target.value)} placeholder="Kitchen" maxLength={160} autoComplete="off" disabled={disabled} aria-invalid={!!errors.location} />
+          <LocationPicker
+            id={id('location')}
+            value={entry.location}
+            onValueChange={(v) => onChange('location', v)}
+            options={locations}
+            disabled={disabled}
+            invalid={!!errors.location}
+            describedBy={errors.location ? `${id('location')}-error` : undefined}
+          />
         </Field>
         <Field id={id('due_date')} label="Homeowner decision due" error={errors.due_date}>
           <Input id={id('due_date')} type="date" value={entry.due_date} onChange={(e) => onChange('due_date', e.target.value)} disabled={disabled} aria-invalid={!!errors.due_date} aria-describedby={errors.due_date ? `${id('due_date')}-error` : undefined} />

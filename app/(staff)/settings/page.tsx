@@ -60,6 +60,11 @@ export default async function SettingsPage() {
                 Document templates
               </Button>
             )}
+            {features.estimates && (
+              <Button variant="outline" className={navButtonClass} render={<Link href="/settings/selection-categories" />} nativeButton={false}>
+                Selection categories
+              </Button>
+            )}
             <Button variant="outline" className={navButtonClass} render={<Link href="/settings/roles" />} nativeButton={false}>
               Roles &amp; permissions
             </Button>
