@@ -5,12 +5,20 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireAdmin, requireStaff } from '@/lib/session'
 import { friendlyDbError, type ActionState } from '@/lib/action-state'
-import { FEATURES, type FeatureKey } from '@/lib/feature-registry'
+import { FEATURES, featureLabel, isSwitchable, type FeatureKey } from '@/lib/feature-registry'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import { isMissingTableError } from '@/lib/subcontractors'
 import { PRODUCT_BRAND } from '@/lib/product-brand'
 
-const featureKeys = FEATURES.filter((f) => f.available && !f.core).map((f) => f.key) as [FeatureKey, ...FeatureKey[]]
+const featureKeys = FEATURES.filter(isSwitchable).map((f) => f.key) as [FeatureKey, ...FeatureKey[]]
+
+/** Turning these on requires their migration to be applied; the UI lock alone is not enforcement. */
+const MIGRATION_TABLES: Partial<Record<FeatureKey, string>> = {
+  subcontractors: 'subcontractor_companies',
+  client_updates: 'client_updates',
+  rfis: 'project_rfis',
+  change_orders: 'change_orders',
+}
 
 export async function setFeatureAction(key: string, enabled: boolean): Promise<ActionState> {
   const session = await requireAdmin()
@@ -21,10 +29,11 @@ export async function setFeatureAction(key: string, enabled: boolean): Promise<A
   }
 
   const supabase = await createClient()
-  if (enabled && parsed.data === 'subcontractors') {
-    const probe = await supabase.from('subcontractor_companies').select('id').limit(1)
+  const migrationTable = MIGRATION_TABLES[parsed.data]
+  if (enabled && migrationTable) {
+    const probe = await supabase.from(migrationTable).select('id').limit(1)
     if (isMissingTableError(probe.error)) {
-      return { error: 'Apply the subcontractor database migration before turning on Subcontractors.' }
+      return { error: `Apply the ${featureLabel(parsed.data)} database migration before turning it on.` }
     }
   }
   const { error } = await supabase
