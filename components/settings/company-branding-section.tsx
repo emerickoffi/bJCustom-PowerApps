@@ -81,7 +81,7 @@ export function CompanyBrandingSection({
 
   const previewLogo = logoUrl.trim()
   const hasLogo = previewLogo !== ''
-  const source = logoSource(previewLogo, process.env.NEXT_PUBLIC_SUPABASE_URL)
+  const source = logoSource(previewLogo)
 
   function applyResult(result: LogoActionResult) {
     if ('error' in result) {

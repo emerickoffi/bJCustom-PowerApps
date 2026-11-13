@@ -9,10 +9,10 @@ import { parseVisibility, serializeDashboardSettings, validateLayout } from '@/l
 import { organizationOnboardingSchema, organizationSettingsSchema, profileSchema } from '@/lib/validation'
 import {
   COMPANY_LOGOS_BUCKET,
-  isOwnStoredLogo,
+  isUploadedLogo,
   logoStoragePath,
+  uploadedLogoUrl,
   validateLogoUpload,
-  versionedLogoUrl,
 } from '@/lib/company-logo'
 
 export async function createOrganizationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -91,7 +91,7 @@ export async function uploadCompanyLogoAction(formData: FormData): Promise<LogoA
     }
   }
 
-  const logoUrl = versionedLogoUrl(bucket.getPublicUrl(path).data.publicUrl, Date.now())
+  const logoUrl = uploadedLogoUrl(Date.now())
   const { data, error } = await supabase
     .from('organizations')
     .update({ logo_url: logoUrl })
@@ -123,8 +123,7 @@ export async function removeCompanyLogoAction(): Promise<LogoActionResult> {
   if (error) return { error: friendlyDbError(error) }
   if (!data?.length) return { error: 'You do not have permission to change the company logo.' }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (supabaseUrl && isOwnStoredLogo(current?.logo_url, session.organizationId, supabaseUrl)) {
+  if (isUploadedLogo(current?.logo_url)) {
     await supabase.storage.from(COMPANY_LOGOS_BUCKET).remove([logoStoragePath(session.organizationId)])
   }
 

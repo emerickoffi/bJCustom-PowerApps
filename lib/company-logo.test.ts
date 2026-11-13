@@ -3,11 +3,13 @@ import assert from 'node:assert/strict'
 import {
   MAX_LOGO_BYTES,
   detectLogoMime,
-  isOwnStoredLogo,
+  isAllowedLogoUrl,
+  isUploadedLogo,
+  logoResponseHeaders,
   logoSource,
   logoStoragePath,
+  uploadedLogoUrl,
   validateLogoUpload,
-  versionedLogoUrl,
 } from './company-logo.ts'
 import { DEFAULT_BRAND, brandFromOrganization, type OrganizationRow } from './branding.ts'
 
@@ -82,23 +84,52 @@ describe('storage paths and ownership', () => {
     assert.throws(() => logoStoragePath('../other/logo'))
   })
 
-  it('adds a cache-busting version without losing the path', () => {
-    const url = versionedLogoUrl(`${SUPABASE}/storage/v1/object/public/company-logos/${ORG}/logo`, 42)
-    assert.equal(url, `${SUPABASE}/storage/v1/object/public/company-logos/${ORG}/logo?v=42`)
+  it('stores uploads as a versioned same-origin route that names no company', () => {
+    const url = uploadedLogoUrl(42)
+    assert.equal(url, '/api/company-logo?v=42')
+    assert.equal(url.includes(ORG), false)
+    assert.equal(url.includes(OTHER_ORG), false)
   })
 
-  it('only treats this company’s own uploaded object as removable', () => {
-    const own = `${SUPABASE}/storage/v1/object/public/company-logos/${ORG}/logo?v=1`
-    assert.equal(isOwnStoredLogo(own, ORG, SUPABASE), true)
-    assert.equal(isOwnStoredLogo(own, OTHER_ORG, SUPABASE), false)
-    assert.equal(isOwnStoredLogo('https://cdn.example.com/acme.png', ORG, SUPABASE), false)
-    assert.equal(isOwnStoredLogo('/branding/logo.png', ORG, SUPABASE), false)
-    assert.equal(isOwnStoredLogo(null, ORG, SUPABASE), false)
+  it('treats only the logo route as an uploaded (removable) logo', () => {
+    assert.equal(isUploadedLogo('/api/company-logo?v=1'), true)
+    assert.equal(isUploadedLogo('/api/company-logo'), true)
+    assert.equal(isUploadedLogo('/api/company-logo?v=1&org=' + OTHER_ORG), false)
+    assert.equal(isUploadedLogo(`${SUPABASE}/storage/v1/object/public/company-logos/${ORG}/logo`), false)
+    assert.equal(isUploadedLogo('https://cdn.example.com/acme.png'), false)
+    assert.equal(isUploadedLogo('/branding/logo.png'), false)
+    assert.equal(isUploadedLogo(null), false)
   })
 
   it('classifies the active logo source', () => {
-    assert.equal(logoSource('', SUPABASE), 'none')
-    assert.equal(logoSource(`${SUPABASE}/storage/v1/object/public/company-logos/${ORG}/logo?v=1`, SUPABASE), 'uploaded')
-    assert.equal(logoSource('https://cdn.example.com/acme.png', SUPABASE), 'url')
+    assert.equal(logoSource(''), 'none')
+    assert.equal(logoSource('   '), 'none')
+    assert.equal(logoSource(uploadedLogoUrl(1)), 'uploaded')
+    assert.equal(logoSource('https://cdn.example.com/acme.png'), 'url')
+  })
+
+  it('serves stored logos with a byte-derived type and no sniffing or script execution', () => {
+    const headers = logoResponseHeaders('image/png')
+    assert.equal(headers['Content-Type'], 'image/png')
+    assert.equal(headers['X-Content-Type-Options'], 'nosniff')
+    assert.match(headers['Content-Security-Policy'], /default-src 'none'/)
+    assert.match(headers['Cache-Control'], /^private/)
+  })
+})
+
+describe('hosted logo URL field', () => {
+  const accepts = isAllowedLogoUrl
+
+  it('keeps hosted https URLs, site paths, the uploaded-logo route, and an empty value working', () => {
+    assert.equal(accepts('https://cdn.example.com/acme.png'), true)
+    assert.equal(accepts('/branding/logo.png'), true)
+    assert.equal(accepts(uploadedLogoUrl(7)), true)
+    assert.equal(accepts(null), true)
+  })
+
+  it('rejects protocol-relative and non-https URLs', () => {
+    assert.equal(accepts('//evil.example.com/logo.png'), false)
+    assert.equal(accepts('http://cdn.example.com/acme.png'), false)
+    assert.equal(accepts('javascript:alert(1)'), false)
   })
 })

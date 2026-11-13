@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { ALL_PROJECT_STATUSES } from '@/lib/domain'
 import { addBusinessDays, parseBusinessDays } from '@/lib/business-days'
+import { isAllowedLogoUrl } from './company-logo.ts'
 import { INVALID_STATE_MESSAGE, isUsCountry, normalizeUsState, optionalUsState, requiredUsState } from './us-states.ts'
 
 const optionalText = (max: number) =>
@@ -59,7 +60,7 @@ export const organizationSettingsSchema = z.object({
   display_name: z.string().trim().min(2, 'Company name is required').max(120),
   legal_name: optionalText(160),
   logo_url: optionalText(500).refine(
-    (v) => v === null || v.startsWith('/') || /^https:\/\//.test(v),
+    isAllowedLogoUrl,
     'Use an https:// URL or a path such as /branding/logo.png',
   ),
   primary_color: hexColor,

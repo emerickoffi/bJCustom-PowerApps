@@ -5,7 +5,13 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession, requireManager } from '@/lib/session'
-import { REPORTS_BUCKET, acknowledgmentStatement, buildWalkthroughSnapshot, renderWalkthroughPdf } from '@/lib/reports'
+import {
+  REPORTS_BUCKET,
+  acknowledgmentStatement,
+  buildWalkthroughSnapshot,
+  loadOrganizationLogo,
+  renderWalkthroughPdf,
+} from '@/lib/reports'
 
 export type ReportActionResult = { ok: boolean; message: string }
 
@@ -25,6 +31,7 @@ export async function generateWalkthroughReportAction(walkthroughId: string): Pr
   const built = await buildWalkthroughSnapshot(supabase, walkthroughId, session.organizationId)
   if ('error' in built) return fail(built.error ?? 'Could not build the report.')
   const { snapshot, projectId } = built
+  const logoBytes = await loadOrganizationLogo(supabase, session.organizationId, snapshot.organizationLogoUrl)
 
   const admin = createAdminClient()
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -37,7 +44,7 @@ export async function generateWalkthroughReportAction(walkthroughId: string): Pr
       .maybeSingle()
     const version = (latest?.version ?? 0) + 1
 
-    const pdf = await renderWalkthroughPdf(snapshot, version)
+    const pdf = await renderWalkthroughPdf(snapshot, version, logoBytes)
     const sha256 = createHash('sha256').update(pdf).digest('hex')
     const storagePath = `${session.organizationId}/${projectId}/walkthroughs/${walkthroughId}/v${version}-${randomUUID()}.pdf`
 
