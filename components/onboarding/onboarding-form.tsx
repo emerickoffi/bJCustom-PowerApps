@@ -17,13 +17,13 @@ export function OnboardingForm() {
         name="display_name"
         label="Company display name"
         required
-        defaultValue="B & J Custom Homes"
+        placeholder="Acme Custom Homes"
         error={fe.display_name}
       />
       <TextField
         name="legal_name"
         label="Legal business name"
-        defaultValue="B & J Custom Homes, Inc."
+        placeholder="Acme Custom Homes, LLC"
         error={fe.legal_name}
       />
       <div className="grid gap-5 sm:grid-cols-2">

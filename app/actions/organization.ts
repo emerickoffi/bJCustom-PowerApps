@@ -7,6 +7,13 @@ import { getSession, requireAdmin } from '@/lib/session'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { parseVisibility, serializeDashboardSettings, validateLayout } from '@/lib/dashboard-visibility'
 import { organizationOnboardingSchema, organizationSettingsSchema, profileSchema } from '@/lib/validation'
+import {
+  COMPANY_LOGOS_BUCKET,
+  isOwnStoredLogo,
+  logoStoragePath,
+  validateLogoUpload,
+  versionedLogoUrl,
+} from '@/lib/company-logo'
 
 export async function createOrganizationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await getSession()
@@ -50,6 +57,79 @@ export async function updateOrganizationAction(_prev: ActionState, formData: For
 
   revalidatePath('/', 'layout')
   return { success: 'Organization settings saved.' }
+}
+
+export type LogoActionResult = { error: string } | { success: string; logoUrl: string | null }
+
+/**
+ * Uploads (or replaces) the admin's own company logo and makes it the active logo. Authorization is
+ * enforced twice: requireAdmin here, and the company-logos storage policies plus the organizations
+ * update policy in the database, which only allow org admins to write their own organization.
+ */
+export async function uploadCompanyLogoAction(formData: FormData): Promise<LogoActionResult> {
+  const session = await requireAdmin()
+  const file = formData.get('logo')
+  if (!(file instanceof File)) return { error: 'Choose an image file to upload.' }
+
+  const head = new Uint8Array(await file.slice(0, 16).arrayBuffer())
+  const checked = validateLogoUpload({ size: file.size, type: file.type, bytes: head })
+  if (!checked.ok) return { error: checked.error }
+
+  const supabase = await createClient()
+  const path = logoStoragePath(session.organizationId)
+  const bucket = supabase.storage.from(COMPANY_LOGOS_BUCKET)
+  const { error: uploadError } = await bucket.upload(path, file, {
+    contentType: checked.mime,
+    upsert: true,
+    cacheControl: '3600',
+  })
+  if (uploadError) {
+    return {
+      error: /bucket not found/i.test(uploadError.message)
+        ? 'Logo storage is not set up yet. Ask an administrator to apply the company logo storage migration.'
+        : 'The logo could not be uploaded. Please try again.',
+    }
+  }
+
+  const logoUrl = versionedLogoUrl(bucket.getPublicUrl(path).data.publicUrl, Date.now())
+  const { data, error } = await supabase
+    .from('organizations')
+    .update({ logo_url: logoUrl })
+    .eq('id', session.organizationId)
+    .select('id')
+  if (error) return { error: friendlyDbError(error) }
+  if (!data?.length) return { error: 'You do not have permission to change the company logo.' }
+
+  revalidatePath('/', 'layout')
+  return { success: 'Logo uploaded.', logoUrl }
+}
+
+/** Clears the active logo only; colors and other branding settings are untouched. */
+export async function removeCompanyLogoAction(): Promise<LogoActionResult> {
+  const session = await requireAdmin()
+  const supabase = await createClient()
+
+  const { data: current } = await supabase
+    .from('organizations')
+    .select('logo_url')
+    .eq('id', session.organizationId)
+    .maybeSingle()
+
+  const { data, error } = await supabase
+    .from('organizations')
+    .update({ logo_url: null })
+    .eq('id', session.organizationId)
+    .select('id')
+  if (error) return { error: friendlyDbError(error) }
+  if (!data?.length) return { error: 'You do not have permission to change the company logo.' }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (supabaseUrl && isOwnStoredLogo(current?.logo_url, session.organizationId, supabaseUrl)) {
+    await supabase.storage.from(COMPANY_LOGOS_BUCKET).remove([logoStoragePath(session.organizationId)])
+  }
+
+  revalidatePath('/', 'layout')
+  return { success: 'Logo removed.', logoUrl: null }
 }
 
 /**
