@@ -440,7 +440,7 @@ function Dock({ assistant, globalActions, pickerActions }: DockProps) {
           <span
             ref={glowRef}
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-2xl bg-primary opacity-0 will-change-[transform,opacity]"
+            className="pointer-events-none absolute inset-0 rounded-2xl bg-primary opacity-0 shadow-[0_0_14px_4px_var(--primary)] will-change-[transform,opacity] motion-reduce:hidden"
           />
           <button
             ref={registry.launcherRef}
