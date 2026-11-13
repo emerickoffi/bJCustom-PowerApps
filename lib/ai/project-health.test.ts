@@ -54,7 +54,8 @@ test('target date passed without completion is at risk', () => {
 })
 
 test('financial thresholds and estimate preference', () => {
-  const withTotal = (total: number) => ({ budget: 400000, estimates: [{ estimate_number: 'E', status: 'approved', construction_total: total, estimate_date: null }] })
+  const costEvidence = { approvedCommitments: 1, committedTotal: 100000, approvedBills: 0, actualTotal: 0, forecastLines: 0 }
+  const withTotal = (total: number) => ({ budget: 400000, costEvidence, estimates: [{ estimate_number: 'E', status: 'approved', construction_total: total, estimate_date: null }] })
   assert.equal(assessProjectHealth({ ...base, financial: withTotal(415000) }).dimensions.financial.level, 'on_track')
   assert.equal(assessProjectHealth({ ...base, financial: withTotal(430000) }).dimensions.financial.level, 'needs_attention')
   assert.equal(assessProjectHealth({ ...base, financial: withTotal(450000) }).dimensions.financial.level, 'at_risk')
