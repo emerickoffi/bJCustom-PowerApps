@@ -38,7 +38,7 @@ const COL_TOTAL = PAGE_W - M
 const DESC_W = 270
 
 /** Standard PDF fonts only cover WinAnsi; map common typography and drop anything else rather than failing. */
-function safe(text: string | null | undefined): string {
+export function safe(text: string | null | undefined): string {
   return (text ?? '')
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -51,7 +51,7 @@ function safe(text: string | null | undefined): string {
     .replace(/[^\n\x20-\x7e\xa0-\xff]/g, '')
 }
 
-function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+export function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const out: string[] = []
   for (const paragraph of safe(text).split('\n')) {
     const words = paragraph.split(/\s+/).filter(Boolean)

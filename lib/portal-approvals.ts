@@ -1,4 +1,5 @@
 import type { SemanticTone } from '@/components/shared/semantic-badge'
+import type { ClientPricingCategory, ClientPricingLine, PricingDisplay, ProposalText } from '@/lib/proposals'
 
 export const APPROVAL_DOCUMENT_TYPES = ['estimate', 'change_order'] as const
 export type ApprovalDocumentType = (typeof APPROVAL_DOCUMENT_TYPES)[number]
@@ -65,15 +66,7 @@ export type ApprovalHistoryEntry = {
   amount_cents: number
 }
 
-export type ApprovalLine = {
-  category: string
-  description: string
-  quantity: number
-  unit: string
-  is_allowance: boolean
-  notes: string | null
-  line_total_cents: number
-}
+export type ApprovalLine = ClientPricingLine
 
 type ApprovalDetailBase = {
   id: string
@@ -100,12 +93,13 @@ export type EstimateApprovalDetail = ApprovalDetailBase & {
   document_type: 'estimate'
   estimate_date: string | null
   expiration_date: string | null
+  /** Client-safe: no internal costs, markup, or contingency ever reach the portal. */
+  pricing_display: PricingDisplay
+  categories: ClientPricingCategory[]
+  proposal: ProposalText
   totals: {
-    direct_cost_cents: number
-    allowance_cents: number
-    markup_cents: number
-    contingency_cents: number
     construction_total_cents: number
+    allowance_cents: number
     land_cost_cents: number | null
     total_with_land_cents: number
   }
