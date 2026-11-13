@@ -3,9 +3,11 @@
 import { forwardRef, useCallback, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import Link from 'next/link'
-import { AlertTriangle, CalendarDays, Camera, CloudSun, HardHat, ListChecks, Plus, Trash2, Truck } from 'lucide-react'
+import { AlertTriangle, CalendarDays, Camera, ChevronDown, CloudSun, HardHat, Link2, ListChecks, Plus, Trash2, Truck, type LucideIcon } from 'lucide-react'
 import { saveDailyLogAction } from '@/app/actions/daily-logs'
-import { DAILY_LOG_CREW_LIMIT, dailyLogPath } from '@/lib/daily-logs'
+import { DAILY_LOG_ACTIVITY_LIMIT, DAILY_LOG_CREW_LIMIT, dailyLogPath } from '@/lib/daily-logs'
+import type { ScheduleActivityOption } from '@/lib/daily-logs-data'
+import { ScheduleActivityPicker } from '@/components/daily-logs/schedule-activity-picker'
 import { SaveBanners, SaveStatus, useResilientSave, type ResilientSave } from '@/components/shared/resilient-save'
 import { FormActions, FormSection, TextAreaField, TextField } from '@/components/shared/form-field'
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
@@ -50,7 +52,11 @@ export type DailyLogFormDefaults = {
   string
 >
 
-type ActivityOption = { id: string; name: string; phase: string | null }
+type ActivityOption = ScheduleActivityOption
+
+const COMPACT_TEXTAREA = 'min-h-16'
+const DELAY_FIELDS = ['delay_description', 'delay_reason', 'delay_impact', 'corrective_actions', 'safety_observations'] as const
+const MATERIAL_FIELDS = ['materials_delivered', 'equipment_used', 'delivery_notes'] as const
 
 const blankCrew = { trade: '', crew_size: '', hours_worked: '', notes: '', subcontractor_company_id: '' }
 
@@ -151,13 +157,7 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
     setCrews((rows) => [...rows, { ...blankCrew, key: nextKey }])
     setNextKey((k) => k + 1)
   }
-  const toggleActivity = (id: string) =>
-    setSelected((s) => {
-      const next = new Set(s)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  const [logDate, setLogDate] = useState(() => val('log_date'))
 
   return (
     <form ref={formRef} action={action} className="flex flex-col gap-6">
@@ -165,8 +165,17 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
       {defaults.id && <input type="hidden" name="id" value={defaults.id} />}
       {defaults.version && <input type="hidden" name="version" value={defaults.version} />}
 
-      <FormSection title="Date and weather" icon={CloudSun} description="Record the weather you observed on site. It is saved as entered and never looked up automatically.">
-        <TextField name="log_date" label="Log date" type="date" required max={maxDate} defaultValue={val('log_date')} error={fe.log_date} />
+      <FormSection title="Daily overview" icon={CloudSun} description="Date and the weather you observed on site. Weather is saved as entered and never looked up automatically.">
+        <TextField
+          name="log_date"
+          label="Log date"
+          type="date"
+          required
+          max={maxDate}
+          defaultValue={val('log_date')}
+          onChange={(e) => setLogDate(e.target.value)}
+          error={fe.log_date}
+        />
         <TextField
           name="temperature_f"
           label="Temperature (°F)"
@@ -177,10 +186,16 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
         />
         <TextField name="weather_conditions" label="Conditions" defaultValue={val('weather_conditions')} error={fe.weather_conditions} hint="e.g. Clear, light wind" maxLength={200} />
         <TextField name="weather_impact" label="Weather impact" defaultValue={val('weather_impact')} error={fe.weather_impact} hint="Leave blank if none" maxLength={2000} />
-        <TextAreaField name="site_conditions" label="Site conditions" defaultValue={val('site_conditions')} error={fe.site_conditions} className="sm:col-span-2" maxLength={2000} rows={2} />
+        <TextAreaField name="site_conditions" label="Site conditions" defaultValue={val('site_conditions')} error={fe.site_conditions} className="sm:col-span-2" maxLength={2000} rows={1} inputClassName={COMPACT_TEXTAREA} />
       </FormSection>
 
-      <FormSection title="Crews on site" icon={HardHat} description="Trades and crew counts observed today. This is a site record, not a timesheet or payroll entry.">
+      <FormSection title="Work completed" icon={ListChecks} description="What happened today and what is planned next.">
+        <TextAreaField name="work_performed" label="Work performed" defaultValue={val('work_performed')} error={fe.work_performed} className="sm:col-span-2" maxLength={8000} rows={3} inputClassName="min-h-24" />
+        <TextAreaField name="progress_notes" label="Progress notes" defaultValue={val('progress_notes')} error={fe.progress_notes} maxLength={4000} rows={2} inputClassName={COMPACT_TEXTAREA} />
+        <TextAreaField name="work_planned_next" label="Planned next work" defaultValue={val('work_planned_next')} error={fe.work_planned_next} maxLength={4000} rows={2} inputClassName={COMPACT_TEXTAREA} />
+      </FormSection>
+
+      <FormSection title="Crew & subcontractors" icon={HardHat} description="Trades and crew counts observed today. This is a site record, not a timesheet or payroll entry.">
         <div className="flex flex-col gap-3 sm:col-span-2">
           {crews.map((row, i) => (
             <fieldset
@@ -237,58 +252,19 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
         </div>
       </FormSection>
 
-      <FormSection title="Work" icon={ListChecks} description="What happened today and what is planned next. Linking activities does not change the schedule.">
-        <TextAreaField name="work_performed" label="Work performed" defaultValue={val('work_performed')} error={fe.work_performed} className="sm:col-span-2" maxLength={8000} rows={4} />
-        <TextAreaField name="progress_notes" label="Progress notes" defaultValue={val('progress_notes')} error={fe.progress_notes} maxLength={4000} />
-        <TextAreaField name="work_planned_next" label="Planned next work" defaultValue={val('work_planned_next')} error={fe.work_planned_next} maxLength={4000} />
-        <fieldset className="flex flex-col gap-2 sm:col-span-2">
-          <legend className="mb-2 text-sm font-medium text-foreground">Related schedule activities</legend>
-          {activities.length === 0 ? (
-            <p className="text-sm text-muted-foreground">This project has no schedule activities yet.</p>
-          ) : (
-            <div className="grid max-h-64 gap-1 overflow-y-auto rounded-lg border border-border/70 p-2 sm:grid-cols-2">
-              {activities.map((a) => (
-                <label key={a.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-muted">
-                  <input
-                    type="checkbox"
-                    name="activity_ids"
-                    value={a.id}
-                    checked={selected.has(a.id)}
-                    onChange={() => toggleActivity(a.id)}
-                    className="size-4 accent-primary"
-                  />
-                  <span className="min-w-0">
-                    <span className="block truncate text-foreground">{a.name}</span>
-                    {a.phase && <span className="block truncate text-xs text-muted-foreground">{a.phase}</span>}
-                  </span>
-                </label>
-              ))}
-            </div>
-          )}
-          {fe.activity_ids && (
-            <p role="alert" className="text-sm text-destructive">
-              {fe.activity_ids}
-            </p>
-          )}
-        </fieldset>
-      </FormSection>
-
-      <FormSection title="Materials and equipment" icon={Truck}>
-        <TextAreaField name="materials_delivered" label="Materials delivered" defaultValue={val('materials_delivered')} error={fe.materials_delivered} maxLength={4000} />
-        <TextAreaField name="equipment_used" label="Equipment on site" defaultValue={val('equipment_used')} error={fe.equipment_used} maxLength={4000} />
-        <TextAreaField name="delivery_notes" label="Delivery notes" defaultValue={val('delivery_notes')} error={fe.delivery_notes} className="sm:col-span-2" maxLength={2000} rows={2} />
-      </FormSection>
-
-      <FormSection title="Delays and safety" icon={AlertTriangle} description="A log is flagged as delayed when a delay description is entered.">
-        <TextAreaField name="delay_description" label="Delay description" defaultValue={val('delay_description')} error={fe.delay_description} className="sm:col-span-2" maxLength={4000} rows={2} />
-        <TextField name="delay_reason" label="Delay reason" defaultValue={val('delay_reason')} error={fe.delay_reason} maxLength={1000} hint="e.g. Weather, inspection, material" />
-        <TextField name="delay_impact" label="Delay impact" defaultValue={val('delay_impact')} error={fe.delay_impact} maxLength={1000} hint="e.g. Half day lost on framing" />
-        <TextAreaField name="corrective_actions" label="Corrective actions" defaultValue={val('corrective_actions')} error={fe.corrective_actions} maxLength={4000} />
-        <TextAreaField name="safety_observations" label="Safety observations" defaultValue={val('safety_observations')} error={fe.safety_observations} maxLength={4000} />
+      <FormSection title="Related schedule activities" icon={Link2} description="Link today's work to activities in your project schedule.">
+        <ScheduleActivityPicker
+          activities={activities}
+          selected={selected}
+          onChange={setSelected}
+          logDate={logDate}
+          limit={DAILY_LOG_ACTIVITY_LIMIT}
+          error={fe.activity_ids}
+        />
       </FormSection>
 
       <FormSection
-        title="Photos"
+        title="Site photos"
         icon={Camera}
         description={
           defaults.id
@@ -301,6 +277,36 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
           <SaveAndAddPhotosButton ref={photosSubmitRef} />
         </div>
       </FormSection>
+
+      <section aria-labelledby="additional-details-heading" className="flex flex-col gap-3">
+        <h2 id="additional-details-heading" className="px-1 text-sm font-semibold text-foreground">
+          Additional details
+        </h2>
+        <CollapsibleSection
+          title="Delays & safety"
+          icon={AlertTriangle}
+          summary="Delays, corrective actions, and safety observations. A log is flagged as delayed when a delay description is entered."
+          filled={DELAY_FIELDS.some((k) => Boolean(val(k)))}
+          hasError={DELAY_FIELDS.some((k) => Boolean(fe[k]))}
+        >
+          <TextAreaField name="delay_description" label="Delay description" defaultValue={val('delay_description')} error={fe.delay_description} className="sm:col-span-2" maxLength={4000} rows={1} inputClassName={COMPACT_TEXTAREA} />
+          <TextField name="delay_reason" label="Delay reason" defaultValue={val('delay_reason')} error={fe.delay_reason} maxLength={1000} hint="e.g. Weather, inspection, material" />
+          <TextField name="delay_impact" label="Delay impact" defaultValue={val('delay_impact')} error={fe.delay_impact} maxLength={1000} hint="e.g. Half day lost on framing" />
+          <TextAreaField name="corrective_actions" label="Corrective actions" defaultValue={val('corrective_actions')} error={fe.corrective_actions} maxLength={4000} rows={1} inputClassName={COMPACT_TEXTAREA} />
+          <TextAreaField name="safety_observations" label="Safety observations" defaultValue={val('safety_observations')} error={fe.safety_observations} maxLength={4000} rows={1} inputClassName={COMPACT_TEXTAREA} />
+        </CollapsibleSection>
+        <CollapsibleSection
+          title="Materials & equipment"
+          icon={Truck}
+          summary="Deliveries received and equipment on site."
+          filled={MATERIAL_FIELDS.some((k) => Boolean(val(k)))}
+          hasError={MATERIAL_FIELDS.some((k) => Boolean(fe[k]))}
+        >
+          <TextAreaField name="materials_delivered" label="Materials delivered" defaultValue={val('materials_delivered')} error={fe.materials_delivered} maxLength={4000} rows={1} inputClassName={COMPACT_TEXTAREA} />
+          <TextAreaField name="equipment_used" label="Equipment on site" defaultValue={val('equipment_used')} error={fe.equipment_used} maxLength={4000} rows={1} inputClassName={COMPACT_TEXTAREA} />
+          <TextAreaField name="delivery_notes" label="Delivery notes" defaultValue={val('delivery_notes')} error={fe.delivery_notes} className="sm:col-span-2" maxLength={2000} rows={1} inputClassName={COMPACT_TEXTAREA} />
+        </CollapsibleSection>
+      </section>
 
       <FormActions
         message={
@@ -332,6 +338,47 @@ const SaveAndAddPhotosButton = forwardRef<HTMLButtonElement>(function SaveAndAdd
     </Button>
   )
 })
+
+/** Native details element so collapsed fields stay mounted and keep submitting their typed values. */
+function CollapsibleSection({
+  title,
+  summary,
+  icon: Icon,
+  filled,
+  hasError,
+  children,
+}: {
+  title: string
+  summary: string
+  icon: LucideIcon
+  filled: boolean
+  hasError: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(filled || hasError)
+  return (
+    <details
+      open={open || hasError}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+      className="group rounded-xl border border-border/80 bg-card shadow-xs"
+    >
+      <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 rounded-xl p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-6 [&::-webkit-details-marker]:hidden">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sage text-primary ring-1 ring-inset ring-primary/10">
+          <Icon className="size-4" aria-hidden="true" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            {title}
+            {filled && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Has entries</span>}
+          </span>
+          <span className="text-sm leading-relaxed text-pretty text-muted-foreground">{summary}</span>
+        </span>
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <div className="grid gap-5 border-t border-border/60 p-5 sm:grid-cols-2 sm:p-6">{children}</div>
+    </details>
+  )
+}
 
 function CompanySelect({
   value,
