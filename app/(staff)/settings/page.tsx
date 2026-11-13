@@ -55,6 +55,11 @@ export default async function SettingsPage() {
                 Project templates
               </Button>
             )}
+            {features.estimates && (
+              <Button variant="outline" className={navButtonClass} render={<Link href="/settings/proposal-templates" />} nativeButton={false}>
+                Proposal templates
+              </Button>
+            )}
             <Button variant="outline" className={navButtonClass} render={<Link href="/settings/roles" />} nativeButton={false}>
               Roles &amp; permissions
             </Button>

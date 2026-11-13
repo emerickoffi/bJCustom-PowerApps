@@ -294,6 +294,7 @@ export default async function EstimateDetailPage({
           editable={editable}
           editHref={editable ? `/estimates/${id}/edit` : undefined}
           pdfHref={`/print/estimates/${id}`}
+          proposalHref={estimate.project ? `/estimates/${id}/proposal` : undefined}
           nextAction={nextAction}
           moreMenu={manager ? <EstimateMoreMenu estimateId={id} status={estimate.status} /> : undefined}
         />

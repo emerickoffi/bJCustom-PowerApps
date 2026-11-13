@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useSyncExternalStore, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
-import { ArrowRight, Check, ChevronDown, FileDown, Loader2, Pencil, Save, TriangleAlert } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, FileDown, FileText, Loader2, Pencil, Save, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BackLink } from '@/components/shared/page-header'
 import { EstimateSummary } from '@/components/estimates/estimate-summary'
@@ -155,6 +155,7 @@ export function EstimateWorkspaceHeader({
   editable,
   editHref,
   pdfHref,
+  proposalHref,
   nextAction,
   moreMenu,
 }: {
@@ -166,6 +167,7 @@ export function EstimateWorkspaceHeader({
   editable: boolean
   editHref?: string
   pdfHref: string
+  proposalHref?: string
   nextAction: NextAction | null
   moreMenu?: ReactNode
 }) {
@@ -266,6 +268,16 @@ export function EstimateWorkspaceHeader({
                   <ArrowRight data-icon="inline-end" />
                 </Button>
               ))}
+            {proposalHref && (
+              <Button
+                variant="outline"
+                render={<Link href={proposalHref} aria-label="Proposal" title="Customer-facing proposal" />}
+                nativeButton={false}
+              >
+                <FileText data-icon="inline-start" />
+                <span className="hidden sm:inline">Proposal</span>
+              </Button>
+            )}
             <PdfButton href={pdfHref} />
             {editHref && (
               <Button

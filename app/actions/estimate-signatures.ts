@@ -7,7 +7,8 @@ import { getSession, canManage } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { getEstimate, getEstimateFamily, getEstimateLineItems } from '@/lib/estimate-queries'
 import { getProviderConfig } from '@/lib/esign/dropbox-sign'
-import { renderEstimatePdf } from '@/lib/esign/estimate-pdf-render'
+import { renderProposalPdf } from '@/lib/esign/proposal-pdf-render'
+import { getProposalPreview } from '@/lib/proposals-data'
 import { estimateSigningEligibility } from '@/lib/estimate-signing'
 import { estimateSigningFilename } from '@/lib/estimate-pdf'
 import { DOCUMENTS_BUCKET, DOCUMENT_MAX_BYTES, documentStoragePath } from '@/lib/documents'
@@ -99,7 +100,17 @@ export async function prepareEstimateSigning(estimateId: string): Promise<Result
 
   let bytes: Uint8Array
   try {
-    bytes = await renderEstimatePdf({ estimate, items, brand: session.brand, generatedAt: new Date() })
+    // The signing copy goes to the homeowner, so it is the customer-facing proposal, not the internal cost sheet.
+    const preview = await getProposalPreview(estimate.id)
+    if (!preview) throw new Error('Proposal preview unavailable')
+    bytes = await renderProposalPdf({
+      estimate,
+      proposal: preview.proposal,
+      pricing: preview.pricing,
+      brand: session.brand,
+      generatedAt: new Date(),
+      purpose: 'signing',
+    })
   } catch (e) {
     console.error('[estimate-signing] render failed', e)
     return release('The estimate PDF could not be generated. Please try again.')

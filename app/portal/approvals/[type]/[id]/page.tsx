@@ -6,6 +6,7 @@ import { FileCheck2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { SemanticBadge } from '@/components/shared/semantic-badge'
 import { ApprovalDecisionForm } from '@/components/portal/approval-decision-form'
+import { ProposalBody } from '@/components/proposals/proposal-document'
 import { getPortalApprovalDetail } from '@/lib/portal-approvals-data'
 import {
   APPROVAL_DECISION_LABELS,
@@ -45,58 +46,21 @@ function SummaryRow({ label, value, strong }: { label: string; value: string; st
 }
 
 function EstimateBody({ doc }: { doc: EstimateApprovalDetail }) {
-  const t = doc.totals
-  const fees = t.markup_cents + t.contingency_cents
   return (
-    <>
-      <section aria-labelledby="scope-heading" className="surface flex flex-col gap-4 p-5 md:p-6">
-        <h2 id="scope-heading" className="type-section-title text-foreground">
-          Scope and pricing
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[32rem] text-sm">
-            <caption className="sr-only">Estimate line items</caption>
-            <thead>
-              <tr className="border-b text-left text-xs text-muted-foreground">
-                <th scope="col" className="py-2 pr-3 font-medium">
-                  Item
-                </th>
-                <th scope="col" className="py-2 pr-3 font-medium">
-                  Quantity
-                </th>
-                <th scope="col" className="py-2 text-right font-medium">
-                  Amount
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {doc.lines.map((line, i) => (
-                <tr key={i} className="border-b border-border/60 align-top last:border-0">
-                  <td className="py-3 pr-3">
-                    <span className="block font-medium text-foreground">{line.description}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {line.category}
-                      {line.is_allowance ? ' · Allowance' : ''}
-                    </span>
-                    {line.notes && <span className="mt-1 block text-xs text-muted-foreground">{line.notes}</span>}
-                  </td>
-                  <td className="py-3 pr-3 tabular-nums text-muted-foreground">{`${Number(line.quantity)} ${line.unit}`}</td>
-                  <td className="py-3 text-right tabular-nums text-foreground">{formatCentsExact(line.line_total_cents)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <dl className="ml-auto flex w-full max-w-sm flex-col divide-y border-t pt-2">
-          <SummaryRow label="Construction items" value={formatCentsExact(t.direct_cost_cents)} />
-          {t.allowance_cents > 0 && <SummaryRow label="Allowances" value={formatCentsExact(t.allowance_cents)} />}
-          {fees > 0 && <SummaryRow label="Builder fee and contingency" value={formatCentsExact(fees)} />}
-          <SummaryRow label="Construction total" value={formatCentsExact(t.construction_total_cents)} />
-          {(t.land_cost_cents ?? 0) > 0 && <SummaryRow label="Land" value={formatCentsExact(t.land_cost_cents)} />}
-          <SummaryRow label="Total" value={formatCentsExact(t.total_with_land_cents)} strong />
-        </dl>
-      </section>
-    </>
+    <ProposalBody
+      sectioned
+      content={doc.proposal}
+      pricingDisplay={doc.pricing_display}
+      scope={doc.description}
+      pricing={{
+        lines: doc.lines,
+        categories: doc.categories,
+        construction_total_cents: doc.totals.construction_total_cents,
+        allowance_cents: doc.totals.allowance_cents,
+        land_cost_cents: doc.totals.land_cost_cents,
+        total_with_land_cents: doc.totals.total_with_land_cents,
+      }}
+    />
   )
 }
 
@@ -204,7 +168,7 @@ export default async function PortalApprovalDetailPage({ params }: { params: Par
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-5">
-          {doc.description && (
+          {doc.document_type === 'change_order' && doc.description && (
             <section aria-labelledby="desc-heading" className="surface flex flex-col gap-2 p-5 md:p-6">
               <h2 id="desc-heading" className="type-section-title text-foreground">
                 Description
