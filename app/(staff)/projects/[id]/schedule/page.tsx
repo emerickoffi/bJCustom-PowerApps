@@ -265,6 +265,8 @@ export default async function SchedulePage({
 
           <ScheduleWorkspace
             projectId={project.id}
+            organizationId={session.organizationId}
+            userId={session.userId}
             activities={activities}
             phases={phases}
             dependencies={dependencies}
