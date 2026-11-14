@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils'
 import { DIRECTORY_TH_TEXT, DIRECTORY_THEAD_ROW } from '@/lib/directory-table-styles'
 import type { SubcontractorCompany, SubcontractorStatus } from '@/lib/subcontractors'
 import type { AssignedProject } from '@/lib/subcontractor-projects'
-import { companyInitials, projectCountLabel } from '@/lib/subcontractor-directory'
+import { companyInitials, projectCountLabel, resolvePrimaryContact, type PrimaryContact } from '@/lib/subcontractor-directory'
+import { PREVIEW_SELECTED_ROW_CLASS } from '@/lib/record-preview'
 import { SubcontractorRowActions } from '@/components/subcontractors/subcontractor-row-actions'
 import { SubcontractorStatusBadge } from '@/components/subcontractors/subcontractor-status-badge'
 import { QualificationBadge } from '@/components/subcontractors/qualification-badge'
@@ -22,6 +23,8 @@ const HIDE_WITH_PREVIEW_NARROW = 'xl:group-data-preview-open/preview:@max-[64rem
 type Props = {
   rows: SubcontractorCompany[]
   projectsByCompany: Record<string, AssignedProject[]> | null
+  /** Active primary contact people by company; null when the lookup failed. */
+  primaryContactByCompany: Record<string, PrimaryContact> | null
   /** Null when vetting is unavailable; the column is hidden rather than showing guesses. */
   qualificationByCompany?: Record<string, QualificationSummary> | null
   /** Null when ratings are unavailable; the column is hidden. */
@@ -66,26 +69,37 @@ function CompanyCell({ row }: { row: SubcontractorCompany }) {
   )
 }
 
-function ContactLines({ row }: { row: SubcontractorCompany }) {
-  if (!row.email && !row.phone) return <span className="text-sm text-muted-foreground/80">Not provided</span>
+function ContactLines({ row, people }: { row: SubcontractorCompany; people: Record<string, PrimaryContact> | null }) {
+  const contact = resolvePrimaryContact(people?.[row.id], row)
+  if (!contact) {
+    return (
+      <span className="text-sm text-muted-foreground/80">{people === null ? 'Contact could not be loaded' : 'Not provided'}</span>
+    )
+  }
   return (
     <div className="flex min-w-0 flex-col gap-1 text-sm">
-      {row.email && (
+      {contact.name && (
+        <span className="truncate font-medium text-foreground">
+          {contact.name}
+          {contact.role && <span className="font-normal text-muted-foreground">{` · ${contact.role}`}</span>}
+        </span>
+      )}
+      {contact.email && (
         <a
-          href={`mailto:${row.email}`}
+          href={`mailto:${contact.email}`}
           className="flex min-w-0 items-center gap-2 text-foreground/85 underline-offset-4 hover:text-primary hover:underline"
         >
           <Mail className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span className="truncate">{row.email}</span>
+          <span className="truncate">{contact.email}</span>
         </a>
       )}
-      {row.phone && (
+      {contact.phone && (
         <a
-          href={`tel:${row.phone.replace(/[^0-9+]/g, '')}`}
+          href={`tel:${contact.phone.replace(/[^0-9+]/g, '')}`}
           className="flex items-center gap-2 text-foreground/85 underline-offset-4 hover:text-primary hover:underline"
         >
           <Phone className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span className="tabular-nums">{row.phone}</span>
+          <span className="tabular-nums">{contact.phone}</span>
         </a>
       )}
     </div>
@@ -148,6 +162,7 @@ function ProjectsSummary({ projects }: { projects: AssignedProject[] | undefined
 export function SubcontractorTable({
   rows,
   projectsByCompany,
+  primaryContactByCompany,
   qualificationByCompany = null,
   performanceByCompany = null,
 }: Props) {
@@ -196,13 +211,13 @@ export function SubcontractorTable({
                 as="tr"
                 recordId={row.id}
                 data-slot="table-row"
-                className="scroll-mt-24 scroll-mb-4 border-b border-divider transition-colors hover:bg-[#F4F7F3] data-selected:bg-selected data-selected:shadow-[inset_3px_0_0_0_var(--selected-border)]"
+                className={cn('scroll-mt-24 scroll-mb-4 border-b border-divider transition-colors hover:bg-[#F4F7F3]', PREVIEW_SELECTED_ROW_CLASS)}
               >
                 <TableCell className="py-3.5 pl-5">
                   <CompanyCell row={row} />
                 </TableCell>
                 <TableCell className={cn("py-3.5", HIDE_WITH_PREVIEW_NARROW)}>
-                  <ContactLines row={row} />
+                  <ContactLines row={row} people={primaryContactByCompany} />
                 </TableCell>
                 {showQualification && (
                   <TableCell className="py-3.5">
@@ -251,7 +266,7 @@ export function SubcontractorTable({
             key={row.id}
             as="li"
             recordId={row.id}
-            className="flex scroll-mt-24 flex-col gap-3 p-4 transition-colors data-selected:bg-selected"
+            className={cn('flex scroll-mt-24 flex-col gap-3 p-4 transition-colors', PREVIEW_SELECTED_ROW_CLASS)}
           >
             <div className="flex items-start justify-between gap-2">
               <CompanyCell row={row} />
@@ -259,7 +274,7 @@ export function SubcontractorTable({
                 <SubcontractorRowActions companyId={row.id} companyName={row.company_name} status={row.status} />
               </div>
             </div>
-            <ContactLines row={row} />
+            <ContactLines row={row} people={primaryContactByCompany} />
             {showPerformance && <PerformanceCell summary={performanceByCompany[row.id]} />}
             <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-3">
               {showProjects ? <ProjectsSummary projects={projectsByCompany[row.id]} /> : <span />}

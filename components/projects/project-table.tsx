@@ -10,6 +10,7 @@ import { formatDate } from '@/lib/format'
 import { coverAlt } from '@/lib/project-cover'
 import { formatLocation } from '@/lib/location-display'
 import { cn } from '@/lib/utils'
+import { PREVIEW_SELECTED_ROW_CLASS } from '@/lib/record-preview'
 import { DIRECTORY_TH_TEXT, DIRECTORY_THEAD_ROW } from '@/lib/directory-table-styles'
 
 export type ProjectTableRow = CompactProjectCardData & {
@@ -92,7 +93,7 @@ export function ProjectTable({ rows }: { rows: ProjectTableRow[] }) {
                   key={p.id}
                   as="tr"
                   projectId={p.id}
-                  className="scroll-mt-24 scroll-mb-4 transition-colors hover:bg-link-soft/60 data-selected:bg-link-soft"
+                  className={cn('scroll-mt-24 scroll-mb-4 transition-colors hover:bg-link-soft/60', PREVIEW_SELECTED_ROW_CLASS)}
                 >
                   <td className={TD}>
                     <div className="flex min-w-0 items-center gap-3">

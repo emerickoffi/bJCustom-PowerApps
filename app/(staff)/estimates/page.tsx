@@ -19,6 +19,7 @@ import { EstimatesToolbar } from '@/components/estimates/estimates-toolbar'
 import { EstimatePreviewLayout } from '@/components/estimates/estimate-preview'
 import { RecordPreviewSurface, RecordPreviewTrigger } from '@/components/shared/record-preview'
 import { titleEditEligibility } from '@/lib/estimate-title'
+import { PREVIEW_SELECTED_ROW_CLASS } from '@/lib/record-preview'
 import { cn } from '@/lib/utils'
 
 const TITLE_LINK_CLASS =
@@ -265,7 +266,10 @@ export default async function EstimatesPage({
                       as="tr"
                       key={e.id}
                       recordId={e.id}
-                      className="scroll-mt-24 scroll-mb-4 align-top transition-colors hover:bg-link-soft/60 has-[:focus-visible]:bg-link-soft/60 data-selected:bg-link-soft"
+                      className={cn(
+                        'scroll-mt-24 scroll-mb-4 align-top transition-colors hover:bg-link-soft/60 has-[:focus-visible]:bg-link-soft/60',
+                        PREVIEW_SELECTED_ROW_CLASS,
+                      )}
                     >
                       <td className="px-4 py-2.5">
                         <EstimateTitleCell
@@ -339,7 +343,7 @@ export default async function EstimatesPage({
                   as="li"
                   key={e.id}
                   recordId={e.id}
-                  className="flex flex-col gap-3 p-4 transition-colors hover:bg-link-soft/60 data-selected:bg-link-soft"
+                  className={cn('flex flex-col gap-3 p-4 transition-colors hover:bg-link-soft/60', PREVIEW_SELECTED_ROW_CLASS)}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">

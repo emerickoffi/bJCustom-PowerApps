@@ -8,7 +8,8 @@ import { loadPerformanceDetail } from '@/lib/subcontractor-performance-data'
 import { loadDirectoryWork } from '@/lib/assignments-data'
 import { loadAssignableProjects } from '@/lib/subcontractor-detail-data'
 import { SUBCONTRACTOR_COLUMNS, isMissingTableError, type SubcontractorCompany } from '@/lib/subcontractors'
-import type { ProjectStatus } from '@/lib/domain'
+import { projectAcceptsDirectoryAssignments, type ProjectStatus } from '@/lib/domain'
+import { resolvePrimaryContact } from '@/lib/subcontractor-directory'
 import type {
   QualificationIssue,
   SubcontractorPreview,
@@ -23,7 +24,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const NOT_FOUND: Result = { ok: false, status: 404, error: 'This subcontractor is no longer available.' }
 const PROBLEM_LABELS = { missing: 'Missing', expired: 'Expired', rejected: 'Rejected' } as const
 
-type ProjectRow = { project: { id: string; name: string; project_number: string | null; status: ProjectStatus } | null }
+type ProjectRow = {
+  project: { id: string; name: string; project_number: string | null; status: ProjectStatus; archived_at: string | null } | null
+}
 
 /**
  * One subcontractor's panel, loaded only when it is selected. Every query is scoped to the viewer's organization,
@@ -61,7 +64,7 @@ export async function loadSubcontractorPreview(companyId: string): Promise<Resul
     loadQualificationDetail(supabase, organizationId, company.id),
     supabase
       .from('subcontractor_project_assignments')
-      .select('project:projects(id, name, project_number, status)')
+      .select('project:projects(id, name, project_number, status, archived_at)')
       .eq('organization_id', organizationId)
       .eq('subcontractor_company_id', company.id)
       .is('ended_at', null)
@@ -77,14 +80,13 @@ export async function loadSubcontractorPreview(companyId: string): Promise<Resul
   let contact: SubcontractorPreview['contact']
   if (directory.error) contact = { state: 'error' }
   else {
-    let primary: SubcontractorPreviewContact | null = null
+    let person: SubcontractorPreviewContact | null = null
     if (directoryCompanyId) {
       const contacts = await loadCompanyContacts(supabase, organizationId, directoryCompanyId)
       const match = contacts.find((c) => c.is_primary_contact && c.status === 'active' && c.person_status === 'active')
-      if (match) primary = { name: match.name, role: match.role, email: match.email, phone: match.primary_phone }
+      if (match) person = { name: match.name, role: match.role, email: match.email, phone: match.primary_phone }
     }
-    if (!primary && (company.email || company.phone)) primary = { name: null, role: null, email: company.email, phone: company.phone }
-    contact = { state: 'ready', primary }
+    contact = { state: 'ready', primary: resolvePrimaryContact(person, company) }
   }
 
   const qualificationSection: SubcontractorPreview['qualification'] =
@@ -109,7 +111,7 @@ export async function loadSubcontractorPreview(companyId: string): Promise<Resul
   if (projectsRes.error) projects = isMissingTableError(projectsRes.error) ? { state: 'hidden' } : { state: 'error' }
   else {
     const items = ((projectsRes.data ?? []) as unknown as ProjectRow[])
-      .flatMap((r) => (r.project ? [r.project] : []))
+      .flatMap((r) => (r.project && projectAcceptsDirectoryAssignments(r.project.status, r.project.archived_at) ? [r.project] : []))
       .map<SubcontractorPreviewProject>((p) => ({
         id: p.id,
         name: p.name,
