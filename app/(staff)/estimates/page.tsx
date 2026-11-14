@@ -244,7 +244,7 @@ export default async function EstimatesPage({
             <div className="hidden overflow-x-auto md:block xl:overflow-visible xl:group-data-preview-open/preview:overflow-x-auto">
               <table className="w-full min-w-[880px] table-fixed text-sm text-[#17212B] xl:group-data-preview-open/preview:min-w-[640px]">
                 <caption className="sr-only">Estimates</caption>
-                <thead className="border-b border-[#D6DDE5] bg-table-head text-left text-xs font-medium text-[#526173] xl:sticky xl:top-16 xl:z-10 [&_th]:bg-table-head [&_th:first-child]:rounded-tl-[inherit] [&_th:last-child]:rounded-tr-[inherit]">
+                <thead className="border-b border-[#D6DDE5] bg-table-head text-left text-xs font-medium text-[#526173] xl:sticky xl:top-16 xl:z-10 xl:group-data-preview-open/preview:static [&_th]:bg-table-head [&_th:first-child]:rounded-tl-[inherit] [&_th:last-child]:rounded-tr-[inherit]">
                   <tr>
                     <th scope="col" className="w-[30%] px-4 py-2.5 font-medium">Estimate</th>
                     <th scope="col" className={cn('w-[15%] px-3 py-2.5 font-medium', HIDE_WITH_PREVIEW_NARROW)}>Client</th>
