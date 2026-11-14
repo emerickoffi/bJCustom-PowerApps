@@ -1,6 +1,13 @@
 import { ActionCenter } from '@/components/dashboard/action-center'
 import { DailyPriorities } from '@/components/dashboard/daily-priorities'
-import { assembleBriefing, loadOverdueQuoteRequests, priorityAiAvailable } from '@/lib/ai/daily-priorities-server'
+import {
+  assembleBriefing,
+  loadActivityDependents,
+  loadOverdueQuoteRequests,
+  loadScheduleGaps,
+  overdueActivityIds,
+  priorityAiAvailable,
+} from '@/lib/ai/daily-priorities-server'
 import { uncheckedSources } from '@/lib/daily-priorities'
 import { CommandHeader } from '@/components/dashboard/command-header'
 import { ComingUp } from '@/components/dashboard/coming-up'
@@ -385,6 +392,10 @@ export async function OwnerDashboard({
   const kpiOrder = layout.summary.filter((id): id is KpiCardId => id.startsWith('card_'))
   const kpiCards = new Set(kpiOrder.filter((id) => show[id]))
 
+  const [scheduleGaps, dependents] = await Promise.all([
+    loadScheduleGaps(orgId, Boolean(features.schedule)),
+    loadActivityDependents(orgId, Boolean(features.schedule), overdueActivityIds(attention.items, agendaData.today)),
+  ])
   const priorityContext = {
     orgId,
     userId: session.userId,
@@ -397,12 +408,16 @@ export async function OwnerDashboard({
       tasks: myTasks.state === 'available' ? myTasks.open : [],
       activities: agendaData.activities,
       quoteRequests: overdueQuoteRequests ?? [],
+      dependents: dependents ?? undefined,
+      scheduleGaps: scheduleGaps ?? [],
     },
     unchecked: uncheckedSources({
       modules: attention.unavailable.map((u) => u.module),
       tasksFailed: myTasks.state === 'unavailable',
       agendaFailed: !!agendaData.failed,
       quotesFailed: overdueQuoteRequests === null,
+      dependenciesFailed: dependents === null,
+      scheduleGapsFailed: scheduleGaps === null,
     }),
   }
   const [{ briefing: standardBriefing }, tabletBriefing] = await Promise.all([

@@ -11,7 +11,10 @@ import { readWorkScope } from '@/lib/dashboard-prefs'
 import {
   assembleBriefing,
   generateBriefingSummaries,
+  loadActivityDependents,
   loadOverdueQuoteRequests,
+  loadScheduleGaps,
+  overdueActivityIds,
   priorityAiAvailable,
 } from '@/lib/ai/daily-priorities-server'
 import { UPCOMING_DAYS, scopeKey, uncheckedSources } from '@/lib/daily-priorities'
@@ -60,12 +63,18 @@ export async function POST(request: NextRequest) {
   const features = await getOrgFeatures(orgId)
   const manager = canManage(session.role)
   const agenda = await loadAgenda(orgId, features.schedule, UPCOMING_DAYS + 1)
-  const [actions, tasks, quoteRequests, scope] = await Promise.all([
+  const [actions, tasks, quoteRequests, scope, scheduleGaps] = await Promise.all([
     getActionItems(orgId, session.userId, { manager, features }),
     loadMyTasks(orgId, session.userId, agenda.today),
     loadOverdueQuoteRequests(orgId, Boolean(features.subcontractors)),
     readWorkScope(session.userId),
+    loadScheduleGaps(orgId, Boolean(features.schedule)),
   ])
+  const dependents = await loadActivityDependents(
+    orgId,
+    Boolean(features.schedule),
+    overdueActivityIds(actions.items, agenda.today),
+  )
 
   const aiAvailable = priorityAiAvailable(features)
   const ctx = {
@@ -80,12 +89,16 @@ export async function POST(request: NextRequest) {
       tasks: tasks.state === 'available' ? tasks.open : [],
       activities: agenda.activities,
       quoteRequests: quoteRequests ?? [],
+      dependents: dependents ?? undefined,
+      scheduleGaps: scheduleGaps ?? [],
     },
     unchecked: uncheckedSources({
       modules: actions.unavailable.map((u) => u.module),
       tasksFailed: tasks.state === 'unavailable',
       agendaFailed: !!agenda.failed,
       quotesFailed: quoteRequests === null,
+      dependenciesFailed: dependents === null,
+      scheduleGapsFailed: scheduleGaps === null,
     }),
   }
 

@@ -21,7 +21,9 @@ import {
   type CandidateInputs,
   type PriorityCandidate,
   type PriorityQuoteRequest,
+  type PriorityScheduleGap,
 } from '@/lib/daily-priorities'
+import { COMMITTED_STAGES } from '@/lib/action-items'
 
 type Features = Awaited<ReturnType<typeof getOrgFeatures>>
 
@@ -68,6 +70,81 @@ export async function loadOverdueQuoteRequests(orgId: string, enabled: boolean):
       createdBy: (row.created_by as string | null) ?? null,
     }
   })
+}
+
+const CLOSED_ACTIVITY_STATUSES = '(completed,skipped)'
+
+/**
+ * Counts open successors for the given activities from schedule_dependencies. Only these verified links
+ * promote an overdue activity to "Blocking work". Returns null when a query failed.
+ */
+export async function loadActivityDependents(
+  orgId: string,
+  enabled: boolean,
+  activityIds: string[],
+): Promise<Map<string, number> | null> {
+  const counts = new Map<string, number>()
+  if (!enabled || activityIds.length === 0) return counts
+  const supabase = await createClient()
+  const { data: links, error } = await supabase
+    .from('schedule_dependencies')
+    .select('predecessor_id, successor_id')
+    .eq('organization_id', orgId)
+    .in('predecessor_id', activityIds.slice(0, 200))
+    .limit(1000)
+  if (error || !links) return null
+  if (links.length === 0) return counts
+
+  const successorIds = [...new Set(links.map((l) => l.successor_id as string))]
+  const { data: open, error: openError } = await supabase
+    .from('schedule_activities')
+    .select('id')
+    .eq('organization_id', orgId)
+    .in('id', successorIds)
+    .not('status', 'in', CLOSED_ACTIVITY_STATUSES)
+  if (openError || !open) return null
+  const openIds = new Set(open.map((a) => a.id as string))
+  for (const link of links) {
+    if (!openIds.has(link.successor_id as string)) continue
+    const id = link.predecessor_id as string
+    counts.set(id, (counts.get(id) ?? 0) + 1)
+  }
+  return counts
+}
+
+/**
+ * Committed, unarchived projects with open activities that have no planned start or finish.
+ * Returns null when the query failed.
+ */
+export async function loadScheduleGaps(orgId: string, enabled: boolean): Promise<PriorityScheduleGap[] | null> {
+  if (!enabled) return []
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('schedule_activities')
+    .select('project_id, projects!inner(name, status, archived_at)')
+    .eq('organization_id', orgId)
+    .not('status', 'in', CLOSED_ACTIVITY_STATUSES)
+    .or('planned_start.is.null,planned_end.is.null')
+    .is('projects.archived_at', null)
+    .in('projects.status', [...COMMITTED_STAGES])
+    .limit(1000)
+  if (error || !data) return null
+  const byProject = new Map<string, PriorityScheduleGap>()
+  for (const row of data) {
+    const project = Array.isArray(row.projects) ? row.projects[0] : row.projects
+    const id = row.project_id as string
+    const gap = byProject.get(id) ?? { projectId: id, projectName: (project?.name as string | undefined) ?? null, missingCount: 0 }
+    gap.missingCount += 1
+    byProject.set(id, gap)
+  }
+  return [...byProject.values()]
+}
+
+/** Overdue schedule activities that can block downstream work, taken from already-loaded action items. */
+export function overdueActivityIds(items: CandidateInputs['actionItems'], today: string): string[] {
+  return items
+    .filter((i) => i.entityType === 'schedule_activity' && i.dueDate !== null && i.dueDate < today)
+    .map((i) => i.entityId)
 }
 
 export async function readStoredBriefing(orgId: string, userId: string, key: string): Promise<StoredBriefing | null> {

@@ -288,7 +288,8 @@ function ownerLabel(item: BriefingItem): { text: string; yours: boolean } {
 function rankReason(item: BriefingItem, rank: number): string {
   const owner = item.owner.kind === 'you' ? 'assigned to you' : item.owner.kind === 'approver' ? 'waiting on a manager approval' : `owned by ${item.owner.label === 'Unassigned' ? 'no one yet' : item.owner.label}`
   const due = item.dueDate ? `, due ${formatShortDate(item.dueDate)}` : ''
-  return `Ranked #${rank} because it is ${item.categoryLabel.toLowerCase()}${due}, and ${owner}. Source: ${item.source}.`
+  const impact = item.impact ? ` ${item.impact}` : ''
+  return `Ranked #${rank} because it is ${item.categoryLabel.toLowerCase()}${due}, and ${owner}.${impact} Source: ${item.source}.`
 }
 
 function PriorityRow({ item, rank }: { item: BriefingItem; rank: number }) {
@@ -324,6 +325,11 @@ function PriorityRow({ item, rank }: { item: BriefingItem; rank: number }) {
             )}
           </p>
           <p className="mt-1 line-clamp-2 text-pretty text-xs leading-relaxed text-[#344054]">{item.why}</p>
+          {item.impact && <p className="mt-0.5 text-pretty text-xs font-medium leading-relaxed text-[#B54708]">{item.impact}</p>}
+          <p className="mt-0.5 text-pretty text-xs leading-relaxed text-[#344054]">
+            <span className="font-medium text-[#17212B]">Next: </span>
+            {item.nextAction}
+          </p>
           <details className="group/why mt-0.5 text-xs text-[#526173]">
             <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-sm font-medium text-[#526173] hover:text-[#007F95] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007F95] [&::-webkit-details-marker]:hidden">
               <ChevronDown className="size-3 transition-transform group-open/why:rotate-180" aria-hidden="true" />
