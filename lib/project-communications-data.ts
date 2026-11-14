@@ -5,6 +5,7 @@ import type { ActionFeatures } from '@/lib/action-items'
 import { getProfileNames } from '@/lib/queries'
 import { formatDate } from '@/lib/format'
 import { todayIso } from '@/lib/schedule'
+import { logSourceFailure } from '@/lib/source-diagnostics'
 import {
   compareActivity,
   compareAttention,
@@ -24,6 +25,8 @@ export type ProjectCommunications = {
   activity: CommunicationItem[]
   /** A source query failed; the lists are partial and the UI says so rather than implying "all clear". */
   incomplete: boolean
+  /** User-facing names of the sources that failed; details are written to server logs only. */
+  failedSources: string[]
 }
 
 const ACTIVITY_PER_SOURCE = 40
@@ -42,17 +45,23 @@ export async function loadProjectCommunications(args: {
   const { projectId, organizationId, userId, manager, features } = args
   const supabase = await createClient()
   const today = todayIso()
-  let incomplete = false
-
   const [actionData, drafts, quotes, activity] = await Promise.all([
-    getActionItems(organizationId, userId, { manager, features, projectId }).catch(() => null),
+    getActionItems(organizationId, userId, { manager, features, projectId }).catch((error: unknown) => {
+      logSourceFailure('project_communications', 'Needs attention checks', error, { projectId })
+      return null
+    }),
     manager && features.client_updates ? loadClientUpdateDrafts(supabase, projectId) : Promise.resolve([]),
     manager && features.subcontractors ? loadReceivedQuotes(supabase, projectId) : Promise.resolve([]),
     loadActivity(supabase, projectId, { manager, features }),
   ])
 
-  if (!actionData || actionData.unavailable.length > 0 || drafts === null || quotes === null) incomplete = true
-  if (activity.failed) incomplete = true
+  const failedSources = [
+    ...(actionData ? actionData.unavailable.map((u) => u.module) : ['Needs attention checks']),
+    ...(drafts === null ? ['Client update drafts'] : []),
+    ...(quotes === null ? ['Quote requests'] : []),
+    ...activity.failed,
+  ]
+  const incomplete = failedSources.length > 0
 
   const attention = dedupeById([
     ...(actionData?.items ?? []).flatMap((i) => fromActionItem(i, today) ?? []),
@@ -68,6 +77,7 @@ export async function loadProjectCommunications(args: {
     attention: attention.map(withNames),
     activity: dedupeById(activity.items).sort(compareActivity).map(withNames),
     incomplete,
+    failedSources: [...new Set(failedSources)],
   }
 }
 
@@ -79,7 +89,10 @@ async function loadClientUpdateDrafts(supabase: Supabase, projectId: string) {
     .eq('status', 'draft')
     .order('updated_at', { ascending: true })
     .limit(20)
-  if (error) return null
+  if (error) {
+    logSourceFailure('project_communications', 'Client update drafts', error, { projectId, operation: 'select client_updates' })
+    return null
+  }
   return (data ?? []).map((d) => ({
     id: d.id as string,
     projectId: d.project_id as string,
@@ -97,14 +110,23 @@ async function loadReceivedQuotes(supabase: Supabase, projectId: string) {
     .eq('project_id', projectId)
     .eq('status', 'open')
     .limit(30)
-  if (error) return null
+  if (error) {
+    logSourceFailure('project_communications', 'Quote requests', error, { projectId, operation: 'select subcontract_quote_requests' })
+    return null
+  }
   if (!requests?.length) return []
   const ids = requests.map((r) => r.id as string)
   const [revRes, awardRes] = await Promise.all([
     supabase.from('subcontract_quote_revisions').select('request_id, submitted_at').in('request_id', ids).eq('status', 'submitted'),
     supabase.from('subcontract_quote_awards').select('request_id').in('request_id', ids),
   ])
-  if (revRes.error || awardRes.error) return null
+  if (revRes.error || awardRes.error) {
+    logSourceFailure('project_communications', 'Quote requests', revRes.error ?? awardRes.error, {
+      projectId,
+      operation: revRes.error ? 'select subcontract_quote_revisions' : 'select subcontract_quote_awards',
+    })
+    return null
+  }
   const awarded = new Set((awardRes.data ?? []).map((a) => a.request_id as string))
   const byRequest = new Map<string, { count: number; latest: string }>()
   for (const r of revRes.data ?? []) {
@@ -130,7 +152,7 @@ async function loadActivity(
   supabase: Supabase,
   projectId: string,
   { manager, features }: { manager: boolean; features: CommFeatures },
-): Promise<{ items: CommunicationItem[]; failed: boolean }> {
+): Promise<{ items: CommunicationItem[]; failed: string[] }> {
   const pid = encodeURIComponent(projectId)
   const none = Promise.resolve({ data: [] as Record<string, unknown>[], error: null })
   const [rfis, issues, updates, logs, revisions] = await Promise.all([
@@ -180,7 +202,18 @@ async function loadActivity(
       : none,
   ])
 
-  const failed = [rfis, issues, updates, logs, revisions].some((r) => r.error)
+  const failed: string[] = []
+  for (const [source, operation, res] of [
+    ['Questions (RFIs)', 'select project_rfis', rfis],
+    ['Punch List', 'select project_issues', issues],
+    ['Client updates', 'select client_updates', updates],
+    ['Daily Logs', 'select daily_logs', logs],
+    ['Quote requests', 'select subcontract_quote_revisions', revisions],
+  ] as const) {
+    if (!res.error) continue
+    logSourceFailure('project_communications', source, res.error, { projectId, operation })
+    failed.push(source)
+  }
   const items: CommunicationItem[] = []
 
   for (const r of (rfis.data ?? []) as Record<string, string | number | null>[]) {

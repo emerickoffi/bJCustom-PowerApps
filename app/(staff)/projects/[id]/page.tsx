@@ -411,6 +411,7 @@ export default async function ProjectDetailPage({
         scope={scope}
         scopeTotals={{ mine: scopeTotal('mine'), all: scopeTotal('all') }}
         scopeHrefs={{ mine: scopeHref('mine'), all: scopeHref('all') }}
+        relatedUnavailable={communications.failedSources}
       />
 
       <ProjectCommunications
@@ -418,6 +419,7 @@ export default async function ProjectDetailPage({
         attention={communications.attention}
         activity={communications.activity}
         incomplete={communications.incomplete}
+        failedSources={communications.failedSources}
         filters={commFilters}
         params={query}
         userId={session.userId}
