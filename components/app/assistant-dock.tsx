@@ -139,6 +139,10 @@ function resolveActions(sources: Sources, limit: number): LauncherAction[] {
     }
   }
 
+  // On a job route the question belongs to that job: offer only the project-scoped version, or none if the
+  // viewer cannot ask on it, rather than a project picker that could target a different job.
+  if (project?.source === 'route') available.delete('global:rfi')
+
   // A page's own registration replaces the catalog version of the same workflow (e.g. the in-page contact drawer).
   const extras: LauncherAction[] = []
   for (const a of registered) {
