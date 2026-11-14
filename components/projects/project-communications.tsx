@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { AlertTriangle, ArrowRight, CircleCheck, MessagesSquare, Search } from 'lucide-react'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { listSources } from '@/lib/overview-status'
+import { RetryButton } from '@/components/shared/retry-button'
 import {
   COMM_PAGE_SIZE,
   COMM_TYPE_LABELS,
@@ -20,6 +22,7 @@ export function ProjectCommunications({
   attention,
   activity,
   incomplete,
+  failedSources = [],
   filters,
   params,
   userId,
@@ -28,6 +31,7 @@ export function ProjectCommunications({
   attention: CommunicationItem[]
   activity: CommunicationItem[]
   incomplete: boolean
+  failedSources?: string[]
   filters: CommFilters
   params: Params
   userId: string
@@ -141,10 +145,15 @@ export function ProjectCommunications({
       </div>
 
       {incomplete && (
-        <p role="status" className="flex items-center gap-2 rounded-md bg-champagne-soft px-3 py-2 text-sm text-warning">
-          <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-          Some sources could not load, so this list may be incomplete. Reload to try again.
-        </p>
+        <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-champagne-soft px-3 py-2">
+          <p className="flex items-center gap-2 text-sm text-warning">
+            <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+            {failedSources.length
+              ? `${listSources(failedSources)} could not load, so this list may be incomplete.`
+              : 'Some sources could not load, so this list may be incomplete.'}
+          </p>
+          <RetryButton />
+        </div>
       )}
 
       {visible.length === 0 ? (
@@ -227,7 +236,7 @@ function CommunicationRow({ item }: { item: CommunicationItem }) {
 function EmptyState({ view, filtering, incomplete, clearHref }: { view: CommFilters['view']; filtering: boolean; incomplete: boolean; clearHref: string }) {
   if (filtering) {
     return (
-      <p className="py-6 text-center text-sm text-muted-foreground">
+      <p className="py-2 text-sm text-muted-foreground">
         Nothing matches these filters.{' '}
         <Link href={clearHref} scroll={false} className="font-medium text-primary underline-offset-4 hover:underline">
           Clear filters
@@ -235,9 +244,10 @@ function EmptyState({ view, filtering, incomplete, clearHref }: { view: CommFilt
       </p>
     )
   }
-  if (incomplete) return <p className="py-6 text-center text-sm text-muted-foreground">Nothing could be confirmed right now.</p>
+  if (incomplete)
+    return <p className="py-2 text-sm text-muted-foreground">Nothing could be confirmed from the sources that loaded.</p>
   return (
-    <p className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+    <p className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
       {view === 'attention' ? (
         <>
           <CircleCheck className="size-4 text-primary" aria-hidden="true" />

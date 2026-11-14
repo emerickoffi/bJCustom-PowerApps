@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { AlertTriangle, ArrowRight, CircleCheck, ClipboardList, Settings2 } from 'lucide-react'
 import type { NextAction, NextActionTone } from '@/lib/next-actions'
 import { cn } from '@/lib/utils'
+import { attentionState, listSources } from '@/lib/overview-status'
+import { RetryButton } from '@/components/shared/retry-button'
 
 const TONE: Record<NextActionTone, { icon: typeof AlertTriangle; className: string; label: string }> = {
   critical: { icon: AlertTriangle, className: 'bg-destructive/10 text-destructive', label: 'Needs attention' },
@@ -18,6 +20,7 @@ export function ProjectNextActions({
   scope,
   scopeTotals,
   scopeHrefs,
+  relatedUnavailable = [],
 }: {
   items: NextAction[]
   hiddenCount: number
@@ -27,8 +30,11 @@ export function ProjectNextActions({
   /** Total actions per scope, including those beyond the display limit. */
   scopeTotals: Record<WorkScope, number>
   scopeHrefs: Record<WorkScope, string>
+  /** Related sources elsewhere on the page that failed; an empty list then can't be confirmed as "no pending actions". */
+  relatedUnavailable?: string[]
 }) {
   const empty = items.length === 0
+  const state = attentionState({ itemCount: items.length, ownFailed: incomplete, relatedFailed: relatedUnavailable })
   const options: { value: WorkScope; label: string }[] = [
     { value: 'mine', label: 'My work' },
     { value: 'all', label: 'All project work' },
@@ -64,7 +70,7 @@ export function ProjectNextActions({
           })}
         </nav>
       </div>
-      {empty && !incomplete && (
+      {state === 'clear' && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <CircleCheck className="size-4 text-primary" aria-hidden="true" />
           {scope === 'mine' ? 'Nothing assigned to you needs action right now' : 'No pending actions'}
@@ -101,13 +107,18 @@ export function ProjectNextActions({
           })}
         </ul>
       )}
-      {incomplete && (
-        <p role="status" className="flex items-center gap-2 text-sm text-warning">
-          <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-          {empty
-            ? 'Pending actions could not be checked. Refresh the page to try again.'
-            : 'Some checks could not load, so this list may be incomplete. Refresh the page to try again.'}
-        </p>
+      {(incomplete || relatedUnavailable.length > 0) && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-champagne-soft px-3 py-2">
+          <p className="flex items-center gap-2 text-sm text-warning">
+            <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+            {state === 'unavailable'
+              ? 'Pending actions could not be checked.'
+              : state === 'partial'
+                ? `No pending actions found so far, but ${listSources(relatedUnavailable)} could not be checked.`
+                : 'Some checks could not load, so this list may be incomplete.'}
+          </p>
+          <RetryButton />
+        </div>
       )}
     </section>
   )

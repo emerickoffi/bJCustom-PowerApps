@@ -2,6 +2,7 @@ import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { todayIso } from '@/lib/schedule'
 import { getProfileNames } from '@/lib/queries'
+import { logSourceFailure } from '@/lib/source-diagnostics'
 import {
   informationalNotifications,
   type AttentionActivity,
@@ -219,6 +220,7 @@ export async function getActionItems(
 
   const check = <T,>(res: { data: T[] | null; error: unknown }, module: string, limit: number): T[] => {
     if (res.error) {
+      logSourceFailure('action_items', module, res.error, { projectId })
       fail(module)
       return []
     }
