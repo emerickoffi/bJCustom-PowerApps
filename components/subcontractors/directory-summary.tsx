@@ -22,7 +22,7 @@ export function DirectorySummary({
   if (qualified !== null) metrics.push({ label: 'Qualified', value: qualified, href: '/subcontractors?qualification=qualified', dot: 'bg-emerald-600' })
   if (needsAttention !== null)
     metrics.push({ label: 'In review or missing items', value: needsAttention, dot: 'bg-warning' })
-  if (summary.onProjects !== null) metrics.push({ label: 'On projects', value: summary.onProjects, dot: 'bg-sky-600' })
+  if (summary.onProjects !== null) metrics.push({ label: 'On open projects', value: summary.onProjects, dot: 'bg-sky-600' })
 
   return (
     <dl className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm">

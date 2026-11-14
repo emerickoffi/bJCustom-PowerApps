@@ -6,6 +6,7 @@ import { ClientStatusBadge } from '@/components/shared/status-badge'
 import { fullName, preferenceLabel, type DirectoryContact } from '@/components/clients/client-card'
 import type { ClientSummary } from '@/lib/queries'
 import { DIRECTORY_TH_TEXT, DIRECTORY_THEAD_ROW } from '@/lib/directory-table-styles'
+import { PREVIEW_SELECTED_ROW_CLASS } from '@/lib/record-preview'
 
 export type ClientTableRow = {
   client: ClientSummary
@@ -60,7 +61,7 @@ export function ClientTable({
                   key={client.id}
                   as="tr"
                   recordId={client.id}
-                  className="scroll-mt-24 scroll-mb-4 transition-colors hover:bg-link-soft/60 data-selected:bg-link-soft"
+                  className={`scroll-mt-24 scroll-mb-4 transition-colors hover:bg-link-soft/60 ${PREVIEW_SELECTED_ROW_CLASS}`}
                 >
                   <td className="px-4 py-3">
                     <div className="flex min-w-0 items-center gap-3">

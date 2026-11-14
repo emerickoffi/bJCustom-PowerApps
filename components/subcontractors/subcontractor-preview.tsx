@@ -81,7 +81,7 @@ function SubcontractorPreview({ company }: { company: SubcontractorPreviewRecord
           </span>
         }
         actions={
-          <Button variant="outline" size="sm" className="pointer-coarse:h-11" render={<Link href={`/subcontractors/${company.id}`} />} nativeButton={false}>
+          <Button variant="view" size="sm" className="pointer-coarse:h-11" render={<Link href={`/subcontractors/${company.id}`} />} nativeButton={false}>
             Open details
             <ArrowRight data-icon="inline-end" />
           </Button>

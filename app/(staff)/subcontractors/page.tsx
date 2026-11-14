@@ -34,8 +34,16 @@ import {
 import { DirectoryToolbar } from '@/components/subcontractors/directory-toolbar'
 import { loadPerformanceSummaries } from '@/lib/subcontractor-performance-data'
 import { comparePerformance } from '@/lib/subcontractor-performance'
+import { loadPrimaryContacts } from '@/lib/subcontractor-primary-contacts-data'
+import { projectAcceptsDirectoryAssignments } from '@/lib/domain'
+import type { AssignedProject } from '@/lib/subcontractor-projects'
 
 export const metadata: Metadata = { title: 'Subcontractors' }
+
+type AssignmentRow = {
+  subcontractor_company_id: string
+  project: (AssignedProject & { status: string; archived_at: string | null }) | null
+}
 
 const LIMIT = 500
 
@@ -65,17 +73,18 @@ export default async function SubcontractorsPage({
     .limit(LIMIT)
   if (status) query = query.eq('status', status)
   if (q) query = query.or(`company_name.ilike.*${q}*,trade.ilike.*${q}*,email.ilike.*${q}*,phone.ilike.*${q}*`)
-  const [{ data, error }, work, assignmentsRes, qualification, performance] = await Promise.all([
+  const [{ data, error }, work, assignmentsRes, qualification, performance, primaryContacts] = await Promise.all([
     query,
     loadDirectoryWork(supabase, session.organizationId, features),
     supabase
       .from('subcontractor_project_assignments')
-      .select('subcontractor_company_id, project:projects(id, name, project_number)')
+      .select('subcontractor_company_id, project:projects(id, name, project_number, status, archived_at)')
       .eq('organization_id', session.organizationId)
       .is('ended_at', null)
       .limit(5000),
     loadQualificationSummaries(supabase, session.organizationId),
     loadPerformanceSummaries(supabase, session.organizationId),
+    loadPrimaryContacts(supabase, session.organizationId),
   ])
   const qualificationReady = qualification.availability === 'ready'
   const performanceReady = performance.availability === 'ready'
@@ -100,9 +109,14 @@ export default async function SubcontractorsPage({
             a.company_name.localeCompare(b.company_name),
         )
       : filteredRows
+  // Same "current" rule as the detail page: not ended, and the project is still open and unarchived.
   const projectsByCompany = assignmentsRes.error
     ? null
-    : groupAssignedProjects((assignmentsRes.data ?? []) as unknown as Parameters<typeof groupAssignedProjects>[0])
+    : groupAssignedProjects(
+        ((assignmentsRes.data ?? []) as unknown as AssignmentRow[]).filter(
+          (r) => r.project && projectAcceptsDirectoryAssignments(r.project.status, r.project.archived_at),
+        ),
+      )
   // Metrics describe the whole directory, so reuse the unfiltered rows when we already have all of them.
   let summaryCompanies: { id: string; status: string }[] = loadedRows
   if (!error && (filtered || loadedRows.length === LIMIT)) {
@@ -201,6 +215,7 @@ export default async function SubcontractorsPage({
               <SubcontractorTable
                 rows={rows}
                 projectsByCompany={projectsByCompany}
+                primaryContactByCompany={primaryContacts}
                 qualificationByCompany={qualificationReady ? qualification.byCompany : null}
                 performanceByCompany={performanceReady ? performance.byCompany : null}
               />

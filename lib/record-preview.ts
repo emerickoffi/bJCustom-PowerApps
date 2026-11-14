@@ -1,5 +1,9 @@
 import { COMMUNICATION_LABELS, CONTACT_RELATIONSHIP_LABELS, type ProjectStatus } from './domain.ts'
 
+/** The row open in the side preview on every list page: pale teal with a teal leading accent. */
+export const PREVIEW_SELECTED_ROW_CLASS =
+  'data-selected:bg-link-soft data-selected:shadow-[inset_3px_0_0_0_var(--primary)]'
+
 /** Distinct from the Projects list's `previewProject`, and from each other, so a selection never crosses record types. */
 export const CONTACT_PREVIEW_PARAM = 'previewContact'
 export const COMPANY_PREVIEW_PARAM = 'previewCompany'

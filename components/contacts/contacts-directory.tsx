@@ -158,7 +158,7 @@ const PREVIEW_HIDE: Partial<Record<ColumnKey, string>> = {
 
 /** The shared table row styles, plus the highlight for the record open in the preview. */
 const ROW_CLASS =
-  'scroll-mt-24 scroll-mb-4 border-b border-divider transition-colors hover:bg-[#F4F7F3] focus-within:bg-muted/40 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-selected data-[state=selected]:shadow-[inset_3px_0_0_0_var(--selected-border)] data-selected:bg-link-soft!'
+  'scroll-mt-24 scroll-mb-4 border-b border-divider transition-colors hover:bg-[#F4F7F3] focus-within:bg-muted/40 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-selected data-[state=selected]:shadow-[inset_3px_0_0_0_var(--selected-border)] data-selected:bg-link-soft! data-selected:shadow-[inset_3px_0_0_0_var(--primary)]!'
 
 const DEFAULT_HIDDEN: Record<DirectoryView, ColumnKey[]> = {
   people: ['secondary_phone'],
