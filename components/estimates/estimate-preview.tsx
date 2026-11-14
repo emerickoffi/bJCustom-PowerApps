@@ -65,8 +65,8 @@ function EstimatePreview({ estimate }: { estimate: EstimatePreviewRecord }) {
           </span>
         }
         actions={
-          <Button size="sm" className="pointer-coarse:h-11" render={<Link href={estimate.href} />} nativeButton={false}>
-            Open Estimate
+          <Button variant="view" size="sm" render={<Link href={estimate.href} />} nativeButton={false}>
+            Open estimate
             <ArrowRight data-icon="inline-end" />
           </Button>
         }
