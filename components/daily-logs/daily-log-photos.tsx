@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import { claimPendingPhotos } from '@/lib/daily-log-pending-photos'
 import { useRouter } from 'next/navigation'
 import { Camera, ImagePlus, Loader2, RotateCcw, Trash2 } from 'lucide-react'
 import { preparePhotoForUpload } from '@/components/shared/prepare-photo'
@@ -23,6 +24,8 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
   const [message, setMessage] = useState<{ tone: 'error' | 'status'; text: string } | null>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
   const [retry, setRetry] = useState<File[]>([])
+  /** Captions typed on the form for handed-off photos; kept by file so retries keep them too. */
+  const captionsRef = useRef(new Map<File, string>())
   const remaining = DAILY_LOG_PHOTO_LIMIT - photos.length
   const busy = uploading || remaining <= 0
   const inlineRef = useRef<HTMLDivElement>(null)
@@ -34,6 +37,17 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
     gallery: inputRef,
     inline: inlineRef,
   })
+
+  // Photos picked on the form before the log existed are uploaded here, once, after the save lands.
+  useEffect(() => {
+    if (!editable) return
+    const handedOff = claimPendingPhotos(projectId, logId)
+    if (!handedOff.length) return
+    const captions = new Map(handedOff.map((p) => [p.file, p.caption.trim().slice(0, 300)]))
+    captionsRef.current = captions
+    void handleFiles(handedOff.map((p) => p.file))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time hand-off on mount
+  }, [])
 
   async function handleFiles(input: FileList | File[] | null) {
     const picked = Array.from(input ?? [])
@@ -48,6 +62,7 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
     const { uploaded, failed } = await runUploadBatch(
       list,
       async (original): Promise<UploadOutcome> => {
+        const caption = captionsRef.current.get(original) ?? ''
         if (!ALLOWED.has(original.type)) return { ok: false, reason: `${original.name}: use JPEG, PNG, WebP or HEIC.`, retryable: false }
         const file = await preparePhotoForUpload(original)
         if (file.size > DAILY_LOG_PHOTO_MAX_BYTES) return { ok: false, reason: `${file.name}: larger than 15 MB.`, retryable: false }
@@ -61,7 +76,7 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
           file_name: file.name.slice(0, 200),
           mime_type: file.type as (typeof DAILY_LOG_PHOTO_TYPES)[number],
           size_bytes: file.size,
-          caption: '',
+          caption,
         })
         if (result.error) {
           await supabase.storage.from(MEDIA_BUCKET).remove([path])
