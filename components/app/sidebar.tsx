@@ -103,7 +103,7 @@ export function Sidebar({
                 onClick={toggle}
                 aria-label="Collapse sidebar"
                 aria-expanded
-                className="flex h-11 w-full items-center gap-3 rounded-nav px-3.5 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                className="flex h-[2.625rem] w-full items-center gap-3 rounded-nav px-3 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
               >
                 <PanelLeftClose className="size-4" aria-hidden="true" />
                 Collapse
