@@ -27,8 +27,7 @@ const TITLE_LINK_CLASS =
 // With the preview column open, secondary columns step aside as the list narrows; the preview shows them instead.
 const HIDE_WITH_PREVIEW = 'xl:group-data-preview-open/preview:@max-[80rem]:hidden'
 const HIDE_WITH_PREVIEW_NARROW = 'xl:group-data-preview-open/preview:@max-[64rem]:hidden'
-const PREVIEW_TRIGGER_CLASS =
-  'whitespace-nowrap font-mono text-xs text-[#526173] underline-offset-2 hover:text-[#006B78] hover:underline'
+const ESTIMATE_NUMBER_CLASS = 'whitespace-nowrap font-mono text-xs text-[#526173]'
 
 export const metadata: Metadata = { title: 'Estimates' }
 
@@ -273,9 +272,10 @@ export default async function EstimatesPage({
                           layout="table"
                           {...titleProps(e)}
                           linkClassName={TITLE_LINK_CLASS}
+                          previewable
                           meta={
                             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                              <RecordPreviewTrigger recordId={e.id} name={e.estimate_number} className={PREVIEW_TRIGGER_CLASS} />
+                              <span className={ESTIMATE_NUMBER_CLASS}>{e.estimate_number}</span>
                               <RevisionLabel revision={e.revision} count={revisionCount.get(e.family_id) ?? 1} />
                               {e.is_demo && <DemoBadge />}
                             </div>
@@ -346,14 +346,11 @@ export default async function EstimatesPage({
                       <EstimateTitleCell
                         layout="card"
                         {...titleProps(e)}
-                        linkClassName="break-words rounded-sm font-medium text-[#006B78] hover:text-[#005560] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006B78]"
+                        linkClassName="break-words rounded-sm font-medium text-[#006B78] hover:text-[#005560] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006B78] pointer-coarse:min-h-11"
+                        previewable
                         meta={
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <RecordPreviewTrigger
-                              recordId={e.id}
-                              name={e.estimate_number}
-                              className={cn(PREVIEW_TRIGGER_CLASS, 'pointer-coarse:min-h-11')}
-                            />
+                            <span className={ESTIMATE_NUMBER_CLASS}>{e.estimate_number}</span>
                             <span className="font-mono text-xs text-[#526173]">
                               {`Rev ${e.revision}`}
                               {(revisionCount.get(e.family_id) ?? 1) > 1 && ` of ${revisionCount.get(e.family_id)}`}
