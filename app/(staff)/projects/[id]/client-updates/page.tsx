@@ -6,7 +6,7 @@ import { clientUpdatesPath, formatPeriod } from '@/lib/client-updates'
 import { createClientUpdateAction } from '@/app/actions/client-updates'
 import { EmptyState, PageHeader, Surface } from '@/components/shared/page-header'
 import { ClientUpdateStateBadge } from '@/components/client-updates/client-update-state-badge'
-import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/shared/form-message'
 import { formatDate } from '@/lib/format'
 
 export const metadata: Metadata = { title: 'Client updates' }
@@ -21,10 +21,10 @@ export default async function ClientUpdatesPage({ params, searchParams }: { para
   const newButton = canEdit && (
     <form action={createClientUpdateAction}>
       <input type="hidden" name="project_id" value={project.id} />
-      <Button type="submit">
+      <SubmitButton size="default" pendingLabel="Creating...">
         <Plus className="size-4" aria-hidden="true" />
         New client update
-      </Button>
+      </SubmitButton>
     </form>
   )
 
