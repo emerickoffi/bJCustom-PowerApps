@@ -16,11 +16,19 @@ import {
   EstimateTitleGridProvider,
 } from '@/components/estimates/estimate-title-grid'
 import { EstimatesToolbar } from '@/components/estimates/estimates-toolbar'
+import { EstimatePreviewLayout } from '@/components/estimates/estimate-preview'
+import { RecordPreviewSurface, RecordPreviewTrigger } from '@/components/shared/record-preview'
 import { titleEditEligibility } from '@/lib/estimate-title'
 import { cn } from '@/lib/utils'
 
 const TITLE_LINK_CLASS =
   'line-clamp-2 break-words rounded-sm font-medium text-[#006B78] hover:text-[#005560] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006B78]'
+
+// With the preview column open, secondary columns step aside as the list narrows; the preview shows them instead.
+const HIDE_WITH_PREVIEW = 'xl:group-data-preview-open/preview:@max-[80rem]:hidden'
+const HIDE_WITH_PREVIEW_NARROW = 'xl:group-data-preview-open/preview:@max-[64rem]:hidden'
+const PREVIEW_TRIGGER_CLASS =
+  'whitespace-nowrap font-mono text-xs text-[#526173] underline-offset-2 hover:text-[#006B78] hover:underline'
 
 export const metadata: Metadata = { title: 'Estimates' }
 
@@ -223,40 +231,42 @@ export default async function EstimatesPage({
             }
           />
         ) : (
+          <EstimatePreviewLayout
+            estimates={estimates.map((e) => ({
+              id: e.id,
+              name: e.name,
+              estimateNumber: e.estimate_number,
+              status: e.status,
+              href: detailHref(e.id),
+            }))}
+          >
           <div className="surface overflow-hidden p-0 xl:overflow-visible">
-            <div className="hidden overflow-x-auto md:block xl:overflow-visible">
-              <table className="w-full min-w-[880px] table-fixed text-sm text-[#17212B]">
+            <div className="hidden overflow-x-auto md:block xl:overflow-visible xl:group-data-preview-open/preview:overflow-x-auto">
+              <table className="w-full min-w-[880px] table-fixed text-sm text-[#17212B] xl:group-data-preview-open/preview:min-w-[640px]">
                 <caption className="sr-only">Estimates</caption>
-                <colgroup>
-                  <col className="w-[30%]" />
-                  <col className="w-[15%]" />
-                  <col className="w-[20%]" />
-                  <col className="w-32" />
-                  <col className="w-36" />
-                  <col className="w-28" />
-                  <col className="w-[9.5rem]" />
-                </colgroup>
                 <thead className="border-b border-[#D6DDE5] bg-table-head text-left text-xs font-medium text-[#526173] xl:sticky xl:top-16 xl:z-10 [&_th]:bg-table-head [&_th:first-child]:rounded-tl-[inherit] [&_th:last-child]:rounded-tr-[inherit]">
                   <tr>
-                    <th scope="col" className="px-4 py-2.5 font-medium">Estimate</th>
-                    <th scope="col" className="px-3 py-2.5 font-medium">Client</th>
-                    <th scope="col" className="px-3 py-2.5 font-medium">Project</th>
-                    <th scope="col" className="px-3 py-2.5 font-medium">Status</th>
-                    <th scope="col" className="whitespace-nowrap px-3 py-2.5 text-right font-medium">
+                    <th scope="col" className="w-[30%] px-4 py-2.5 font-medium">Estimate</th>
+                    <th scope="col" className={cn('w-[15%] px-3 py-2.5 font-medium', HIDE_WITH_PREVIEW_NARROW)}>Client</th>
+                    <th scope="col" className="w-[20%] px-3 py-2.5 font-medium">Project</th>
+                    <th scope="col" className="w-32 px-3 py-2.5 font-medium">Status</th>
+                    <th scope="col" className="w-36 whitespace-nowrap px-3 py-2.5 text-right font-medium">
                       <span className="inline-flex items-center justify-end gap-1">
                         Construction total
                         <ConstructionTotalInfo />
                       </span>
                     </th>
-                    <th scope="col" className="px-3 py-2.5 font-medium">Created</th>
-                    <th scope="col" className="px-4 py-2.5 text-right font-medium">Actions</th>
+                    <th scope="col" className={cn('w-28 px-3 py-2.5 font-medium', HIDE_WITH_PREVIEW)}>Created</th>
+                    <th scope="col" className="w-[9.5rem] px-4 py-2.5 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E3E8EE] bg-white">
                   {estimates.map((e) => (
-                    <tr
+                    <RecordPreviewSurface
+                      as="tr"
                       key={e.id}
-                      className="align-top transition-colors hover:bg-[#E6F3F4] has-[:focus-visible]:bg-[#E6F3F4] has-[:focus-visible]:shadow-[inset_3px_0_0_#006B78]"
+                      recordId={e.id}
+                      className="align-top transition-colors hover:bg-[#E6F3F4] has-[:focus-visible]:bg-[#E6F3F4] has-[:focus-visible]:shadow-[inset_3px_0_0_#006B78] data-selected:bg-selected data-selected:shadow-[inset_3px_0_0_0_var(--selected-border)]"
                     >
                       <td className="px-4 py-2.5">
                         <EstimateTitleCell
@@ -265,14 +275,14 @@ export default async function EstimatesPage({
                           linkClassName={TITLE_LINK_CLASS}
                           meta={
                             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                              <span className="whitespace-nowrap font-mono text-xs text-[#526173]">{e.estimate_number}</span>
+                              <RecordPreviewTrigger recordId={e.id} name={e.estimate_number} className={PREVIEW_TRIGGER_CLASS} />
                               <RevisionLabel revision={e.revision} count={revisionCount.get(e.family_id) ?? 1} />
                               {e.is_demo && <DemoBadge />}
                             </div>
                           }
                         />
                       </td>
-                      <td className="px-3 py-2.5 text-[#526173]">
+                      <td className={cn('px-3 py-2.5 text-[#526173]', HIDE_WITH_PREVIEW_NARROW)}>
                         {e.client ? (
                           <Link
                             href={`/clients/${e.client.id}`}
@@ -303,21 +313,21 @@ export default async function EstimatesPage({
                       <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold tabular-nums text-[#17212B]">
                         {formatCents(e.construction_total_cents)}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-[#526173]">{formatDate(e.created_at)}</td>
+                      <td className={cn('whitespace-nowrap px-3 py-2.5 tabular-nums text-[#526173]', HIDE_WITH_PREVIEW)}>{formatDate(e.created_at)}</td>
                       <td className="px-4 py-1.5">
                         <div className="flex items-center justify-end gap-1">
                           <Link
                             href={detailHref(e.id)}
                             className={buttonVariants({ variant: 'view', size: 'sm', className: 'h-9' })}
                           >
-                            View
-                            <span className="sr-only">{` ${e.estimate_number}`}</span>
+                            Open
+                            <span className="sr-only">{` estimate ${e.estimate_number}`}</span>
                             <ArrowRight className="size-3.5" aria-hidden="true" />
                           </Link>
                           <EstimatePdfAction estimateId={e.id} estimateNumber={e.estimate_number} />
                         </div>
                       </td>
-                    </tr>
+                    </RecordPreviewSurface>
                   ))}
                 </tbody>
               </table>
@@ -325,7 +335,12 @@ export default async function EstimatesPage({
 
             <ul className="divide-y divide-[#E3E8EE] bg-white md:hidden">
               {estimates.map((e) => (
-                <li key={e.id} className="flex flex-col gap-3 p-4">
+                <RecordPreviewSurface
+                  as="li"
+                  key={e.id}
+                  recordId={e.id}
+                  className="flex flex-col gap-3 p-4 transition-colors data-selected:bg-selected"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <EstimateTitleCell
@@ -334,8 +349,13 @@ export default async function EstimatesPage({
                         linkClassName="break-words rounded-sm font-medium text-[#006B78] hover:text-[#005560] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006B78]"
                         meta={
                           <div className="flex flex-wrap items-center gap-1.5">
+                            <RecordPreviewTrigger
+                              recordId={e.id}
+                              name={e.estimate_number}
+                              className={cn(PREVIEW_TRIGGER_CLASS, 'pointer-coarse:min-h-11')}
+                            />
                             <span className="font-mono text-xs text-[#526173]">
-                              {`${e.estimate_number} · Rev ${e.revision}`}
+                              {`Rev ${e.revision}`}
                               {(revisionCount.get(e.family_id) ?? 1) > 1 && ` of ${revisionCount.get(e.family_id)}`}
                             </span>
                             {e.is_demo && <DemoBadge />}
@@ -361,8 +381,8 @@ export default async function EstimatesPage({
                       variant="view"
                       className="h-11"
                       render={<Link href={detailHref(e.id)} />} nativeButton={false}>
-                      View
-                      <span className="sr-only">{` ${e.estimate_number}`}</span>
+                      Open
+                      <span className="sr-only">{` estimate ${e.estimate_number}`}</span>
                     </Button>
                     <Button
                       variant="ghost"
@@ -375,10 +395,11 @@ export default async function EstimatesPage({
                       <span className="sr-only">{` for ${e.estimate_number}`}</span>
                     </Button>
                   </div>
-                </li>
+                </RecordPreviewSurface>
               ))}
             </ul>
           </div>
+          </EstimatePreviewLayout>
         )}
       </EstimateTitleGridProvider>
     </div>
