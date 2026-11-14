@@ -14,7 +14,8 @@ const allOn: ProjectNavAccess = {
 const keys = (access: ProjectNavAccess) => getProjectNavItems(ID, access).map((i) => i.key)
 
 test('shows every tab in order when all features are on', () => {
-  assert.deepEqual(keys(allOn), ['overview', 'schedule', 'estimates', 'documents', 'contacts', 'walkthroughs', 'warranty'])
+  // Photos follows photoLibraryEnabled: walkthroughs alone is a photo source.
+  assert.deepEqual(keys(allOn), ['overview', 'schedule', 'photos', 'estimates', 'documents', 'contacts', 'walkthroughs', 'warranty'])
 })
 
 test('every tab is scoped to the current project', () => {
