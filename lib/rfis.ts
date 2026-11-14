@@ -168,6 +168,8 @@ export type RfiFormOptions = {
   documents: RfiDocumentOption[]
   /** Administrators and project managers can open the access-management pages the explanations link to. */
   manager: boolean
+  /** "Improve with AI" is offered only when the company has AI on and the gateway is configured. */
+  ai?: boolean
 }
 
 export type RfiProjectOption = { id: string; name: string; project_number: string | null }

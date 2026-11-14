@@ -18,6 +18,7 @@ type Plan = { project: LauncherProject | null; contextual: string[] }
 /** Shortcuts kept on every page after the page's own, nearest the launcher first. */
 export const COMMON_LAUNCHER_ACTIONS = [
   'global:project',
+  'global:rfi',
   'global:client',
   'global:contact',
   'global:subcontractor',
@@ -38,6 +39,8 @@ export const LAUNCHER_LABELS: Record<string, string> = {
   'global:contact': 'Add contact',
   'global:subcontractor': 'Add subcontractor',
   'ctx:schedule': 'Add activity',
+  'global:rfi': 'Ask question',
+  'ctx:rfi': 'Ask question',
 }
 
 const PROJECT_ROUTE = /^\/projects\/([^/]+)(\/.*)?$/
@@ -72,6 +75,8 @@ export function pageButtonLauncherIds(pathname: string, search: { get(key: strin
       return ['ctx:schedule']
     case '/subcontractor-work/quotes':
       return ['quote-request']
+    case '/rfis':
+      return ['ctx:rfi']
   }
   return []
 }
@@ -98,11 +103,11 @@ export function launcherPlanFor(pathname: string, previewProjectId: string | nul
   const project: LauncherProject = { id: decodeURIComponent(match[1]), source: 'route' }
   const tab = match[2] ?? ''
   if (tab.startsWith('/schedule')) {
-    return { project, contextual: ['ctx:schedule', 'ctx:daily_log', 'ctx:assign', 'ctx:document'] }
+    return { project, contextual: ['ctx:schedule', 'ctx:rfi', 'ctx:daily_log', 'ctx:assign', 'ctx:document'] }
   }
   if (tab.startsWith('/subcontractor-work')) {
-    return { project, contextual: ['quote-request', 'ctx:assign', 'ctx:daily_log', 'ctx:document'] }
+    return { project, contextual: ['quote-request', 'ctx:rfi', 'ctx:assign', 'ctx:daily_log', 'ctx:document'] }
   }
-  if (tab.startsWith('/documents')) return { project, contextual: ['ctx:document', 'ctx:daily_log', 'ctx:assign'] }
-  return { project, contextual: ['ctx:assign', 'ctx:daily_log', 'ctx:document', 'quote-request', 'ctx:schedule'] }
+  if (tab.startsWith('/documents')) return { project, contextual: ['ctx:document', 'ctx:rfi', 'ctx:daily_log', 'ctx:assign'] }
+  return { project, contextual: ['ctx:assign', 'ctx:rfi', 'ctx:daily_log', 'ctx:document', 'quote-request', 'ctx:schedule'] }
 }

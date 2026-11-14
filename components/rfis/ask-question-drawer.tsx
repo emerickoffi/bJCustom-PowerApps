@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { FormOverlay, OverlayBody, OverlayFooter, useFormOverlay } from '@/components/shared/form-overlay'
 import { FieldShell, NativeSelect, TextAreaField, TextField } from '@/components/shared/form-field'
 import { RfiFileList } from '@/components/rfis/rfi-files'
+import { RfiImproveWithAi } from '@/components/rfis/rfi-improve-with-ai'
 import {
   registerRfiAttachmentAction,
   removeRfiAttachmentAction,
@@ -495,6 +496,19 @@ function QuestionForm({
             clearFieldError('question')
           }}
         />
+
+        {project && options.data?.ai && (
+          <RfiImproveWithAi
+            projectId={project.id}
+            draft={{ subject: values.subject, question: values.question, location: values.location }}
+            disabled={busy !== null}
+            onAccept={(s) => {
+              change({ subject: s.subject, question: s.question })
+              clearFieldError('subject')
+              clearFieldError('question')
+            }}
+          />
+        )}
 
         <div className="flex flex-col gap-2">
           <FieldShell
