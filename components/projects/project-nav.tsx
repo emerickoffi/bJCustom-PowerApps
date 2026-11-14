@@ -1,21 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { Info, MapPin, MoreHorizontal } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Info, MapPin } from 'lucide-react'
 import {
-  getActiveProjectMoreKey,
-  getActiveProjectNavKey,
+  getActiveProjectToolKey,
   getSectionIdFromHref,
-  type ProjectMoreItem,
-  type ProjectNavItem,
+  type ProjectTool,
+  type ProjectToolGroup,
 } from '@/lib/project-nav'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { scrollToProjectSection } from '@/components/projects/project-section-scroll'
+import { ProjectToolsMenu, ProjectToolsScope, type ProjectToolNavigate } from '@/components/projects/project-tools-menu'
 import { ProjectStatusBadge } from '@/components/shared/status-badge'
-import { worksheetTabClass } from '@/components/shared/worksheet-tabs'
 import type { ProjectStatus } from '@/lib/domain'
 
 type SectionMemory = Record<string, { url?: string; y?: number }>
@@ -36,7 +33,7 @@ function writeMemory(key: string, memory: SectionMemory) {
   try {
     window.sessionStorage.setItem(key, JSON.stringify(memory))
   } catch {
-    // Storage can be full or disabled; tabs then simply open at their default view.
+    // Storage can be full or disabled; tools then simply open at their default view.
   }
 }
 
@@ -46,26 +43,24 @@ export function ProjectNav({
   projectNumber,
   status,
   address,
-  items,
-  moreItems = [],
+  groups,
 }: {
   userId: string
   projectId: string
   projectNumber: string | null
   status: ProjectStatus
   address: string
-  items: ProjectNavItem[]
-  /** Tools without a permanent tab, reached from the overflow menu after the last tab. Hidden when empty. */
-  moreItems?: ProjectMoreItem[]
+  /** Tools this user may open, already filtered by features and access on the server. */
+  groups: ProjectToolGroup[]
 }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const search = searchParams.toString()
-  const activeKey = getActiveProjectNavKey(pathname, projectId, items)
-  const activeMoreKey = getActiveProjectMoreKey(pathname, moreItems)
+  const tools = groups.flatMap((group) => group.tools)
+  const activeKey = getActiveProjectToolKey(pathname, projectId, tools)
 
-  // Each tab reopens with the filters, view and scroll position last used in it. Keyed by user and project,
-  // so another project or account never inherits them; only URLs inside this project's sections are stored.
+  // Each tool reopens with the filters, view and scroll position last used in it. Keyed by user and project,
+  // so another project or account never inherits them; only URLs inside this project's tools are stored.
   const memoryKey = `bateevo:project-sections:${userId}:${projectId}`
   const [memory, setMemory] = useState<SectionMemory>({})
   const activeKeyRef = useRef(activeKey)
@@ -79,10 +74,10 @@ export function ProjectNav({
   useEffect(() => {
     activeKeyRef.current = activeKey
     if (!activeKey) return
-    // Creation flows are transient: returning to a tab must land on its index, never a new-record form.
+    // Creation flows are transient: returning to a tool must land on its index, never a new-record form.
     if (isCreationPath(pathname)) return
     const current = readMemory(memoryKey)
-    // An open details drawer is not part of a tab's remembered view, so returning to the tab never reopens it.
+    // An open details drawer is not part of a tool's remembered view, so returning to the tool never reopens it.
     const remembered = new URLSearchParams(search)
     remembered.delete('details')
     remembered.delete('new')
@@ -147,65 +142,16 @@ export function ProjectNav({
     }
   }, [activeKey])
 
-  function hrefFor(item: ProjectNavItem) {
-    const saved = memory[item.key]?.url
-    const base = item.activePrefix ?? item.href.split(/[?#]/)[0]
-    // Only reuse a remembered URL that still points inside this tab's own route.
-    if (saved && isCreationPath(saved.split('?')[0])) return item.href
+  function hrefFor(tool: ProjectTool) {
+    const saved = memory[tool.key]?.url
+    const base = tool.activePrefix ?? tool.href.split(/[?#]/)[0]
+    // Only reuse a remembered URL that still points inside this tool's own route.
+    if (saved && isCreationPath(saved.split('?')[0])) return tool.href
     if (saved && (saved === base || saved.startsWith(`${base}?`) || saved.startsWith(`${base}/`))) return saved
-    return item.href
+    return tool.href
   }
 
-  function handleTabClick(event: React.MouseEvent<HTMLAnchorElement>, item: ProjectNavItem, href: string) {
-    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-    if (item.key === activeKey) return handleSectionClick(event, href)
-    const current = readMemory(memoryKey)
-    if (activeKey) current[activeKey] = { ...current[activeKey], y: Math.round(window.scrollY) }
-    writeMemory(memoryKey, current)
-    suppressScrollSave.current = true
-    const y = current[item.key]?.y ?? 0
-    pendingRestore.current = y > 0 ? { key: item.key, y } : null
-    handleSectionClick(event, href)
-  }
-
-  const activeTabRef = useRef<HTMLAnchorElement>(null)
-  const stripRef = useRef<HTMLElement>(null)
-  const [edges, setEdges] = useState({ left: false, right: false })
-
-  function updateEdges() {
-    const strip = stripRef.current
-    if (!strip) return
-    const left = strip.scrollLeft > 2
-    const right = strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 2
-    setEdges((prev) => (prev.left === left && prev.right === right ? prev : { left, right }))
-  }
-
-  // Fades hint at hidden tabs; recompute whenever the strip or its contents resize (rotation, sidebar toggle).
-  useEffect(() => {
-    const strip = stripRef.current
-    if (!strip) return
-    updateEdges()
-    const observer = new ResizeObserver(updateEdges)
-    observer.observe(strip)
-    if (strip.firstElementChild) observer.observe(strip.firstElementChild)
-    return () => observer.disconnect()
-  }, [])
-
-  // On narrow screens the tab strip scrolls sideways; keep the selected tab visible without moving the page vertically.
-  useEffect(() => {
-    const tab = activeTabRef.current
-    const strip = stripRef.current
-    if (!tab || !strip || strip.scrollWidth <= strip.clientWidth) return
-    const stripBox = strip.getBoundingClientRect()
-    const tabBox = tab.getBoundingClientRect()
-    if (tabBox.left < stripBox.left + 24 || tabBox.right > stripBox.right - 24) {
-      const target = strip.scrollLeft + (tabBox.left - stripBox.left) - (stripBox.width - tabBox.width) / 2
-      strip.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
-    }
-  }, [activeKey])
-
-  // The tab strip pins directly under the app header. Its height varies with breakpoint and safe-area inset,
-  // so it is measured instead of hard-coded; a fixed guess left a gap or let the strip cover content.
+  // The app header's height varies with breakpoint and safe-area inset; sticky panels in project tools read it.
   useEffect(() => {
     const header = document.querySelector<HTMLElement>('[data-app-header]')
     if (!header) return
@@ -216,18 +162,38 @@ export function ProjectNav({
     return () => observer.disconnect()
   }, [])
 
-  const overviewHref = items[0]?.href ?? `/projects/${projectId}`
+  const overviewHref = tools.find((tool) => tool.key === 'overview')?.href ?? `/projects/${projectId}`
 
   // On the overview itself, scroll directly: a repeated hash click is otherwise a no-op in the router.
-  // From other tabs the Link navigates and ProjectSectionScroll handles the hash after mount.
   function handleSectionClick(event: React.MouseEvent<HTMLAnchorElement>, href: string) {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     const sectionId = getSectionIdFromHref(href)
     if (!sectionId || activeKey !== 'overview') return
     if (!scrollToProjectSection(sectionId)) return
     event.preventDefault()
     window.history.replaceState(window.history.state, '', href)
   }
+
+  function handleToolNavigate(event: React.MouseEvent<HTMLAnchorElement>, tool: ProjectTool, href: string) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    if (tool.key === activeKey) return handleSectionClick(event, href)
+    const current = readMemory(memoryKey)
+    if (activeKey) current[activeKey] = { ...current[activeKey], y: Math.round(window.scrollY) }
+    writeMemory(memoryKey, current)
+    suppressScrollSave.current = true
+    const y = current[tool.key]?.y ?? 0
+    pendingRestore.current = y > 0 ? { key: tool.key, y } : null
+    handleSectionClick(event, href)
+  }
+
+  // The header menu is registered once; a ref keeps it calling the latest handler without re-registering.
+  const navigateRef = useRef(handleToolNavigate)
+  navigateRef.current = handleToolNavigate
+  const onNavigate = useCallback<ProjectToolNavigate>((event, tool, href) => navigateRef.current(event, tool, href), [])
+
+  const resolvedGroups = groups.map((group) => ({
+    ...group,
+    tools: group.tools.map((tool) => ({ ...tool, href: hrefFor(tool) })),
+  }))
 
   // The details drawer is mounted on the overview, so there the URL changes in place instead of refetching the page.
   function handleDetailsClick(event: React.MouseEvent<HTMLAnchorElement>) {
@@ -241,8 +207,13 @@ export function ProjectNav({
 
   return (
     <>
+      <ProjectToolsScope groups={resolvedGroups} activeKey={activeKey} onNavigate={onNavigate} />
       {/* The project's name lives in the header selector; this row adds what the selector doesn't show. */}
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 pb-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 pb-3">
+        {/* Below md the header has no room for a second selector, so the same menu sits at the top of the frame. */}
+        <div className="w-full md:hidden">
+          <ProjectToolsMenu groups={resolvedGroups} activeKey={activeKey} onNavigate={onNavigate} className="h-11 w-full max-w-none" />
+        </div>
         {projectNumber && (
           <span className="shrink-0 font-mono text-xs text-muted-foreground">
             <span className="sr-only">Project ID: </span>
@@ -265,87 +236,6 @@ export function ProjectNav({
           <Info className="size-3.5" aria-hidden="true" />
           Project details
         </Link>
-      </div>
-
-      <div
-        data-project-tabs
-        className="sticky top-[var(--app-header-h,calc(3.5rem+env(safe-area-inset-top)))] z-20 bg-background pt-1.5"
-      >
-        <div className="flex min-w-0 items-end">
-        <div className="relative min-w-0 flex-1">
-          <span
-            aria-hidden="true"
-            className={cn(
-              'pointer-events-none absolute bottom-px left-0 top-0 z-10 w-10 bg-gradient-to-r from-background to-transparent transition-opacity',
-              edges.left ? 'opacity-100' : 'opacity-0',
-            )}
-          />
-          <span
-            aria-hidden="true"
-            className={cn(
-              'pointer-events-none absolute bottom-px right-0 top-0 z-10 w-10 bg-gradient-to-l from-background to-transparent transition-opacity',
-              edges.right ? 'opacity-100' : 'opacity-0',
-            )}
-          />
-          <nav
-            ref={stripRef}
-            onScroll={updateEdges}
-            aria-label="Project sections"
-            className="overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            <ul className="flex w-max min-w-full items-end">
-              {items.map((item, index) => {
-                const active = item.key === activeKey
-                const href = hrefFor(item)
-                return (
-                  <li key={item.key} className="flex">
-                    <Link
-                      href={href}
-                      ref={active ? activeTabRef : undefined}
-                      onClick={(event) => handleTabClick(event, item, href)}
-                      aria-current={active ? 'page' : undefined}
-                      className={worksheetTabClass(active, index === 0)}
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                )
-              })}
-              <li aria-hidden="true" className="min-w-4 flex-1 self-stretch border-b border-border" />
-            </ul>
-          </nav>
-        </div>
-        {moreItems.length > 0 && (
-          // Sits after the scrolling strip, so it is always reachable and no tab changes position.
-          <div className="flex shrink-0 items-end self-stretch border-b border-border pl-1">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                aria-label="More project tools"
-                className={cn(
-                  'relative inline-flex h-11 items-center gap-1.5 rounded-t-tab px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground sm:h-9',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus',
-                  activeMoreKey &&
-                    'font-semibold text-foreground before:absolute before:inset-x-0 before:bottom-[-1px] before:h-0.5 before:bg-tab-accent',
-                )}
-              >
-                <MoreHorizontal className="size-4" aria-hidden="true" />
-                More
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={6} className="min-w-52">
-                {moreItems.map((item) => (
-                  <DropdownMenuItem
-                    key={item.key}
-                    render={<Link href={item.href} aria-current={item.key === activeMoreKey ? 'page' : undefined} />}
-                    className="min-h-11 sm:min-h-0"
-                  >
-                    {item.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-        </div>
       </div>
     </>
   )

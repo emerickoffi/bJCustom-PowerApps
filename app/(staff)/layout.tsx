@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { requireStaff } from '@/lib/session'
 import { QuickActionsProvider, QuickCreateMenu } from '@/components/app/quick-actions'
 import { JobSwitcher } from '@/components/app/job-switcher'
+import { ProjectToolsHeaderSlot, ProjectToolsProvider } from '@/components/projects/project-tools-menu'
 import { buildGlobalQuickActions, buildProjectPickerActions } from '@/lib/quick-actions'
 import { dashboardKeyForRole } from '@/lib/dashboard-layout'
 import type { ProjectFilterRoute } from '@/lib/route-job'
@@ -115,6 +116,7 @@ export default async function StaffLayout({ children, modal }: { children: React
       <DraftScopeProvider userId={session.userId} orgId={session.organizationId}>
       <AssistantProvider>
       <QuickActionsProvider>
+      <ProjectToolsProvider>
       <FloatingActionsProvider>
       <FloatingCameraProvider>
       <LayoutModeProvider preference={layoutPreference}>
@@ -152,6 +154,7 @@ export default async function StaffLayout({ children, modal }: { children: React
                     filterRoutes={projectFilterRoutes}
                     tabletFilterRoutes={TABLET_FILTER_ROUTES}
                   />
+                  <ProjectToolsHeaderSlot />
                 </div>
                 <QuickCreateMenu globalActions={globalQuickActions} jobScope={null} />
                 <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />
@@ -184,6 +187,7 @@ export default async function StaffLayout({ children, modal }: { children: React
       {modal}
       </FloatingCameraProvider>
       </FloatingActionsProvider>
+      </ProjectToolsProvider>
       </QuickActionsProvider>
       </AssistantProvider>
       </DraftScopeProvider>
