@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { friendlyDbError, type ActionState } from '@/lib/action-state'
 import { requirePhotosProject } from '@/lib/project-photos-data'
-import { PROJECT_PHOTO_MAX_BYTES, PROJECT_PHOTO_TYPES, isProjectPhotoPath, projectPhotosPath } from '@/lib/project-photos'
+import { PROJECT_PHOTO_MAX_BYTES, PROJECT_PHOTO_TYPES, isProjectPhotoPath, projectPhotosPath } from '@/lib/project-photo-library'
 import { MEDIA_BUCKET } from '@/lib/walkthroughs'
 
 const registerSchema = z.object({

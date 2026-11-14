@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Images } from 'lucide-react'
 import { loadProjectPhotoLibrary, requirePhotosProject } from '@/lib/project-photos-data'
-import { parsePhotoFilters, photoFilterQuery, projectPhotosPath } from '@/lib/project-photos'
+import { parsePhotoFilters, photoFilterQuery, projectPhotosPath } from '@/lib/project-photo-library'
 import { EmptyState, PageHeader } from '@/components/shared/page-header'
 import { PhotoFiltersForm } from '@/components/photos/photo-filters'
 import { PhotoLibrary } from '@/components/photos/photo-library'
@@ -50,6 +50,7 @@ export default async function ProjectPhotosPage({
 
       {library.photos.length === 0 ? (
         <EmptyState
+          icon={Images}
           title={filtered ? 'No photos match these filters' : 'No photos yet'}
           description={
             filtered
@@ -58,13 +59,14 @@ export default async function ProjectPhotosPage({
                 ? 'Upload photos here, or add them to a daily log, walkthrough, or issue.'
                 : 'Photos added to daily logs, walkthroughs, and issues will appear here.'
           }
-        >
-          {filtered && (
-            <Link href={`${base}${photoFilterQuery({ view: filters.view })}`} className={buttonVariants({ variant: 'outline' })}>
-              Clear filters
-            </Link>
-          )}
-        </EmptyState>
+          action={
+            filtered && (
+              <Link href={`${base}${photoFilterQuery({ view: filters.view })}`} className={buttonVariants({ variant: 'outline' })}>
+                Clear filters
+              </Link>
+            )
+          }
+        />
       ) : (
         <PhotoLibrary
           key={`${page}-${filters.sort}-${filters.view}`}

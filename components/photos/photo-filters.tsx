@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { LayoutGrid, List } from 'lucide-react'
 import type { FeatureMap } from '@/lib/feature-registry'
-import { PHOTO_SOURCE_LABELS, photoFilterQuery, type PhotoFilters, type PhotoSource } from '@/lib/project-photos'
+import { PHOTO_SOURCE_LABELS, photoFilterQuery, type PhotoFilters, type PhotoSource } from '@/lib/project-photo-library'
 import { Surface } from '@/components/shared/page-header'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

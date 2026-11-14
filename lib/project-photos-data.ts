@@ -15,7 +15,7 @@ import {
   sortPhotos,
   type LibraryPhoto,
   type PhotoFilters,
-} from '@/lib/project-photos'
+} from '@/lib/project-photo-library'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 type One<T> = T | T[] | null

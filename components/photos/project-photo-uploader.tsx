@@ -7,7 +7,7 @@ import { preparePhotoForUpload } from '@/components/shared/prepare-photo'
 import { retryableItems, runUploadBatch, uploadSummary, type UploadOutcome } from '@/lib/photo-upload'
 import { createClient } from '@/lib/supabase/client'
 import { MEDIA_BUCKET, safeFileName } from '@/lib/walkthroughs'
-import { PROJECT_PHOTO_MAX_BYTES, PROJECT_PHOTO_TYPES, projectPhotoStoragePath } from '@/lib/project-photos'
+import { PROJECT_PHOTO_MAX_BYTES, PROJECT_PHOTO_TYPES, projectPhotoStoragePath } from '@/lib/project-photo-library'
 import { registerProjectPhotoAction } from '@/app/actions/project-photos'
 import { Button } from '@/components/ui/button'
 
