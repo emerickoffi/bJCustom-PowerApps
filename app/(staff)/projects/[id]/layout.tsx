@@ -4,7 +4,7 @@ import { ProjectQuickActionsScope } from '@/components/app/quick-actions'
 import { buildProjectQuickActions } from '@/lib/quick-actions'
 import { createClient } from '@/lib/supabase/server'
 import { getOrgFeatures } from '@/lib/features'
-import { getProjectMoreItems, getProjectNavItems } from '@/lib/project-nav'
+import { getProjectToolGroups } from '@/lib/project-nav'
 import { ProjectNav } from '@/components/projects/project-nav'
 import { AssistantProjectScope } from '@/components/assistant/assistant-context'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/lib/domain'
@@ -39,8 +39,7 @@ export default async function ProjectLayout({
     canViewInternal: Boolean(canViewInternal),
     canViewFinancials: canManage(session.role),
   }
-  const items = getProjectNavItems(project.id, navAccess)
-  const moreItems = getProjectMoreItems(project.id, navAccess)
+  const toolGroups = getProjectToolGroups(project.id, navAccess)
 
   // Each action mirrors the guard on its destination page, so only workflows the user can complete are offered.
   const quickActions = buildProjectQuickActions({
@@ -75,12 +74,11 @@ export default async function ProjectLayout({
         projectNumber={project.project_number ?? null}
         status={project.status as ProjectStatus}
         address={formatAddress(project)}
-        items={items}
-        moreItems={moreItems}
+        groups={toolGroups}
       />
       <div
         data-project-workspace
-        className="flex min-w-0 flex-col overflow-x-clip rounded-b-xl border border-t-0 border-border bg-card p-4 sm:p-6"
+        className="flex min-w-0 flex-col overflow-x-clip rounded-xl border border-border bg-card p-4 sm:p-6"
       >
         {children}
       </div>

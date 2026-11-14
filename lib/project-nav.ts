@@ -163,6 +163,99 @@ export function getActiveProjectMoreKey(pathname: string, items: ProjectMoreItem
   return items.find((item) => path === item.activePrefix || path.startsWith(`${item.activePrefix}/`))?.key ?? null
 }
 
+export type ProjectToolKey = ProjectNavKey | ProjectMoreItem['key']
+
+export type ProjectTool = {
+  key: ProjectToolKey
+  label: string
+  href: string
+  activePrefix: string | null
+  /** Extra words people search with, e.g. "RFI" finds Questions. */
+  aliases: readonly string[]
+}
+
+export type ProjectToolGroupKey = 'work' | 'financials' | 'people' | 'files'
+
+export type ProjectToolGroup = { key: ProjectToolGroupKey; label: string; tools: ProjectTool[] }
+
+const TOOL_GROUPS: { key: ProjectToolGroupKey; label: string; tools: readonly ProjectToolKey[] }[] = [
+  { key: 'work', label: 'Project work', tools: ['overview', 'schedule', 'daily_logs', 'selections', 'walkthroughs', 'warranty'] },
+  { key: 'financials', label: 'Financials', tools: ['estimates', 'change_orders', 'financials'] },
+  { key: 'people', label: 'People & communication', tools: ['contacts', 'subcontractor_work', 'rfis', 'client_updates'] },
+  { key: 'files', label: 'Files', tools: ['documents', 'photos'] },
+]
+
+const TOOL_ALIASES: Record<ProjectToolKey, readonly string[]> = {
+  overview: ['home', 'summary', 'details'],
+  schedule: ['timeline', 'gantt', 'calendar', 'tasks'],
+  daily_logs: ['log', 'journal', 'diary', 'field report'],
+  selections: ['finishes', 'allowances', 'choices'],
+  walkthroughs: ['punch', 'punch list', 'issues', 'inspection'],
+  warranty: ['claims', 'service'],
+  estimates: ['bid', 'quote', 'proposal', 'pricing'],
+  change_orders: ['co', 'change order', 'changes'],
+  financials: ['budget', 'costs', 'invoices', 'payments', 'money'],
+  contacts: ['contacts', 'team', 'directory', 'client'],
+  subcontractor_work: ['sub', 'subcontractor', 'trades', 'verification'],
+  rfis: ['rfi', 'rfis', 'questions', 'request for information'],
+  client_updates: ['homeowner', 'updates', 'messages', 'communication'],
+  documents: ['files', 'docs', 'plans', 'contracts', 'drawings'],
+  photos: ['images', 'pictures', 'gallery'],
+}
+
+/**
+ * Every tool this user may open in the project, grouped for the Project Tools menu. Built from the same
+ * guarded lists as before, so a tool appears only when its page would also let the user in.
+ */
+export function getProjectToolGroups(projectId: string, access: ProjectNavAccess): ProjectToolGroup[] {
+  const available = new Map<ProjectToolKey, ProjectTool>()
+  for (const item of [...getProjectNavItems(projectId, access), ...getProjectMoreItems(projectId, access)]) {
+    available.set(item.key, { ...item, aliases: TOOL_ALIASES[item.key] })
+  }
+  const grouped = new Set<ProjectToolKey>()
+  const groups = TOOL_GROUPS.map((group) => ({
+    key: group.key,
+    label: group.label,
+    tools: group.tools.flatMap((key) => {
+      const tool = available.get(key)
+      if (!tool) return []
+      grouped.add(key)
+      return [tool]
+    }),
+  }))
+  // A tool added later without a group still stays reachable rather than silently disappearing.
+  const ungrouped = [...available.values()].filter((tool) => !grouped.has(tool.key))
+  if (ungrouped.length) groups[0].tools.push(...ungrouped)
+  return groups.filter((group) => group.tools.length > 0)
+}
+
+function normalize(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+/** Keeps tools whose name or an alias contains every word typed; groups left empty are dropped. */
+export function filterProjectToolGroups(groups: ProjectToolGroup[], query: string): ProjectToolGroup[] {
+  const words = normalize(query).split(' ').filter(Boolean)
+  if (!words.length) return groups
+  return groups
+    .map((group) => ({
+      ...group,
+      tools: group.tools.filter((tool) => {
+        const haystack = [tool.label, ...tool.aliases].map(normalize).join(' | ')
+        return words.every((word) => haystack.includes(word))
+      }),
+    }))
+    .filter((group) => group.tools.length > 0)
+}
+
+export function getActiveProjectToolKey(pathname: string, projectId: string, tools: ProjectTool[]): ProjectToolKey | null {
+  const base = projectBasePath(projectId)
+  const path = pathname.replace(/\/+$/, '') || '/'
+  if (path === base) return tools.some((tool) => tool.key === 'overview') ? 'overview' : null
+  const match = tools.find((tool) => tool.activePrefix && (path === tool.activePrefix || path.startsWith(`${tool.activePrefix}/`)))
+  return match?.key ?? null
+}
+
 export function getActiveProjectNavKey(pathname: string, projectId: string, items: ProjectNavItem[]): ProjectNavKey | null {
   const base = projectBasePath(projectId)
   const path = pathname.replace(/\/+$/, '') || '/'

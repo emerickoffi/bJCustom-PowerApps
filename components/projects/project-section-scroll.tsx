@@ -7,9 +7,9 @@ export function scrollToProjectSection(id: string) {
   const target = document.getElementById(id)
   if (!target) return false
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  // Land the section below the sticky header and project tab bar rather than underneath them.
-  const tabs = document.querySelector<HTMLElement>('[data-project-tabs]')
-  const offset = tabs ? (parseFloat(getComputedStyle(tabs).top) || 0) + tabs.offsetHeight + 12 : 0
+  // Land the section below the sticky app header rather than underneath it.
+  const header = document.querySelector<HTMLElement>('[data-app-header]')
+  const offset = header ? header.offsetHeight + 12 : 0
   const top = target.getBoundingClientRect().top + window.scrollY - offset
   window.scrollTo({ top: Math.max(0, top), behavior: reduceMotion ? 'auto' : 'smooth' })
   return true
