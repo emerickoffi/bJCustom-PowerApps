@@ -212,14 +212,16 @@ export function FormSection({
 export function FormActions({
   message,
   note = 'Fields marked * are required.',
+  className,
   children,
 }: {
   message?: React.ReactNode
   note?: string
+  className?: string
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border/80 bg-card/70 p-4 sm:p-5">
+    <div className={cn('flex flex-col gap-4 rounded-xl border border-border/80 bg-card/70 p-4 sm:p-5', className)}>
       {message}
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-muted-foreground">{note}</p>

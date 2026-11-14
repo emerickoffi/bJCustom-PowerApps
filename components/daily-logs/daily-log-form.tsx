@@ -1,7 +1,6 @@
 'use client'
 
-import { forwardRef, useCallback, useRef, useState } from 'react'
-import { useFormStatus } from 'react-dom'
+import { useState } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, CalendarDays, Camera, ChevronDown, CloudSun, HardHat, Link2, ListChecks, Plus, Trash2, Truck, type LucideIcon } from 'lucide-react'
 import { saveDailyLogAction } from '@/app/actions/daily-logs'
@@ -13,7 +12,7 @@ import { FormActions, FormSection, TextAreaField, TextField } from '@/components
 import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useFloatingCameraSaveFirst } from '@/components/camera/floating-camera'
+import { PendingPhotoPicker } from '@/components/daily-logs/pending-photo-picker'
 
 type CrewRow = {
   key: number
@@ -128,22 +127,6 @@ export function DailyLogForm(props: FormProps) {
 function DailyLogFormBody({ projectId, defaults, activities, companies = [], maxDate, cancelHref, save }: FormProps & { save: ResilientSave }) {
   const showCompany = companies.length > 0 || defaults.crews.some((c) => c.subcontractor_company_id)
   const { state, formAction: action, pending, formRef } = save
-  const photosSubmitRef = useRef<HTMLButtonElement>(null)
-  const photosInlineRef = useRef<HTMLDivElement>(null)
-  // Submits through the existing "Save and add photos" button so the same validation and
-  // `intent=photos` redirect apply; a failed save stays on this form with values intact.
-  const saveAndAddPhotos = useCallback(() => {
-    const submitter = photosSubmitRef.current
-    if (submitter) formRef.current?.requestSubmit(submitter)
-  }, [])
-  useFloatingCameraSaveFirst({
-    label: defaults.id ? 'Unsaved changes' : 'Unsaved daily log',
-    actionLabel: defaults.id ? 'Save Changes & Take Photo' : 'Save Draft & Take Photo',
-    enabled: true,
-    disabled: pending,
-    onSelect: saveAndAddPhotos,
-    inline: photosInlineRef,
-  })
   const [crews, setCrews] = useState<CrewRow[]>(() => (defaults.crews.length ? defaults.crews : [blankCrew]).map((c, i) => ({ ...c, key: i })))
   const [nextKey, setNextKey] = useState(crews.length)
   const [selected, setSelected] = useState(() => new Set(defaults.activityIds))
@@ -268,14 +251,16 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
         icon={Camera}
         description={
           defaults.id
-            ? 'Photos are managed on the log page. Save your changes, then take or upload photos there.'
-            : 'Photos attach to a saved log. Use Save and add photos to save this draft and go straight to the camera and upload options.'
+            ? 'Add new photos here; existing photos and captions are managed on the log page.'
+            : 'Capture photos as you go. Captions are optional and can be edited after saving.'
         }
       >
-        <div ref={photosInlineRef} className="flex flex-col gap-3 rounded-lg border border-dashed border-border bg-muted/40 p-4 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">Take site photos with your camera or upload them from your device, then add captions.</p>
-          <SaveAndAddPhotosButton ref={photosSubmitRef} />
-        </div>
+        <PendingPhotoPicker
+          projectId={projectId}
+          logId={defaults.id ?? null}
+          disabled={pending}
+          saveFailed={state.error || state.fieldErrors ? state : null}
+        />
       </FormSection>
 
       <section aria-labelledby="additional-details-heading" className="flex flex-col gap-3">
@@ -316,6 +301,7 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
           </div>
         }
         note="Saved logs stay as drafts until you finalize them."
+        className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-20 gap-3 bg-card/95 p-3 shadow-md backdrop-blur supports-backdrop-filter:bg-card/90 max-[599.98px]:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:p-3 sm:px-4 tablet:bottom-[calc(4.75rem+env(safe-area-inset-bottom))]"
       >
         <Link href={cancelHref} className={buttonVariants({ variant: 'ghost', size: 'lg' })}>
           Cancel
@@ -328,16 +314,6 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
     </form>
   )
 }
-
-const SaveAndAddPhotosButton = forwardRef<HTMLButtonElement>(function SaveAndAddPhotosButton(_props, ref) {
-  const { pending } = useFormStatus()
-  return (
-    <Button ref={ref} type="submit" name="intent" value="photos" variant="outline" size="lg" disabled={pending} className="h-12 w-full shrink-0 sm:h-11 sm:w-auto">
-      <Camera aria-hidden="true" />
-      {pending ? 'Saving...' : 'Save and add photos'}
-    </Button>
-  )
-})
 
 /** Native details element so collapsed fields stay mounted and keep submitting their typed values. */
 function CollapsibleSection({
