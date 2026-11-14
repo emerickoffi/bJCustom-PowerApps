@@ -24,9 +24,6 @@ import {
   buildComingUp,
   COMING_UP_DAYS,
   COMING_UP_RANGE_DAYS,
-  DEFAULT_COMING_UP_RANGE,
-  parseComingUpRange,
-  type ComingUpRange,
   type ProposedStartInput,
 } from '@/lib/coming-up'
 import { getDashboardCardDetails } from '@/lib/dashboard-cards'
@@ -49,7 +46,7 @@ import { getProfileNames, PROJECT_SUMMARY_COLUMNS, type ProjectSummary } from '@
 import { canManage, type requireStaff } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { WeatherStrip } from '@/components/dashboard/weather-strip'
-import { readWeatherChoice, readWorkScope } from '@/lib/dashboard-prefs'
+import { readComingUpRange, readWeatherChoice, readWorkScope } from '@/lib/dashboard-prefs'
 import { WorkScopeControl } from '@/components/dashboard/work-scope-control'
 import { actionListClear, briefingClear } from '@/lib/work-scope'
 import { formatJobsiteAddress, type JobsiteAddress } from '@/lib/weather-data'
@@ -83,11 +80,9 @@ export async function OwnerDashboard({
   const supabase = await createClient()
   const orgId = session.organizationId
   const selectedAction = isActionCategory(query.actions) ? query.actions : null
-  const agendaRange = parseComingUpRange(query.agenda)
-  const dashboardHref = (params: { actions?: string | null; agenda?: ComingUpRange }) => {
+  const dashboardHref = (params: { actions?: string | null }) => {
     const search = new URLSearchParams()
     if (params.actions) search.set('actions', params.actions)
-    if (params.agenda && params.agenda !== DEFAULT_COMING_UP_RANGE) search.set('agenda', params.agenda)
     const qs = search.toString()
     return qs ? `/dashboard?${qs}` : '/dashboard'
   }
@@ -131,6 +126,7 @@ export async function OwnerDashboard({
     workScope,
     myTasks,
     overdueQuoteRequests,
+    agendaRange,
   ] = await Promise.all([
       projectsPromise,
       supabase
@@ -151,6 +147,7 @@ export async function OwnerDashboard({
       readWorkScope(session.userId),
       tasksPromise,
       loadOverdueQuoteRequests(orgId, Boolean(features.subcontractors)),
+      readComingUpRange(session.userId, orgId),
     ])
 
   /** My work keeps only items explicitly assigned to the signed-in user; the header count follows the same scope. */
@@ -285,7 +282,6 @@ export async function OwnerDashboard({
   const groupHref = (group: DueGroupId | null) => {
     const search = new URLSearchParams()
     if (selectedAction) search.set('actions', selectedAction)
-    if (agendaRange !== DEFAULT_COMING_UP_RANGE) search.set('agenda', agendaRange)
     if (group) search.set('jobs', group)
     const qs = search.toString()
     return `/dashboard${qs ? `?${qs}` : ''}#${PRIORITY_JOBS_ANCHOR}`
@@ -370,7 +366,7 @@ export async function OwnerDashboard({
       records: projectsRes.error ? null : jobs.length > 0,
       attention: projectsRes.error ? null : jobs.some((j) => j.health === 'at_risk' || j.health === 'needs_attention'),
     },
-    coming_up: { records: comingUp.length > 0, attention: null },
+    coming_up: { records: agendaData.failed && comingUp.length === 0 ? null : comingUp.length > 0, attention: null },
     my_todos: {
       records: myTasks.state === 'available' ? myTasks.openCount > 0 : null,
       attention: myTasks.state === 'available' ? myTasks.overdueCount > 0 || dueTodayCount > 0 : null,
@@ -423,7 +419,7 @@ export async function OwnerDashboard({
         selected={selectedAction}
         limit={5}
         links={{
-          href: (category) => dashboardHref({ actions: category, agenda: agendaRange }),
+          href: (category) => dashboardHref({ actions: category }),
           viewAll: selectedAction ? `/actions?category=${selectedAction}` : '/actions',
         }}
         headerActions={<WorkScopeControl scope={workScope} />}
@@ -451,8 +447,8 @@ export async function OwnerDashboard({
         today={agendaData.today}
         scopedToMe={mine}
         range={agendaRange}
-        hrefFor={(agenda) => dashboardHref({ actions: selectedAction, agenda })}
         scheduleEnabled={features.schedule}
+        scheduleFailed={!!agendaData.failed}
         headerAction={show.attention ? undefined : <WorkScopeControl scope={workScope} />}
       />
     ),

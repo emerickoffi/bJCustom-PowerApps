@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { parseLayoutPreference, type LayoutPreference } from '@/lib/ui-layout'
 import { normalizePlaceQuery, type FixedWeatherChoice, type WeatherChoice } from '@/lib/weather'
 import { resolveWorkScope, type WorkScope } from '@/lib/work-scope'
+import { DEFAULT_COMING_UP_RANGE, parseComingUpRange, type ComingUpRange } from '@/lib/coming-up'
 
 /**
  * Per-user dashboard preferences kept in cookies. Each value is bound to the user id so a shared browser never
@@ -11,6 +12,7 @@ import { resolveWorkScope, type WorkScope } from '@/lib/work-scope'
 export const WEATHER_LOCATION_COOKIE = 'dash_weather_location'
 export const WORK_SCOPE_COOKIE = 'dash_work_scope'
 export const LAYOUT_COOKIE = 'ui_layout'
+export const COMING_UP_RANGE_COOKIE = 'dash_coming_up_range'
 
 export type { WorkScope }
 
@@ -64,6 +66,14 @@ export const serializeWeatherChoice = (organizationId: string, choice: WeatherCh
 
 export async function readWorkScope(userId: string): Promise<WorkScope> {
   return resolveWorkScope(await read(WORK_SCOPE_COOKIE, userId))
+}
+
+/** Stored as `<orgId>:<range>`; an unknown value or another workspace's choice falls back to Next 7 days. */
+export async function readComingUpRange(userId: string, organizationId: string): Promise<ComingUpRange> {
+  const raw = await read(COMING_UP_RANGE_COOKIE, userId)
+  if (!raw) return DEFAULT_COMING_UP_RANGE
+  const sep = raw.lastIndexOf(':')
+  return sep > 0 && raw.slice(0, sep) === organizationId ? parseComingUpRange(raw.slice(sep + 1)) : DEFAULT_COMING_UP_RANGE
 }
 
 /** Layout is also scoped to the workspace, so switching organizations never carries the choice across. */
