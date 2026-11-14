@@ -3,14 +3,22 @@
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Popover } from '@base-ui/react/popover'
-import { ChevronDown, LayoutGrid, Search } from 'lucide-react'
+import { ChevronDown, CircleDollarSign, ClipboardList, FolderOpen, LayoutGrid, Search, Users, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   filterProjectToolGroups,
   type ProjectTool,
   type ProjectToolGroup,
+  type ProjectToolGroupKey,
   type ProjectToolKey,
 } from '@/lib/project-nav'
+
+const GROUP_ICONS: Record<ProjectToolGroupKey, LucideIcon> = {
+  work: ClipboardList,
+  financials: CircleDollarSign,
+  people: Users,
+  files: FolderOpen,
+}
 
 export type ProjectToolNavigate = (event: React.MouseEvent<HTMLAnchorElement>, tool: ProjectTool, href: string) => void
 
@@ -130,7 +138,7 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
             aria-label="Project tools"
             className="flex max-h-[min(var(--available-height),36rem)] w-[min(320px,calc(100vw-16px))] flex-col overflow-hidden rounded-menu border border-border bg-white shadow-md outline-none sm:w-[min(360px,calc(100vw-16px))] lg:w-[min(448px,calc(100vw-16px))]"
           >
-            <div className="border-b border-border p-2.5 pb-2">
+            <div className="border-b border-border p-2.5">
               <div className="relative">
                 <Search
                   className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
@@ -157,24 +165,32 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
               </div>
             </div>
 
-            <div id={listId} role="listbox" aria-label="Project tools" className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-2.5">
+            <div
+              id={listId}
+              role="listbox"
+              aria-label="Project tools"
+              className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2.5"
+            >
               {visibleGroups.length === 0 ? (
                 <p className="px-2 py-4 text-center text-sm text-muted-foreground">No tools match “{query.trim()}”.</p>
               ) : (
-                visibleGroups.map((group) => (
+                visibleGroups.map((group) => {
+                  const GroupIcon = GROUP_ICONS[group.key]
+                  return (
                   <div
                     key={group.key}
                     role="group"
                     aria-labelledby={`${baseId}-group-${group.key}`}
-                    className="border-t border-border/70 pt-1.5 first:border-t-0 [&:not(:last-child)]:pb-1.5"
+                    className="flex flex-col gap-1"
                   >
                     <div
                       id={`${baseId}-group-${group.key}`}
-                      className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                      className="flex h-7 items-center gap-1.5 rounded-[4px] bg-sage px-2 text-xs font-semibold text-primary-pressed"
                     >
-                      {group.label}
+                      <GroupIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{group.label}</span>
                     </div>
-                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 sm:gap-x-1.5 lg:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-2 sm:gap-x-1 lg:grid-cols-3">
                       {group.tools.map((tool) => {
                         const current = tool.key === activeKey
                         const isHighlighted = tool.key === highlighted?.key
@@ -196,10 +212,11 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
                               setQuery('')
                             }}
                             className={cn(
-                              'flex min-h-11 min-w-0 items-center rounded-sm px-2 text-sm text-foreground transition-colors sm:min-h-8',
-                              isHighlighted && !current && 'bg-sage',
-                              current && 'bg-primary/10 font-semibold text-primary-pressed',
-                              current && isHighlighted && 'bg-primary/15',
+                              'relative flex min-h-11 min-w-0 items-center rounded-[4px] px-2 text-[13px] text-foreground transition-colors sm:min-h-8',
+                              isHighlighted && !current && 'bg-muted',
+                              current &&
+                                'bg-primary/10 font-semibold text-primary-pressed before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-primary',
+                              current && isHighlighted && 'bg-primary/15 ring-1 ring-inset ring-primary/40',
                             )}
                           >
                             <span className="truncate whitespace-nowrap">{tool.label}</span>
@@ -208,7 +225,8 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
                       })}
                     </div>
                   </div>
-                ))
+                  )
+                })
               )}
             </div>
           </Popover.Popup>
