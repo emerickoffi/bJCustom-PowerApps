@@ -136,7 +136,7 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
           <Popover.Popup
             initialFocus={inputRef}
             aria-label="Project tools"
-            className="flex max-h-[min(var(--available-height),36rem)] w-[min(320px,calc(100vw-16px))] flex-col overflow-hidden rounded-menu border border-border bg-white shadow-md outline-none sm:w-[min(360px,calc(100vw-16px))] lg:w-[min(448px,calc(100vw-16px))]"
+            className="flex max-h-[min(var(--available-height),36rem)] w-[min(320px,calc(100vw-16px))] flex-col overflow-hidden rounded-menu border border-border border-t-2 border-t-primary bg-white shadow-md outline-none sm:w-[min(360px,calc(100vw-16px))] lg:w-[min(448px,calc(100vw-16px))]"
           >
             <div className="border-b border-border p-2.5">
               <div className="relative">
@@ -160,7 +160,7 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
                     setHighlight(0)
                   }}
                   onKeyDown={handleKeyDown}
-                  className="h-9 w-full rounded-sm border border-border bg-white pl-7 pr-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 sm:h-8 [&::-webkit-search-cancel-button]:hidden"
+                  className="h-9 w-full rounded-[4px] border border-border bg-white pl-7 pr-2 text-sm outline-none transition-colors placeholder:text-muted-foreground hover:border-primary/40 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 sm:h-8 [&::-webkit-search-cancel-button]:hidden"
                 />
               </div>
             </div>
@@ -169,7 +169,7 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
               id={listId}
               role="listbox"
               aria-label="Project tools"
-              className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2.5"
+              className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-2.5"
             >
               {visibleGroups.length === 0 ? (
                 <p className="px-2 py-4 text-center text-sm text-muted-foreground">No tools match “{query.trim()}”.</p>
@@ -185,9 +185,9 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
                   >
                     <div
                       id={`${baseId}-group-${group.key}`}
-                      className="flex h-7 items-center gap-1.5 rounded-[4px] bg-sage px-2 text-xs font-semibold text-primary-pressed"
+                      className="flex h-7 items-center gap-1.5 rounded-[4px] border border-primary/15 bg-sage px-2 text-xs font-semibold tracking-wide text-primary-pressed"
                     >
-                      <GroupIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                      <GroupIcon className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
                       <span className="truncate">{group.label}</span>
                     </div>
                     <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-2 sm:gap-x-1 lg:grid-cols-3">
@@ -213,9 +213,9 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
                             }}
                             className={cn(
                               'relative flex min-h-11 min-w-0 items-center rounded-[4px] px-2 text-[13px] text-foreground transition-colors sm:min-h-8',
-                              isHighlighted && !current && 'bg-muted',
+                              isHighlighted && !current && 'bg-primary/[0.06] text-primary-pressed',
                               current &&
-                                'bg-primary/10 font-semibold text-primary-pressed before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-primary',
+                                'bg-primary/[0.12] pl-2.5 font-semibold text-primary-pressed before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-primary',
                               current && isHighlighted && 'bg-primary/15 ring-1 ring-inset ring-primary/40',
                             )}
                           >
