@@ -16,6 +16,7 @@ import {
 import { Check, Lock, PencilLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { RecordPreviewTrigger } from '@/components/shared/record-preview'
 import { updateEstimateTitleAction } from '@/app/actions/estimate-title'
 import { cn } from '@/lib/utils'
 
@@ -211,6 +212,7 @@ export function EstimateTitleCell({
   lockedReason,
   meta,
   linkClassName,
+  previewable = false,
 }: {
   layout: 'table' | 'card'
   estimateId: string
@@ -221,6 +223,8 @@ export function EstimateTitleCell({
   lockedReason?: string
   meta: ReactNode
   linkClassName: string
+  /** Outside title editing, the title selects the row's preview instead of navigating (Open goes to full details). */
+  previewable?: boolean
 }) {
   const grid = useGrid()
   const router = useRouter()
@@ -328,9 +332,13 @@ export function EstimateTitleCell({
   if (!grid.editMode || (!editable && !open)) {
     return (
       <div className="flex min-w-0 flex-col gap-1">
-        <Link href={`/estimates/${estimateId}`} title={current.name} className={linkClassName}>
-          {current.name}
-        </Link>
+        {previewable ? (
+          <RecordPreviewTrigger recordId={estimateId} name={current.name} className={linkClassName} />
+        ) : (
+          <Link href={`/estimates/${estimateId}`} title={current.name} className={linkClassName}>
+            {current.name}
+          </Link>
+        )}
         {meta}
         {grid.editMode && lockedReason && (
           <p className="flex items-start gap-1 text-xs text-[#526173]">
