@@ -128,9 +128,9 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
           <Popover.Popup
             initialFocus={inputRef}
             aria-label="Project tools"
-            className="flex max-h-[min(var(--available-height),36rem)] w-[min(340px,calc(100vw-16px))] flex-col overflow-hidden rounded-menu border border-border bg-white shadow-md outline-none"
+            className="flex max-h-[min(var(--available-height),36rem)] w-[min(320px,calc(100vw-16px))] flex-col overflow-hidden rounded-menu border border-border bg-white shadow-md outline-none sm:w-[min(360px,calc(100vw-16px))] lg:w-[min(448px,calc(100vw-16px))]"
           >
-            <div className="border-b border-border p-1.5">
+            <div className="border-b border-border p-2.5 pb-2">
               <div className="relative">
                 <Search
                   className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
@@ -157,19 +157,24 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
               </div>
             </div>
 
-            <div id={listId} role="listbox" aria-label="Project tools" className="min-h-0 flex-1 overflow-y-auto p-1.5">
+            <div id={listId} role="listbox" aria-label="Project tools" className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-2.5">
               {visibleGroups.length === 0 ? (
                 <p className="px-2 py-4 text-center text-sm text-muted-foreground">No tools match “{query.trim()}”.</p>
               ) : (
                 visibleGroups.map((group) => (
-                  <div key={group.key} role="group" aria-labelledby={`${baseId}-group-${group.key}`} className="pb-1.5 last:pb-0">
+                  <div
+                    key={group.key}
+                    role="group"
+                    aria-labelledby={`${baseId}-group-${group.key}`}
+                    className="border-t border-border/70 pt-1.5 first:border-t-0 [&:not(:last-child)]:pb-1.5"
+                  >
                     <div
                       id={`${baseId}-group-${group.key}`}
-                      className="px-2 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                      className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                     >
                       {group.label}
                     </div>
-                    <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-2 sm:gap-x-1.5">
+                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 sm:gap-x-1.5 lg:grid-cols-3">
                       {group.tools.map((tool) => {
                         const current = tool.key === activeKey
                         const isHighlighted = tool.key === highlighted?.key
@@ -193,11 +198,11 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
                             className={cn(
                               'flex min-h-11 min-w-0 items-center rounded-sm px-2 text-sm text-foreground transition-colors sm:min-h-8',
                               isHighlighted && !current && 'bg-sage',
-                              current && 'bg-primary font-semibold text-primary-foreground',
-                              current && isHighlighted && 'bg-primary-hover',
+                              current && 'bg-primary/10 font-semibold text-primary-pressed',
+                              current && isHighlighted && 'bg-primary/15',
                             )}
                           >
-                            <span className="truncate">{tool.label}</span>
+                            <span className="truncate whitespace-nowrap">{tool.label}</span>
                           </Link>
                         )
                       })}
