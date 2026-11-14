@@ -6,7 +6,16 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaff } from '@/lib/session'
 import { DOCUMENTS_BUCKET } from '@/lib/documents'
-import { RFIS_BUCKET, RFI_MAX_FILES, RFI_MAX_FILE_BYTES, isRfiConflict, rfiDbError, rfiFileType } from '@/lib/rfis'
+import {
+  RFIS_BUCKET,
+  RFI_DEFAULT_PRIORITY,
+  RFI_MAX_FILES,
+  RFI_MAX_FILE_BYTES,
+  RFI_PRIORITIES,
+  isRfiConflict,
+  rfiDbError,
+  rfiFileType,
+} from '@/lib/rfis'
 
 /**
  * Every write goes through a database function that re-checks the caller, the project, the feature switch,
@@ -52,6 +61,7 @@ const draftSchema = z.object({
   question: z.string().max(10000, 'Keep the question under 10,000 characters.'),
   responder_user_id: z.union([z.literal(''), z.uuid()]),
   due_date: z.union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose a valid due date.')]),
+  priority: z.enum(RFI_PRIORITIES, { message: 'Choose a priority: Low, Normal, High, or Urgent.' }).default(RFI_DEFAULT_PRIORITY),
   location: z.string().trim().max(300, 'Keep the location under 300 characters.'),
   document_version_id: z.union([z.literal(''), z.uuid()]),
 })
@@ -90,7 +100,9 @@ export async function sendRfiAction(projectId: string, rfiId: string, expectedVe
   return { ok: true, ...saved(data) }
 }
 
-const amendSchema = draftSchema.pick({ subject: true, question: true, due_date: true, location: true })
+const amendSchema = draftSchema.pick({ subject: true, question: true, due_date: true, location: true }).extend({
+  priority: z.enum(RFI_PRIORITIES, { message: 'Choose a priority: Low, Normal, High, or Urgent.' }).optional(),
+})
 
 export async function amendRfiAction(
   projectId: string,

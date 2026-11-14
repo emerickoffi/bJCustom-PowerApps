@@ -13,6 +13,7 @@ import { useFormOverlay } from '@/components/shared/form-overlay'
 import { FieldShell, NativeSelect, TextAreaField, TextField } from '@/components/shared/form-field'
 import { PanelSection } from '@/components/shared/record-panel'
 import { RfiStatusBadge } from '@/components/rfis/rfi-status-badge'
+import { RfiPriorityBadge } from '@/components/rfis/rfi-priority-badge'
 import { RfiDocumentLink, RfiFileList } from '@/components/rfis/rfi-files'
 import { fetchRfiJson } from '@/components/rfis/ask-question-drawer'
 import {
@@ -28,10 +29,14 @@ import {
   RFI_FILE_ACCEPT,
   RFI_FILE_HELP,
   RFI_MAX_FILES,
+  RFI_PRIORITIES,
+  RFI_PRIORITY_LABELS,
   RFI_STATUS_HINTS,
   isRfiOverdue,
+  isRfiPriority,
   responderLabel,
   rfiEventSummary,
+  rfiPriority,
   rfiFileProblem,
   rfiFileType,
   rfiObjectPath,
@@ -138,6 +143,7 @@ export function RfiDetailView({
       <section aria-label="Status" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <RfiStatusBadge status={rfi.status} overdue={overdue} />
+          <RfiPriorityBadge priority={rfiPriority(rfi.priority)} />
           <span className="text-xs text-muted-foreground">{RFI_STATUS_HINTS[rfi.status]}</span>
         </div>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -608,7 +614,13 @@ function ReasonForm({
 function AmendForm({ rfi, onCancel, onChanged, onDone }: { rfi: RfiRecord; onCancel: () => void; onChanged: () => void; onDone: () => void }) {
   const overlay = useFormOverlay()
   const action = useAction(onChanged)
-  const [values, setValues] = useState({ subject: rfi.subject, question: rfi.question, due_date: rfi.due_date ?? '', location: rfi.location ?? '' })
+  const [values, setValues] = useState({
+    subject: rfi.subject,
+    question: rfi.question,
+    due_date: rfi.due_date ?? '',
+    priority: rfiPriority(rfi.priority),
+    location: rfi.location ?? '',
+  })
   const [note, setNote] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const requestId = useRef(crypto.randomUUID())
@@ -639,8 +651,24 @@ function AmendForm({ rfi, onCancel, onChanged, onDone }: { rfi: RfiRecord; onCan
       <TextAreaField name={`rfi-amend-question-${rfi.id}`} label="Question" required maxLength={10000} value={values.question} onChange={(e) => change({ question: e.target.value })} />
       <div className="grid gap-3 sm:grid-cols-2">
         <TextField name={`rfi-amend-due-${rfi.id}`} label="Due date" type="date" value={values.due_date} onChange={(e) => change({ due_date: e.target.value })} />
-        <TextField name={`rfi-amend-location-${rfi.id}`} label="Location" maxLength={300} value={values.location} onChange={(e) => change({ location: e.target.value })} />
+        <FieldShell name={`rfi-amend-priority-${rfi.id}`} label="Priority">
+          <NativeSelect
+            id={`rfi-amend-priority-${rfi.id}`}
+            name={`rfi-amend-priority-${rfi.id}`}
+            value={values.priority}
+            onChange={(e) => {
+              if (isRfiPriority(e.target.value)) change({ priority: e.target.value })
+            }}
+          >
+            {RFI_PRIORITIES.map((p) => (
+              <option key={p} value={p}>
+                {RFI_PRIORITY_LABELS[p]}
+              </option>
+            ))}
+          </NativeSelect>
+        </FieldShell>
       </div>
+      <TextField name={`rfi-amend-location-${rfi.id}`} label="Location" maxLength={300} value={values.location} onChange={(e) => change({ location: e.target.value })} />
       <TextAreaField
         name={`rfi-amend-note-${rfi.id}`}
         label="What changed?"
@@ -802,7 +830,19 @@ function Comments({ detail, onChanged }: { detail: RfiDetail; onChanged: () => v
   )
 }
 
-const CHANGE_LABELS: Record<string, string> = { subject: 'Subject', question: 'Question', due_date: 'Due date', location: 'Location' }
+const CHANGE_LABELS: Record<string, string> = {
+  subject: 'Subject',
+  question: 'Question',
+  due_date: 'Due date',
+  priority: 'Priority',
+  location: 'Location',
+}
+
+function changeValue(key: string, value: string | null | undefined) {
+  if (!value) return 'None'
+  if (key === 'priority' && isRfiPriority(value)) return RFI_PRIORITY_LABELS[value]
+  return value
+}
 
 function HistoryEntry({ event }: { event: RfiEvent }) {
   const before = (event.details.before ?? null) as Record<string, string | null> | null
@@ -827,11 +867,11 @@ function HistoryEntry({ event }: { event: RfiEvent }) {
                 <dt className="text-xs font-medium text-foreground">{CHANGE_LABELS[key]}</dt>
                 <dd className="whitespace-pre-wrap break-words text-xs text-muted-foreground">
                   <span className="sr-only">Before: </span>
-                  <span className="line-through">{before[key] || 'None'}</span>
+                  <span className="line-through">{changeValue(key, before[key])}</span>
                 </dd>
                 <dd className="whitespace-pre-wrap break-words text-xs text-foreground">
                   <span className="sr-only">After: </span>
-                  {after[key] || 'None'}
+                  {changeValue(key, after[key])}
                 </dd>
               </div>
             ))}

@@ -126,7 +126,7 @@ export async function getActionItems(
     const q = supabase
       .from('project_rfis')
       .select(
-        'id, project_id, rfi_number, subject, status, due_date, responder_user_id, responder_name, created_by, sent_at, answered_at, projects(name, archived_at)',
+        'id, project_id, rfi_number, subject, status, due_date, responder_user_id, responder_name, created_by, sent_at, answered_at, priority, projects(name, archived_at)',
       )
       .eq('organization_id', orgId)
         .match(inProject)
@@ -468,6 +468,7 @@ export async function getActionItems(
             createdBy: r.created_by,
             sentAt: r.sent_at,
             answeredAt: r.answered_at,
+            priority: r.priority,
           },
         ]
       : [],

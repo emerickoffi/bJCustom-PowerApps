@@ -20,8 +20,13 @@ import {
   RFIS_BUCKET,
   RFI_FILE_ACCEPT,
   RFI_FILE_HELP,
+  RFI_DEFAULT_PRIORITY,
   RFI_MAX_FILES,
+  RFI_PRIORITIES,
+  RFI_PRIORITY_LABELS,
   ineligibleExplanation,
+  isRfiPriority,
+  rfiPriority,
   rfiFileProblem,
   rfiFileType,
   rfiObjectPath,
@@ -30,6 +35,7 @@ import {
   type RfiDetail,
   type RfiDraftInput,
   type RfiFormOptions,
+  type RfiPriority,
   type RfiProjectOption,
   type RfiResponderOption,
 } from '@/lib/rfis'
@@ -45,7 +51,14 @@ export type AskQuestionRequest = {
 }
 
 type AttachedFile = { id: string; storage_path: string; file_name: string; size_bytes: number }
-type FormValues = { subject: string; question: string; due_date: string; location: string; document_version_id: string }
+type FormValues = {
+  subject: string
+  question: string
+  due_date: string
+  priority: RfiPriority
+  location: string
+  document_version_id: string
+}
 type Initial = {
   rfiId: string
   rowVersion: number | null
@@ -118,6 +131,7 @@ function DrawerContent({ request }: { request: AskQuestionRequest }) {
             subject: rfi.subject,
             question: rfi.question,
             due_date: rfi.due_date ?? '',
+            priority: rfiPriority(rfi.priority),
             location: rfi.location ?? '',
             document_version_id: rfi.document_version_id ?? '',
           },
@@ -137,7 +151,14 @@ function DrawerContent({ request }: { request: AskQuestionRequest }) {
         saved: false,
         project: request.projectId ? { id: request.projectId, name: request.projectName ?? 'This project' } : null,
         responderKey: '',
-        values: { subject: '', question: '', due_date: '', location: '', document_version_id: request.document?.versionId ?? '' },
+        values: {
+          subject: '',
+          question: '',
+          due_date: '',
+          priority: RFI_DEFAULT_PRIORITY,
+          location: '',
+          document_version_id: request.document?.versionId ?? '',
+        },
         attachments: [],
       }}
       savedDocumentLabel={request.document?.label ?? null}
@@ -562,14 +583,33 @@ function QuestionForm({
           )}
         </div>
 
-        <TextField
-          name="rfi-due"
-          label="Due date"
-          type="date"
-          value={values.due_date}
-          hint="Optional. When you need the answer by."
-          onChange={(e) => change({ due_date: e.target.value })}
-        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            name="rfi-due"
+            label="Due date"
+            type="date"
+            value={values.due_date}
+            hint="Optional. When you need the answer by."
+            onChange={(e) => change({ due_date: e.target.value })}
+          />
+          <FieldShell id="rfi-priority" name="rfi-priority" label="Priority" hint="How much this question matters to the work.">
+            <NativeSelect
+              id="rfi-priority"
+              name="rfi-priority"
+              aria-describedby="rfi-priority-hint"
+              value={values.priority}
+              onChange={(e) => {
+                if (isRfiPriority(e.target.value)) change({ priority: e.target.value })
+              }}
+            >
+              {RFI_PRIORITIES.map((p) => (
+                <option key={p} value={p}>
+                  {RFI_PRIORITY_LABELS[p]}
+                </option>
+              ))}
+            </NativeSelect>
+          </FieldShell>
+        </div>
 
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-2">

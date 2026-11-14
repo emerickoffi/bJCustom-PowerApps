@@ -26,12 +26,39 @@ export function isRfiStatus(value: unknown): value is RfiStatus {
   return typeof value === 'string' && (RFI_STATUSES as readonly string[]).includes(value)
 }
 
+export const RFI_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const
+export type RfiPriority = (typeof RFI_PRIORITIES)[number]
+export const RFI_DEFAULT_PRIORITY: RfiPriority = 'normal'
+
+export const RFI_PRIORITY_LABELS: Record<RfiPriority, string> = {
+  low: 'Low',
+  normal: 'Normal',
+  high: 'High',
+  urgent: 'Urgent',
+}
+
+/** Higher sorts first. */
+export const RFI_PRIORITY_RANK: Record<RfiPriority, number> = { urgent: 3, high: 2, normal: 1, low: 0 }
+
+/** List order: newest RFI number first (default), or most urgent first with the earliest due date breaking ties. */
+export type RfiSort = 'number' | 'priority'
+
+export function isRfiPriority(value: unknown): value is RfiPriority {
+  return typeof value === 'string' && (RFI_PRIORITIES as readonly string[]).includes(value)
+}
+
+/** Rows written before priority existed, or by an older client, read as Normal. */
+export function rfiPriority(value: unknown): RfiPriority {
+  return isRfiPriority(value) ? value : RFI_DEFAULT_PRIORITY
+}
+
 export type RfiScope = 'all' | 'mine'
 
 export type RfiListRow = {
   id: string
   rfi_number: number | null
   status: RfiStatus
+  priority: RfiPriority
   subject: string
   responder_user_id: string | null
   responder_name: string | null
@@ -59,7 +86,7 @@ export type RfiRecord = RfiListRow & {
 }
 
 export const RFI_LIST_COLUMNS =
-  'id, rfi_number, status, subject, responder_user_id, responder_name, responder_company, due_date, homeowner_shared, updated_at'
+  'id, rfi_number, status, priority, subject, responder_user_id, responder_name, responder_company, due_date, homeowner_shared, updated_at'
 export const RFI_COLUMNS = `${RFI_LIST_COLUMNS}, organization_id, project_id, question, location, document_version_id, document_label, created_by, created_by_name, sent_at, answered_at, closed_at, cycle, row_version, created_at`
 
 export type RfiResponse = {
@@ -150,6 +177,7 @@ export type RfiDraftInput = {
   question: string
   responder_user_id: string
   due_date: string
+  priority: RfiPriority
   location: string
   document_version_id: string
 }
