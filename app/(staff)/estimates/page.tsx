@@ -265,7 +265,7 @@ export default async function EstimatesPage({
                       as="tr"
                       key={e.id}
                       recordId={e.id}
-                      className="align-top transition-colors hover:bg-[#E6F3F4] has-[:focus-visible]:bg-[#E6F3F4] has-[:focus-visible]:shadow-[inset_3px_0_0_#006B78] data-selected:bg-selected data-selected:shadow-[inset_3px_0_0_0_var(--selected-border)]"
+                      className="scroll-mt-24 scroll-mb-4 align-top transition-colors hover:bg-link-soft/60 has-[:focus-visible]:bg-link-soft/60 data-selected:bg-link-soft"
                     >
                       <td className="px-4 py-2.5">
                         <EstimateTitleCell
@@ -339,7 +339,7 @@ export default async function EstimatesPage({
                   as="li"
                   key={e.id}
                   recordId={e.id}
-                  className="flex flex-col gap-3 p-4 transition-colors data-selected:bg-selected"
+                  className="flex flex-col gap-3 p-4 transition-colors hover:bg-link-soft/60 data-selected:bg-link-soft"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
