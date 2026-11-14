@@ -136,12 +136,12 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
           <Popover.Popup
             initialFocus={inputRef}
             aria-label="Project tools"
-            className="flex max-h-[min(var(--available-height),36rem)] w-[min(320px,calc(100vw-16px))] flex-col overflow-hidden rounded-menu border border-border border-t-2 border-t-primary bg-white shadow-md outline-none sm:w-[min(360px,calc(100vw-16px))] lg:w-[min(448px,calc(100vw-16px))]"
+            className="flex max-h-[min(var(--available-height),36rem)] w-[min(320px,calc(100vw-16px))] flex-col overflow-hidden rounded-menu border border-[#0B7380] bg-[#075F6B] text-white shadow-lg shadow-[#075F6B]/25 outline-none sm:w-[min(380px,calc(100vw-16px))] lg:w-[min(450px,calc(100vw-16px))]"
           >
-            <div className="border-b border-border p-2.5">
+            <div className="border-b border-white/10 p-2.5">
               <div className="relative">
                 <Search
-                  className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                  className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[#5B7479]"
                   aria-hidden="true"
                 />
                 <input
@@ -160,7 +160,7 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
                     setHighlight(0)
                   }}
                   onKeyDown={handleKeyDown}
-                  className="h-9 w-full rounded-[4px] border border-border bg-white pl-7 pr-2 text-sm outline-none transition-colors placeholder:text-muted-foreground hover:border-primary/40 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 sm:h-8 [&::-webkit-search-cancel-button]:hidden"
+                  className="h-9 w-full rounded-[4px] border border-transparent bg-white pl-8 pr-2 text-sm text-[#0F2A2E] outline-none transition-shadow placeholder:text-[#5B7479] focus-visible:ring-2 focus-visible:ring-[#77D2D8] focus-visible:ring-offset-1 focus-visible:ring-offset-[#075F6B] sm:h-8 [&::-webkit-search-cancel-button]:hidden"
                 />
               </div>
             </div>
@@ -169,10 +169,10 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
               id={listId}
               role="listbox"
               aria-label="Project tools"
-              className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-2.5"
+              className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain p-2.5 pt-2 [scrollbar-color:rgba(255,255,255,0.25)_transparent]"
             >
               {visibleGroups.length === 0 ? (
-                <p className="px-2 py-4 text-center text-sm text-muted-foreground">No tools match “{query.trim()}”.</p>
+                <p className="px-2 py-4 text-center text-sm text-[#A9D9DE]">No tools match “{query.trim()}”.</p>
               ) : (
                 visibleGroups.map((group) => {
                   const GroupIcon = GROUP_ICONS[group.key]
@@ -185,12 +185,13 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
                   >
                     <div
                       id={`${baseId}-group-${group.key}`}
-                      className="flex h-7 items-center gap-1.5 rounded-[4px] border border-primary/15 bg-sage px-2 text-xs font-semibold tracking-wide text-primary-pressed"
+                      className="flex h-6 items-center gap-1.5 px-1 text-xs font-semibold tracking-wide text-[#A9D9DE]"
                     >
-                      <GroupIcon className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-                      <span className="truncate">{group.label}</span>
+                      <GroupIcon className="size-3.5 shrink-0 text-[#77D2D8]" aria-hidden="true" />
+                      <span className="shrink-0">{group.label}</span>
+                      <span className="ml-1 h-px flex-1 bg-white/15" aria-hidden="true" />
                     </div>
-                    <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-2 sm:gap-x-1 lg:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
                       {group.tools.map((tool) => {
                         const current = tool.key === activeKey
                         const isHighlighted = tool.key === highlighted?.key
@@ -212,11 +213,11 @@ export function ProjectToolsMenu({ groups, activeKey, onNavigate, className }: P
                               setQuery('')
                             }}
                             className={cn(
-                              'relative flex min-h-11 min-w-0 items-center rounded-[4px] px-2 text-[13px] text-foreground transition-colors sm:min-h-8',
-                              isHighlighted && !current && 'bg-primary/[0.06] text-primary-pressed',
+                              'relative flex min-h-11 min-w-0 items-center rounded-[4px] px-2 text-[13px] text-white/95 outline-none transition-colors sm:min-h-8',
+                              isHighlighted && !current && 'bg-white/[0.12] text-white',
                               current &&
-                                'bg-primary/[0.12] pl-2.5 font-semibold text-primary-pressed before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-primary',
-                              current && isHighlighted && 'bg-primary/15 ring-1 ring-inset ring-primary/40',
+                                'bg-white pl-2.5 font-semibold text-[#075F6B] before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-[#075F6B]',
+                              current && isHighlighted && 'ring-2 ring-inset ring-[#77D2D8]',
                             )}
                           >
                             <span className="truncate whitespace-nowrap">{tool.label}</span>
