@@ -21,16 +21,48 @@ export const PRIORITY_LIMITS = {
   whyMax: 240,
 } as const
 
-export type PriorityCategory = 'overdue' | 'blocking' | 'due_today' | 'upcoming' | 'waiting'
+export type PriorityCategory = 'blocking' | 'overdue' | 'due_today' | 'upcoming' | 'waiting' | 'planning'
 
-const CATEGORY_RANK: Record<PriorityCategory, number> = { overdue: 0, blocking: 1, due_today: 2, upcoming: 3, waiting: 4 }
+/**
+ * "blocking" is only assigned when an overdue activity has verified open downstream activities, so it ranks
+ * above plain overdue work. "planning" (missing schedule dates) ranks last: it limits forecasting but
+ * nothing is late yet.
+ */
+const CATEGORY_RANK: Record<PriorityCategory, number> = {
+  blocking: 0,
+  overdue: 1,
+  due_today: 2,
+  upcoming: 3,
+  waiting: 4,
+  planning: 5,
+}
 
 export const CATEGORY_LABEL: Record<PriorityCategory, string> = {
-  overdue: 'Overdue',
   blocking: 'Blocking work',
+  overdue: 'Overdue',
   due_today: 'Due today',
   upcoming: 'Due this week',
   waiting: 'Waiting on a decision',
+  planning: 'Missing schedule dates',
+}
+
+/**
+ * Within a category, construction-impacting records outrank administrative ones, so an overdue RFI or
+ * activity sits above an overdue personal to-do.
+ */
+const IMPACT_WEIGHT: Record<string, number> = {
+  schedule_activity: 0,
+  rfi: 1,
+  project_issue: 2,
+  estimate: 3,
+  change_order: 3,
+  quote_request: 4,
+  schedule_gap: 5,
+  staff_task: 6,
+}
+
+function impactWeight(entityType: string): number {
+  return IMPACT_WEIGHT[entityType] ?? 7
 }
 
 export type PriorityOwner = { kind: 'you' | 'person' | 'approver' | 'unassigned'; label: string }
@@ -51,7 +83,20 @@ export type PriorityCandidate = {
   href: string
   actionLabel: string
   source: string
+  /** Deterministic recommended step; never performed automatically. */
+  nextAction: string
+  /** Verified consequence of delay (from dependency or schedule records), or null when none is known. */
+  impact: string | null
+  /** Open downstream activities that depend on this record; 0 when none are verified. */
+  blockedCount: number
   digest: string
+}
+
+/** Active project with open activities that have no planned start or finish. */
+export type PriorityScheduleGap = {
+  projectId: string
+  projectName: string | null
+  missingCount: number
 }
 
 export type PriorityTask = {
@@ -88,6 +133,9 @@ export type CandidateInputs = {
   tasks: PriorityTask[]
   activities: PriorityActivity[]
   quoteRequests: PriorityQuoteRequest[]
+  /** Activity id → count of open successors from schedule_dependencies. Missing ids mean none verified. */
+  dependents?: Map<string, number>
+  scheduleGaps?: PriorityScheduleGap[]
 }
 
 export type CandidateContext = {
@@ -136,19 +184,60 @@ export function hashText(text: string): string {
 type Draft = Omit<PriorityCandidate, 'digest'>
 
 function withDigest(c: Draft): PriorityCandidate {
-  const digest = hashText([c.id, c.category, c.dueDate ?? '', c.title, c.reason, c.owner.label, c.projectName ?? ''].join('|'))
+  const digest = hashText(
+    [c.id, c.category, c.dueDate ?? '', c.title, c.reason, c.owner.label, c.projectName ?? '', c.nextAction, c.impact ?? ''].join('|'),
+  )
   return { ...c, digest }
 }
 
-function fromActionItem(item: ActionItem, ctx: CandidateContext): Draft | null {
+function plural(n: number, one: string, many: string) {
+  return `${n} ${n === 1 ? one : many}`
+}
+
+export function blockedImpact(count: number): string {
+  return `${plural(count, 'downstream activity depends', 'downstream activities depend')} on this finishing.`
+}
+
+/** Fixed wording per record type and category, so the recommendation is traceable and never model-written. */
+export function nextActionFor(entityType: string, category: PriorityCategory): string {
+  switch (entityType) {
+    case 'schedule_activity':
+      if (category === 'blocking') return 'Update progress or reschedule so dependent work can start.'
+      if (category === 'overdue') return 'Update progress, mark it complete, or reschedule it.'
+      return 'Confirm the activity is on track or adjust the plan.'
+    case 'rfi':
+      return 'Open the RFI and respond, or follow up with the responder.'
+    case 'estimate':
+      return 'Review the estimate, then approve it or send it back.'
+    case 'change_order':
+      return 'Review the change order, then approve it or send it back.'
+    case 'project_issue':
+      return 'Verify the issue on site and update its status.'
+    case 'quote_request':
+      return 'Review the quotes received, then award or close the request.'
+    case 'schedule_gap':
+      return 'Set planned start and finish dates on the open activities.'
+    case 'staff_task':
+      return category === 'overdue' ? 'Finish the to-do or move its due date.' : 'Finish the to-do.'
+    default:
+      return 'Open the record and decide the next step.'
+  }
+}
+
+function fromActionItem(item: ActionItem, ctx: CandidateContext, dependents: Map<string, number>): Draft | null {
   if (!ACTION_TYPES.has(item.entityType)) return null
   const approval = APPROVAL_TYPES.has(item.entityType)
   const byDate = dateCategory(item.dueDate, ctx.today)
   if (item.dueDate && !byDate) return null
   const mine = approval ? ctx.manager : item.responsibleUserId === ctx.userId
-  const category: PriorityCategory | null = byDate ?? (approval || mine ? 'waiting' : null)
+  const blockedCount = item.entityType === 'schedule_activity' && byDate === 'overdue' ? (dependents.get(item.entityId) ?? 0) : 0
+  const category: PriorityCategory | null =
+    blockedCount > 0 ? 'blocking' : (byDate ?? (approval || mine ? 'waiting' : null))
   if (!category) return null
   return {
+    nextAction: nextActionFor(item.entityType, category),
+    impact: blockedCount > 0 ? blockedImpact(blockedCount) : null,
+    blockedCount,
     id: `${item.entityType}:${item.entityId}`,
     entityType: item.entityType,
     entityId: item.entityId,
@@ -171,6 +260,9 @@ function fromTask(t: PriorityTask, ctx: CandidateContext): Draft | null {
   const byDate = dateCategory(t.dueDate, ctx.today)
   if (t.dueDate && !byDate) return null
   return {
+    nextAction: nextActionFor('staff_task', byDate ?? 'waiting'),
+    impact: null,
+    blockedCount: 0,
     id: `staff_task:${t.id}`,
     entityType: 'staff_task',
     entityId: t.id,
@@ -196,6 +288,9 @@ function fromActivity(a: PriorityActivity, ctx: CandidateContext): Draft | null 
   const category = dateCategory(a.planned_end, ctx.today)
   if (!category) return null
   return {
+    nextAction: nextActionFor('schedule_activity', category),
+    impact: null,
+    blockedCount: 0,
     id: `schedule_activity:${a.id}`,
     entityType: 'schedule_activity',
     entityId: a.id,
@@ -217,6 +312,9 @@ function fromActivity(a: PriorityActivity, ctx: CandidateContext): Draft | null 
 function fromQuoteRequest(q: PriorityQuoteRequest, ctx: CandidateContext): Draft | null {
   if (q.deadlineDate >= ctx.today) return null
   return {
+    nextAction: nextActionFor('quote_request', 'overdue'),
+    impact: null,
+    blockedCount: 0,
     id: `quote_request:${q.id}`,
     entityType: 'quote_request',
     entityId: q.id,
@@ -235,9 +333,41 @@ function fromQuoteRequest(q: PriorityQuoteRequest, ctx: CandidateContext): Draft
   }
 }
 
-function compare(a: PriorityCandidate, b: PriorityCandidate): number {
+/** Schedule gaps are decisions for whoever manages the schedule, so they count as "mine" only for managers. */
+function fromScheduleGap(g: PriorityScheduleGap, ctx: CandidateContext): Draft | null {
+  if (g.missingCount <= 0) return null
+  return {
+    id: `schedule_gap:${g.projectId}`,
+    entityType: 'schedule_gap',
+    entityId: g.projectId,
+    projectId: g.projectId,
+    projectName: g.projectName,
+    title: 'Set missing schedule dates',
+    reason: `${plural(g.missingCount, 'open activity has', 'open activities have')} no planned start or finish date.`,
+    category: 'planning',
+    dueDate: null,
+    createdAt: null,
+    owner: { kind: 'unassigned', label: 'Schedule manager' },
+    mine: ctx.manager,
+    href: `/projects/${g.projectId}/schedule`,
+    actionLabel: 'Open Schedule',
+    source: 'Schedule',
+    nextAction: nextActionFor('schedule_gap', 'planning'),
+    impact: 'Project finish forecasts are incomplete until these dates are set.',
+    blockedCount: 0,
+  }
+}
+
+/**
+ * Order: category → verified downstream count → record impact type → yours first → earliest due →
+ * oldest → id. Every key comes from source records, so the same data always produces the same order.
+ */
+export function comparePriorities(a: PriorityCandidate, b: PriorityCandidate): number {
   const rank = CATEGORY_RANK[a.category] - CATEGORY_RANK[b.category]
   if (rank !== 0) return rank
+  if (a.blockedCount !== b.blockedCount) return b.blockedCount - a.blockedCount
+  const weight = impactWeight(a.entityType) - impactWeight(b.entityType)
+  if (weight !== 0) return weight
   if (a.mine !== b.mine) return a.mine ? -1 : 1
   if (a.dueDate !== b.dueDate) {
     if (!a.dueDate) return 1
@@ -257,11 +387,13 @@ function compare(a: PriorityCandidate, b: PriorityCandidate): number {
  * entity key, keeping the most urgent description; scope and project filters run before ranking.
  */
 export function buildPriorityCandidates(inputs: CandidateInputs, ctx: CandidateContext): { top: PriorityCandidate[]; total: number } {
+  const dependents = inputs.dependents ?? new Map<string, number>()
   const drafts = [
-    ...inputs.actionItems.map((i) => fromActionItem(i, ctx)),
+    ...inputs.actionItems.map((i) => fromActionItem(i, ctx, dependents)),
     ...inputs.tasks.map((t) => fromTask(t, ctx)),
     ...inputs.activities.map((a) => fromActivity(a, ctx)),
     ...inputs.quoteRequests.map((q) => fromQuoteRequest(q, ctx)),
+    ...(inputs.scheduleGaps ?? []).map((g) => fromScheduleGap(g, ctx)),
   ].filter((d): d is Draft => d !== null)
 
   const byId = new Map<string, PriorityCandidate>()
@@ -270,9 +402,9 @@ export function buildPriorityCandidates(inputs: CandidateInputs, ctx: CandidateC
     if (ctx.projectId && draft.projectId !== ctx.projectId) continue
     const candidate = withDigest(draft)
     const existing = byId.get(candidate.id)
-    if (!existing || compare(candidate, existing) < 0) byId.set(candidate.id, candidate)
+    if (!existing || comparePriorities(candidate, existing) < 0) byId.set(candidate.id, candidate)
   }
-  const sorted = [...byId.values()].sort(compare)
+  const sorted = [...byId.values()].sort(comparePriorities)
   return { top: sorted.slice(0, PRIORITY_LIMIT), total: sorted.length }
 }
 
@@ -311,7 +443,7 @@ export function toPromptCandidates(top: PriorityCandidate[]): PromptCandidate[] 
     owner: c.owner.label,
     status: CATEGORY_LABEL[c.category],
     due: c.dueDate ?? 'none',
-    facts: c.reason,
+    facts: c.impact ? `${c.reason} ${c.impact}` : c.reason,
   }))
 }
 
@@ -321,7 +453,7 @@ const URLISH = /(https?:\/\/|www\.|\.com\b|\.net\b|\.org\b)/i
 const MONEY = /[$€£¥]|\b(usd|dollars?)\b/i
 
 function factNumbers(c: PriorityCandidate): Set<string> {
-  const text = [c.title, c.reason, c.projectName ?? '', c.dueDate ?? '', c.owner.label].join(' ')
+  const text = [c.title, c.reason, c.impact ?? '', c.projectName ?? '', c.dueDate ?? '', c.owner.label].join(' ')
   const nums = new Set(text.match(/\d+/g) ?? [])
   for (const n of [...nums]) nums.add(String(Number(n)))
   if (c.dueDate) {
@@ -373,7 +505,7 @@ export function parseStoredSummaries(value: unknown): BriefingSummary[] {
 
 /* ------------------------------ Display model ------------------------------ */
 
-export type PriorityVerb = 'Review' | 'Respond' | 'Verify' | 'Open'
+export type PriorityVerb = 'Review' | 'Respond' | 'Verify' | 'Update' | 'Set dates' | 'Open'
 
 const VERB_BY_TYPE: Record<string, PriorityVerb> = {
   estimate: 'Review',
@@ -381,7 +513,8 @@ const VERB_BY_TYPE: Record<string, PriorityVerb> = {
   quote_request: 'Review',
   rfi: 'Respond',
   project_issue: 'Verify',
-  schedule_activity: 'Verify',
+  schedule_activity: 'Update',
+  schedule_gap: 'Set dates',
 }
 
 export function priorityVerb(entityType: string): PriorityVerb {
@@ -396,11 +529,15 @@ export function uncheckedSources(args: {
   tasksFailed: boolean
   agendaFailed: boolean
   quotesFailed: boolean
+  dependenciesFailed?: boolean
+  scheduleGapsFailed?: boolean
 }): string[] {
   const list = args.modules.filter((m) => PRIORITY_SOURCE_MODULES.has(m))
   if (args.agendaFailed) list.push('Schedule')
   if (args.tasksFailed) list.push('To-dos')
   if (args.quotesFailed) list.push('Quote requests')
+  if (args.dependenciesFailed) list.push('Schedule dependencies')
+  if (args.scheduleGapsFailed) list.push('Schedule dates')
   return [...new Set(list)]
 }
 
@@ -417,6 +554,8 @@ export type BriefingItem = {
   actionLabel: string
   verb: PriorityVerb
   source: string
+  nextAction: string
+  impact: string | null
   summarized: boolean
 }
 
@@ -471,6 +610,8 @@ export function composeBriefing(args: {
       actionLabel: c.actionLabel,
       verb: priorityVerb(c.entityType),
       source: c.source,
+      nextAction: c.nextAction,
+      impact: c.impact,
       summarized,
     }
   })
