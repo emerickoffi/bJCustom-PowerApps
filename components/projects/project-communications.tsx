@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Form from 'next/form'
 import { AlertTriangle, ArrowRight, CircleCheck, MessagesSquare, Search } from 'lucide-react'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -115,7 +116,7 @@ export function ProjectCommunications({
             <FilterChip href={href({ mine: !filters.mine })} active={filters.mine} label="Assigned to me" />
           )}
         </ul>
-        <form action={`${base}#communications`} method="get" role="search" className="flex items-center gap-2">
+        <Form action={base} scroll={false} replace role="search" className="flex items-center gap-2">
           {Object.entries(params).map(([k, v]) => {
             const value = Array.isArray(v) ? v[0] : v
             return !value || k === 'cq' || k === 'cmore' ? null : <input key={k} type="hidden" name={k} value={value} />
@@ -131,17 +132,15 @@ export function ProjectCommunications({
               type="search"
               defaultValue={filters.q}
               maxLength={80}
-              placeholder="Search this job"
-              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring lg:w-56"
+              placeholder="Search this job, press Enter"
+              aria-describedby="communications-search-hint"
+              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring lg:w-64"
             />
+            <span id="communications-search-hint" className="sr-only">
+              Press Enter to search. Clear the field and press Enter to show everything.
+            </span>
           </div>
-          <button
-            type="submit"
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            Search
-          </button>
-        </form>
+        </Form>
       </div>
 
       {incomplete && (

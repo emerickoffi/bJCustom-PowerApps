@@ -90,7 +90,7 @@ async function loadClientUpdateDrafts(supabase: Supabase, projectId: string) {
     .order('updated_at', { ascending: true })
     .limit(20)
   if (error) {
-    logSourceFailure('project_communications', 'Client update drafts', error, { projectId })
+    logSourceFailure('project_communications', 'Client update drafts', error, { projectId, operation: 'select client_updates' })
     return null
   }
   return (data ?? []).map((d) => ({
@@ -111,7 +111,7 @@ async function loadReceivedQuotes(supabase: Supabase, projectId: string) {
     .eq('status', 'open')
     .limit(30)
   if (error) {
-    logSourceFailure('project_communications', 'Quote requests', error, { projectId })
+    logSourceFailure('project_communications', 'Quote requests', error, { projectId, operation: 'select subcontract_quote_requests' })
     return null
   }
   if (!requests?.length) return []
@@ -121,7 +121,10 @@ async function loadReceivedQuotes(supabase: Supabase, projectId: string) {
     supabase.from('subcontract_quote_awards').select('request_id').in('request_id', ids),
   ])
   if (revRes.error || awardRes.error) {
-    logSourceFailure('project_communications', 'Quote requests', revRes.error ?? awardRes.error, { projectId })
+    logSourceFailure('project_communications', 'Quote requests', revRes.error ?? awardRes.error, {
+      projectId,
+      operation: revRes.error ? 'select subcontract_quote_revisions' : 'select subcontract_quote_awards',
+    })
     return null
   }
   const awarded = new Set((awardRes.data ?? []).map((a) => a.request_id as string))
@@ -200,15 +203,15 @@ async function loadActivity(
   ])
 
   const failed: string[] = []
-  for (const [source, res] of [
-    ['Questions (RFIs)', rfis],
-    ['Punch List', issues],
-    ['Client updates', updates],
-    ['Daily Logs', logs],
-    ['Quote requests', revisions],
+  for (const [source, operation, res] of [
+    ['Questions (RFIs)', 'select project_rfis', rfis],
+    ['Punch List', 'select project_issues', issues],
+    ['Client updates', 'select client_updates', updates],
+    ['Daily Logs', 'select daily_logs', logs],
+    ['Quote requests', 'select subcontract_quote_revisions', revisions],
   ] as const) {
     if (!res.error) continue
-    logSourceFailure('project_communications', source, res.error, { projectId })
+    logSourceFailure('project_communications', source, res.error, { projectId, operation })
     failed.push(source)
   }
   const items: CommunicationItem[] = []
