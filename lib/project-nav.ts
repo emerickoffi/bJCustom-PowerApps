@@ -4,6 +4,7 @@ export type ProjectNavKey =
   | 'overview'
   | 'schedule'
   | 'daily_logs'
+  | 'photos'
   | 'client_updates'
   | 'estimates'
   | 'selections'
@@ -25,7 +26,7 @@ export type ProjectNavItem = {
 
 export type ProjectNavAccess = {
   features: Pick<FeatureMap, 'schedule' | 'estimates' | 'documents' | 'walkthroughs' | 'warranty'> &
-    Partial<Pick<FeatureMap, 'change_orders' | 'daily_logs' | 'client_updates' | 'subcontractors' | 'rfis'>>
+    Partial<Pick<FeatureMap, 'change_orders' | 'daily_logs' | 'client_updates' | 'subcontractors' | 'rfis' | 'project_photos'>>
   projectStatus: string
   canViewInternal: boolean
   // Administrators and project managers only; change orders carry internal costs.
@@ -68,6 +69,15 @@ export function getProjectNavItems(projectId: string, access: ProjectNavAccess):
       label: 'Daily logs',
       href: `${base}/daily-logs`,
       activePrefix: `${base}/daily-logs`,
+    },
+    // Same rule as requirePhotosProject: internal access and at least one photo source switched on.
+    Boolean(
+      access.canViewInternal && (features.project_photos || features.daily_logs || features.walkthroughs || features.client_updates),
+    ) && {
+      key: 'photos',
+      label: 'Photos',
+      href: `${base}/photos`,
+      activePrefix: `${base}/photos`,
     },
     Boolean(features.client_updates && access.canViewInternal) && {
       key: 'client_updates',

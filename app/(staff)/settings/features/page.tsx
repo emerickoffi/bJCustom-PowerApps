@@ -26,12 +26,13 @@ const RECORD_TABLES: [FeatureKey, string, string][] = [
 export default async function FeaturesPage() {
   const session = await requireAdmin()
   const supabase = await createClient()
-  const [features, subcontractorProbe, clientUpdatesProbe, changeOrderTableProbe, rfiTableProbe, registryProbe, ...counts] = await Promise.all([
+  const [features, subcontractorProbe, clientUpdatesProbe, changeOrderTableProbe, rfiTableProbe, photosTableProbe, registryProbe, ...counts] = await Promise.all([
     getOrgFeatures(session.organizationId),
     supabase.from('subcontractor_companies').select('id').eq('organization_id', session.organizationId).limit(1),
     supabase.from('client_updates').select('id').eq('organization_id', session.organizationId).limit(1),
     supabase.from('change_orders').select('id').eq('organization_id', session.organizationId).limit(1),
     supabase.from('project_rfis').select('id').eq('organization_id', session.organizationId).limit(1),
+    supabase.from('project_photos').select('id').eq('organization_id', session.organizationId).limit(1),
     supabase.rpc('feature_registry'),
     ...RECORD_TABLES.map(([, table]) =>
       supabase.from(table).select('id', { count: 'exact', head: true }).eq('organization_id', session.organizationId),
@@ -58,6 +59,7 @@ export default async function FeaturesPage() {
           client_updates: isMissingTableError(clientUpdatesProbe.error),
           change_orders: isMissingTableError(changeOrderTableProbe.error) || !changeOrdersRegistered,
           rfis: isMissingTableError(rfiTableProbe.error) || !registeredKeys.some((r) => r.feature_key === 'rfis'),
+          project_photos: isMissingTableError(photosTableProbe.error) || !registeredKeys.some((r) => r.feature_key === 'project_photos'),
         }}
       />
     </div>

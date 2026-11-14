@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { GanttBaseline } from '@/components/schedule/schedule-gantt'
 import { CalendarClock, CalendarDays, GanttChart, List, Pencil, Plus } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -66,6 +67,24 @@ export function ScheduleWorkspace({
   const [selectedId, setSelectedId] = useState<string | null>(() =>
     initialActivityId && activities.some((a) => a.id === initialActivityId) ? initialActivityId : null,
   )
+  const [selectionProject, setSelectionProject] = useState(projectId)
+  if (selectionProject !== projectId) {
+    setSelectionProject(projectId)
+    setSelectedId(null)
+  }
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const router = useRouter()
+  const linkedActivityId = searchParams.get('activity')
+  // A deep link opens its activity once, then the param is dropped so closing, refreshing, or Back doesn't reopen it.
+  useEffect(() => {
+    if (!linkedActivityId) return
+    if (activities.some((a) => a.id === linkedActivityId)) setSelectedId(linkedActivityId)
+    const next = new URLSearchParams(searchParams.toString())
+    next.delete('activity')
+    const query = next.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [linkedActivityId, activities, pathname, router, searchParams])
   const [creating, setCreating] = useState(false)
   const [view, setView] = useState<ScheduleView>('list')
   useEffect(() => {
