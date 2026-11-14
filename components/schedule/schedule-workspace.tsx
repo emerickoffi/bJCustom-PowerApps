@@ -18,6 +18,8 @@ const VIEW_KEY = 'schedule:view'
 
 export function ScheduleWorkspace({
   projectId,
+  organizationId,
+  userId,
   activities,
   phases,
   dependencies,
@@ -36,6 +38,8 @@ export function ScheduleWorkspace({
   timeZone?: string
   baseline?: GanttBaseline | null
   projectId: string
+  organizationId: string
+  userId: string
   activities: ScheduleActivity[]
   phases: SchedulePhase[]
   dependencies: ScheduleDependency[]
@@ -159,6 +163,9 @@ export function ScheduleWorkspace({
         <TabsContent value="list">
           <ScheduleStageList
             projectId={projectId}
+            organizationId={organizationId}
+            userId={userId}
+            focusActivityId={selectedId}
             phases={phases}
             activities={activities}
             conflictIds={conflicts}

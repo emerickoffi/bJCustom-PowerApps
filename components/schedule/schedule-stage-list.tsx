@@ -37,9 +37,17 @@ import { ACTIVITY_TYPE_LABELS, isOverdue, todayIso, type ScheduleActivity, type 
 import { formatDate } from '@/lib/format'
 import { stageStyle } from '@/lib/schedule-stage-style'
 import { renamePhaseAction, reorderScheduleAction } from '@/app/actions/schedule'
+import { phaseExpansionKey, usePhaseExpansion } from '@/components/schedule/use-phase-expansion'
+
+const bulkButton =
+  'inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-primary transition-colors hover:bg-interactive-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-40 sm:min-h-8'
 
 type StageListProps = {
   projectId: string
+  organizationId: string
+  userId: string
+  /** The activity open in the editor; its phase is revealed so the edited row stays in view. */
+  focusActivityId?: string | null
   phases: SchedulePhase[]
   activities: ScheduleActivity[]
   conflictIds: Set<string>
@@ -99,7 +107,18 @@ const handleClass =
   'flex w-8 shrink-0 cursor-grab touch-none select-none items-center justify-center text-brand-deep/45 transition-colors hover:bg-[#F1F0EA] hover:text-brand-deep active:cursor-grabbing'
 const placeholderClass = 'bg-interactive-soft outline-2 outline-dashed -outline-offset-2 outline-primary/60 [&>*]:invisible'
 
-export function ScheduleStageList({ projectId, phases, activities, conflictIds, nameFor, onSelect, canManage }: StageListProps) {
+export function ScheduleStageList({
+  projectId,
+  organizationId,
+  userId,
+  focusActivityId = null,
+  phases,
+  activities,
+  conflictIds,
+  nameFor,
+  onSelect,
+  canManage,
+}: StageListProps) {
   const today = todayIso()
   const byId = useMemo(() => new Map(activities.map((a) => [a.id, a])), [activities])
   const serverOrder = useMemo(() => buildOrder(phases, activities), [phases, activities])
@@ -135,22 +154,52 @@ export function ScheduleStageList({ projectId, phases, activities, conflictIds, 
   // Only a phase with work actually underway is labelled current; nothing is inferred for a schedule that has not started.
   const currentId = phaseStats.find((s) => s.underway)?.id ?? null
 
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(phaseStats.filter((s) => s.complete).map((s) => s.id)))
-  const allOpen = phaseStats.every((s) => !collapsed.has(s.id))
-  const toggle = (id: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  const expand = (id: string) =>
-    setCollapsed((prev) => {
-      if (!prev.has(id)) return prev
-      const next = new Set(prev)
-      next.delete(id)
-      return next
-    })
+  // Saved choices persist per user and project; `revealed` opens phases for context (a drop, a new or moved
+  // activity, a linked activity) for this visit only, without overwriting the saved preference.
+  const [saved, saveExpanded] = usePhaseExpansion(phaseExpansionKey(organizationId, userId, projectId))
+  const [revealed, setRevealed] = useState<Set<string>>(() => new Set())
+  const isOpen = (id: string) => saved.has(id) || revealed.has(id)
+  const phaseIds = phaseStats.map((s) => s.id)
+  const allOpen = phaseIds.length > 0 && phaseIds.every(isOpen)
+  const noneOpen = phaseIds.every((id) => !isOpen(id))
+  const liveSaved = () => phaseIds.filter((id) => saved.has(id))
+  const toggle = (id: string) => {
+    if (isOpen(id)) {
+      saveExpanded(liveSaved().filter((x) => x !== id))
+      setRevealed((prev) => {
+        if (!prev.has(id)) return prev
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    } else {
+      saveExpanded([...liveSaved(), id])
+    }
+  }
+  const expand = (id: string) => setRevealed((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+  const expandAll = () => saveExpanded(phaseIds)
+  const collapseAll = () => {
+    saveExpanded([])
+    setRevealed(new Set())
+  }
+
+  const placement = useMemo(
+    () => new Map(serverOrder.phases.flatMap((p) => serverOrder.items[p.id].map((id) => [id, p.id] as const))),
+    [serverOrder],
+  )
+  const [seenPlacement, setSeenPlacement] = useState(placement)
+  if (placement !== seenPlacement) {
+    const landed = new Set<string>()
+    for (const [id, pid] of placement) if (seenPlacement.get(id) !== pid) landed.add(pid)
+    setSeenPlacement(placement)
+    if (landed.size) setRevealed((prev) => new Set([...prev, ...landed]))
+  }
+  const [seenFocus, setSeenFocus] = useState<string | null>(null)
+  if (focusActivityId !== seenFocus) {
+    setSeenFocus(focusActivityId)
+    const pid = focusActivityId ? placement.get(focusActivityId) : undefined
+    if (pid) expand(pid)
+  }
 
   const commit = (next: Order, base: Order, message: string) => {
     if (orderKey(next) === orderKey(base)) {
@@ -316,13 +365,14 @@ export function ScheduleStageList({ projectId, phases, activities, conflictIds, 
           {canManage && <span className="hidden tablet:inline">{' · Drag the handles to reorder'}</span>}
           {saving && <span className="text-primary">{' · Saving order…'}</span>}
         </p>
-        <button
-          type="button"
-          onClick={() => setCollapsed(allOpen ? new Set(phaseStats.map((s) => s.id)) : new Set())}
-          className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-primary transition-colors hover:bg-interactive-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-8"
-        >
-          {allOpen ? 'Collapse all' : 'Expand all'}
-        </button>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={expandAll} disabled={allOpen || phaseIds.length === 0} className={bulkButton}>
+            Expand all
+          </button>
+          <button type="button" onClick={collapseAll} disabled={noneOpen} className={bulkButton}>
+            Collapse all
+          </button>
+        </div>
       </div>
       <p className="sr-only" role="status" aria-live="polite">
         {announcement}
@@ -340,7 +390,7 @@ export function ScheduleStageList({ projectId, phases, activities, conflictIds, 
         <SortableContext items={phaseStats.map((p) => PHASE + p.id)} strategy={verticalListSortingStrategy}>
           <ol className="flex flex-col gap-3">
             {phaseStats.map((phase, phaseIndex) => {
-              const open = !collapsed.has(phase.id)
+              const open = isOpen(phase.id)
               const panelId = `phase-panel-${phase.id}`
               return (
                 <SortablePhase
