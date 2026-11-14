@@ -69,9 +69,11 @@ function shiftDays(isoDate: string, days: number): string {
 export async function getActionItems(
   orgId: string,
   userId: string,
-  options: { manager: boolean; features: ActionFeatures },
+  options: { manager: boolean; features: ActionFeatures; projectId?: string },
 ): Promise<ActionCenterData> {
-  const { manager, features } = options
+  const { manager, features, projectId } = options
+  // Narrows every project-owned source to one job; RLS and the role rules below still apply unchanged.
+  const inProject: Record<string, string> = projectId ? { project_id: projectId } : {}
   const supabase = await createClient()
   const today = todayIso()
   const unavailable: ActionModuleIssue[] = []
@@ -79,7 +81,7 @@ export async function getActionItems(
   const fail = (module: string, detail = 'Could not be checked right now.') =>
     unavailable.push({ module, state: 'unavailable', detail })
 
-  if (features.subcontractors && manager) {
+  if (features.subcontractors && manager && !projectId) {
     // Deduplicated server-side; failures are reported below through the qualification read instead.
     await supabase.rpc('refresh_subcontractor_qualification_notices', { p_organization_id: orgId }).then(
       () => undefined,
@@ -88,7 +90,7 @@ export async function getActionItems(
   }
   // Independent of the source reads below, so it runs alongside them rather than after them.
   const qualificationPromise =
-    manager && features.subcontractors ? loadQualification(supabase, orgId, today) : Promise.resolve(null)
+    manager && features.subcontractors && !projectId ? loadQualification(supabase, orgId, today) : Promise.resolve(null)
   qualificationPromise.catch(() => undefined)
 
   const empty = Promise.resolve({ data: [] as never[], error: null, count: 0 })
@@ -100,6 +102,7 @@ export async function getActionItems(
         'id, project_id, item_label, homeowner_description, status, priority, due_date, builder_approved_at, responsible_user_id, reported_at, projects(name, archived_at)',
       )
       .eq('organization_id', orgId)
+        .match(inProject)
     q = manager
       ? q.in('status', ['open', 'in_progress', 'resolved']).or(`due_date.lt.${today},priority.in.(high,critical),status.eq.resolved`)
       : q.in('status', ['open', 'in_progress']).eq('responsible_user_id', userId).or(`due_date.lt.${today},priority.in.(high,critical)`)
@@ -110,6 +113,7 @@ export async function getActionItems(
       .from('warranty_claims')
       .select('id, project_id, title, status, assigned_to, reported_at, projects(name, archived_at)')
       .eq('organization_id', orgId)
+        .match(inProject)
     q = manager
       ? q.in('status', ['submitted', 'under_review', 'accepted', 'in_progress'])
       : q.in('status', ['accepted', 'in_progress']).eq('assigned_to', userId)
@@ -125,6 +129,7 @@ export async function getActionItems(
         'id, project_id, rfi_number, subject, status, due_date, responder_user_id, responder_name, created_by, sent_at, answered_at, projects(name, archived_at)',
       )
       .eq('organization_id', orgId)
+        .match(inProject)
       .in('status', ['open', 'answered'])
     return (manager ? q : q.or(`responder_user_id.eq.${userId},created_by.eq.${userId}`))
       .order('due_date', { ascending: true, nullsFirst: false })
@@ -138,6 +143,7 @@ export async function getActionItems(
         .select('id, title, body, link, kind, action_required, dedupe_key, created_at, project_id, projects(name)')
         .eq('user_id', userId)
         .eq('organization_id', orgId)
+        .match(inProject)
         .is('read_at', null)
         .order('created_at', { ascending: false })
         .limit(NOTIFICATION_LIMIT),
@@ -146,6 +152,7 @@ export async function getActionItems(
             .from('schedule_activities')
             .select('id, project_id, name, status, planned_end, assigned_to, projects(name)')
             .eq('organization_id', orgId)
+        .match(inProject)
             .not('status', 'in', '(completed,skipped)')
             .or(`status.eq.delayed,planned_end.lt.${today}`)
             .order('planned_end', { ascending: true, nullsFirst: false })
@@ -156,6 +163,7 @@ export async function getActionItems(
             .from('daily_logs')
             .select('id, project_id, log_date, delay_reason, delay_description, projects(name)')
             .eq('organization_id', orgId)
+        .match(inProject)
             .not('delay_description', 'is', null)
             .gte('log_date', shiftDays(today, -LOG_DELAY_WINDOW_DAYS))
             .order('log_date', { ascending: false })
@@ -168,6 +176,7 @@ export async function getActionItems(
               'id, project_id, title, status, document_id, source_version_id, test_mode, completed_at, signed_storage_path, artifact_error, projects(name, archived_at)',
             )
             .eq('organization_id', orgId)
+        .match(inProject)
             .eq('status', 'completed')
             .order('completed_at', { ascending: false })
             .limit(SOURCE_LIMIT)
@@ -177,6 +186,7 @@ export async function getActionItems(
             .from('projects')
             .select('id, name, status, proposed_start_date, primary_client_id, address_line1')
             .eq('organization_id', orgId)
+            .match(projectId ? { id: projectId } : {})
             .is('archived_at', null)
             .in('status', [...COMMITTED_STAGES])
             .limit(SOURCE_LIMIT * 2)
@@ -186,6 +196,7 @@ export async function getActionItems(
             .from('invoices')
             .select('id, invoice_number, title, project_id, status, due_date, total_cents, paid_cents, projects(name, archived_at)')
             .eq('organization_id', orgId)
+        .match(inProject)
             .in('status', ['issued', 'partially_paid'])
             .lt('due_date', today)
             .order('due_date', { ascending: true })
@@ -198,6 +209,7 @@ export async function getActionItems(
             .from('change_orders')
             .select('id, project_id, co_number, title, review_started_at, projects(name, archived_at)')
             .eq('organization_id', orgId)
+        .match(inProject)
             .eq('status', 'internal_review')
             .order('review_started_at', { ascending: true, nullsFirst: false })
             .limit(SOURCE_LIMIT)
