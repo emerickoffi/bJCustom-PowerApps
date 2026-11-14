@@ -2,7 +2,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { isProjectId } from '@/lib/route-job'
+import { COMING_UP_RANGES } from '@/lib/coming-up'
 import {
+  COMING_UP_RANGE_COOKIE,
   LAYOUT_COOKIE,
   serializeWeatherChoice,
   WEATHER_LOCATION_COOKIE,
@@ -58,6 +60,14 @@ export async function setLayoutPreferenceAction(preference: string): Promise<{ o
   const value = parseLayoutPreference(preference)
   await writePreference(LAYOUT_COOKIE, session.userId, value === 'auto' ? null : `${session.organizationId}:${value}`)
   revalidatePath('/', 'layout')
+  return { ok: true }
+}
+
+export async function setComingUpRangeAction(range: string): Promise<{ ok: boolean }> {
+  const session = await requireStaff()
+  if (!(COMING_UP_RANGES as readonly string[]).includes(range)) return { ok: false }
+  await writePreference(COMING_UP_RANGE_COOKIE, session.userId, `${session.organizationId}:${range}`)
+  revalidatePath('/dashboard')
   return { ok: true }
 }
 

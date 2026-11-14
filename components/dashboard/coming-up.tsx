@@ -1,16 +1,11 @@
 import Link from 'next/link'
 import { ArrowRight, CalendarClock } from 'lucide-react'
 import { DashboardSectionHeader } from '@/components/dashboard/dashboard-section-header'
-import {
-  COMING_UP_RANGE_LABELS,
-  COMING_UP_RANGES,
-  COMING_UP_VISIBLE,
-  type ComingUpEvent,
-  type ComingUpRange,
-} from '@/lib/coming-up'
+import { ComingUpRangeControl } from '@/components/dashboard/coming-up-range-control'
+import { RetryButton } from '@/components/shared/retry-button'
+import { COMING_UP_RANGE_LABELS, COMING_UP_VISIBLE, type ComingUpEvent, type ComingUpRange } from '@/lib/coming-up'
 import { addIsoDays } from '@/lib/agenda'
 import { cn } from '@/lib/utils'
-import { segmentClass } from '@/lib/interaction-styles'
 
 function DateChip({ iso, tentative }: { iso: string; tentative: boolean }) {
   const [y, m, d] = iso.split('-').map(Number)
@@ -27,28 +22,6 @@ function DateChip({ iso, tentative }: { iso: string; tentative: boolean }) {
       <span className="text-[0.6rem] font-semibold leading-none">{month}</span>
       <span className="tabular text-lg font-semibold leading-tight">{d}</span>
     </time>
-  )
-}
-
-function RangeControls({ range, hrefFor }: { range: ComingUpRange; hrefFor: (range: ComingUpRange) => string }) {
-  return (
-    <nav aria-label="Coming up window" className="flex rounded-lg bg-muted p-0.5">
-      {COMING_UP_RANGES.map((r) => (
-        <Link
-          key={r}
-          href={hrefFor(r)}
-          scroll={false}
-          aria-current={r === range ? 'true' : undefined}
-          className={cn(
-            'flex min-h-9 flex-1 items-center justify-center rounded-md px-2 text-xs font-medium',
-            segmentClass(r === range),
-            r === range && 'shadow-sm',
-          )}
-        >
-          {COMING_UP_RANGE_LABELS[r]}
-        </Link>
-      ))}
-    </nav>
   )
 }
 
@@ -79,8 +52,8 @@ export function ComingUp({
   events,
   today,
   range,
-  hrefFor,
   scheduleEnabled,
+  scheduleFailed = false,
   scopedToMe = false,
   headerAction,
 }: {
@@ -90,11 +63,17 @@ export function ComingUp({
   today: string
   scopedToMe?: boolean
   range: ComingUpRange
-  hrefFor: (range: ComingUpRange) => string
   scheduleEnabled: boolean
+  /** The schedule query errored; an empty list then means "unknown", not "nothing scheduled". */
+  scheduleFailed?: boolean
 }) {
   const visible = events.slice(0, COMING_UP_VISIBLE)
   const windowLabel = range === 'today' ? 'today' : `in the ${COMING_UP_RANGE_LABELS[range].toLowerCase()}`
+  const emptyMessage = !scheduleEnabled
+    ? `No proposed starts or warranty milestones ${windowLabel}. The Schedule module is off, so schedule activities don't appear here.`
+    : scopedToMe
+      ? `Nothing assigned to you ${windowLabel}. Switch to All work to include unassigned items.`
+      : `Nothing scheduled ${windowLabel}.`
   return (
     <section aria-labelledby="coming-up-heading" className="surface flex flex-col">
       <div className="px-5 py-4 md:px-6">
@@ -107,7 +86,17 @@ export function ComingUp({
         />
       </div>
       <div className="flex flex-1 flex-col gap-3 border-t px-5 pb-5 pt-5 md:px-6">
-      <RangeControls range={range} hrefFor={hrefFor} />
+      <ComingUpRangeControl range={range} />
+      {scheduleFailed && (
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5">
+          <p className="text-xs leading-relaxed text-foreground">
+            {visible.length
+              ? "Schedule activities couldn't be loaded, so this list may be incomplete."
+              : "Schedule activities couldn't be loaded, so we can't confirm what's coming up."}
+          </p>
+          <RetryButton />
+        </div>
+      )}
       {visible.length ? (
         <div className="flex flex-col gap-3">
         {groupByDay(visible, today).map((group) => (
@@ -151,14 +140,8 @@ export function ComingUp({
         </section>
         ))}
         </div>
-      ) : (
-        <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
-          {scopedToMe
-            ? `Nothing assigned to you ${windowLabel}.`
-            : scheduleEnabled
-            ? `Nothing open or dated ${windowLabel}.`
-            : 'The Schedule module is off, so only proposed starts and warranty milestones appear here.'}
-        </p>
+      ) : scheduleFailed ? null : (
+        <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{emptyMessage}</p>
       )}
       <div className="flex items-center justify-between gap-2 border-t pt-2">
         <span className="text-xs text-muted-foreground">
