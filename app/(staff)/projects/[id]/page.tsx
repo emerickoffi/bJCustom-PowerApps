@@ -8,6 +8,9 @@ import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getOrgFeatures } from '@/lib/features'
 import { getStaffMembers } from '@/lib/queries'
+import { loadProjectCommunications } from '@/lib/project-communications-data'
+import { parseCommFilters } from '@/lib/project-communications'
+import { ProjectCommunications } from '@/components/projects/project-communications'
 import { getProjectCoverPhotos } from '@/lib/project-photos'
 import { coverAlt } from '@/lib/project-cover'
 import { ProjectStatusCard } from '@/components/projects/project-status-card'
@@ -46,7 +49,7 @@ export default async function ProjectDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ work?: string | string[] }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const session = await requireStaff()
   const [{ id }, query] = await Promise.all([params, searchParams])
@@ -214,6 +217,14 @@ export default async function ProjectDetailPage({
   }
   const nextActions = actionsByScope[scope]
   const scopeTotal = (s: WorkScope) => actionsByScope[s].items.length + actionsByScope[s].hiddenCount
+  const commFilters = parseCommFilters(query)
+  const communications = await loadProjectCommunications({
+    projectId: project.id,
+    organizationId: session.organizationId,
+    userId: session.userId,
+    manager,
+    features,
+  })
   const scopeHref = (s: WorkScope) => (s === 'mine' ? `/projects/${project.id}?work=mine` : `/projects/${project.id}`)
   const contactsActiveCount =
     projectContacts.availability === 'ready' ? projectContacts.contacts.filter((c) => c.status === 'active').length : null
@@ -400,6 +411,16 @@ export default async function ProjectDetailPage({
         scope={scope}
         scopeTotals={{ mine: scopeTotal('mine'), all: scopeTotal('all') }}
         scopeHrefs={{ mine: scopeHref('mine'), all: scopeHref('all') }}
+      />
+
+      <ProjectCommunications
+        projectId={project.id}
+        attention={communications.attention}
+        activity={communications.activity}
+        incomplete={communications.incomplete}
+        filters={commFilters}
+        params={query}
+        userId={session.userId}
       />
 
       {readiness && <CompletionReadinessPanel summary={readiness} projectId={project.id} canReview={manager} />}
