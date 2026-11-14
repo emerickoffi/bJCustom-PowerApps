@@ -110,6 +110,8 @@ export type ActionRfi = {
   createdBy: string | null
   sentAt: string | null
   answeredAt: string | null
+  /** Missing on rows read before the priority migration; treated as normal. */
+  priority?: 'low' | 'normal' | 'high' | 'urgent' | null
 }
 
 /** A change order sitting in internal review: the builder, not the homeowner, owes the next step. */
@@ -486,12 +488,16 @@ function rfiItems(rows: ActionRfi[], ctx: ActionContext): ActionItem[] {
       source: 'Question (RFI)',
     } satisfies Partial<ActionItem>
     const subject = `“${clip(r.subject, 80)}”`
+    const urgent = r.priority === 'urgent'
+    const flag = urgent ? 'Urgent: ' : r.priority === 'high' ? 'High priority: ' : ''
     if (r.status === 'open' && mine) {
       items.push({
         ...base,
-        tier: overdue ? 3 : 4,
+        // Urgent questions move up one tier so they surface before routine work; they never outrank tier 2.
+        tier: overdue ? (urgent ? 2 : 3) : urgent ? 3 : 4,
+        severity: urgent ? 'critical' : 'warning',
         title: `Answer ${ref}`,
-        description: overdue ? `${subject} is waiting for your official answer and is past its due date.` : `${subject} is waiting for your official answer.`,
+        description: `${flag}${overdue ? `${subject} is waiting for your official answer and is past its due date.` : `${subject} is waiting for your official answer.`}`,
         dueDate: r.dueDate,
         createdAt: r.sentAt?.slice(0, 10) ?? null,
         responsibleUserId: r.responderUserId,
@@ -515,9 +521,10 @@ function rfiItems(rows: ActionRfi[], ctx: ActionContext): ActionItem[] {
     } else if (overdue && requester) {
       items.push({
         ...base,
-        tier: 3,
+        tier: urgent ? 2 : 3,
+        severity: urgent ? 'critical' : 'warning',
         title: `${ref} is overdue`,
-        description: `${r.responderName ?? 'The responder'} has not answered ${subject}. Follow up, reassign it, or close it.`,
+        description: `${flag}${r.responderName ?? 'The responder'} has not answered ${subject}. Follow up, reassign it, or close it.`,
         dueDate: r.dueDate,
         createdAt: r.sentAt?.slice(0, 10) ?? null,
         responsibleUserId: r.responderUserId,

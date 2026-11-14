@@ -4,7 +4,7 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
-import { MessageCircleQuestion, Plus, X } from 'lucide-react'
+import { ArrowDown, MessageCircleQuestion, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -16,17 +16,22 @@ import { PanelError, PanelLoading, RecordPanel, isPlainClick } from '@/component
 import { fetchRfiJson, rfiDetailKey } from '@/components/rfis/ask-question-drawer'
 import { RfiDetailView } from '@/components/rfis/rfi-detail'
 import { RfiStatusBadge } from '@/components/rfis/rfi-status-badge'
+import { RfiPriorityBadge } from '@/components/rfis/rfi-priority-badge'
 import {
   RFI_PARAM,
+  RFI_PRIORITIES,
+  RFI_PRIORITY_LABELS,
   RFI_STATUSES,
   RFI_STATUS_LABELS,
   isRfiOverdue,
   responderLabel,
+  rfiPriority,
   rfiRef,
   rfisPath,
   type RfiDetail,
   type RfiListRow,
   type RfiScope,
+  type RfiSort,
 } from '@/lib/rfis'
 
 const WIDE_QUERY = '(min-width: 1280px)'
@@ -66,7 +71,7 @@ export type RfiWorkspaceProps = {
   total: number
   page: number
   pageCount: number
-  filters: { q: string; status: string; scope: RfiScope }
+  filters: { q: string; status: string; priority: string; scope: RfiScope; sort: RfiSort }
   /** False when the list itself could not be read; an empty list is then not proof that there are no questions. */
   loaded: boolean
   canAsk: boolean
@@ -116,7 +121,16 @@ export function RfiWorkspace({ projectId, projectName, rows, total, page, pageCo
   const listRow = selectedId ? (rows.find((r) => r.id === selectedId) ?? null) : null
   const head = detail?.rfi ?? listRow
   const title = head ? `${rfiRef(head.rfi_number)}: ${head.subject}` : 'Question'
-  const filtered = Boolean(filters.q || filters.status || filters.scope === 'mine')
+  const filtered = Boolean(filters.q || filters.status || filters.priority || filters.scope === 'mine')
+
+  const sortHref = (target: RfiSort) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (target === 'priority') params.set('sort', 'priority')
+    else params.delete('sort')
+    params.delete('page')
+    const query = params.toString()
+    return query ? `${rfisPath(projectId)}?${query}` : rfisPath(projectId)
+  }
 
   const pageHref = (target: number) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -179,6 +193,13 @@ export function RfiWorkspace({ projectId, projectName, rows, total, page, pageCo
             statusOptions={RFI_STATUSES.map((s) => ({ value: s, label: RFI_STATUS_LABELS[s] }))}
             selects={[
               {
+                name: 'priority',
+                label: 'Priority',
+                allLabel: 'All priorities',
+                defaultValue: filters.priority,
+                options: RFI_PRIORITIES.map((p) => ({ value: p, label: RFI_PRIORITY_LABELS[p] })),
+              },
+              {
                 name: 'scope',
                 label: 'Assignment',
                 allLabel: 'All I can access',
@@ -187,6 +208,7 @@ export function RfiWorkspace({ projectId, projectName, rows, total, page, pageCo
               },
             ]}
             clearHref={filtered ? rfisPath(projectId) : undefined}
+            preserve={{ sort: filters.sort === 'priority' ? 'priority' : null }}
             carryParams={[RFI_PARAM]}
             autoApply
           />
@@ -204,7 +226,7 @@ export function RfiWorkspace({ projectId, projectName, rows, total, page, pageCo
               title={filtered ? 'No questions match these filters' : 'No questions yet'}
               description={
                 filtered
-                  ? 'Try a different search, status, or assignment.'
+                  ? 'Try a different search, status, priority, or assignment.'
                   : 'Ask the person who knows, get one official answer, then review and close it.'
               }
               action={
@@ -221,7 +243,8 @@ export function RfiWorkspace({ projectId, projectName, rows, total, page, pageCo
               <p className="sr-only" aria-live="polite">
                 {`${total} question${total === 1 ? '' : 's'}`}
               </p>
-              <QuestionTable rows={rows} projectId={projectId} selectedId={selectedId} today={today} onOpen={openRow} />
+              <SortControl sort={filters.sort} hrefFor={sortHref} />
+              <QuestionTable rows={rows} projectId={projectId} selectedId={selectedId} today={today} onOpen={openRow} sort={filters.sort} hrefFor={sortHref} />
               <QuestionCards rows={rows} projectId={projectId} selectedId={selectedId} today={today} onOpen={openRow} />
               <DirectoryPagination page={page} pageCount={pageCount} hrefFor={pageHref} label="Questions pages" />
             </>
@@ -283,7 +306,38 @@ function DueDate({ row, today }: { row: RfiListRow; today: string }) {
   )
 }
 
-function QuestionTable({ rows, projectId, selectedId, today, onOpen }: ListProps) {
+/** Only High and Urgent get a colored badge, so routine rows stay quiet; the label is always shown. */
+function PriorityCell({ value }: { value: unknown }) {
+  const priority = rfiPriority(value)
+  if (priority === 'high' || priority === 'urgent') return <RfiPriorityBadge priority={priority} />
+  return <span className="text-muted-foreground">{RFI_PRIORITY_LABELS[priority]}</span>
+}
+
+type SortProps = { sort: RfiSort; hrefFor: (target: RfiSort) => string }
+
+/** Small-screen sort switch; the table header carries the same control on wide layouts. */
+function SortControl({ sort, hrefFor }: SortProps) {
+  return (
+    <nav aria-label="Sort questions" className="flex items-center gap-2 text-sm @3xl:hidden">
+      <span className="text-muted-foreground">Sort by</span>
+      {(['number', 'priority'] as const).map((key) => (
+        <Link
+          key={key}
+          href={hrefFor(key)}
+          aria-current={sort === key ? 'true' : undefined}
+          className={cn(
+            'flex min-h-11 items-center rounded-md px-2.5 sm:min-h-8',
+            sort === key ? 'bg-link-soft font-medium text-foreground' : 'text-link hover:text-link-hover hover:underline',
+          )}
+        >
+          {key === 'number' ? 'Newest' : 'Priority'}
+        </Link>
+      ))}
+    </nav>
+  )
+}
+
+function QuestionTable({ rows, projectId, selectedId, today, onOpen, sort, hrefFor }: ListProps & SortProps) {
   return (
     <div className="hidden overflow-x-auto overscroll-x-contain rounded-lg border border-[#D6DDE5] @3xl:block">
       <table className="w-full table-fixed text-sm">
@@ -291,16 +345,31 @@ function QuestionTable({ rows, projectId, selectedId, today, onOpen }: ListProps
         <colgroup>
           <col className="w-[7rem]" />
           <col />
-          <col className="w-[26%]" />
+          <col className="w-[22%]" />
           <col className="w-[8.5rem]" />
+          <col className="w-[6.5rem]" />
           <col className="w-[9.5rem]" />
         </colgroup>
         <thead>
           <tr className="border-b border-[#D6DDE5] bg-table-head text-left text-xs text-[#526173]">
-            <th scope="col" className="px-4 py-2.5 font-medium">RFI number</th>
+            <th scope="col" className="px-4 py-2.5 font-medium" aria-sort={sort === 'number' ? 'descending' : undefined}>
+              <Link href={hrefFor('number')} className={cn('rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-link', sort === 'number' && 'text-foreground')}>
+                RFI number
+              </Link>
+            </th>
             <th scope="col" className="px-3 py-2.5 font-medium">Subject</th>
             <th scope="col" className="px-3 py-2.5 font-medium">Assigned responder</th>
             <th scope="col" className="px-3 py-2.5 font-medium">Due date</th>
+            <th scope="col" className="px-3 py-2.5 font-medium" aria-sort={sort === 'priority' ? 'descending' : undefined}>
+              <Link
+                href={hrefFor(sort === 'priority' ? 'number' : 'priority')}
+                className={cn('inline-flex items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-link', sort === 'priority' && 'text-foreground')}
+              >
+                Priority
+                {sort === 'priority' && <ArrowDown className="size-3" aria-hidden="true" />}
+                <span className="sr-only">{sort === 'priority' ? ', sorted most urgent first. Select to sort by RFI number.' : ', select to sort most urgent first.'}</span>
+              </Link>
+            </th>
             <th scope="col" className="px-3 py-2.5 font-medium">Status</th>
           </tr>
         </thead>
@@ -336,6 +405,9 @@ function QuestionTable({ rows, projectId, selectedId, today, onOpen }: ListProps
                 <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">
                   <DueDate row={row} today={today} />
                 </td>
+                <td className="whitespace-nowrap px-3 py-2.5">
+                  <PriorityCell value={row.priority} />
+                </td>
                 <td className="px-3 py-2.5">
                   <RfiStatusBadge status={row.status} overdue={isRfiOverdue(row.status, row.due_date, today)} />
                 </td>
@@ -368,7 +440,12 @@ function QuestionCards({ rows, projectId, selectedId, today, onOpen }: ListProps
                   {row.subject}
                 </Link>
               </div>
-              <RfiStatusBadge status={row.status} overdue={isRfiOverdue(row.status, row.due_date, today)} className="shrink-0" />
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <RfiStatusBadge status={row.status} overdue={isRfiOverdue(row.status, row.due_date, today)} />
+                {(rfiPriority(row.priority) === 'high' || rfiPriority(row.priority) === 'urgent') && (
+                  <RfiPriorityBadge priority={rfiPriority(row.priority)} />
+                )}
+              </div>
             </div>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
               <div className="flex min-w-0 flex-col">
