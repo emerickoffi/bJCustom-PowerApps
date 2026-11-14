@@ -73,8 +73,8 @@ function NavLink({
       className={cn(
         'group relative flex items-center rounded-nav transition-colors duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
-        nested ? 'h-10 gap-2.5 px-3 text-[0.8125rem] lg:h-9' : 'h-11 gap-3 px-3.5 text-sm',
-        collapsed && 'h-11 justify-center px-0',
+        nested ? 'h-10 gap-2.5 px-3 text-[0.8125rem] lg:h-9' : 'h-[2.625rem] gap-3 px-3 text-sm',
+        collapsed && 'h-[2.625rem] justify-center px-0',
         active
           ? 'bg-sidebar-selected font-semibold text-sidebar-selected-foreground'
           : 'font-medium text-sidebar-foreground hover:bg-sidebar-hover',
@@ -142,7 +142,7 @@ export function AppNav({
   }
 
   return (
-    <nav aria-label="Main" className={cn('flex flex-col', collapsed ? 'gap-3' : 'gap-1')}>
+    <nav aria-label="Main" className={cn('flex flex-col', collapsed ? 'gap-3' : 'gap-0.5')}>
       {sections.map((section, index) => {
         const persistent = section.key === PERSISTENT_NAV_GROUP
         const containsActive = section.key === activeGroup
@@ -182,7 +182,7 @@ export function AppNav({
               aria-expanded={open}
               aria-controls={panelId}
               className={cn(
-                'flex h-9 items-center justify-between rounded-nav px-3.5 text-xs font-medium transition-colors duration-150',
+                'flex h-9 items-center justify-between rounded-nav px-3 text-[0.8125rem] font-semibold transition-colors duration-150',
                 'hover:bg-sidebar-hover hover:text-sidebar-foreground',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
                 open || containsActive ? 'text-sidebar-foreground' : 'text-sidebar-muted',
@@ -209,7 +209,7 @@ export function AppNav({
                 open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
               )}
             >
-              <div className="flex min-h-0 flex-col gap-0.5 overflow-hidden pb-1 pl-2 pt-0.5">{links}</div>
+              <div className="flex min-h-0 flex-col gap-0.5 overflow-hidden pb-1.5 pl-3 pt-0.5">{links}</div>
             </div>
           </div>
         )
