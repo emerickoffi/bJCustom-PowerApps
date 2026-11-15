@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { Users, Users as UsersIcon } from 'lucide-react'
+import { Plus, Users, Users as UsersIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -218,9 +218,22 @@ export default async function ClientsPage({
   const range = resultRange(page, clients.length, total)
 
   return (
-    <div className={pageLayout('workspace')}>
-      <PageHeader icon={UsersIcon} title="Clients" />
+    <div className={pageLayout('workspace', 'gap-4 md:gap-4')}>
+      <PageHeader
+        icon={UsersIcon}
+        title="Clients"
+        actions={
+          manager && (
+            <Button size="lg" render={<Link href="/clients/new" />} nativeButton={false}>
+              <Plus data-icon="inline-start" />
+              Add client
+            </Button>
+          )
+        }
+      />
       <ListFilters
+        autoApply
+        toolbar
         searchPlaceholder="Search clients or contacts by name, email, or phone"
         defaultQuery={q}
         defaultStatus={status ?? ''}

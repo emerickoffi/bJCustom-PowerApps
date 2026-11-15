@@ -144,7 +144,7 @@ export default async function SubcontractorsPage({
   )
 
   return (
-    <div className={pageLayout('workspace')}>
+    <div className={pageLayout('workspace', 'gap-4 md:gap-4')}>
       <PageHeader
         icon={HardHat}
         title="Subcontractors"

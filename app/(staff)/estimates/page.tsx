@@ -121,6 +121,7 @@ export default async function EstimatesPage({
   return (
     <div className="flex flex-col gap-3">
       <PageHeader
+        icon={Calculator}
         title="Estimates"
         count={failed ? undefined : { value: estimates.length, noun: 'estimate' }}
         titleAddon={
