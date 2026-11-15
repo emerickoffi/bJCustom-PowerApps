@@ -31,6 +31,8 @@ import { RECENT_HISTORY_LIMIT, presentEvent } from '@/lib/activity-history'
 import { fetchRecentHistory, getOrgTimeZone } from '@/lib/activity-history-server'
 import { ActivityHistoryCard } from '@/components/schedule/activity-history-card'
 import { getOrgFeatures } from '@/lib/features'
+import { loadResourceConflicts } from '@/lib/resource-conflicts-data'
+import { ResourceConflictsPanel } from '@/components/schedule/resource-conflicts-panel'
 import { loadProjectAssignments } from '@/lib/assignments-data'
 import { ProjectAssignmentsCard } from '@/components/schedule/project-assignments-card'
 import { SectionDisclosure } from '@/components/schedule/schedule-section-card'
@@ -122,6 +124,12 @@ export default async function SchedulePage({
     supabase.from('schedule_phases').select('id, name, sort_order').eq('project_id', id).order('sort_order').order('created_at'),
   ])
 
+  const resourceConflicts = await loadResourceConflicts(supabase, {
+    organizationId: session.organizationId,
+    includeSubcontractors: manager && features.subcontractors && features.schedule,
+    staffNames: Object.fromEntries(staff.map((s) => [s.user_id, s.full_name || s.email || 'Team member'])),
+    scope: { projectId: id },
+  })
   const activities = (activitiesRes.data ?? []) as ScheduleActivity[]
   const dependencies = (depsRes.data ?? []) as ScheduleDependency[]
   const phases = (phasesRes.data ?? []) as SchedulePhase[]
@@ -262,6 +270,8 @@ export default async function SchedulePage({
               </ul>
             </section>
           )}
+
+          <ResourceConflictsPanel load={resourceConflicts} scope="project" />
 
           <ScheduleWorkspace
             projectId={project.id}

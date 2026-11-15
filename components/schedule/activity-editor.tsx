@@ -31,6 +31,7 @@ import Link from 'next/link'
 import type { RelatedIssueLink } from '@/lib/schedule'
 import { formatDate } from '@/lib/format'
 import { ActivityAssignments } from '@/components/schedule/activity-assignments'
+import { AssignmentConflictWarning } from '@/components/schedule/assignment-conflict-warning'
 import type { ActivityAssignment, AssignmentAvailability, CompanyOption } from '@/lib/assignments'
 
 export type AssignmentProps = {
@@ -90,6 +91,7 @@ function ProgressForm({
     return result
   }, initialActionState)
   const v = state.values
+  const [assignee, setAssignee] = useState<string>(v?.assigned_to ?? activity.assigned_to ?? '')
   const [status, setStatus] = useState<ScheduleActivity['status']>(
     (v?.status as ScheduleActivity['status'] | undefined) ?? activity.status,
   )
@@ -159,13 +161,25 @@ function ProgressForm({
         />
       </div>
       {canManage ? (
-        <SelectField
-          name="assigned_to"
-          label="Assigned to"
-          placeholder="Unassigned"
-          defaultValue={v?.assigned_to ?? activity.assigned_to ?? ''}
-          options={staffOptions}
-        />
+        <div className="flex flex-col gap-2" onChange={(e) => {
+          const target: EventTarget = e.target
+          if (target instanceof HTMLSelectElement && target.name === 'assigned_to') setAssignee(target.value)
+        }}>
+          <SelectField
+            name="assigned_to"
+            label="Assigned to"
+            placeholder="Unassigned"
+            defaultValue={v?.assigned_to ?? activity.assigned_to ?? ''}
+            options={staffOptions}
+          />
+          <AssignmentConflictWarning
+            projectId={projectId}
+            activityId={activity.id}
+            activityVersion={activity.updated_at}
+            type="staff"
+            resourceId={assignee || null}
+          />
+        </div>
       ) : (
         <input type="hidden" name="assigned_to" value={activity.assigned_to ?? ''} />
       )}
@@ -462,6 +476,7 @@ export function ActivityEditor({
                     companies={assignments.companies}
                     acceptsNew={assignments.acceptsNew}
                     canCreateSubcontractor={canManage}
+                    activityVersion={activity.updated_at}
                   />
                 </section>
               )}

@@ -4,6 +4,9 @@ import { ArrowUp, CalendarDays as CalendarDaysIcon, CircleAlert } from 'lucide-r
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
 import { getStaffMembers } from '@/lib/queries'
+import { getOrgFeatures } from '@/lib/features'
+import { loadResourceConflicts } from '@/lib/resource-conflicts-data'
+import { ResourceConflictsPanel } from '@/components/schedule/resource-conflicts-panel'
 import { PageHeader, EmptyState, pageLayout } from '@/components/shared/page-header'
 import { ScheduleBody } from '@/components/schedule/schedule-selection'
 import type { BoardGroup } from '@/components/schedule/schedule-board'
@@ -166,6 +169,13 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
   const staffOptions = staff.map((s) => ({ value: s.user_id, label: s.full_name || s.email || 'Team member' }))
   const manager = canManage(session.role)
+  const features = await getOrgFeatures(session.organizationId)
+  const resourceConflicts = await loadResourceConflicts(supabase, {
+    organizationId: session.organizationId,
+    includeSubcontractors: manager && features.subcontractors && features.schedule,
+    staffNames: Object.fromEntries(staffOptions.map((s) => [s.value, s.label])),
+    scope: selected ? { projectId: selected.id } : undefined,
+  })
 
   const today = todayIso()
   const horizon = addDaysIso(today, UPCOMING_DAYS)
@@ -202,6 +212,8 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
                 </div>
               </div>
             ))}
+
+            <ResourceConflictsPanel load={resourceConflicts} scope={selected ? 'project' : 'all'} />
 
             {groups.length > 0 ? (
               <FilteredScheduleBoard

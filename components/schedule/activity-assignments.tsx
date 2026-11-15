@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { SubmitButton } from '@/components/shared/form-message'
 import { SelectField, TextAreaField } from '@/components/shared/form-field'
 import { InlineActionForm } from '@/components/shared/inline-action'
+import { AssignmentConflictWarning } from '@/components/schedule/assignment-conflict-warning'
 import {
   assignSubcontractorAction,
   reassignSubcontractorAction,
@@ -38,21 +39,35 @@ function QualificationNotes({ companies }: { companies: CompanyOption[] }) {
   )
 }
 
+type ConflictContext = { projectId: string; activityId: string; activityVersion: string; replacesAssignmentId?: string }
+
 function CompanyFields({
   companies,
   defaultCompany,
   defaultScope,
   onCreateNew,
   createTriggerRef,
+  conflictContext,
 }: {
   companies: CompanyOption[]
   defaultCompany?: string
   defaultScope?: string
   onCreateNew?: () => void
   createTriggerRef?: React.RefObject<HTMLButtonElement | null>
+  conflictContext?: ConflictContext
 }) {
+  const [picked, setPicked] = useState<{ base?: string; value: string } | null>(null)
+  // A new default (e.g. a just-created company) replaces any earlier pick.
+  const selected = picked && picked.base === defaultCompany ? picked.value : defaultCompany
   return (
     <>
+      <div
+        className="contents"
+        onChange={(e) => {
+          const target: EventTarget = e.target
+          if (target instanceof HTMLSelectElement && target.name === 'subcontractor_company_id') setPicked({ base: defaultCompany, value: target.value })
+        }}
+      >
       <SelectField
         // Remount only the select when a newly created company becomes the default; the scope text stays as typed.
         key={defaultCompany ?? 'none'}
@@ -81,6 +96,17 @@ function CompanyFields({
             : `${c.label} · ${c.trade}`,
         }))}
       />
+      </div>
+      {conflictContext && (
+        <AssignmentConflictWarning
+          projectId={conflictContext.projectId}
+          activityId={conflictContext.activityId}
+          activityVersion={conflictContext.activityVersion}
+          replacesAssignmentId={conflictContext.replacesAssignmentId}
+          type="subcontractor"
+          resourceId={selected}
+        />
+      )}
       <QualificationNotes companies={companies} />
       <TextAreaField
         name="scope_of_work"
@@ -100,11 +126,13 @@ function AssignmentRow({
   assignment,
   companies,
   canReassign,
+  activityVersion,
 }: {
   projectId: string
   assignment: ActivityAssignment
   companies: CompanyOption[]
   canReassign: boolean
+  activityVersion: string
 }) {
   const [mode, setMode] = useState<'view' | 'reassign' | 'revoke'>('view')
   const close = () => setMode('view')
@@ -141,7 +169,16 @@ function AssignmentRow({
           onSuccess={close}
           className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3"
         >
-          <CompanyFields companies={companies} defaultScope={assignment.scope_of_work} />
+          <CompanyFields
+            companies={companies}
+            defaultScope={assignment.scope_of_work}
+            conflictContext={{
+              projectId,
+              activityId: assignment.schedule_activity_id,
+              activityVersion,
+              replacesAssignmentId: assignment.id,
+            }}
+          />
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" onClick={close} className="min-w-0 shrink grow basis-36">
               Cancel
@@ -182,9 +219,12 @@ export function ActivityAssignments({
   companies,
   acceptsNew,
   canCreateSubcontractor = false,
+  activityVersion = '',
 }: {
   projectId: string
   activityId: string
+  /** The activity's updated_at; conflict warnings re-check when it changes (for example, new planned dates). */
+  activityVersion?: string
   availability: AssignmentAvailability
   assignments: ActivityAssignment[]
   companies: CompanyOption[]
@@ -248,7 +288,14 @@ export function ActivityAssignments({
       {assignments.length > 0 ? (
         <ul className="flex flex-col divide-y rounded-lg border">
           {assignments.map((a) => (
-            <AssignmentRow key={a.id} projectId={projectId} assignment={a} companies={companies} canReassign={acceptsNew} />
+            <AssignmentRow
+              key={a.id}
+              projectId={projectId}
+              assignment={a}
+              companies={companies}
+              canReassign={acceptsNew}
+              activityVersion={activityVersion}
+            />
           ))}
         </ul>
       ) : (
@@ -295,6 +342,7 @@ export function ActivityAssignments({
             defaultCompany={selectedNew}
             onCreateNew={openCreate}
             createTriggerRef={createTriggerRef}
+            conflictContext={{ projectId, activityId, activityVersion }}
           />
           <div className="flex gap-2">
             <Button
