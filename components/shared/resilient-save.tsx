@@ -74,8 +74,12 @@ export function useResilientSave(opts: {
   recordId?: string | null
   baseRevision?: string | null
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
+  /** Replaces the default navigation to the saved record, e.g. to close a drawer instead. */
+  onSaved?: (href: string) => void
 }) {
   const { kind, formType, projectId = null, recordId = null, baseRevision = null, action } = opts
+  const onSavedRef = useRef(opts.onSaved)
+  onSavedRef.current = opts.onSaved
   const identity = useDraftIdentity()
   const router = useRouter()
   const key = identity ? draftKey({ ...identity, formType, projectId, recordId }) : null
@@ -132,6 +136,14 @@ export function useResilientSave(opts: {
     },
     [kind, identity?.userId],
   )
+
+  // Record what the form opened with even before the signed-in identity resolves, so change checks work early.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (baselineRef.current === null) baselineRef.current = canonical(snapshot())
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [snapshot])
 
   // Look for unsent work from an earlier visit. Autosave stays paused until the user restores or discards it.
   useEffect(() => {
@@ -217,7 +229,8 @@ export function useResilientSave(opts: {
       setServer('saved')
       setDevice('clean')
       setNotice(null)
-      router.push(href)
+      if (onSavedRef.current) onSavedRef.current(href)
+      else router.push(href)
     },
     [key, router],
   )
@@ -346,6 +359,8 @@ export function useResilientSave(opts: {
     discard,
     /** Saves the current entries to the device now (e.g. before reloading the page). */
     flush: () => persist(),
+    /** True when the entries differ from what the form opened with. Checked on demand, not while typing. */
+    isDirty: () => baselineRef.current !== null && canonical(snapshot()) !== baselineRef.current,
   }
 }
 
