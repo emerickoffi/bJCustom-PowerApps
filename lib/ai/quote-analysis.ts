@@ -108,6 +108,17 @@ export function outdatedReasons(saved: InputSnapshot, current: InputSnapshot | n
   return reasons
 }
 
+/**
+ * Validity is a date on an unchanged revision, so the snapshot cannot see it lapse. A quote that was
+ * still valid when analyzed but has expired since makes the stored analysis outdated.
+ */
+export function expiredSinceAnalysis(analyzedAt: string, quotes: { company: string; valid_until: string | null }[], today: string): string[] {
+  const analyzedDay = analyzedAt.slice(0, 10)
+  return quotes.flatMap((q) =>
+    q.valid_until && q.valid_until < today && q.valid_until >= analyzedDay ? [`${q.company}: quote expired on ${q.valid_until}, after this analysis.`] : [],
+  )
+}
+
 const clip = (s: string, n = FIELD_TEXT_LIMIT) => (s.length > n ? `${s.slice(0, n)}… [truncated]` : s)
 const quoteKey = (i: number) => `Q${i + 1}`
 

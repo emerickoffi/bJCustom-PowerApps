@@ -7,7 +7,7 @@ import { requireManager } from '@/lib/session'
 import { getOrgFeatures, requireFeature } from '@/lib/features'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import { qualificationSnapshot } from '@/lib/subcontract-quote-analysis-data'
-import { analysisResultSchema, outdatedReasons, type AiReviewState, type InputSnapshot } from '@/lib/ai/quote-analysis'
+import { analysisResultSchema, expiredSinceAnalysis, outdatedReasons, type AiReviewState, type InputSnapshot } from '@/lib/ai/quote-analysis'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { PageHeader, Surface, pageLayout } from '@/components/shared/page-header'
@@ -296,7 +296,17 @@ export default async function QuoteRequestPage({ params }: { params: Promise<{ i
       : null
     saved = {
       analysis: { id: savedRow.id, createdAt: savedRow.created_at, invitationIds: savedRow.invitation_ids, result: savedResult.data },
-      outdated: outdatedReasons(savedRow.input_snapshot, currentSnapshot),
+      outdated: [
+        ...outdatedReasons(savedRow.input_snapshot, currentSnapshot),
+        ...expiredSinceAnalysis(
+          savedRow.created_at,
+          savedRow.invitation_ids.flatMap((invId) => {
+            const latest = revisions.find((r) => r.invitation_id === invId)
+            return latest ? [{ company: companyName.get(invId) ?? 'Company', valid_until: latest.valid_until }] : []
+          }),
+          today,
+        ),
+      ],
     }
   }
   const revisionOpen = request.status === 'open' || request.status === 'closed'
