@@ -296,7 +296,17 @@ export default async function SchedulePage({
             }
           />
 
-          <div className="grid items-start gap-4 lg:grid-cols-2">
+          {/* Two independent stacks so a short card never stretches to match a tall neighbour. */}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          <div className="flex min-w-0 flex-col gap-4 lg:flex-1">
+            <ActivityHistoryCard
+              events={recentHistory.events.map((e) => presentEvent(e, nameFor, timeZone))}
+              failed={recentHistory.failed}
+              project={{ id: project.id, name: project.name, project_number: project.project_number }}
+              actorOptions={staffOptions}
+              canExport={manager}
+            />
+
             {assignmentData.availability !== 'off' && (
               <ProjectAssignmentsCard
                 availability={assignmentData.availability}
@@ -304,17 +314,9 @@ export default async function SchedulePage({
                 activities={activities}
               />
             )}
+          </div>
 
-            <div className="min-w-0">
-              <ActivityHistoryCard
-                events={recentHistory.events.map((e) => presentEvent(e, nameFor, timeZone))}
-                failed={recentHistory.failed}
-                project={{ id: project.id, name: project.name, project_number: project.project_number }}
-                actorOptions={staffOptions}
-                canExport={manager}
-              />
-            </div>
-
+          <div className="flex min-w-0 flex-col gap-4 lg:flex-1">
             {manager && (
               <OptionalActivitiesPanel
                 projectId={project.id}
@@ -341,6 +343,7 @@ export default async function SchedulePage({
               ) : (
                 <SectionDisclosure
                   expandLabel={manager ? 'Manage' : 'View all'}
+                  preferenceKey="baselines"
                   summary={
                     latest ? (
                       <>
@@ -354,7 +357,7 @@ export default async function SchedulePage({
                 >
                   <div className="flex flex-col gap-4">
                     {baselines.length > 0 && (
-                      <ul className="flex flex-col divide-y rounded-lg border">
+                      <ul className="flex flex-col divide-y rounded-md border">
                         {baselines.map((b) => (
                           <li key={b.id} className="flex flex-col gap-0.5 p-3">
                             <span className="text-sm font-medium text-foreground">{`v${b.version} · ${b.name}`}</span>
@@ -371,6 +374,7 @@ export default async function SchedulePage({
                 </SectionDisclosure>
               )}
             </section>
+          </div>
           </div>
         </>
       )}

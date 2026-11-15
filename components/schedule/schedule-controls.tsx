@@ -38,6 +38,7 @@ export function OptionalActivitiesPanel({ projectId, includedKeys }: { projectId
       />
       <SectionDisclosure
         expandLabel="Manage"
+        preferenceKey="optional-activities"
         summary={
           <>
             <span className="font-medium tabular-nums text-brand-deep">{`${includedNames.length} of ${OPTIONAL_ACTIVITIES.length} included`}</span>

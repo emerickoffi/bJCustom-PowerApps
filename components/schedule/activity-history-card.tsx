@@ -3,6 +3,9 @@ import type { PresentedEvent } from '@/lib/activity-history'
 import { CompactHistoryItem } from '@/components/schedule/activity-history-item'
 import { ActivityHistoryDrawer } from '@/components/schedule/activity-history-drawer'
 
+// The card is a glance; the full, filterable record lives behind View Full History.
+const COMPACT_HISTORY_COUNT = 3
+
 export function ActivityHistoryCard({
   events,
   failed,
@@ -44,7 +47,7 @@ export function ActivityHistoryCard({
         </div>
       ) : (
         <ol className="flex flex-col divide-y divide-border">
-          {events.map((e) => (
+          {events.slice(0, COMPACT_HISTORY_COUNT).map((e) => (
             <CompactHistoryItem key={e.id} event={e} />
           ))}
         </ol>
