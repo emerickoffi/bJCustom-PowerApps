@@ -35,7 +35,7 @@ export const NAV_GROUPS: { key: NavGroup; label: string }[] = [
 export const PRIMARY_NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard', group: 'workspace' },
   { href: '/projects', label: 'Projects', icon: 'projects', group: 'workspace' },
-  { href: '/clients', label: 'Clients', icon: 'clients', group: 'people' },
+  { href: '/clients', label: 'Clients', icon: 'clients', group: 'workspace' },
   { href: '/contacts', label: 'Contacts', icon: 'contacts', roles: ['org_admin', 'project_manager'], group: 'people' },
   { href: '/subcontractors', label: 'Subcontractors', icon: 'subcontractors', roles: ['org_admin', 'project_manager'], feature: 'subcontractors', group: 'people' },
   { href: '/schedule', label: 'Schedule', icon: 'schedule', feature: 'schedule', group: 'workspace' },
@@ -77,7 +77,7 @@ export const GRADUATED_MODULE_ROUTES: Record<string, string> = {
 
 export const MY_WORK_NAV: NavItem = { href: '/my-work', label: 'My Work', icon: 'my-work', roles: ['project_manager'], group: 'workspace' }
 
-const PROJECT_MANAGER_PRIORITY = ['/my-work', '/projects', '/schedule', '/documents']
+const PROJECT_MANAGER_PRIORITY = ['/my-work', '/projects', '/clients', '/schedule', '/documents']
 
 function priorityRank(href: string): number {
   const rank = PROJECT_MANAGER_PRIORITY.indexOf(href)
