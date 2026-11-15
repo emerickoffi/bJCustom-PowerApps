@@ -1,8 +1,7 @@
-import Link from 'next/link'
-import { RotateCcw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/shared/form-field'
 import { SearchInput } from '@/components/shared/search-input'
+import { AutoApplyForm } from '@/components/shared/auto-apply-form'
+import { SUBCONTRACTOR_PREVIEW_PARAM } from '@/lib/subcontractor-preview'
 import {
   QUALIFICATION_FILTERS,
   QUALIFICATION_FILTER_LABELS,
@@ -32,7 +31,7 @@ function LabeledSelect({
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
-      <NativeSelect id={id} name={id} defaultValue={defaultValue} className="bg-card">
+      <NativeSelect key={defaultValue} id={id} name={id} defaultValue={defaultValue} className="h-9 w-full bg-card pointer-coarse:h-11">
         {children}
       </NativeSelect>
     </div>
@@ -59,22 +58,25 @@ export function DirectoryToolbar({
 }) {
   const filtered = Boolean(defaultQuery || defaultStatus || qualification?.active || (qualification && qualification.sort !== 'name'))
   return (
-    <form
-      role="search"
-      aria-label="Filter subcontractors"
-      className="flex flex-col gap-2 rounded-xl border border-border/70 bg-card p-2 shadow-xs md:flex-row md:flex-wrap md:items-center"
+    <AutoApplyForm
+      clearHref={filtered ? '/subcontractors' : undefined}
+      carryParams={[SUBCONTRACTOR_PREVIEW_PARAM]}
+      className="flex min-w-0 flex-wrap items-center gap-2 [&>button]:h-9 pointer-coarse:[&>button]:h-11"
     >
       <SearchInput
-        key={defaultQuery}
+        // Auto-apply updates the URL while typing; remounting on each change would drop focus.
+        key="search"
         id="q"
         label="Search subcontractors"
         defaultValue={defaultQuery}
         placeholder="Search company, trade, email, or phone"
-        className="md:min-w-64 md:flex-1"
+        syncUrl={false}
+        className="w-full sm:w-auto sm:min-w-56 sm:max-w-80 sm:flex-1"
+        inputClassName="h-9 pointer-coarse:h-11"
       />
-      <div className="grid grid-cols-2 gap-2 md:flex md:items-center">
+      <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
         {qualification && (
-          <LabeledSelect id="qualification" label="Qualification" defaultValue={qualification.active ?? ''} className="md:w-52">
+          <LabeledSelect id="qualification" label="Qualification" defaultValue={qualification.active ?? ''} className="sm:w-48">
             <option value="">{`Qualification: All (${qualification.total})`}</option>
             {QUALIFICATION_FILTERS.map((f) => (
               <option key={f} value={f}>
@@ -83,7 +85,7 @@ export function DirectoryToolbar({
             ))}
           </LabeledSelect>
         )}
-        <LabeledSelect id="status" label="Operational status" defaultValue={defaultStatus} className="md:w-40">
+        <LabeledSelect id="status" label="Operational status" defaultValue={defaultStatus} className="sm:w-36">
           <option value="">All statuses</option>
           {statusOptions.map((o) => (
             <option key={o.value} value={o.value}>
@@ -92,7 +94,7 @@ export function DirectoryToolbar({
           ))}
         </LabeledSelect>
         {qualification && (
-          <LabeledSelect id="sort" label="Sort by" defaultValue={qualification.sort} className="col-span-2 md:w-52">
+          <LabeledSelect id="sort" label="Sort by" defaultValue={qualification.sort} className="col-span-2 sm:w-48">
             {QUALIFICATION_SORTS.map((s) => (
               <option key={s} value={s}>
                 {`Sort: ${QUALIFICATION_SORT_LABELS[s]}`}
@@ -101,23 +103,6 @@ export function DirectoryToolbar({
           </LabeledSelect>
         )}
       </div>
-      <div className="flex gap-2">
-        <Button type="submit" variant="outline" size="lg" className="h-10 flex-1 md:flex-none">
-          Apply
-        </Button>
-        {filtered && (
-          <Button
-            variant="ghost"
-            size="lg"
-            className="h-10 flex-1 md:flex-none"
-            render={<Link href="/subcontractors" />}
-            nativeButton={false}
-          >
-            <RotateCcw data-icon="inline-start" />
-            Reset
-          </Button>
-        )}
-      </div>
-    </form>
+    </AutoApplyForm>
   )
 }
