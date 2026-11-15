@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { AlertTriangle, ClipboardList, Plus } from 'lucide-react'
+import { AlertTriangle, ArrowRight, ClipboardList, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/session'
 import { requireFeature } from '@/lib/features'
@@ -22,8 +22,15 @@ import { DirectoryPagination } from '@/components/shared/directory-pagination'
 import { SearchInput } from '@/components/shared/search-input'
 import { DailyLogStatusBadge } from '@/components/daily-logs/daily-log-report'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { DailyLogPreviewLayout } from '@/components/daily-logs/daily-log-preview'
+import { RecordPreviewSurface, RecordPreviewTrigger } from '@/components/shared/record-preview'
+import { PREVIEW_SELECTED_ROW_CLASS } from '@/lib/record-preview'
+import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Daily logs' }
+
+// With the preview column open, the secondary column steps aside as the list narrows; the preview carries it instead.
+const HIDE_WITH_PREVIEW = 'xl:group-data-preview-open/preview:@max-[56rem]:hidden'
 
 type Row = {
   id: string
@@ -163,6 +170,15 @@ export default async function DailyLogsDirectoryPage({
           }
         />
       ) : (
+        <DailyLogPreviewLayout
+          logs={rows.map((r) => ({
+            id: r.id,
+            name: formatDate(r.log_date),
+            status: r.status as DailyLogStatus,
+            projectName: projectById.get(r.project_id)?.name ?? 'Project',
+            href: dailyLogPath(r.project_id, r.id),
+          }))}
+        >
         <Surface className="p-0 md:p-0">
           <div
             className="hidden gap-6 border-b border-border/70 px-5 py-3 text-xs font-medium text-muted-foreground md:flex"
@@ -170,20 +186,31 @@ export default async function DailyLogsDirectoryPage({
           >
             <span className="w-32 shrink-0">Log date</span>
             <span className="min-w-0 flex-1">Project</span>
-            <span className="w-40 shrink-0">Created by</span>
+            <span className={cn('w-40 shrink-0', HIDE_WITH_PREVIEW)}>Created by</span>
             <span className="w-32 shrink-0 text-right">Status</span>
+            <span className="w-20 shrink-0" />
           </div>
           <ul className="divide-y divide-border/70">
             {rows.map((r) => {
               const project = projectById.get(r.project_id)
               const creatorId = r.created_by ?? r.author_id
               return (
-                <li key={r.id}>
-                  <Link
-                    href={dailyLogPath(r.project_id, r.id)}
-                    className="flex flex-col gap-1.5 px-5 py-4 hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none md:flex-row md:items-center md:gap-6"
-                  >
-                    <span className="w-32 shrink-0 font-medium text-foreground">{formatDate(r.log_date)}</span>
+                <RecordPreviewSurface
+                  as="li"
+                  key={r.id}
+                  recordId={r.id}
+                  className={cn(
+                    'flex flex-col gap-1.5 px-5 py-4 transition-colors hover:bg-link-soft/60 has-[:focus-visible]:bg-link-soft/60 md:flex-row md:items-center md:gap-6',
+                    PREVIEW_SELECTED_ROW_CLASS,
+                  )}
+                >
+                    <span className="w-32 shrink-0">
+                      <RecordPreviewTrigger
+                        recordId={r.id}
+                        name={formatDate(r.log_date)}
+                        className="font-medium text-link hover:text-link-hover hover:underline pointer-coarse:min-h-11"
+                      />
+                    </span>
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-sm font-medium text-foreground">
                         {project?.name ?? 'Project'}
@@ -191,7 +218,7 @@ export default async function DailyLogsDirectoryPage({
                       </span>
                       <span className="truncate text-sm text-muted-foreground">{r.work_performed || 'No work recorded yet'}</span>
                     </span>
-                    <span className="w-40 shrink-0 truncate text-sm text-muted-foreground">
+                    <span className={cn('w-40 shrink-0 truncate text-sm text-muted-foreground', HIDE_WITH_PREVIEW)}>
                       <span className="md:sr-only">Created by </span>
                       {(creatorId && names[creatorId]) || 'Team member'}
                     </span>
@@ -204,12 +231,22 @@ export default async function DailyLogsDirectoryPage({
                       )}
                       <DailyLogStatusBadge status={r.status as DailyLogStatus} />
                     </span>
-                  </Link>
-                </li>
+                    <span className="flex w-20 shrink-0 md:justify-end">
+                      <Link
+                        href={dailyLogPath(r.project_id, r.id)}
+                        className={buttonVariants({ variant: 'view', size: 'sm', className: 'h-9 pointer-coarse:h-11' })}
+                      >
+                        Open
+                        <span className="sr-only">{` daily log for ${formatDate(r.log_date)}`}</span>
+                        <ArrowRight className="size-3.5" aria-hidden="true" />
+                      </Link>
+                    </span>
+                </RecordPreviewSurface>
               )
             })}
           </ul>
         </Surface>
+        </DailyLogPreviewLayout>
       )}
 
       <DirectoryPagination
