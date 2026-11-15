@@ -47,6 +47,10 @@ import {
   placementEnd,
   placementStart,
   spanLabel,
+  ganttTone,
+  GANTT_TONES,
+  GANTT_MILESTONE_COLOR,
+  type GanttTone,
   type GanttFilters,
   type Placement,
   type Zoom,
@@ -58,6 +62,7 @@ const UNSCHEDULED_PREVIEW = 5
 const NAME_MIN = 160
 const NAME_MAX = 480
 const ZOOM_LABELS: Record<Zoom, string> = { day: 'Day', week: 'Week', month: 'Month' }
+const LEGEND_TONES: GanttTone[] = ['planned', 'in_progress', 'completed', 'late', 'on_hold']
 
 type Placed = Exclude<Placement, { kind: 'incomplete' }>
 
@@ -390,7 +395,6 @@ export function ScheduleGantt({
 
   const filtered = hasActiveFilters(filters)
   const allKeys = phaseKeys
-  const legendPhases = rows.filter((r): r is Extract<Row, { type: 'phase' }> => r.type === 'phase')
   const weekendShade = zoom !== 'month'
   const satOffset = firstSaturdayOffset(range.start)
   const peekRow = peek ? rowIndex.get(peek.id) : undefined
@@ -682,7 +686,7 @@ export function ScheduleGantt({
                       </span>
                     ))}
                     <span
-                      className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-badge bg-interactive px-1.5 py-px text-[10px] font-semibold text-white"
+                      className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-badge bg-[#17212B] px-1.5 py-px text-[10px] font-semibold text-white"
                       style={{ left: x(todayDay) + px / 2 }}
                     >
                       Today
@@ -709,7 +713,7 @@ export function ScheduleGantt({
                     {ticks.major.map((t) => (
                       <span key={`M${t.day}`} className="absolute inset-y-0 w-px bg-[#D6DDE5]" style={{ left: x(t.day) }} />
                     ))}
-                    <span className="absolute inset-y-0 w-0.5 bg-interactive/80" style={{ left: x(todayDay) + px / 2 - 1 }} />
+                    <span className="absolute inset-y-0 z-[3] w-0.5 bg-[#17212B]/80" style={{ left: x(todayDay) + px / 2 - 1 }} />
                   </div>
 
                   <svg aria-hidden="true" className="pointer-events-none absolute inset-0 z-[1] overflow-visible" width={chartW} height={bodyH}>
@@ -753,11 +757,11 @@ export function ScheduleGantt({
                         {row.span && (
                           <div
                             aria-hidden="true"
-                            className="absolute top-1/2 h-2 -translate-y-1/2 rounded-sm"
-                            style={{ left: x(row.span.start), width: Math.max(6, (row.span.end - row.span.start + 1) * px), backgroundColor: row.style.accent }}
+                            className="absolute top-1/2 h-2 -translate-y-1/2 rounded-sm bg-[#526173]"
+                            style={{ left: x(row.span.start), width: Math.max(6, (row.span.end - row.span.start + 1) * px) }}
                           >
-                            <span className="absolute left-0 top-full h-1.5 w-1 rounded-b-sm" style={{ backgroundColor: row.style.accent }} />
-                            <span className="absolute right-0 top-full h-1.5 w-1 rounded-b-sm" style={{ backgroundColor: row.style.accent }} />
+                            <span className="absolute left-0 top-full h-1.5 w-1 rounded-b-sm bg-[#526173]" />
+                            <span className="absolute right-0 top-full h-1.5 w-1 rounded-b-sm bg-[#526173]" />
                           </div>
                         )}
                       </div>
@@ -819,16 +823,19 @@ export function ScheduleGantt({
           </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-[#D6DDE5] bg-[#F7F9FB] px-4 py-2 text-xs text-[#526173]">
-            {legendPhases.map((p) => (
-              <span key={p.key} className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full" style={{ backgroundColor: p.style.accent }} />
-                {p.phase}
-              </span>
+            {LEGEND_TONES.map((t) => (
+              <LegendItem
+                key={t}
+                swatch={<span className="h-2.5 w-5 rounded-[3px]" style={{ backgroundColor: GANTT_TONES[t].color }} />}
+                label={GANTT_TONES[t].label}
+              />
             ))}
+            <LegendItem
+              swatch={<span className="size-2.5 rotate-45 rounded-[1px] border-2 bg-white" style={{ borderColor: GANTT_MILESTONE_COLOR }} />}
+              label="Milestone"
+            />
             <span className="hidden h-3 w-px bg-[#D6DDE5] sm:block" aria-hidden="true" />
-            <LegendItem swatch={<span className="size-2.5 rotate-45 rounded-[1px] border-2 border-[#526173] bg-white" />} label="Milestone" />
-            <LegendItem swatch={<span className="h-3 w-0.5 bg-interactive" />} label="Today" />
-            <LegendItem swatch={<span className="h-2.5 w-5 rounded-sm ring-2 ring-destructive" />} label="Past due" />
+            <LegendItem swatch={<span className="h-3 w-0.5 bg-[#17212B]" />} label="Today" />
             <details className="group relative">
               <summary className="flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-md px-1.5 font-medium text-interactive-strong hover:bg-interactive-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-interactive [&::-webkit-details-marker]:hidden">
                 Legend
@@ -1101,9 +1108,11 @@ function BarRow({
 }) {
   const a = row.activity
   const p = row.placement
-  const overdue = isOverdue(a, today)
-  const accent = row.style.accent
-  const pct = a.status === 'completed' ? 100 : Math.max(0, Math.min(100, Number(a.percent_complete)))
+  const tone = ganttTone(a, today)
+  const color = GANTT_TONES[tone].color
+  const pct = Math.max(0, Math.min(100, Number(a.percent_complete)))
+  const showFill = tone !== 'completed' && tone !== 'skipped' && pct > 0
+  const milestoneColor = tone === 'late' || tone === 'on_hold' ? color : GANTT_MILESTONE_COLOR
   const start = p.kind === 'bar' ? x(p.start) : x(p.day) + px / 2 - 7
   const width = p.kind === 'bar' ? Math.max(6, (p.end - p.start + 1) * px) : 14
   const common = {
@@ -1139,24 +1148,27 @@ function BarRow({
           {...common}
           className={cn(
             'absolute top-1/2 z-[2] size-3.5 -translate-y-1/2 rotate-45 rounded-[2px] border-2 focus-visible:outline-none',
-            overdue && 'ring-2 ring-destructive ring-offset-1',
-            !overdue && selected && 'ring-2 ring-interactive ring-offset-2',
+            selected && 'ring-2 ring-[#17212B] ring-offset-2',
           )}
-          style={{ left: start, borderColor: accent, backgroundColor: a.status === 'completed' ? accent : '#FFFFFF' }}
+          style={{ left: start, borderColor: milestoneColor, backgroundColor: tone === 'completed' ? milestoneColor : '#FFFFFF' }}
         />
       ) : (
         <button
           {...common}
           className={cn(
-            'absolute top-1/2 z-[2] h-5 -translate-y-1/2 overflow-hidden rounded-[5px] border focus-visible:outline-none',
-            a.status === 'skipped' && 'opacity-50',
-            overdue && 'ring-2 ring-destructive ring-offset-1',
-            !overdue && selected && 'ring-2 ring-interactive ring-offset-2',
+            'absolute top-1/2 z-[2] h-5 -translate-y-1/2 overflow-hidden rounded-[4px] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.12)] focus-visible:outline-none',
+            tone === 'skipped' && 'opacity-60',
+            selected && 'ring-2 ring-[#17212B] ring-offset-2',
             conflict && 'outline-2 outline-offset-2 outline-dashed outline-warning',
           )}
-          style={{ left: start, width, borderColor: accent, backgroundColor: row.style.background }}
+          style={{ left: start, width, backgroundColor: color }}
         >
-          <span className="block h-full" style={{ width: `${pct}%`, backgroundColor: accent }} />
+          {showFill && (
+            <span
+              className="block h-full"
+              style={{ width: `${pct}%`, backgroundColor: `color-mix(in srgb, ${color} 65%, #000)` }}
+            />
+          )}
         </button>
       )}
     </div>
