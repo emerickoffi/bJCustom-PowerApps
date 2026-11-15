@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { AlertTriangle, ClipboardList, Plus } from 'lucide-react'
+import { AlertTriangle, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/format'
 import { requireDailyLogProject } from '@/lib/daily-logs-data'
@@ -17,6 +17,7 @@ import { EmptyState, PageHeader, Surface } from '@/components/shared/page-header
 import { DirectoryPagination } from '@/components/shared/directory-pagination'
 import { DailyLogStatusBadge } from '@/components/daily-logs/daily-log-report'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { NewDailyLogDrawer } from '@/components/daily-logs/new-daily-log-drawer'
 import { Input } from '@/components/ui/input'
 
 export const metadata: Metadata = { title: 'Daily logs' }
@@ -58,10 +59,7 @@ export default async function DailyLogsPage({
         icon={ClipboardList}
         actions={
           !project.archived_at && (
-            <Link href={`${base}/new`} className={buttonVariants()}>
-              <Plus className="size-4" aria-hidden="true" />
-              New daily log
-            </Link>
+            <NewDailyLogDrawer projectId={project.id} projectName={project.name} />
           )
         }
       />

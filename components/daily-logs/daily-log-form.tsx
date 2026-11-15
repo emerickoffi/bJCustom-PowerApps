@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { hasStagedPhotos } from '@/lib/daily-log-pending-photos'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { AlertTriangle, CalendarDays, Camera, ChevronDown, CloudSun, HardHat, Link2, ListChecks, Plus, Trash2, Truck, type LucideIcon } from 'lucide-react'
 import { saveDailyLogAction } from '@/app/actions/daily-logs'
-import { DAILY_LOG_ACTIVITY_LIMIT, DAILY_LOG_CREW_LIMIT, dailyLogPath } from '@/lib/daily-logs'
+import { DAILY_LOG_ACTIVITY_LIMIT, DAILY_LOG_CREW_LIMIT, dailyLogPath, dailyLogsPath } from '@/lib/daily-logs'
 import type { ScheduleActivityOption } from '@/lib/daily-logs-data'
 import { ScheduleActivityPicker } from '@/components/daily-logs/schedule-activity-picker'
 import { SaveBanners, SaveStatus, useResilientSave, type ResilientSave } from '@/components/shared/resilient-save'
@@ -59,13 +61,48 @@ const MATERIAL_FIELDS = ['materials_delivered', 'equipment_used', 'delivery_note
 
 const blankCrew = { trade: '', crew_size: '', hours_worked: '', notes: '', subcontractor_company_id: '' }
 
+/** Lets a drawer host check for unsaved entries on close and clear this device's copy on discard. */
+export type DailyLogFormControl = { isDirty: () => boolean; isSaving: () => boolean; discard: () => Promise<void> }
+
+export type DailyLogFormDrawer = {
+  onCancel: () => void
+  onSaved: (href: string) => void
+  controlRef: React.RefObject<DailyLogFormControl | null>
+}
+
 type FormProps = {
   projectId: string
   defaults: DailyLogFormDefaults
   activities: ActivityOption[]
   companies?: CompanyOption[]
   maxDate: string
-  cancelHref: string
+  /** Page layout only; the drawer layout cancels through `drawer.onCancel`. */
+  cancelHref?: string
+  /** Renders the same form for a right-side drawer: flat sections, scrolling body and a pinned footer. */
+  drawer?: DailyLogFormDrawer
+}
+
+export function blankDailyLogDefaults(today: string): DailyLogFormDefaults {
+  return {
+    log_date: today,
+    temperature_f: '',
+    crews: [],
+    activityIds: [],
+    weather_conditions: '',
+    weather_impact: '',
+    site_conditions: '',
+    work_performed: '',
+    progress_notes: '',
+    work_planned_next: '',
+    materials_delivered: '',
+    equipment_used: '',
+    delivery_notes: '',
+    delay_description: '',
+    delay_reason: '',
+    delay_impact: '',
+    corrective_actions: '',
+    safety_observations: '',
+  }
 }
 
 const SCALAR_FIELDS = [
@@ -114,17 +151,29 @@ export function DailyLogForm(props: FormProps) {
     recordId: props.defaults.id ?? null,
     baseRevision: props.defaults.version ? String(props.defaults.version) : null,
     action: saveDailyLogAction,
+    onSaved: props.drawer?.onSaved,
   })
   const defaults = save.restored ? defaultsFromEntries(props.defaults, save.restored.entries) : props.defaults
+  const controlRef = props.drawer?.controlRef
+  const { projectId } = props
+  useEffect(() => {
+    if (!controlRef) return
+    controlRef.current = {
+      isDirty: () => save.isDirty() || hasStagedPhotos(projectId),
+      isSaving: () => save.pending,
+      discard: save.discard,
+    }
+  })
   return (
-    <div className="flex flex-col gap-4">
+    <div className={props.drawer ? 'flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 pt-4 sm:px-6' : 'flex flex-col gap-4'}>
       <SaveBanners save={save} latestHref={props.defaults.id ? dailyLogPath(props.projectId, props.defaults.id) : undefined} />
       <DailyLogFormBody key={save.restoreKey} {...props} defaults={defaults} save={save} />
     </div>
   )
 }
 
-function DailyLogFormBody({ projectId, defaults, activities, companies = [], maxDate, cancelHref, save }: FormProps & { save: ResilientSave }) {
+function DailyLogFormBody({ projectId, defaults, activities, companies = [], maxDate, cancelHref, drawer, save }: FormProps & { save: ResilientSave }) {
+  const flat = Boolean(drawer)
   const showCompany = companies.length > 0 || defaults.crews.some((c) => c.subcontractor_company_id)
   const { state, formAction: action, pending, formRef } = save
   const [crews, setCrews] = useState<CrewRow[]>(() => (defaults.crews.length ? defaults.crews : [blankCrew]).map((c, i) => ({ ...c, key: i })))
@@ -143,12 +192,12 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
   const [logDate, setLogDate] = useState(() => val('log_date'))
 
   return (
-    <form ref={formRef} action={action} className="flex flex-col gap-6">
+    <form ref={formRef} action={action} className={flat ? 'flex flex-col' : 'flex flex-col gap-6'}>
       <input type="hidden" name="project_id" value={projectId} />
       {defaults.id && <input type="hidden" name="id" value={defaults.id} />}
       {defaults.version && <input type="hidden" name="version" value={defaults.version} />}
 
-      <FormSection title="Daily overview" icon={CloudSun} description="Date and the weather you observed on site. Weather is saved as entered and never looked up automatically.">
+      <FormSection flat={flat} title="Daily overview" icon={CloudSun} description="Date and the weather you observed on site. Weather is saved as entered and never looked up automatically.">
         <TextField
           name="log_date"
           label="Log date"
@@ -172,26 +221,29 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
         <TextAreaField name="site_conditions" label="Site conditions" defaultValue={val('site_conditions')} error={fe.site_conditions} className="sm:col-span-2" maxLength={2000} rows={1} inputClassName={COMPACT_TEXTAREA} />
       </FormSection>
 
-      <FormSection title="Work completed" icon={ListChecks} description="What happened today and what is planned next.">
+      <FormSection flat={flat} title="Work completed" icon={ListChecks} description="What happened today and what is planned next.">
         <TextAreaField name="work_performed" label="Work performed" defaultValue={val('work_performed')} error={fe.work_performed} className="sm:col-span-2" maxLength={8000} rows={3} inputClassName="min-h-24" />
         <TextAreaField name="progress_notes" label="Progress notes" defaultValue={val('progress_notes')} error={fe.progress_notes} maxLength={4000} rows={2} inputClassName={COMPACT_TEXTAREA} />
         <TextAreaField name="work_planned_next" label="Planned next work" defaultValue={val('work_planned_next')} error={fe.work_planned_next} maxLength={4000} rows={2} inputClassName={COMPACT_TEXTAREA} />
       </FormSection>
 
-      <FormSection title="Crew & subcontractors" icon={HardHat} description="Trades and crew counts observed today. This is a site record, not a timesheet or payroll entry.">
+      <FormSection flat={flat} title="Crew & subcontractors" icon={HardHat} description="Trades and crew counts observed today. This is a site record, not a timesheet or payroll entry.">
         <div className="flex flex-col gap-3 sm:col-span-2">
           {crews.map((row, i) => (
             <fieldset
               key={row.key}
               className={
-                showCompany
-                  ? 'grid gap-3 rounded-lg border border-border/70 bg-background p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_6rem_6rem_minmax(0,2fr)_auto] sm:items-end'
-                  : 'grid gap-3 rounded-lg border border-border/70 bg-background p-3 sm:grid-cols-[minmax(0,2fr)_6rem_6rem_minmax(0,2fr)_auto] sm:items-end'
+                flat
+                  ? 'grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] items-end gap-3 rounded-lg border border-border/70 bg-background p-3'
+                  : showCompany
+                    ? 'grid gap-3 rounded-lg border border-border/70 bg-background p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_6rem_6rem_minmax(0,2fr)_auto] sm:items-end'
+                    : 'grid gap-3 rounded-lg border border-border/70 bg-background p-3 sm:grid-cols-[minmax(0,2fr)_6rem_6rem_minmax(0,2fr)_auto] sm:items-end'
               }
             >
               <legend className="sr-only">Crew entry {i + 1}</legend>
               {showCompany ? (
                 <CompanySelect
+                  className={flat ? 'col-span-3' : undefined}
                   value={row.subcontractor_company_id}
                   companies={companies}
                   savedName={row.company_name}
@@ -208,7 +260,7 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
               <CrewInput label="Trade or crew" name="crew_trade" value={row.trade} onChange={(x) => updateCrew(row.key, 'trade', x)} maxLength={120} placeholder="Framing" />
               <CrewInput label="Crew size" name="crew_size" value={row.crew_size} onChange={(x) => updateCrew(row.key, 'crew_size', x)} inputMode="numeric" />
               <CrewInput label="Hours" name="crew_hours" value={row.hours_worked} onChange={(x) => updateCrew(row.key, 'hours_worked', x)} inputMode="decimal" />
-              <CrewInput label="Notes" name="crew_notes" value={row.notes} onChange={(x) => updateCrew(row.key, 'notes', x)} maxLength={1000} />
+              <CrewInput label="Notes" name="crew_notes" value={row.notes} onChange={(x) => updateCrew(row.key, 'notes', x)} maxLength={1000} wrapperClassName={flat ? 'col-span-2' : undefined} />
               <Button
                 type="button"
                 variant="ghost"
@@ -235,7 +287,7 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
         </div>
       </FormSection>
 
-      <FormSection title="Related schedule activities" icon={Link2} description="Link today's work to activities in your project schedule.">
+      <FormSection flat={flat} title="Related schedule activities" icon={Link2} description="Link today's work to activities in your project schedule.">
         <ScheduleActivityPicker
           activities={activities}
           selected={selected}
@@ -247,6 +299,7 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
       </FormSection>
 
       <FormSection
+        flat={flat}
         title="Site photos"
         icon={Camera}
         description={
@@ -263,7 +316,7 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
         />
       </FormSection>
 
-      <section aria-labelledby="additional-details-heading" className="flex flex-col gap-3">
+      <section aria-labelledby="additional-details-heading" className={cn('flex flex-col gap-3', flat && 'py-5')}>
         <h2 id="additional-details-heading" className="px-1 text-sm font-semibold text-foreground">
           Additional details
         </h2>
@@ -293,24 +346,43 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
         </CollapsibleSection>
       </section>
 
-      <FormActions
-        message={
-          <div className="flex flex-col gap-2">
-            <SaveStatus save={save} />
-            <FormMessage state={state} />
+      {drawer ? (
+        <div className="sticky bottom-0 z-20 -mx-5 mt-auto flex flex-col gap-2 border-t border-border/70 bg-popover/95 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:-mx-6 sm:px-6">
+          <SaveStatus save={save} />
+          <FormMessage state={state} />
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">Saved logs stay as drafts.</p>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="ghost" size="lg" onClick={drawer.onCancel} disabled={pending}>
+                Cancel
+              </Button>
+              <SubmitButton pendingLabel="Saving draft...">
+                <CalendarDays aria-hidden="true" />
+                Save draft
+              </SubmitButton>
+            </div>
           </div>
-        }
-        note="Saved logs stay as drafts until you finalize them."
-        className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-20 gap-3 bg-card/95 p-3 shadow-md backdrop-blur supports-backdrop-filter:bg-card/90 max-[599.98px]:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:p-3 sm:px-4 tablet:bottom-[calc(4.75rem+env(safe-area-inset-bottom))]"
-      >
-        <Link href={cancelHref} className={buttonVariants({ variant: 'ghost', size: 'lg' })}>
-          Cancel
-        </Link>
-        <SubmitButton pendingLabel="Saving draft...">
-          <CalendarDays aria-hidden="true" />
-          Save draft
-        </SubmitButton>
-      </FormActions>
+        </div>
+      ) : (
+        <FormActions
+          message={
+            <div className="flex flex-col gap-2">
+              <SaveStatus save={save} />
+              <FormMessage state={state} />
+            </div>
+          }
+          note="Saved logs stay as drafts until you finalize them."
+          className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-20 gap-3 bg-card/95 p-3 shadow-md backdrop-blur supports-backdrop-filter:bg-card/90 max-[599.98px]:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:p-3 sm:px-4 tablet:bottom-[calc(4.75rem+env(safe-area-inset-bottom))]"
+        >
+          <Link href={cancelHref ?? dailyLogsPath(projectId)} className={buttonVariants({ variant: 'ghost', size: 'lg' })}>
+            Cancel
+          </Link>
+          <SubmitButton pendingLabel="Saving draft...">
+            <CalendarDays aria-hidden="true" />
+            Save draft
+          </SubmitButton>
+        </FormActions>
+      )}
     </form>
   )
 }
@@ -361,11 +433,13 @@ function CompanySelect({
   companies,
   savedName,
   onChange,
+  className,
 }: {
   value: string
   companies: CompanyOption[]
   savedName?: string
   onChange: (id: string) => void
+  className?: string
 }) {
   const missing = value && !companies.some((c) => c.id === value)
   const assigned = companies.filter((c) => c.assigned)
@@ -376,7 +450,7 @@ function CompanySelect({
     </option>
   )
   return (
-    <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
+    <label className={cn('flex flex-col gap-1.5 text-xs font-medium text-muted-foreground', className)}>
       Subcontractor
       <select
         name="crew_company"
@@ -404,10 +478,14 @@ function CrewInput({
   name,
   value,
   onChange,
+  wrapperClassName,
   ...props
-}: { label: string; name: string; value: string; onChange: (v: string) => void } & Omit<React.ComponentProps<typeof Input>, 'onChange' | 'value' | 'name'>) {
+}: { label: string; name: string; value: string; onChange: (v: string) => void; wrapperClassName?: string } & Omit<
+  React.ComponentProps<typeof Input>,
+  'onChange' | 'value' | 'name'
+>) {
   return (
-    <label className="flex min-w-0 flex-col gap-1.5">
+    <label className={cn('flex min-w-0 flex-col gap-1.5', wrapperClassName)}>
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <Input name={name} value={value} onChange={(e) => onChange(e.target.value)} className="h-11" {...props} />
     </label>

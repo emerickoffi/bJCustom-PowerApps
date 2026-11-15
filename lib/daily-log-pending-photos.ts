@@ -32,6 +32,10 @@ export function uncommitPendingPhotos() {
   if (batch) batch.committedAt = null
 }
 
+export function hasStagedPhotos(projectId: string) {
+  return Boolean(batch && batch.projectId === projectId && batch.items.length)
+}
+
 export function discardPendingPhotos(projectId: string) {
   if (batch?.projectId === projectId && batch.committedAt === null) batch = null
 }

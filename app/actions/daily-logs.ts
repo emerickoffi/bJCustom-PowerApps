@@ -6,8 +6,16 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { guardSaveSession, readSaveRequest, runTrackedSave } from '@/lib/save-requests-server'
-import { requireDailyLogProject, getCrewCompanyOptions, getOrgToday, getScheduleActivityOptions } from '@/lib/daily-logs-data'
 import {
+  requireDailyLogProject,
+  getCrewCompanyOptions,
+  getOrgToday,
+  getScheduleActivityOptions,
+  type CrewCompanyOption,
+  type ScheduleActivityOption,
+} from '@/lib/daily-logs-data'
+import {
+  addDays,
   DAILY_LOG_PHOTO_MAX_BYTES,
   DAILY_LOG_PHOTO_TYPES,
   dailyLogPath,
@@ -197,4 +205,25 @@ export async function removeDailyLogPhotoAction(input: z.input<typeof photoRefSc
   await supabase.storage.from('project-media').remove(data.map((r) => r.storage_path as string))
   revalidatePath(dailyLogPath(project.id, parsed.data.log_id))
   return { success: 'Photo removed.' }
+}
+
+export type NewDailyLogOptions = {
+  projectName: string
+  today: string
+  maxDate: string
+  activities: ScheduleActivityOption[]
+  companies: CrewCompanyOption[]
+}
+
+/** Read-only options for the new daily log drawer. Nothing is created until the draft is saved. */
+export async function getNewDailyLogOptionsAction(projectId: string): Promise<{ options: NewDailyLogOptions } | { error: string }> {
+  if (!z.uuid().safeParse(projectId).success) return { error: 'This project could not be found.' }
+  const { session, project } = await requireDailyLogProject(projectId)
+  if (project.archived_at) return { error: 'This project is archived; daily logs are read-only.' }
+  const [today, activities, companies] = await Promise.all([
+    getOrgToday(session.organizationId),
+    getScheduleActivityOptions(project.id),
+    getCrewCompanyOptions(session.organizationId, project.id),
+  ])
+  return { options: { projectName: project.name, today, maxDate: addDays(today, 1), activities, companies } }
 }

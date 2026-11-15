@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { claimPendingPhotos } from '@/lib/daily-log-pending-photos'
+import { uploadDailyLogPhotos } from '@/components/daily-logs/upload-daily-log-photos'
 import { useRouter } from 'next/navigation'
 import { Camera, ImagePlus, Loader2, RotateCcw, Trash2 } from 'lucide-react'
 import { preparePhotoForUpload } from '@/components/shared/prepare-photo'
@@ -58,32 +59,11 @@ export function DailyLogPhotos({ projectId, logId, photos, editable }: { project
     setUploading(true)
     setRetry([])
     setMessage({ tone: 'status', text: `Uploading ${list.length} photo${list.length === 1 ? '' : 's'}...` })
-    const supabase = createClient()
-    const { uploaded, failed } = await runUploadBatch(
+    const { uploaded, failed } = await uploadDailyLogPhotos(
+      projectId,
+      logId,
       list,
-      async (original): Promise<UploadOutcome> => {
-        const caption = captionsRef.current.get(original) ?? ''
-        if (!ALLOWED.has(original.type)) return { ok: false, reason: `${original.name}: use JPEG, PNG, WebP or HEIC.`, retryable: false }
-        const file = await preparePhotoForUpload(original)
-        if (file.size > DAILY_LOG_PHOTO_MAX_BYTES) return { ok: false, reason: `${file.name}: larger than 15 MB.`, retryable: false }
-        const path = dailyLogPhotoPath(logId, `${crypto.randomUUID()}-${safeFileName(file.name)}`)
-        const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(path, file, { contentType: file.type, upsert: false })
-        if (error) return { ok: false, reason: `${file.name} could not be uploaded.`, retryable: true }
-        const result = await registerDailyLogPhotoAction({
-          project_id: projectId,
-          log_id: logId,
-          storage_path: path,
-          file_name: file.name.slice(0, 200),
-          mime_type: file.type as (typeof DAILY_LOG_PHOTO_TYPES)[number],
-          size_bytes: file.size,
-          caption,
-        })
-        if (result.error) {
-          await supabase.storage.from(MEDIA_BUCKET).remove([path])
-          return { ok: false, reason: `${file.name}: ${result.error}`, retryable: true }
-        }
-        return { ok: true }
-      },
+      (file) => captionsRef.current.get(file) ?? '',
       (done, total) => done < total && setMessage({ tone: 'status', text: `Uploading ${done + 1} of ${total}...` }),
     )
     const notes = failed.map((f) => f.reason)
