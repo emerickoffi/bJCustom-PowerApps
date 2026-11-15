@@ -17,11 +17,14 @@ import {
   parseDailyLogDirectoryFilters,
   type DailyLogStatus,
 } from '@/lib/daily-logs'
-import { EmptyState, PageHeader, Surface, pageLayout } from '@/components/shared/page-header'
+import { EmptyState, PageHeaderIcon, Surface, pageLayout } from '@/components/shared/page-header'
 import { DirectoryPagination } from '@/components/shared/directory-pagination'
 import { SearchInput } from '@/components/shared/search-input'
+import { AutoApplyForm } from '@/components/shared/auto-apply-form'
+import { NativeSelect } from '@/components/shared/form-field'
 import { DailyLogStatusBadge } from '@/components/daily-logs/daily-log-report'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
+import { DAILY_LOG_PREVIEW_PARAM } from '@/lib/daily-log-preview'
 import { DailyLogPreviewLayout } from '@/components/daily-logs/daily-log-preview'
 import { RecordPreviewSurface, RecordPreviewTrigger } from '@/components/shared/record-preview'
 import { PREVIEW_SELECTED_ROW_CLASS } from '@/lib/record-preview'
@@ -42,8 +45,6 @@ type Row = {
   created_by: string | null
   author_id: string | null
 }
-
-const SELECT_CLASS = 'h-11 rounded-md border border-input bg-background px-3 text-sm md:w-48'
 
 export default async function DailyLogsDirectoryPage({
   searchParams,
@@ -89,31 +90,48 @@ export default async function DailyLogsDirectoryPage({
   const filtered = Boolean(filters.q || filters.project || filters.status)
 
   return (
-    <div className={pageLayout('workspace')}>
-      <PageHeader
-        title="Daily logs"
-        icon={ClipboardList}
-        actions={
-          canCreate && !setupRequired && (
-            <Link href={`${DAILY_LOG_DIRECTORY_PATH}/new`} className={buttonVariants()}>
-              <Plus className="size-4" aria-hidden="true" />
-              New daily log
-            </Link>
-          )
-        }
-      />
-
-      <Surface aria-label="Filter daily logs">
-        <form method="get" className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end">
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm md:min-w-64">
-            <span className="font-medium text-foreground" aria-hidden="true">
-              Search
-            </span>
-            <SearchInput id="daily-log-search" label="Search daily logs" defaultValue={filters.q} placeholder="Project name, number, or work performed" />
-          </div>
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-foreground">Project</span>
-            <select name="project" defaultValue={filters.project ?? ''} className={SELECT_CLASS}>
+    <div className={pageLayout('workspace', 'gap-4 md:gap-4')}>
+      <header className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3">
+        <div className="order-1 flex min-w-0 items-center gap-3">
+          <PageHeaderIcon icon={ClipboardList} />
+          <h1 className="type-page-title min-w-0 truncate text-foreground">Daily logs</h1>
+        </div>
+        {canCreate && !setupRequired && (
+          <Link
+            href={`${DAILY_LOG_DIRECTORY_PATH}/new`}
+            className={buttonVariants({ className: 'order-2 ml-auto h-9 shrink-0 pointer-coarse:h-11 lg:order-3' })}
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            New daily log
+          </Link>
+        )}
+        {!setupRequired && (
+          <AutoApplyForm
+            clearHref={filtered ? DAILY_LOG_DIRECTORY_PATH : undefined}
+            carryParams={[DAILY_LOG_PREVIEW_PARAM]}
+            className="order-3 flex min-w-0 basis-full flex-wrap items-center gap-2 lg:order-2 lg:flex-1 lg:basis-0 [&>button]:h-9"
+          >
+            <SearchInput
+              // Auto-apply updates the URL while typing; remounting on each change would drop focus.
+              key="search"
+              id="daily-log-search"
+              label="Search daily logs"
+              defaultValue={filters.q}
+              placeholder="Project, number, or work performed"
+              syncUrl={false}
+              className="w-full sm:w-auto sm:min-w-52 sm:max-w-80 sm:flex-1"
+              inputClassName="h-9 pointer-coarse:h-11"
+            />
+            <label htmlFor="daily-log-project" className="sr-only">
+              Project
+            </label>
+            <NativeSelect
+              key={`project:${filters.project ?? ''}`}
+              id="daily-log-project"
+              name="project"
+              defaultValue={filters.project ?? ''}
+              className="h-9 min-w-0 flex-1 bg-card pointer-coarse:h-11 sm:w-44 sm:flex-none xl:w-48"
+            >
               <option value="">All projects</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -121,31 +139,27 @@ export default async function DailyLogsDirectoryPage({
                   {p.archived_at ? ' (archived)' : ''}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-foreground">Status</span>
-            <select name="status" defaultValue={filters.status ?? ''} className={SELECT_CLASS}>
-              <option value="">All</option>
+            </NativeSelect>
+            <label htmlFor="daily-log-status" className="sr-only">
+              Status
+            </label>
+            <NativeSelect
+              key={`status:${filters.status ?? ''}`}
+              id="daily-log-status"
+              name="status"
+              defaultValue={filters.status ?? ''}
+              className="h-9 min-w-0 flex-1 bg-card pointer-coarse:h-11 sm:w-36 sm:flex-none"
+            >
+              <option value="">All statuses</option>
               {Object.entries(DAILY_LOG_STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
               ))}
-            </select>
-          </label>
-          <div className="flex gap-2">
-            <Button type="submit" variant="outline" className="h-11">
-              Apply
-            </Button>
-            {filtered && (
-              <Link href={DAILY_LOG_DIRECTORY_PATH} className={buttonVariants({ variant: 'ghost', className: 'h-11' })}>
-                Clear
-              </Link>
-            )}
-          </div>
-        </form>
-      </Surface>
+            </NativeSelect>
+          </AutoApplyForm>
+        )}
+      </header>
 
       {setupRequired ? (
         <EmptyState
