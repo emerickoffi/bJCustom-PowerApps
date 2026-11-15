@@ -4,6 +4,7 @@ import type { ScheduleActivity } from '@/lib/schedule'
 import { ACTIVITY_STATUS_LABELS } from '@/lib/schedule'
 import { formatDate } from '@/lib/format'
 import { SECTION_CARD_CLASS, SectionCardHeader } from '@/components/schedule/schedule-section-header'
+import { SectionDisclosure } from '@/components/schedule/schedule-section-card'
 
 /** Read-only overview of who is assigned to what on this project. Editing happens in the activity sheet. */
 export function ProjectAssignmentsCard({
@@ -46,16 +47,33 @@ export function ProjectAssignmentsCard({
       ) : availability === 'error' ? (
         <p className="px-4 py-4 text-sm text-muted-foreground">Assignments could not be loaded. Refresh the page to try again.</p>
       ) : ordered.length === 0 ? (
-        <div className="flex flex-col gap-0.5 px-4 py-4">
-          <p className="text-sm font-medium text-brand-deep">No assignments yet</p>
+        <SectionDisclosure
+          expandLabel="Show"
+          preferenceKey="assignments-empty"
+          summary={<span className="font-medium text-brand-deep">No active assignments</span>}
+        >
           <p className="text-sm text-muted-foreground">Select an activity on the chart to assign work to a subcontractor.</p>
-        </div>
+        </SectionDisclosure>
       ) : (
-        <ul className="grid gap-2 p-4 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
+        <SectionDisclosure
+          expandLabel="Show"
+          defaultOpen
+          preferenceKey="assignments"
+          summary={
+            <span className="block truncate">
+              {ordered
+                .slice(0, 3)
+                .map((a) => a.company_name)
+                .join(', ')}
+              {ordered.length > 3 ? ` and ${ordered.length - 3} more` : ''}
+            </span>
+          }
+        >
+        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
           {ordered.map((a) => {
             const act = byId.get(a.schedule_activity_id)
             return (
-              <li key={a.id} className="flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-[#F8F7F3] p-3">
+              <li key={a.id} className="flex min-w-0 flex-col gap-1 rounded-md border border-border bg-[#F8F7F3] p-3">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="truncate text-sm font-medium text-brand-deep">{a.company_name}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">{a.company_trade}</span>
@@ -71,6 +89,7 @@ export function ProjectAssignmentsCard({
             )
           })}
         </ul>
+        </SectionDisclosure>
       )}
     </section>
   )
