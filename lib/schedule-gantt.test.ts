@@ -85,3 +85,18 @@ test('filters combine search, phase, status, assignee, and subcontractor', () =>
   assert.equal(matchesFilters(a, { ...EMPTY_FILTERS, assignee: 'u2' }, companies), false)
   assert.equal(matchesFilters(a, { ...EMPTY_FILTERS, company: 'co1' }, companies), true)
 })
+
+test('ganttTone applies the documented precedence', async () => {
+  const { ganttTone } = await import('./schedule-gantt.ts')
+  const today = '2026-11-14'
+  const past = '2026-11-01'
+  const future = '2026-12-01'
+  assert.equal(ganttTone({ status: 'completed', planned_end: past }, today), 'completed')
+  assert.equal(ganttTone({ status: 'skipped', planned_end: past }, today), 'skipped')
+  assert.equal(ganttTone({ status: 'on_hold', planned_end: past }, today), 'on_hold')
+  assert.equal(ganttTone({ status: 'delayed', planned_end: future }, today), 'late')
+  assert.equal(ganttTone({ status: 'in_progress', planned_end: past }, today), 'late')
+  assert.equal(ganttTone({ status: 'in_progress', planned_end: future }, today), 'in_progress')
+  assert.equal(ganttTone({ status: 'not_started', planned_end: today }, today), 'planned')
+  assert.equal(ganttTone({ status: 'not_started', planned_end: null }, today), 'planned')
+})

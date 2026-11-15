@@ -5,6 +5,8 @@ import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { listSources } from '@/lib/overview-status'
 import { RetryButton } from '@/components/shared/retry-button'
+import { WorkScopeLinks } from '@/components/shared/work-scope-links'
+import { CommunicationTypeSelect } from '@/components/projects/communication-type-select'
 import {
   COMM_PAGE_SIZE,
   COMM_TYPE_LABELS,
@@ -45,6 +47,10 @@ export function ProjectCommunications({
   const typeOptions = COMM_TYPES.filter((t) => presentTypes.has(t) || t === filters.type)
   const href = (next: Partial<CommFilters>) => commHref(base, params, { limit: COMM_PAGE_SIZE, ...next })
   const filtering = Boolean(filters.type || filters.q || (filters.mine && filters.view === 'attention'))
+  const scopeCounts = {
+    mine: applyCommFilters(source, { ...filters, mine: true }, userId).length,
+    all: applyCommFilters(source, { ...filters, mine: false }, userId).length,
+  }
 
   return (
     <section id="communications" aria-labelledby="communications-heading" className="surface flex scroll-mt-36 flex-col gap-4 p-4 sm:p-5">
@@ -98,7 +104,7 @@ export function ProjectCommunications({
                     tab.count > 0 ? 'bg-champagne-soft text-warning' : 'bg-muted text-muted-foreground',
                   )}
                 >
-                  {tab.count}
+                  {incomplete ? '—' : tab.count}
                 </span>
               )}
             </Link>
@@ -106,17 +112,23 @@ export function ProjectCommunications({
         })}
       </nav>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <ul className="flex flex-wrap gap-1.5" aria-label="Filter by type">
-          <FilterChip href={href({ type: null })} active={!filters.type} label="All types" />
-          {typeOptions.map((t: CommType) => (
-            <FilterChip key={t} href={href({ type: t })} active={filters.type === t} label={COMM_TYPE_LABELS[t]} />
-          ))}
-          {filters.view === 'attention' && (
-            <FilterChip href={href({ mine: !filters.mine })} active={filters.mine} label="Assigned to me" />
-          )}
-        </ul>
-        <Form action={base} scroll={false} replace role="search" className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        {filters.view === 'attention' && (
+          <WorkScopeLinks
+            label="Communications work scope"
+            scope={filters.mine ? 'mine' : 'all'}
+            hrefs={{ mine: href({ mine: true }), all: href({ mine: false }) }}
+            counts={incomplete ? { mine: null, all: null } : scopeCounts}
+          />
+        )}
+        <CommunicationTypeSelect
+          value={filters.type ?? 'all'}
+          options={[
+            { value: 'all', label: 'All types', href: href({ type: null }) },
+            ...typeOptions.map((t: CommType) => ({ value: t, label: COMM_TYPE_LABELS[t], href: href({ type: t }) })),
+          ]}
+        />
+        <Form action={base} scroll={false} replace role="search" className="flex items-center gap-2 sm:ml-auto">
           {Object.entries(params).map(([k, v]) => {
             const value = Array.isArray(v) ? v[0] : v
             return !value || k === 'cq' || k === 'cmore' ? null : <input key={k} type="hidden" name={k} value={value} />
@@ -179,24 +191,6 @@ export function ProjectCommunications({
   )
 }
 
-function FilterChip({ href, active, label }: { href: string; active: boolean; label: string }) {
-  return (
-    <li>
-      <Link
-        href={href}
-        scroll={false}
-        aria-current={active ? 'true' : undefined}
-        className={cn(
-          'inline-flex h-8 items-center rounded-full border px-3 text-sm transition-colors',
-          active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-foreground hover:bg-muted',
-        )}
-      >
-        {label}
-      </Link>
-    </li>
-  )
-}
-
 function CommunicationRow({ item }: { item: CommunicationItem }) {
   const when = item.date ? formatDate(item.date) : null
   return (
@@ -236,7 +230,7 @@ function EmptyState({ view, filtering, incomplete, clearHref }: { view: CommFilt
   if (filtering) {
     return (
       <p className="py-2 text-sm text-muted-foreground">
-        Nothing matches these filters.{' '}
+        {incomplete ? 'Nothing matches these filters in the sources that loaded.' : 'Nothing matches these filters.'}{' '}
         <Link href={clearHref} scroll={false} className="font-medium text-primary underline-offset-4 hover:underline">
           Clear filters
         </Link>

@@ -235,6 +235,33 @@ export function spanLabel(start: number, end: number): string {
   return `${days} ${days === 1 ? 'day' : 'days'}`
 }
 
+export type GanttTone = 'on_hold' | 'late' | 'completed' | 'in_progress' | 'planned' | 'skipped'
+
+export const GANTT_TONES: Record<GanttTone, { label: string; color: string }> = {
+  planned: { label: 'Planned', color: '#2563EB' },
+  in_progress: { label: 'In progress', color: '#F59E0B' },
+  completed: { label: 'Completed', color: '#16A34A' },
+  late: { label: 'Overdue or delayed', color: '#DC2626' },
+  on_hold: { label: 'On hold', color: '#7C3AED' },
+  skipped: { label: 'Not applicable', color: '#8B97A6' },
+}
+
+export const GANTT_MILESTONE_COLOR = '#0F766E'
+
+/**
+ * One color per activity, by precedence: on hold, then overdue or delayed, then completed,
+ * in progress, planned. Completed and not-applicable work is settled first so a past planned
+ * finish never paints it as overdue. "On hold" is the only stored stopped state; nothing infers "blocked".
+ */
+export function ganttTone(a: Pick<ScheduleActivity, 'status' | 'planned_end'>, today: string): GanttTone {
+  if (a.status === 'completed') return 'completed'
+  if (a.status === 'skipped') return 'skipped'
+  if (a.status === 'on_hold') return 'on_hold'
+  if (a.status === 'delayed' || (!!a.planned_end && a.planned_end < today)) return 'late'
+  if (a.status === 'in_progress') return 'in_progress'
+  return 'planned'
+}
+
 export type GanttFilters = {
   search: string
   phase: string | null

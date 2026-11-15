@@ -4,6 +4,7 @@ import type { NextAction, NextActionTone } from '@/lib/next-actions'
 import { cn } from '@/lib/utils'
 import { attentionState, listSources } from '@/lib/overview-status'
 import { RetryButton } from '@/components/shared/retry-button'
+import { WorkScopeLinks } from '@/components/shared/work-scope-links'
 
 const TONE: Record<NextActionTone, { icon: typeof AlertTriangle; className: string; label: string }> = {
   critical: { icon: AlertTriangle, className: 'bg-destructive/10 text-destructive', label: 'Needs attention' },
@@ -35,10 +36,6 @@ export function ProjectNextActions({
 }) {
   const empty = items.length === 0
   const state = attentionState({ itemCount: items.length, ownFailed: incomplete, relatedFailed: relatedUnavailable })
-  const options: { value: WorkScope; label: string }[] = [
-    { value: 'mine', label: 'My work' },
-    { value: 'all', label: 'All project work' },
-  ]
   return (
     <section aria-labelledby="next-actions-heading" className="surface flex flex-col gap-3 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -48,27 +45,12 @@ export function ProjectNextActions({
           </h2>
           {hiddenCount > 0 && <span className="text-xs text-muted-foreground">{`${hiddenCount} more after these`}</span>}
         </div>
-        <nav aria-label="Next actions scope" className="flex rounded-lg border border-border bg-[#F8F7F3] p-0.5">
-          {options.map((o) => {
-            const active = o.value === scope
-            return (
-              <Link
-                key={o.value}
-                href={scopeHrefs[o.value]}
-                scroll={false}
-                replace
-                aria-current={active ? 'true' : undefined}
-                className={cn(
-                  'inline-flex min-h-9 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
-                  active ? 'bg-white text-foreground shadow-sm ring-1 ring-border' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {o.label}
-                <span className="tabular-nums text-xs text-muted-foreground">{incomplete ? '—' : scopeTotals[o.value]}</span>
-              </Link>
-            )
-          })}
-        </nav>
+        <WorkScopeLinks
+          label="Next actions scope"
+          scope={scope}
+          hrefs={scopeHrefs}
+          counts={incomplete ? { mine: null, all: null } : scopeTotals}
+        />
       </div>
       {state === 'clear' && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
