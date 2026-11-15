@@ -13,19 +13,20 @@ import { NativeSelect } from '@/components/shared/form-field'
 import { FormOverlay, OverlayFooter, useFormOverlay } from '@/components/shared/form-overlay'
 import { AssignCreateNew } from '@/components/projects/assign-create-new'
 import { PROJECT_ROLE_OPTIONS } from '@/lib/contacts'
-import { EMAIL_DELIVERY, NO_PORTAL_ACCESS, type BulkAssignItem } from '@/lib/directory-assignment'
-import type { AccountStatus, DirectoryPersonRow, DirectoryRow } from '@/lib/directory-assignment-data'
+import { EMAIL_DELIVERY, NO_PORTAL_ACCESS, summarizeResults, type BulkAssignItem } from '@/lib/directory-assignment'
+import type { AccountStatus, DirectoryCompanyRow, DirectoryPersonRow, DirectoryRow } from '@/lib/directory-assignment-data'
 import { bulkAssignFromDirectoryAction } from '@/app/actions/directory-assignment'
 import { cn } from '@/lib/utils'
 
 type Config = { role: string; relId: string | null; notify: boolean; customRole: boolean }
-type KindFilter = 'all' | 'person' | 'company'
+type KindFilter = 'company' | 'person'
 type Audience = 'all' | 'subcontractors'
 
 const PAGE_SIZE = 25
 const OTHER_ROLE = '__other__'
 const TOUCH = 'pointer-coarse:min-h-11'
 const PANEL = 'flex min-h-0 flex-col data-hidden:hidden'
+const GUTTER = 'px-4 sm:px-5'
 
 const ACCESS_LABEL: Record<AccountStatus, string> = {
   not_provisioned: 'No portal access',
@@ -33,12 +34,16 @@ const ACCESS_LABEL: Record<AccountStatus, string> = {
   portal_revoked: 'Portal access revoked',
 }
 
+const KIND_LABEL: Record<KindFilter, string> = { company: 'Companies', person: 'People' }
+
 const initialConfig = (row: DirectoryPersonRow): Config => ({
   role: row.suggestedRole,
   relId: row.defaultRelationshipId,
   notify: false,
   customRole: false,
 })
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
 /**
  * The one assignment drawer for a project: pick existing directory people and companies, or create a new
@@ -76,7 +81,7 @@ export function PeopleAssignWorkspace({
       size="lg"
       icon={HardHat}
       title="Assign subcontractors"
-      description={`Add people and companies from your directory to ${projectName}, or create a new one.`}
+      description={projectName}
       finalFocus={finalFocus}
     >
       <AssignTabs projectId={projectId} projectName={projectName} rows={rows} audience={audience} canCreateCompany={canCreateCompany} />
@@ -112,8 +117,8 @@ export function AssignTabs({
 
   return (
     <Tabs defaultValue="existing" className="@container min-h-0 flex-1 gap-0">
-      <div className="shrink-0 border-b border-border/70 px-5 py-3 sm:px-6">
-        <TabsList aria-label="How to assign" className="w-full group-data-horizontal/tabs:h-11">
+      <div className={cn('shrink-0 border-b border-border/70 py-2', GUTTER)}>
+        <TabsList aria-label="How to assign" className="w-full group-data-horizontal/tabs:h-10">
           <TabsTrigger value="existing">Add existing</TabsTrigger>
           <TabsTrigger value="new">Create new</TabsTrigger>
         </TabsList>
@@ -146,7 +151,8 @@ function AddExisting({
   const ids = useId()
   const [subsOnly, setSubsOnly] = useState(audience === 'subcontractors')
   const [query, setQuery] = useState('')
-  const [kind, setKind] = useState<KindFilter>('all')
+  // Companies lead wherever a subcontractor company can be assigned as a whole; otherwise people are the only option.
+  const [kind, setKind] = useState<KindFilter>(() => (rows.some((r) => r.kind === 'company' && r.isSubcontractor) ? 'company' : 'person'))
   const [trade, setTrade] = useState('')
   const [onlySelected, setOnlySelected] = useState(false)
   const [page, setPage] = useState(0)
@@ -170,30 +176,54 @@ function AddExisting({
   const selectable = (r: DirectoryRow) => !isAssigned(r) && !r.disabledReason
   const configFor = (r: DirectoryPersonRow) => configs[r.key] ?? initialConfig(r)
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return rows.filter((r) => {
-      if (kind !== 'all' && r.kind !== kind) return false
+  const matchesBase = useCallback(
+    (r: DirectoryRow, q: string) => {
       if (trade && r.trade !== trade) return false
       if (onlySelected && !selected.has(r.key)) return false
       if (subsOnly && !r.isSubcontractor && !selected.has(r.key)) return false
       if (!q) return true
-      const companies = r.kind === 'person' ? r.affiliations.map((a) => a.company_name).join(' ') : ''
-      return `${r.name} ${r.email ?? ''} ${companies} ${r.trade ?? ''}`.toLowerCase().includes(q)
-    })
-  }, [rows, query, kind, trade, onlySelected, subsOnly, selected])
+      const related =
+        r.kind === 'person'
+          ? r.affiliations.map((a) => a.company_name).join(' ')
+          : `${r.primaryContact?.name ?? ''} ${r.primaryContact?.email ?? ''}`
+      return `${r.name} ${r.email ?? ''} ${related} ${r.trade ?? ''}`.toLowerCase().includes(q)
+    },
+    [trade, onlySelected, subsOnly, selected],
+  )
+
+  const { filtered, counts } = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const base = rows.filter((r) => matchesBase(r, q))
+    return {
+      filtered: base.filter((r) => r.kind === kind),
+      counts: { company: base.filter((r) => r.kind === 'company').length, person: base.filter((r) => r.kind === 'person').length },
+    }
+  }, [rows, query, kind, matchesBase])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const currentPage = Math.min(page, pageCount - 1)
   const visible = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE)
 
-  const selectedRows = [...selected].map((k) => byKey.get(k)).filter((r): r is DirectoryRow => !!r)
+  const selectedRows = [...selected].map((k) => byKey.get(k)).filter((r): r is DirectoryRow => !!r && selectable(r))
   const selectedPeople = selectedRows.filter((r): r is DirectoryPersonRow => r.kind === 'person')
+  const selectedCompanies = selectedRows.length - selectedPeople.length
   const missingRole = selectedPeople.filter((r) => !configFor(r).role.trim()).length
   const visibleSelectable = visible.filter(selectable)
   const allVisibleSelected = visibleSelectable.length > 0 && visibleSelectable.every((r) => selected.has(r.key))
 
   const resetPage = () => setPage(0)
+
+  /** How a person relates to a company in the same picker, so the two never read as unrelated subcontractors. */
+  const companyNote = (row: DirectoryPersonRow): string | null => {
+    if (isAssigned(row)) return null
+    for (const a of row.affiliations) {
+      const company = byKey.get(a.company_key) as DirectoryCompanyRow | undefined
+      if (!company) continue
+      if (selected.has(company.key)) return `${a.company_name} is also selected. This adds ${row.name} separately, with their own project role.`
+      if (isAssigned(company)) return `${a.company_name} is already on this project. Add ${row.name} only if they need their own project role.`
+    }
+    return null
+  }
 
   const toggle = (row: DirectoryRow, on: boolean) => {
     setSelected((prev) => {
@@ -254,27 +284,38 @@ function AddExisting({
         toast.error(res.error)
         return
       }
+      const summary = summarizeResults(res.results)
       const failed = res.results.filter((r) => r.outcome === 'failed')
-      const done = res.results.filter((r) => r.outcome !== 'failed')
-      const doneKeys = new Set(done.map((r) => r.key))
+      // Records that are already on the project count as done, so a retried submission never assigns twice.
+      const doneKeys = new Set(res.results.filter((r) => r.outcome !== 'failed').map((r) => r.key))
       setSelected((prev) => new Set([...prev].filter((k) => !doneKeys.has(k))))
       setAddedNow((prev) => new Set([...prev, ...doneKeys]))
-      setErrors(Object.fromEntries(failed.map((r) => [r.key, r.reason ?? 'This record could not be added.'])))
+      setErrors(Object.fromEntries(failed.map((r) => [r.key, r.reason ?? 'This record could not be assigned.'])))
       if (failed.length) setOnlySelected(true)
-      if (done.length) {
-        toast.success(`Added ${done.length} to ${projectName}.`)
+
+      if (summary.added) {
+        const parts = [`Assigned ${summary.added} to ${projectName}.`]
+        if (summary.alreadyAssigned) parts.push(`${summary.alreadyAssigned} already on the project.`)
+        if (summary.notificationsSent) parts.push(`${plural(summary.notificationsSent, 'person', 'people')} notified by email.`)
+        if (summary.notificationsNotSent) parts.push(`${summary.notificationsNotSent} not notified.`)
+        toast.success(parts.join(' '))
         router.refresh()
+      } else if (summary.alreadyAssigned && !summary.failed) {
+        toast.info(`Already on ${projectName}. Nothing new was assigned.`)
       }
-      if (failed.length) toast.error(`${failed.length} could not be added. They're still selected so you can fix and retry.`)
-      else overlay?.forceClose()
+      if (summary.failed) {
+        toast.error(
+          `${summary.failed} could not be assigned${summary.added ? `, ${summary.added} succeeded` : ''}. The rest stay selected so you can fix and retry.`,
+        )
+      } else overlay?.forceClose()
     })
   }
 
   return (
     <>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="sticky top-0 z-10 bg-background px-5 pt-3 pb-2 sm:px-6">
-          <div className="relative">
+      <div className={cn('flex shrink-0 flex-col gap-2 border-b border-border/70 py-2.5', GUTTER)}>
+        <div className="flex gap-2">
+          <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input
               type="search"
@@ -283,147 +324,141 @@ function AddExisting({
                 setQuery(e.target.value)
                 resetPage()
               }}
-              placeholder="Search name, email, company, or trade"
+              placeholder="Search company, person, email, or trade"
               aria-label="Search directory"
-              className="h-10 pl-8"
+              className={cn('h-9 pl-8', TOUCH)}
             />
           </div>
+          {trades.length > 0 && (
+            <NativeSelect
+              aria-label="Filter by trade"
+              value={trade}
+              onChange={(e) => {
+                setTrade(e.target.value)
+                resetPage()
+              }}
+              className={cn('h-9 w-36 shrink-0', TOUCH)}
+            >
+              <option value="">All trades</option>
+              {trades.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
         </div>
 
-        <div className="flex flex-col gap-3 border-b border-border/70 px-5 pb-3 sm:px-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <div role="group" aria-label="Record type" className="flex rounded-md border border-border p-0.5">
-              {(['all', 'person', 'company'] as const).map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  aria-pressed={kind === k}
-                  onClick={() => {
-                    setKind(k)
-                    resetPage()
-                  }}
-                  className={cn(
-                    'rounded px-3 py-1.5 text-sm',
-                    TOUCH,
-                    kind === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {k === 'all' ? 'All' : k === 'person' ? 'People' : 'Companies'}
-                </button>
-              ))}
-            </div>
-            {trades.length > 0 && (
-              <NativeSelect
-                aria-label="Filter by trade"
-                value={trade}
-                onChange={(e) => {
-                  setTrade(e.target.value)
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div role="group" aria-label="Show" className="flex rounded-md border border-border p-0.5">
+            {(['company', 'person'] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={kind === k}
+                onClick={() => {
+                  setKind(k)
                   resetPage()
                 }}
-                className={cn('h-9 w-44', TOUCH)}
+                className={cn(
+                  'flex items-center gap-1.5 rounded px-3 py-1 text-sm',
+                  TOUCH,
+                  kind === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
               >
-                <option value="">All trades</option>
-                {trades.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+                {KIND_LABEL[k]}
+                <span className={cn('text-xs tabular-nums', kind === k ? 'opacity-80' : 'opacity-70')}>{counts[k]}</span>
+              </button>
+            ))}
+          </div>
+          <label className={cn('flex cursor-pointer items-center gap-2 text-sm text-foreground', TOUCH)}>
+            <input
+              type="checkbox"
+              className="size-4 shrink-0 accent-primary"
+              checked={subsOnly}
+              onChange={(e) => {
+                setSubsOnly(e.target.checked)
+                resetPage()
+              }}
+            />
+            Subcontractors only
+          </label>
+        </div>
+
+        {selectedPeople.length > 0 && (
+          <div className="grid gap-2 rounded-md bg-muted/50 p-2 @md:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <label htmlFor={`${ids}-bulk-role`} className="text-xs font-medium text-foreground">
+                Role for {plural(selectedPeople.length, 'selected person', 'selected people')}
+              </label>
+              <NativeSelect id={`${ids}-bulk-role`} value={bulkRole} onChange={(e) => applyBulkRole(e.target.value)} className="h-9">
+                <option value="">Keep individual roles</option>
+                {PROJECT_ROLE_OPTIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
                   </option>
                 ))}
               </NativeSelect>
-            )}
-            <Button
-              type="button"
-              variant={subsOnly ? 'secondary' : 'outline'}
-              aria-pressed={subsOnly}
-              className={TOUCH}
-              onClick={() => {
-                setSubsOnly((v) => !v)
-                resetPage()
-              }}
-            >
-              Subcontractors only
-            </Button>
-            <Button
-              type="button"
-              variant={onlySelected ? 'secondary' : 'outline'}
-              aria-pressed={onlySelected}
-              className={TOUCH}
-              onClick={() => {
-                setOnlySelected((v) => !v)
-                resetPage()
-              }}
-            >
-              Show selected ({selected.size})
-            </Button>
-          </div>
-
-          {selectedPeople.length > 0 && (
-            <div className="grid gap-3 @lg:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor={`${ids}-bulk-role`} className="text-xs font-medium text-foreground">
-                  Apply role to {selectedPeople.length} selected {selectedPeople.length === 1 ? 'person' : 'people'}
-                </label>
-                <NativeSelect id={`${ids}-bulk-role`} value={bulkRole} onChange={(e) => applyBulkRole(e.target.value)}>
-                  <option value="">Choose role</option>
-                  {PROJECT_ROLE_OPTIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor={`${ids}-start`} className="text-xs font-medium text-foreground">
-                  Start date
-                </label>
-                <Input
-                  id={`${ids}-start`}
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  aria-describedby={`${ids}-start-hint`}
-                  className="h-10"
-                />
-                <p id={`${ids}-start-hint`} className="text-xs text-muted-foreground">
-                  Defaults to today. Applies to everyone selected.
-                </p>
-              </div>
             </div>
-          )}
+            <div className="flex flex-col gap-1">
+              <label htmlFor={`${ids}-start`} className="text-xs font-medium text-foreground">
+                Start date <span className="font-normal text-muted-foreground">(defaults to today)</span>
+              </label>
+              <Input id={`${ids}-start`} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9" />
+            </div>
+          </div>
+        )}
 
-          {!EMAIL_DELIVERY.available && (
-            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-              <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-              <span>{EMAIL_DELIVERY.reason} Adding people never grants portal access.</span>
-            </p>
-          )}
-        </div>
+        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          <span>
+            {!EMAIL_DELIVERY.available && `${EMAIL_DELIVERY.reason} `}
+            Assigning never grants portal access or adds a company&apos;s other people.
+          </span>
+        </p>
+      </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {visible.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 px-5 py-10 text-center text-sm text-muted-foreground">
+          <div className="flex flex-col items-center gap-2 px-5 py-8 text-center text-sm text-muted-foreground">
             <p>
               {rows.length === 0
                 ? 'Your business directory is empty. Use “Create new” to add the first record.'
-                : subsOnly
-                  ? 'No subcontractors match.'
+                : counts[kind === 'company' ? 'person' : 'company'] > 0
+                  ? `No ${KIND_LABEL[kind].toLowerCase()} match. ${plural(counts[kind === 'company' ? 'person' : 'company'], 'match', 'matches')} in ${KIND_LABEL[kind === 'company' ? 'person' : 'company']}.`
                   : 'No records match these filters.'}
             </p>
-            {rows.length > 0 && subsOnly && (
-              <Button
-                type="button"
-                variant="outline"
-                className={TOUCH}
-                onClick={() => {
-                  setSubsOnly(false)
-                  resetPage()
-                }}
-              >
-                Include other professionals
-              </Button>
-            )}
+            <div className="flex flex-wrap justify-center gap-2">
+              {rows.length > 0 && counts[kind === 'company' ? 'person' : 'company'] > 0 && (
+                <Button type="button" variant="outline" size="sm" className={TOUCH} onClick={() => setKind(kind === 'company' ? 'person' : 'company')}>
+                  Show {KIND_LABEL[kind === 'company' ? 'person' : 'company'].toLowerCase()}
+                </Button>
+              )}
+              {rows.length > 0 && subsOnly && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={TOUCH}
+                  onClick={() => {
+                    setSubsOnly(false)
+                    resetPage()
+                  }}
+                >
+                  Include other professionals
+                </Button>
+              )}
+            </div>
           </div>
         ) : (
           <>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 border-b border-border/70 bg-muted/50 px-5 text-xs font-medium text-muted-foreground sm:px-6">
+            <label
+              className={cn(
+                'sticky top-0 z-10 flex min-h-9 cursor-pointer items-center gap-3 border-b border-border/70 bg-muted text-xs font-medium text-muted-foreground',
+                TOUCH,
+                GUTTER,
+              )}
+            >
               <input
                 type="checkbox"
                 className="size-4 shrink-0 accent-primary"
@@ -431,7 +466,7 @@ function AddExisting({
                 disabled={visibleSelectable.length === 0}
                 onChange={(e) => toggleVisible(e.target.checked)}
               />
-              Select all on this page
+              Select all {visibleSelectable.length} available on this page
             </label>
             <ul className="divide-y divide-border/70">
               {visible.map((row) => (
@@ -441,6 +476,7 @@ function AddExisting({
                   assigned={isAssigned(row)}
                   checked={selected.has(row.key)}
                   config={row.kind === 'person' ? configFor(row) : null}
+                  note={row.kind === 'person' ? companyNote(row) : null}
                   error={errors[row.key]}
                   onToggle={(on) => toggle(row, on)}
                   onConfig={(patch) => row.kind === 'person' && updateConfig(row, patch)}
@@ -454,11 +490,30 @@ function AddExisting({
       <OverlayFooter
         message={
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span aria-live="polite">
-              {filtered.length} {filtered.length === 1 ? 'record' : 'records'}
+            <span className="flex flex-wrap items-center gap-x-2" aria-live="polite">
+              <span className="font-medium text-foreground">
+                {selectedRows.length
+                  ? [selectedCompanies && plural(selectedCompanies, 'company', 'companies'), selectedPeople.length && plural(selectedPeople.length, 'person', 'people')]
+                      .filter(Boolean)
+                      .join(' and ') + ' selected'
+                  : 'None selected'}
+              </span>
+              {selected.size > 0 && (
+                <button
+                  type="button"
+                  aria-pressed={onlySelected}
+                  onClick={() => {
+                    setOnlySelected((v) => !v)
+                    resetPage()
+                  }}
+                  className={cn('font-medium text-primary underline-offset-4 hover:underline', TOUCH)}
+                >
+                  {onlySelected ? 'Show all' : 'Review selection'}
+                </button>
+              )}
               {missingRole > 0 && (
-                <span className="ml-2 font-medium text-destructive">
-                  Choose a role for {missingRole} selected {missingRole === 1 ? 'person' : 'people'}
+                <span className="font-medium text-destructive">
+                  Choose a role for {plural(missingRole, 'selected person', 'selected people')}
                 </span>
               )}
             </span>
@@ -467,7 +522,7 @@ function AddExisting({
                 <Button variant="ghost" size="sm" className={TOUCH} disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>
                   Previous
                 </Button>
-                Page {currentPage + 1} of {pageCount}
+                {currentPage + 1} / {pageCount}
                 <Button variant="ghost" size="sm" className={TOUCH} disabled={currentPage >= pageCount - 1} onClick={() => setPage(currentPage + 1)}>
                   Next
                 </Button>
@@ -476,11 +531,11 @@ function AddExisting({
           </div>
         }
       >
-        <Button type="button" variant="outline" size="lg" className={TOUCH} onClick={overlay?.requestClose} disabled={pending}>
+        <Button type="button" variant="outline" className={TOUCH} onClick={overlay?.requestClose} disabled={pending}>
           Cancel
         </Button>
-        <Button type="button" size="lg" className={TOUCH} onClick={submit} disabled={pending || selectedRows.length === 0 || missingRole > 0}>
-          {pending ? 'Adding…' : selectedRows.length ? `Add ${selectedRows.length} to project` : 'Add to project'}
+        <Button type="button" className={TOUCH} onClick={submit} disabled={pending || selectedRows.length === 0 || missingRole > 0}>
+          {pending ? 'Assigning…' : 'Assign to project'}
         </Button>
       </OverlayFooter>
     </>
@@ -492,6 +547,7 @@ function DirectoryListRow({
   assigned,
   checked,
   config,
+  note,
   error,
   onToggle,
   onConfig,
@@ -500,6 +556,7 @@ function DirectoryListRow({
   assigned: boolean
   checked: boolean
   config: Config | null
+  note: string | null
   error?: string
   onToggle: (on: boolean) => void
   onConfig: (patch: Partial<Config>) => void
@@ -509,14 +566,18 @@ function DirectoryListRow({
   const person = row.kind === 'person' ? row : null
   const home = person ? (person.affiliations.find((a) => a.relationship_id === person.defaultRelationshipId) ?? person.affiliations[0]) : null
   const canNotify = !!person && person.emailEligibility.eligible
-  const meta =
+  const contact = row.kind === 'company' ? row.primaryContact : null
+
+  const subline =
     row.kind === 'person'
-      ? [home?.company_name ?? 'No company', home?.position ? `Company title: ${home.position}` : null, row.trade, ACCESS_LABEL[row.account]]
-      : [`${row.peopleCount} ${row.peopleCount === 1 ? 'person' : 'people'} in directory`, row.trade]
+      ? [home ? (home.position ? `${home.position}, ${home.company_name}` : home.company_name) : 'Independent', row.email]
+      : [contact ? `Primary contact: ${contact.name ?? contact.email}` : 'No primary contact on file', contact?.name ? contact.email : null]
+  const meta =
+    row.kind === 'person' ? [row.trade, ACCESS_LABEL[row.account]] : [row.trade, plural(row.peopleCount, 'person', 'people') + ' in directory']
 
   return (
-    <li className={cn('px-5 py-1.5 sm:px-6', checked && 'bg-sage/40', error && 'bg-destructive/5')}>
-      <label className={cn('flex min-h-11 items-start gap-3 py-1.5', blocked ? 'cursor-not-allowed' : 'cursor-pointer')}>
+    <li className={cn(GUTTER, checked && 'bg-link-soft', error && 'bg-destructive/5')}>
+      <label className={cn('flex min-h-11 items-start gap-3 py-2', blocked ? 'cursor-not-allowed' : 'cursor-pointer')}>
         <input
           type="checkbox"
           className="mt-0.5 size-4 shrink-0 accent-primary"
@@ -526,25 +587,26 @@ function DirectoryListRow({
           onChange={(e) => onToggle(e.target.checked)}
         />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className={cn('font-medium', blocked ? 'text-muted-foreground' : 'text-foreground')}>{row.name}</span>
-            {row.kind === 'company' && <Badge variant="outline">Company</Badge>}
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className={cn('text-sm font-medium', blocked ? 'text-muted-foreground' : 'text-foreground')}>{row.name}</span>
             {assigned && <Badge variant="secondary">On project</Badge>}
           </span>
-          <span className="text-xs text-muted-foreground">{meta.filter(Boolean).join(' · ')}</span>
+          <span className="truncate text-xs text-foreground/80">{subline.filter(Boolean).join(' · ')}</span>
+          {meta.some(Boolean) && <span className="text-xs text-muted-foreground">{meta.filter(Boolean).join(' · ')}</span>}
           {!assigned && row.disabledReason && <span className="text-xs text-muted-foreground">{row.disabledReason}</span>}
+          {note && <span className="text-xs text-muted-foreground">{note}</span>}
         </span>
       </label>
 
       {error && (
-        <p role="alert" className="pb-1.5 pl-7 text-xs font-medium text-destructive">
+        <p role="alert" className="pb-2 pl-7 text-xs font-medium text-destructive">
           {error}
         </p>
       )}
 
       {person && config && checked && (
-        <div className="grid gap-3 pb-2 pl-7 @lg:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
+        <div className="grid gap-2 pb-2.5 pl-7 @lg:grid-cols-2">
+          <div className="flex flex-col gap-1">
             <label htmlFor={`${id}-role`} className="text-xs font-medium text-foreground">
               Project role <span className="text-destructive" aria-hidden="true">*</span>
             </label>
@@ -553,6 +615,7 @@ function DirectoryListRow({
               required
               value={config.customRole ? OTHER_ROLE : config.role}
               aria-invalid={!config.role.trim() ? true : undefined}
+              className="h-9"
               onChange={(e) =>
                 onConfig(e.target.value === OTHER_ROLE ? { role: '', customRole: true } : { role: e.target.value, customRole: false })
               }
@@ -576,17 +639,17 @@ function DirectoryListRow({
                 aria-label={`Custom project role for ${row.name}`}
                 aria-invalid={!config.role.trim() ? true : undefined}
                 placeholder="Describe the role, e.g. Insurance adjuster"
-                className="h-10"
+                className="h-9"
               />
             )}
           </div>
 
           {person.affiliations.length > 0 && (
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1">
               <label htmlFor={`${id}-company`} className="text-xs font-medium text-foreground">
                 On behalf of
               </label>
-              <NativeSelect id={`${id}-company`} value={config.relId ?? ''} onChange={(e) => onConfig({ relId: e.target.value || null })}>
+              <NativeSelect id={`${id}-company`} value={config.relId ?? ''} onChange={(e) => onConfig({ relId: e.target.value || null })} className="h-9">
                 <option value="">No company</option>
                 {person.affiliations.map((a) => (
                   <option key={a.relationship_id} value={a.relationship_id}>
@@ -597,34 +660,29 @@ function DirectoryListRow({
             </div>
           )}
 
-          <label
-            className={cn('flex min-h-11 items-center gap-2 text-xs @lg:col-span-2', canNotify ? 'cursor-pointer text-foreground' : 'text-muted-foreground')}
-            title={!person.emailEligibility.eligible ? person.emailEligibility.reason : undefined}
-          >
-            <input
-              type="checkbox"
-              className="size-4 shrink-0 accent-primary"
-              checked={config.notify && canNotify}
-              disabled={!canNotify}
-              onChange={(e) => onConfig({ notify: e.target.checked })}
-            />
-            <span>
-              Notify by email
-              {!person.emailEligibility.eligible && EMAIL_DELIVERY.available && ` (${person.emailEligibility.reason})`}
-            </span>
-          </label>
-
-          <p className="text-xs text-muted-foreground @lg:col-span-2">
-            Adding {row.name} records their role only. It does not create an account or change portal access.
+          <div className="flex flex-wrap items-center justify-between gap-x-3 @lg:col-span-2">
+            <label
+              className={cn('flex min-h-9 items-center gap-2 text-xs', TOUCH, canNotify ? 'cursor-pointer text-foreground' : 'text-muted-foreground')}
+              title={!person.emailEligibility.eligible ? person.emailEligibility.reason : undefined}
+            >
+              <input
+                type="checkbox"
+                className="size-4 shrink-0 accent-primary"
+                checked={config.notify && canNotify}
+                disabled={!canNotify}
+                onChange={(e) => onConfig({ notify: e.target.checked })}
+              />
+              <span>
+                Notify by email
+                {!person.emailEligibility.eligible && EMAIL_DELIVERY.available && ` (${person.emailEligibility.reason})`}
+              </span>
+            </label>
             {person.manageAccessHref && (
-              <>
-                {' '}
-                <Link href={person.manageAccessHref} className="font-medium text-primary underline-offset-4 hover:underline">
-                  Manage portal access
-                </Link>
-              </>
+              <Link href={person.manageAccessHref} className="text-xs font-medium text-primary underline-offset-4 hover:underline">
+                Manage portal access
+              </Link>
             )}
-          </p>
+          </div>
         </div>
       )}
     </li>

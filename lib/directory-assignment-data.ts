@@ -2,6 +2,7 @@ import 'server-only'
 import type { createClient } from '@/lib/supabase/server'
 import { personName } from '@/lib/contacts'
 import { EMAIL_DELIVERY, emailEligibility, suggestProjectRole, type EmailEligibility } from '@/lib/directory-assignment'
+import { resolvePrimaryContact, type PrimaryContact } from '@/lib/subcontractor-directory'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
@@ -9,6 +10,8 @@ export type AccountStatus = 'not_provisioned' | 'portal_active' | 'portal_revoke
 
 export type Affiliation = {
   relationship_id: string
+  /** The business company, so the picker can relate a person to a company row selected alongside them. */
+  company_key: string
   company_name: string
   position: string | null
   is_primary: boolean
@@ -40,6 +43,8 @@ export type DirectoryCompanyRow = {
   name: string
   email: string | null
   peopleCount: number
+  /** Resolved with the same rule as the Subcontractors table and preview. */
+  primaryContact: PrimaryContact | null
   trade: string | null
   assigned: boolean
   disabledReason: string | null
@@ -103,12 +108,23 @@ export async function loadDirectoryForAssignment(
   for (const a of portalRes.data ?? []) portal.set(`${a.subcontractor_company_id}:${String(a.email).toLowerCase()}`, a.status as string)
 
   const peopleCount = new Map<string, number>()
+  const primaryByCompany = new Map<string, PrimaryContact>()
   const people: DirectoryPersonRow[] = (peopleRes.data ?? []).map((p) => {
     const rels = ((p.companies ?? []) as unknown as Rel[]).filter((r) => r.status === 'active' && r.company)
     const primary = rels.find((r) => r.is_primary_contact) ?? rels[0] ?? null
-    for (const r of rels) peopleCount.set(r.company!.id, (peopleCount.get(r.company!.id) ?? 0) + 1)
-
     const email = (p.email as string | null) ?? null
+    for (const r of rels) {
+      peopleCount.set(r.company!.id, (peopleCount.get(r.company!.id) ?? 0) + 1)
+      if (r.is_primary_contact && p.status !== 'inactive' && !primaryByCompany.has(r.company!.id)) {
+        primaryByCompany.set(r.company!.id, {
+          name: personName(p as { first_name: string; last_name: string }),
+          role: r.position_or_role,
+          email,
+          phone: null,
+        })
+      }
+    }
+
     const subIds = rels.map((r) => r.company!.subcontractor_company_id).filter((v): v is string => !!v)
     const statuses = email ? subIds.map((s) => portal.get(`${s}:${email.toLowerCase()}`)).filter(Boolean) : []
     const account: AccountStatus = statuses.includes('active') ? 'portal_active' : statuses.includes('revoked') ? 'portal_revoked' : 'not_provisioned'
@@ -122,6 +138,7 @@ export async function loadDirectoryForAssignment(
       emailEligibility: emailEligibility(email, EMAIL_DELIVERY),
       affiliations: rels.map((r) => ({
         relationship_id: r.id,
+        company_key: `company:${r.company!.id}`,
         company_name: r.company!.company_name,
         position: r.position_or_role,
         is_primary: r.is_primary_contact,
@@ -150,6 +167,10 @@ export async function loadDirectoryForAssignment(
       name: c.company_name as string,
       email: (c.company_email as string | null) ?? null,
       peopleCount: peopleCount.get(c.id as string) ?? 0,
+      primaryContact: resolvePrimaryContact(primaryByCompany.get(c.id as string), {
+        email: (c.company_email as string | null) ?? null,
+        phone: null,
+      }),
       assigned: !!subId && assignedSubs.has(subId),
       disabledReason,
       trade: subId ? (tradeBySub.get(subId) ?? null) : null,
