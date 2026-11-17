@@ -113,6 +113,40 @@ select test.eq('sub: cannot change the assigned project', (select count(*)::text
 select test.as(:'A_SUB_UNASSIGNED');
 select test.eq('sub: unassigned company sees no A projects', (select count(*)::text from public.projects where organization_id = :'ORG_A'), '0');
 
+-- ───────── 7. Every organization-scoped table, not just the ones named above ─────────
+select test.as(:'B_ADMIN');
+do $$
+declare t text; n bigint;
+begin
+  for t in
+    select k.relname from pg_class k
+    join pg_attribute a on a.attrelid = k.oid and a.attname = 'organization_id' and not a.attisdropped
+    where k.relnamespace = 'public'::regnamespace and k.relkind in ('r', 'v') order by 1
+  loop
+    begin
+      execute format('select count(*) from public.%I where organization_id = %L', t, '00000000-0000-0000-0000-00000000000a') into n;
+      perform test.eq('sweep: B admin sees no A rows in ' || t, n::text, '0');
+    exception when insufficient_privilege then
+      perform test.record('sweep: B admin sees no A rows in ' || t, true, 'no table access');
+    end;
+  end loop;
+end $$;
+
+-- ───────── 8. A row's organization must match its project's organization ─────────
+reset role;
+select test.throws('integrity: a B row cannot point at an A project',
+  format('insert into public.ai_assistant_requests (organization_id, user_id, project_id) values (%L, %L, %L)', :'ORG_B', :'B_ADMIN', :'PA1'),
+  'foreign key|project_org_fkey');
+
+-- ───────── 9. Signed-out callers cannot run privileged helper functions ─────────
+reset role;
+set role anon;
+select test.throws('anon: cannot call is_org_member', format('select public.is_org_member(%L)', :'ORG_A'), 'permission denied');
+select test.throws('anon: cannot call can_view_project_internal', format('select public.can_view_project_internal(%L)', :'PA1'), 'permission denied');
+reset role;
+set role anon;
+select test.eq('anon: invite preview still works signed out', (select count(*)::text from public.invitation_preview('not-a-real-token')), '0');
+
 reset role;
 select label, detail from test.results where not pass order by id;
 select count(*) filter (where pass) as passed, count(*) filter (where not pass) as failed from test.results;
