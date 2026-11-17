@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Gem, Users } from 'lucide-react'
 import { seatUsage, type PlanSummary } from '@/lib/plans-shared'
 import { cn } from '@/lib/utils'
@@ -17,8 +18,14 @@ export function PlanSummaryCard({ plan, className }: { plan: PlanSummary; classN
             {plan.plan_name} plan
           </p>
           <p className="text-sm text-muted-foreground">
-            {plan.all_features ? 'Every module is included.' : 'Modules outside your plan are shown with a lock.'} To change plans,
-            contact Trefort.
+            {plan.all_features ? 'Every module is included.' : 'Modules outside your plan are shown with a lock.'}{' '}
+            {plan.is_public ? (
+              <Link href="/billing" className="font-medium text-primary underline-offset-4 hover:underline">
+                Change plan
+              </Link>
+            ) : (
+              'Plan changes are made by Trefort.'
+            )}
           </p>
         </div>
       </div>

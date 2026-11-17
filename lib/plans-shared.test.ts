@@ -41,7 +41,7 @@ describe('seat usage', () => {
     assert.equal(s.label, '30 team members (unlimited)')
   })
   it('names the plan to upgrade to', () => {
-    assert.equal(upgradeMessage({ upgrade_plans: { invoices: 'Pro' } }, 'invoices'), 'Included in the Pro plan. Contact Trefort to upgrade.')
+    assert.equal(upgradeMessage({ upgrade_plans: { invoices: 'Pro' } }, 'invoices'), 'Included in the Pro plan. Upgrade from Plan & billing.')
     assert.equal(upgradeMessage({ upgrade_plans: {} }, 'x'), 'Not included in your plan.')
   })
 })
