@@ -106,7 +106,7 @@ test('dates', () => {
 })
 
 test('PDF filename follows ProjectNumber_ProjectName_Daily-Log_Date', () => {
-  assert.equal(dailyLogPdfBaseName({ projectNumber: 'BJ-1002', projectName: 'Yaupon Dr', logDate: '2026-10-28' }), 'BJ-1002_Yaupon-Dr_Daily-Log_2026-10-28')
+  assert.equal(dailyLogPdfBaseName({ projectNumber: 'TF-1002', projectName: 'Yaupon Dr', logDate: '2026-10-28' }), 'TF-1002_Yaupon-Dr_Daily-Log_2026-10-28')
   assert.equal(dailyLogPdfBaseName({ projectNumber: null, projectName: 'A/B & C', logDate: '2026-10-28' }), 'A-B-and-C_Daily-Log_2026-10-28')
 })
 

@@ -69,7 +69,7 @@ test('safeCellText neutralises formula prefixes and bounds length', () => {
 })
 
 test('buildExportFilename uses project metadata and strips unsafe characters', () => {
-  assert.equal(buildExportFilename({ project_number: 'BJ-1002', name: 'Yaupon Dr' }, '2026-10-28'), 'BJ-1002_Yaupon-Dr_Activity-History_2026-10-28.xlsx')
+  assert.equal(buildExportFilename({ project_number: 'TF-1002', name: 'Yaupon Dr' }, '2026-10-28'), 'TF-1002_Yaupon-Dr_Activity-History_2026-10-28.xlsx')
   assert.equal(
     buildExportFilename({ project_number: null, name: '../Café "Rm" /x' }, '2026-10-28'),
     'Project_Cafe-Rm-x_Activity-History_2026-10-28.xlsx',

@@ -24,7 +24,7 @@ export type JobsiteAddress = {
 
 const NWS = 'https://api.weather.gov'
 const NWS_HEADERS = {
-  'User-Agent': '(bJCustom-PowerApps jobsite weather, https://github.com/emerickoffi/bJCustom-PowerApps)',
+  'User-Agent': '(Trefort jobsite weather, https://github.com/emerickoffi/trefort-app)',
   Accept: 'application/geo+json',
 }
 /** Gridpoints and geocodes rarely change; forecasts refresh on the NWS cadence. */
