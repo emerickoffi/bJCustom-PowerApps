@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
 import { requireAdmin } from '@/lib/session'
-import { getOrgFeatures } from '@/lib/features'
+import { getOrgFeatures, getOrgPlanSummary } from '@/lib/features'
 import { getProviderConfig } from '@/lib/esign/dropbox-sign'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import { createClient } from '@/lib/supabase/server'
-import type { FeatureKey } from '@/lib/feature-registry'
+import { FEATURES, isSwitchable, type FeatureKey } from '@/lib/feature-registry'
+import { planAllows, upgradeMessage } from '@/lib/plans-shared'
+import { PlanSummaryCard } from '@/components/settings/plan-summary-card'
 import { isMissingTableError } from '@/lib/subcontractors'
 import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { FeatureToggles } from '@/components/settings/feature-toggles'
@@ -26,7 +28,8 @@ const RECORD_TABLES: [FeatureKey, string, string][] = [
 export default async function FeaturesPage() {
   const session = await requireAdmin()
   const supabase = await createClient()
-  const [features, subcontractorProbe, clientUpdatesProbe, changeOrderTableProbe, rfiTableProbe, photosTableProbe, registryProbe, ...counts] = await Promise.all([
+  const [plan, features, subcontractorProbe, clientUpdatesProbe, changeOrderTableProbe, rfiTableProbe, photosTableProbe, registryProbe, ...counts] = await Promise.all([
+    getOrgPlanSummary(session.organizationId),
     getOrgFeatures(session.organizationId),
     supabase.from('subcontractor_companies').select('id').eq('organization_id', session.organizationId).limit(1),
     supabase.from('client_updates').select('id').eq('organization_id', session.organizationId).limit(1),
@@ -46,13 +49,24 @@ export default async function FeaturesPage() {
     if (n > 0) records[key] = `${n} ${noun}`
   })
 
+  const switchableKeys = FEATURES.filter(isSwitchable).map((f) => f.key)
+  const planLocks: Partial<Record<FeatureKey, { plan: string | null; message: string }>> = {}
+  if (plan) {
+    for (const key of switchableKeys) {
+      if (!planAllows(plan, key, switchableKeys)) {
+        planLocks[key] = { plan: plan.upgrade_plans[key] ?? null, message: upgradeMessage(plan, key) }
+      }
+    }
+  }
+
   return (
     <div className={pageLayout('form', 'max-w-5xl')}>
       <PageHeader icon={SlidersHorizontalIcon}
         title="Feature management"
         level={2}
       />
-      <FeatureToggles features={features} records={records} pendingSetup={{
+      {plan && <PlanSummaryCard plan={plan} />}
+      <FeatureToggles features={features} records={records} planLocks={planLocks} pendingSetup={{
           e_signatures: !getProviderConfig().configured,
           ai_assistant: !getAssistantProviderConfig().configured,
           subcontractors: isMissingTableError(subcontractorProbe.error),

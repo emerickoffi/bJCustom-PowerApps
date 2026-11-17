@@ -11,7 +11,8 @@ import { PendingActivationList, type PendingActivation } from '@/components/team
 import { UsersAccessTabs } from '@/components/team/users-access-tabs'
 import { HomeownerAccountList, type HomeownerFilter } from '@/components/team/homeowner-account-list'
 import { loadHomeownerAccounts } from '@/lib/homeowner-accounts'
-import { getOrgFeatures } from '@/lib/features'
+import { getOrgFeatures, getOrgPlanSummary } from '@/lib/features'
+import { PlanSummaryCard } from '@/components/settings/plan-summary-card'
 import { sanitizeSearch } from '@/lib/format'
 
 function UsersAccessHeader({ actions }: { actions?: React.ReactNode }) {
@@ -56,7 +57,7 @@ export default async function TeamPage({
 
   const supabase = await createClient()
 
-  const [membersRes, invitesRes, projectsRes] = await Promise.all([
+  const [membersRes, invitesRes, projectsRes, plan] = await Promise.all([
     supabase
       .from('organization_memberships')
       .select('id, user_id, role, status, created_at, activation_required')
@@ -76,6 +77,7 @@ export default async function TeamPage({
       .eq('organization_id', session.organizationId)
       .is('archived_at', null)
       .order('created_at', { ascending: false }),
+    getOrgPlanSummary(session.organizationId),
   ])
 
   const memberships = membersRes.data ?? []
@@ -132,6 +134,7 @@ export default async function TeamPage({
       />
       <UsersAccessTabs active="staff" />
       <div className="flex flex-col gap-8">
+        {plan && <PlanSummaryCard plan={plan} />}
         <MemberList members={members} />
         <PendingActivationList accounts={pending} />
         <InvitationList invitations={invitations} />
