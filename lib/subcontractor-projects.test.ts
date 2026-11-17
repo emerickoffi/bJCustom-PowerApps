@@ -100,8 +100,8 @@ const record = (id: string, status: string, ended_at: string | null, number = id
 test('active associations on assignable projects are current; ended and completed ones are history', () => {
   const { current, history } = splitProjectAssignments(
     [
-      record('p2', 'under_construction', null, 'BJ-2'),
-      record('p1', 'preconstruction', null, 'BJ-10'),
+      record('p2', 'under_construction', null, 'TF-2'),
+      record('p1', 'preconstruction', null, 'TF-10'),
       record('p3', 'completed', null),
       record('p4', 'under_construction', '2026-10-20T00:00:00Z'),
       record('p5', 'cancelled', '2026-10-25T00:00:00Z'),

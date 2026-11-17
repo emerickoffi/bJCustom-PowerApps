@@ -53,5 +53,5 @@ test('proposal input rejects unknown display modes and empty titles', () => {
 })
 
 test('proposal filenames are filesystem safe', () => {
-  assert.equal(proposalFilename({ projectNumber: 'BJ 2026/01', estimateNumber: 'EST-0004', revision: 2 }), 'BJ-2026-01_EST-0004-Rev2_Proposal.pdf')
+  assert.equal(proposalFilename({ projectNumber: 'TF 2026/01', estimateNumber: 'EST-0004', revision: 2 }), 'TF-2026-01_EST-0004-Rev2_Proposal.pdf')
 })

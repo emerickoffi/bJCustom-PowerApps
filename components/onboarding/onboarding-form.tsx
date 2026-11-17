@@ -36,9 +36,9 @@ export function OnboardingForm() {
         name="project_prefix"
         label="Project number prefix"
         required
-        defaultValue="BJ"
+        defaultValue="TF"
         maxLength={6}
-        hint="Projects will be numbered like BJ-1001."
+        hint="Projects will be numbered like TF-1001."
         error={fe.project_prefix}
       />
       <FormMessage state={state} />
