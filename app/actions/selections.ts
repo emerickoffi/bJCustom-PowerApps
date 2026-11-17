@@ -291,7 +291,8 @@ export async function saveOptionAction(_prev: ActionState, formData: FormData): 
   }
 
   const storage = createAdminClient().storage.from(SELECTIONS_BUCKET)
-  const base = `${session.organizationId}/${d.project_id}/${d.selection_id}`
+  // File the upload under the selection's own organization (verified by RLS above), not the active workspace.
+  const base = `${selection.organization_id}/${d.project_id}/${d.selection_id}`
   const uploaded: string[] = []
   async function upload(file: File, kind: 'photo' | 'spec') {
     const path = `${base}/${kind}-${crypto.randomUUID()}.${extensionFor(file)}`
