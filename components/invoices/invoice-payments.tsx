@@ -91,7 +91,17 @@ export function InvoicePayments({
       ) : (
         <ul className="flex flex-col divide-y rounded-lg border">
           {payments.map((p) => (
-            <PaymentRow key={p.id} invoiceId={invoiceId} payment={p} canReverse={canRecord} />
+            <PaymentRow
+              key={p.id}
+              invoiceId={invoiceId}
+              payment={p}
+              canReverse={canRecord}
+              onReversed={() => {
+                // The earlier "Payment recorded." message and any typed values no longer apply.
+                setState(initialActionState)
+                setFormKey((k) => k + 1)
+              }}
+            />
           ))}
         </ul>
       )}
@@ -106,7 +116,9 @@ export function InvoicePayments({
               label="Amount ($)"
               inputMode="decimal"
               required
-              defaultValue={v?.amount ?? (balanceCents / 100).toFixed(2)}
+              defaultValue={v?.amount ?? ''}
+              placeholder={(balanceCents / 100).toFixed(2)}
+              hint={`Balance due ${formatCentsExact(balanceCents)}`}
               error={fe.amount}
             />
             <TextField
@@ -155,7 +167,17 @@ export function InvoicePayments({
   )
 }
 
-function PaymentRow({ invoiceId, payment, canReverse }: { invoiceId: string; payment: InvoicePayment; canReverse: boolean }) {
+function PaymentRow({
+  invoiceId,
+  payment,
+  canReverse,
+  onReversed,
+}: {
+  invoiceId: string
+  payment: InvoicePayment
+  canReverse: boolean
+  onReversed: () => void
+}) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -190,7 +212,12 @@ function PaymentRow({ invoiceId, payment, canReverse }: { invoiceId: string; pay
             startTransition(async () => {
               const result = await reversePayment(invoiceId, payment.id, reason)
               if (result.error) setError(result.error)
-              else setOpen(false)
+              else {
+                setOpen(false)
+                setReason('')
+                setError(null)
+                onReversed()
+              }
             })
           }}
         >
