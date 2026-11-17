@@ -30,9 +30,9 @@ export async function getIssueReportOptions(organizationId: string, projectId: s
     supabase.from('projects').select('project_manager_id').eq('id', projectId).eq('organization_id', organizationId).maybeSingle(),
     supabase.from('project_members').select('user_id').eq('project_id', projectId),
     supabase.from('project_issues').select('category').eq('project_id', projectId).limit(500),
-    supabase.from('organizations').select('name').eq('id', organizationId).maybeSingle(),
+    supabase.from('organizations').select('display_name, legal_name').eq('id', organizationId).maybeSingle(),
   ])
-  const organizationName = (orgRes.data?.name as string | undefined) || 'Builder'
+  const organizationName = (orgRes.data?.display_name as string | undefined) || (orgRes.data?.legal_name as string | undefined) || 'Builder'
   const projectManagerId = projectRes.data?.project_manager_id ?? null
   const memberIds = new Set((membersRes.data ?? []).map((m) => m.user_id as string))
 
