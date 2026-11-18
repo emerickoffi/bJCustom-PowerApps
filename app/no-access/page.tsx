@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { isPlatformAdmin } from '@/lib/platform'
+import { selfSignupOpen } from '@/lib/signup'
 import { AuthShell } from '@/components/auth/auth-shell'
 
 export const metadata: Metadata = { title: 'No workspace access', robots: { index: false, follow: false } }
@@ -49,8 +50,17 @@ export default async function NoAccessPage() {
       description={`You are signed in as ${session.email}, but this account is not a member of any workspace yet.`}
     >
       <div className="flex flex-col gap-4 text-sm leading-relaxed text-muted-foreground">
+        {selfSignupOpen() && (
+          <Link
+            href="/onboarding"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Create your company · 14-day free trial
+          </Link>
+        )}
         <p>
-          {'Access is by invitation only. Ask your administrator to send an invitation to this email address, then open the invitation link they share with you.'}
+          {selfSignupOpen() ? 'Joining an existing company? ' : 'Access is by invitation only. '}
+          {'Ask your administrator to send an invitation to this email address, then open the invitation link they share with you.'}
         </p>
         <p>{'If you were invited with a different email, sign out and sign in with that address.'}</p>
         {ownerLink}

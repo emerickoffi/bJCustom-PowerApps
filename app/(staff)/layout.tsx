@@ -1,5 +1,8 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { getOrgBilling } from '@/lib/billing'
+import { billingAccess } from '@/lib/billing-shared'
 import { requireStaff } from '@/lib/session'
 import { QuickActionsProvider, QuickCreateMenu } from '@/components/app/quick-actions'
 import { JobSwitcher } from '@/components/app/job-switcher'
@@ -86,12 +89,17 @@ async function loadNotifications(userId: string): Promise<HeaderNotification[]> 
  */
 export default async function StaffLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const session = await requireStaff()
-  const [cookieStore, notifications, features, platformAdmin] = await Promise.all([
+  const [cookieStore, notifications, features, platformAdmin, billing] = await Promise.all([
     cookies(),
     loadNotifications(session.userId),
     getOrgFeatures(session.organizationId),
     isPlatformAdmin(),
+    getOrgBilling(session.organizationId),
   ])
+  // A finished trial or an unpaid subscription pauses the staff app (data is kept); billing stays reachable.
+  const access = billing ? billingAccess(billing) : null
+  if (access?.state === 'blocked') redirect('/billing')
+  const billingNotice = access?.state === 'warning' && session.role === 'org_admin' ? access.reason : null
   // Only pages whose content really filters by `?project=` keep the selection there; elsewhere picking a
   // project opens it. The owner dashboard is portfolio-wide and has no per-project filter.
   const projectFilterRoutes: ProjectFilterRoute[] = [
@@ -176,6 +184,14 @@ export default async function StaffLayout({ children, modal }: { children: React
               Bottom padding keeps the shared assistant launcher clear of the last controls. The tablet shell adds
               the bottom navigation the launcher sits above. */}
           <main className="w-full min-w-0 flex-1 px-(--page-gutter-x) pt-(--page-gutter-top) pb-[calc(9rem+env(safe-area-inset-bottom))] tablet:pb-[calc(13rem+env(safe-area-inset-bottom))]">
+            {billingNotice && (
+              <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-panel border border-champagne/40 bg-champagne-soft px-4 py-2.5 text-sm text-champagne-foreground">
+                <span className="font-medium">{billingNotice}</span>
+                <Link href="/billing" className="font-semibold underline underline-offset-4">
+                  Go to billing
+                </Link>
+              </div>
+            )}
             {children}
           </main>
         </div>

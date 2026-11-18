@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSession, requireAdmin } from '@/lib/session'
+import { selfSignupOpen } from '@/lib/signup'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { parseVisibility, serializeDashboardSettings, validateLayout } from '@/lib/dashboard-visibility'
 import { organizationOnboardingSchema, organizationSettingsSchema, profileSchema } from '@/lib/validation'
@@ -19,6 +20,7 @@ export async function createOrganizationAction(_prev: ActionState, formData: For
   const session = await getSession()
   if (!session) redirect('/auth/login')
   if (session.organizationId) redirect('/')
+  if (!selfSignupOpen()) return { error: 'New company sign-up is closed right now. Ask Trefort for an invitation.' }
 
   const parsed = organizationOnboardingSchema.safeParse(formValues(formData))
   if (!parsed.success) return fromZodError(parsed.error)

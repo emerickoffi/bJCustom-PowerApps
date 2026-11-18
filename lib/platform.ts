@@ -74,3 +74,21 @@ export async function loadPlatformPlans(): Promise<PlatformPlan[]> {
   const { data, error } = await supabase.rpc('platform_list_plans')
   return error ? [] : ((data ?? []) as PlatformPlan[])
 }
+
+export type PlatformCompanyBilling = {
+  subscription_status: string
+  plan_key: string
+  billing_interval: 'month' | 'year' | null
+  trial_ends_at: string | null
+  current_period_end: string | null
+  cancel_at_period_end: boolean
+  has_stripe_customer: boolean
+  has_subscription: boolean
+}
+
+/** Null until the billing migration has been applied. */
+export async function loadPlatformCompanyBilling(id: string): Promise<PlatformCompanyBilling | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('platform_company_billing', { p_org: id })
+  return error || !data ? null : (data as PlatformCompanyBilling)
+}

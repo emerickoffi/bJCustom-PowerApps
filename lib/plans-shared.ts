@@ -51,5 +51,5 @@ export function seatUsage(plan: Pick<PlanSummary, 'staff_seats' | 'pending_staff
 
 export function upgradeMessage(plan: Pick<PlanSummary, 'upgrade_plans'>, key: string): string {
   const target = plan.upgrade_plans[key]
-  return target ? `Included in the ${target} plan. Contact Trefort to upgrade.` : 'Not included in your plan.'
+  return target ? `Included in the ${target} plan. Upgrade from Plan & billing.` : 'Not included in your plan.'
 }

@@ -1,0 +1,117 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import { toast } from 'sonner'
+import { Check } from 'lucide-react'
+import { choosePlanAction } from '@/app/actions/billing'
+import { formatPlanPrice, type BillingInterval, type PlanPrice } from '@/lib/billing-shared'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+
+const HIGHLIGHTS: Record<string, string[]> = {
+  starter: ['Schedule, estimates and selections', 'Walkthroughs, punch list and warranty', 'Homeowner portal', 'Daily logs and project photos'],
+  pro: ['Everything in Starter', 'Documents and e-signatures', 'Change orders, RFIs and invoices', 'Subcontractors and client updates'],
+  business: ['Everything in Pro', 'AI assistant', 'Online payments and QuickBooks (coming soon)', 'Custom domain and white-label'],
+}
+
+export function PlanChooser({
+  plans,
+  currentPlan,
+  currentInterval,
+  subscribed,
+  disabled,
+}: {
+  plans: PlanPrice[]
+  currentPlan: string | null
+  currentInterval: BillingInterval | null
+  /** True when the company already pays; choosing switches plans instead of opening checkout. */
+  subscribed: boolean
+  disabled?: boolean
+}) {
+  const [interval, setInterval] = useState<BillingInterval>(currentInterval ?? 'month')
+  const [pendingPlan, setPendingPlan] = useState<string | null>(null)
+  const [, startTransition] = useTransition()
+
+  function choose(plan: PlanPrice) {
+    setPendingPlan(plan.key)
+    startTransition(async () => {
+      const result = await choosePlanAction(plan.key, interval)
+      setPendingPlan(null)
+      if (result?.error) toast.error(result.error)
+      else if (result?.success) toast.success(result.success)
+    })
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div role="radiogroup" aria-label="Billing period" className="flex w-fit gap-1 rounded-full border border-border bg-muted/40 p-1 text-sm">
+        {(['month', 'year'] as const).map((i) => (
+          <button
+            key={i}
+            type="button"
+            role="radio"
+            aria-checked={interval === i}
+            onClick={() => setInterval(i)}
+            className={cn(
+              'rounded-full px-4 py-1.5 font-medium transition-colors',
+              interval === i ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {i === 'month' ? 'Monthly' : 'Yearly · 2 months free'}
+          </button>
+        ))}
+      </div>
+
+      <ul className="grid gap-4 md:grid-cols-3">
+        {plans.map((plan) => {
+          const isCurrent = subscribed && plan.key === currentPlan && interval === currentInterval
+          const cents = interval === 'month' ? plan.monthly_price_cents : plan.yearly_price_cents
+          return (
+            <li
+              key={plan.key}
+              className={cn('surface flex flex-col gap-4 p-5', plan.key === 'pro' && 'ring-2 ring-primary/40')}
+            >
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-base font-semibold text-foreground">{plan.name}</h3>
+                  {plan.key === 'pro' && <span className="rounded-badge bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Most popular</span>}
+                </div>
+                {plan.tagline && <p className="text-sm text-muted-foreground">{plan.tagline}</p>}
+              </div>
+              <p className="text-2xl font-semibold tabular-nums text-foreground">{formatPlanPrice(cents, interval)}</p>
+              <ul className="flex flex-1 flex-col gap-1.5 text-sm text-foreground">
+                <li className="flex gap-2">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  {plan.max_staff === null ? 'Unlimited team members' : `Up to ${plan.max_staff} team members`}
+                </li>
+                {(HIGHLIGHTS[plan.key] ?? []).map((h) => (
+                  <li key={h} className="flex gap-2">
+                    <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                    {h}
+                  </li>
+                ))}
+                <li className="flex gap-2 text-muted-foreground">
+                  <Check className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  Unlimited homeowners and projects
+                </li>
+              </ul>
+              <Button
+                onClick={() => choose(plan)}
+                disabled={disabled || isCurrent || pendingPlan !== null || cents === null}
+                variant={plan.key === 'pro' ? 'default' : 'outline'}
+              >
+                {isCurrent
+                  ? 'Current plan'
+                  : pendingPlan === plan.key
+                    ? 'Opening…'
+                    : subscribed
+                      ? `Switch to ${plan.name}`
+                      : `Choose ${plan.name}`}
+              </Button>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}

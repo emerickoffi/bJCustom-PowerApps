@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Building2 } from 'lucide-react'
-import { requirePlatformAdmin, loadPlatformCompany, loadPlatformPlans } from '@/lib/platform'
+import { requirePlatformAdmin, loadPlatformCompany, loadPlatformCompanyBilling, loadPlatformPlans } from '@/lib/platform'
 import { companyFeatureRows, companyStatus, describeEvent, planName } from '@/lib/platform-shared'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { ROLE_LABELS } from '@/lib/domain'
@@ -34,7 +34,7 @@ export default async function PlatformCompanyPage({ params }: { params: Promise<
   const session = await requirePlatformAdmin()
   const { id } = await params
   if (!UUID.test(id)) notFound()
-  const [company, plans] = await Promise.all([loadPlatformCompany(id), loadPlatformPlans()])
+  const [company, plans, billing] = await Promise.all([loadPlatformCompany(id), loadPlatformPlans(), loadPlatformCompanyBilling(id)])
   if (!company) notFound()
   const plan = plans.find((p) => p.key === company.plan_key) ?? null
 
@@ -93,7 +93,16 @@ export default async function PlatformCompanyPage({ params }: { params: Promise<
                 {company.plan_max_staff ? `${seats} of ${company.plan_max_staff}` : `${seats} (unlimited)`}
                 {company.counts.pending_staff_invites ? ` · ${company.counts.pending_staff_invites} invited` : ''}
               </Detail>
-              <Detail label="Billing">{companyStatus({ suspended_at: null, subscription_status: company.subscription_status }).label}</Detail>
+              <Detail label="Billing">
+                {companyStatus({ suspended_at: null, subscription_status: company.subscription_status }).label}
+                {billing?.billing_interval ? ` · ${billing.billing_interval === 'year' ? 'yearly' : 'monthly'}` : ''}
+              </Detail>
+              {billing?.trial_ends_at && company.subscription_status === 'trialing' && (
+                <Detail label="Trial ends">{formatDate(billing.trial_ends_at)}</Detail>
+              )}
+              {billing?.current_period_end && (
+                <Detail label={billing.cancel_at_period_end ? 'Ends on' : 'Renews on'}>{formatDate(billing.current_period_end)}</Detail>
+              )}
               <Detail label="Time zone">{company.timezone || '—'}</Detail>
             </dl>
           </CardContent>
