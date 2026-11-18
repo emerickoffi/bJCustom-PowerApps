@@ -49,16 +49,20 @@ const GROUPS: { name: FeatureGroup; icon: LucideIcon; note?: string }[] = [
 ]
 
 type Records = Partial<Record<FeatureKey, string>>
+/** Modules the company's plan does not include, with the upgrade message to show. */
+type PlanLocks = Partial<Record<FeatureKey, { plan: string | null; message: string }>>
 
 export function FeatureToggles({
   features,
   records,
   pendingSetup = {},
+  planLocks = {},
 }: {
   features: FeatureMap
   records: Records
   /** Features whose runtime credentials or migrations are missing. */
   pendingSetup?: Partial<Record<FeatureKey, boolean>>
+  planLocks?: PlanLocks
 }) {
   const defs = FEATURES.map((f) => (pendingSetup[f.key] ? { ...f, setupRequired: true } : f))
   return (
@@ -74,7 +78,7 @@ export function FeatureToggles({
           </div>
           <ul className="surface divide-y">
             {defs.filter((f) => f.group === group).map((f) => (
-              <FeatureRow key={f.key} feature={f} defs={defs} features={features} records={records} />
+              <FeatureRow key={f.key} feature={f} defs={defs} features={features} records={records} planLock={planLocks[f.key]} />
             ))}
           </ul>
         </section>
@@ -95,11 +99,13 @@ function FeatureRow({
   defs,
   features,
   records,
+  planLock,
 }: {
   feature: FeatureDefinition
   defs: FeatureDefinition[]
   features: FeatureMap
   records: Records
+  planLock?: { plan: string | null; message: string }
 }) {
   const [pending, startTransition] = useTransition()
   const [optimistic, setOptimistic] = useState<boolean | null>(null)
@@ -111,7 +117,7 @@ function FeatureRow({
   const dependents = enabled ? activeDependents(defs, features, feature.key) : []
   const recordSummary = records[feature.key]
   const switchable = availability !== 'core' && availability !== 'planned' && !feature.includedWith
-  const usable = canToggle(defs, features, feature)
+  const usable = canToggle(defs, features, feature) && !planLock
 
   const apply = (next: boolean) => {
     setConfirming(false)
@@ -153,11 +159,23 @@ function FeatureRow({
             {feature.label}
           </label>
           {badge && <span className={cn('rounded-badge px-2 py-0.5 text-xs font-medium', badge[1])}>{badge[0]}</span>}
+          {planLock && switchable && (
+            <span className="flex items-center gap-1 rounded-badge bg-champagne-soft px-2 py-0.5 text-xs font-medium text-champagne-foreground">
+              <Lock className="size-3" aria-hidden="true" />
+              {planLock.plan ? `${planLock.plan} plan` : 'Not in your plan'}
+            </span>
+          )}
         </div>
         <p className={cn('text-sm text-muted-foreground', availability === 'planned' && 'text-muted-foreground/80')}>
           {feature.description}
         </p>
-        {message && (
+        {planLock && switchable && (
+          <p id={`${id}-plan`} className="flex items-start gap-1.5 text-xs font-medium text-champagne-foreground">
+            <Lock className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+            {planLock.message}
+          </p>
+        )}
+        {message && !(planLock && switchable) && (
           <p
             className={cn(
               'flex items-start gap-1.5 text-xs',
@@ -201,6 +219,7 @@ function FeatureRow({
           type="button"
           role="switch"
           aria-checked={enabled}
+          aria-describedby={planLock ? `${id}-plan` : undefined}
           disabled={pending || !usable}
           onClick={toggle}
           className={cn(

@@ -63,6 +63,7 @@ export default async function PlatformCompaniesPage({ searchParams }: { searchPa
                 <TableRow>
                   <TableHead className="pl-6">Company</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="hidden sm:table-cell">Plan</TableHead>
                   <TableHead className="text-right">Team</TableHead>
                   <TableHead className="hidden text-right sm:table-cell">Homeowners</TableHead>
                   <TableHead className="text-right">Projects</TableHead>
@@ -84,6 +85,7 @@ export default async function PlatformCompaniesPage({ searchParams }: { searchPa
                       <TableCell>
                         <StatusPill tone={status.tone}>{status.label}</StatusPill>
                       </TableCell>
+                      <TableCell className="hidden text-sm sm:table-cell">{c.plan_name ?? '—'}</TableCell>
                       <TableCell className="text-right tabular-nums">{c.staff_count}</TableCell>
                       <TableCell className="hidden text-right tabular-nums sm:table-cell">{c.homeowner_count}</TableCell>
                       <TableCell className="text-right tabular-nums">{c.project_count}</TableCell>

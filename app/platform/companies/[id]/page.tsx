@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Building2 } from 'lucide-react'
-import { requirePlatformAdmin, loadPlatformCompany } from '@/lib/platform'
-import { companyFeatureRows, companyStatus, describeEvent } from '@/lib/platform-shared'
+import { requirePlatformAdmin, loadPlatformCompany, loadPlatformPlans } from '@/lib/platform'
+import { companyFeatureRows, companyStatus, describeEvent, planName } from '@/lib/platform-shared'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { ROLE_LABELS } from '@/lib/domain'
 import { PageHeader, pageLayout } from '@/components/shared/page-header'
@@ -11,8 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { CompanyFeatureSwitches } from '@/components/platform/company-feature-switches'
 import { CompanySuspension } from '@/components/platform/company-suspension'
+import { CompanyPlanPicker } from '@/components/platform/company-plan-picker'
 
 export const metadata: Metadata = { title: 'Company' }
+
+function team_count(members: { role: string; status: string }[]) {
+  return members.filter((m) => m.role !== 'client' && m.status === 'active').length
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -29,12 +34,13 @@ export default async function PlatformCompanyPage({ params }: { params: Promise<
   const session = await requirePlatformAdmin()
   const { id } = await params
   if (!UUID.test(id)) notFound()
-  const company = await loadPlatformCompany(id)
+  const [company, plans] = await Promise.all([loadPlatformCompany(id), loadPlatformPlans()])
   if (!company) notFound()
+  const plan = plans.find((p) => p.key === company.plan_key) ?? null
 
   const status = companyStatus(company)
   const isOwnCompany = company.members.some((m) => m.user_id === session.userId && m.status === 'active')
-  const features = companyFeatureRows(company.feature_overrides).map((r) => ({
+  const features = companyFeatureRows(company.feature_overrides, plan).map((r) => ({
     key: r.feature.key,
     label: r.feature.label,
     description: r.feature.description,
@@ -42,7 +48,9 @@ export default async function PlatformCompanyPage({ params }: { params: Promise<
     switchedOn: r.switchedOn,
     effective: r.effective,
     blockedBy: r.blockedBy,
+    notInPlan: r.notInPlan,
   }))
+  const seats = company.counts.staff_seats ?? team_count(company.members)
   const team = company.members.filter((m) => m.role !== 'client')
   const homeowners = company.members.filter((m) => m.role === 'client')
 
@@ -80,12 +88,29 @@ export default async function PlatformCompanyPage({ params }: { params: Promise<
               <Detail label="Clients">{company.counts.clients}</Detail>
               <Detail label="Estimates · Invoices">{`${company.counts.estimates} · ${company.counts.invoices}`}</Detail>
               <Detail label="Last activity">{company.last_activity_at ? formatDateTime(company.last_activity_at) : 'None yet'}</Detail>
+              <Detail label="Plan">{planName(plans, company.plan_key)}</Detail>
+              <Detail label="Team seats">
+                {company.plan_max_staff ? `${seats} of ${company.plan_max_staff}` : `${seats} (unlimited)`}
+                {company.counts.pending_staff_invites ? ` · ${company.counts.pending_staff_invites} invited` : ''}
+              </Detail>
               <Detail label="Billing">{companyStatus({ suspended_at: null, subscription_status: company.subscription_status }).label}</Detail>
               <Detail label="Time zone">{company.timezone || '—'}</Detail>
             </dl>
           </CardContent>
         </Card>
 
+        <div className="flex flex-col gap-5">
+        {plans.length > 0 && company.plan_key && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Plan</CardTitle>
+              <CardDescription>The plan sets which modules and how many team seats this company can use.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CompanyPlanPicker key={company.plan_key} organizationId={company.id} currentPlan={company.plan_key} plans={plans} />
+            </CardContent>
+          </Card>
+        )}
         <Card>
           <CardHeader>
             <CardTitle>Access</CardTitle>
@@ -104,6 +129,7 @@ export default async function PlatformCompanyPage({ params }: { params: Promise<
             />
           </CardContent>
         </Card>
+        </div>
       </div>
 
       <Card>
@@ -150,7 +176,7 @@ export default async function PlatformCompanyPage({ params }: { params: Promise<
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <CompanyFeatureSwitches organizationId={company.id} rows={features} />
+          <CompanyFeatureSwitches organizationId={company.id} rows={features} planName={plan?.name} />
         </CardContent>
       </Card>
 

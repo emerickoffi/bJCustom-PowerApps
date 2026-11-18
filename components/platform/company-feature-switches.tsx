@@ -7,10 +7,23 @@ import type { CompanyFeatureRow } from '@/lib/platform-shared'
 import { FEATURES } from '@/lib/feature-registry'
 import { cn } from '@/lib/utils'
 
-type Row = Pick<CompanyFeatureRow, 'switchedOn' | 'effective' | 'blockedBy'> & { key: string; label: string; description: string; group: string }
+type Row = Pick<CompanyFeatureRow, 'switchedOn' | 'effective' | 'blockedBy' | 'notInPlan'> & {
+  key: string
+  label: string
+  description: string
+  group: string
+}
 
 /** Module switches for one company. Each change is saved immediately and logged as an owner action. */
-export function CompanyFeatureSwitches({ organizationId, rows }: { organizationId: string; rows: Row[] }) {
+export function CompanyFeatureSwitches({
+  organizationId,
+  rows,
+  planName,
+}: {
+  organizationId: string
+  rows: Row[]
+  planName?: string
+}) {
   const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [, startTransition] = useTransition()
   const groups = Array.from(new Set(rows.map((r) => r.group)))
@@ -45,6 +58,11 @@ export function CompanyFeatureSwitches({ organizationId, rows }: { organizationI
                         {row.label}
                       </span>
                       <span className="text-xs text-muted-foreground">{row.description}</span>
+                      {row.notInPlan && (
+                        <span className="text-xs font-medium text-champagne-foreground">
+                          {`Not included in the ${planName ?? 'current'} plan. Change the plan to turn it on.`}
+                        </span>
+                      )}
                       {blocked && (
                         <span className="text-xs text-warning">
                           {`On, but inactive until ${row.blockedBy
@@ -59,12 +77,12 @@ export function CompanyFeatureSwitches({ organizationId, rows }: { organizationI
                       aria-checked={row.switchedOn}
                       aria-labelledby={labelId}
                       aria-busy={busy}
-                      disabled={pendingKey !== null}
+                      disabled={pendingKey !== null || row.notInPlan}
                       onClick={() => toggle(row)}
                       className={cn(
-                        'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-wait',
+                        'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed',
                         row.switchedOn ? 'bg-interactive' : 'bg-muted-foreground/30',
-                        busy && 'opacity-60',
+                        (busy || row.notInPlan) && 'opacity-60',
                       )}
                     >
                       <span

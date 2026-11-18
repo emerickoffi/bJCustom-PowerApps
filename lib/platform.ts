@@ -8,6 +8,7 @@ import type {
   PlatformCompanyRow,
   PlatformEvent,
   PlatformOverview,
+  PlatformPlan,
   PlatformUser,
 } from '@/lib/platform-shared'
 
@@ -65,4 +66,11 @@ export async function findPlatformUsers(query: string): Promise<PlatformUser[] |
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('platform_find_users', { p_query: query })
   return error ? null : ((data ?? []) as PlatformUser[])
+}
+
+/** Empty when the subscription plans migration has not been applied yet. */
+export async function loadPlatformPlans(): Promise<PlatformPlan[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('platform_list_plans')
+  return error ? [] : ((data ?? []) as PlatformPlan[])
 }

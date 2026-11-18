@@ -9,6 +9,22 @@ export type PlatformOverview = {
   staff_members: number
   homeowners: number
   projects: number
+  companies_by_plan?: Record<string, number>
+}
+
+export type PlatformPlan = {
+  key: string
+  name: string
+  tagline: string | null
+  sort_order: number
+  all_features: boolean
+  features: string[]
+  max_staff: number | null
+  custom_domain: boolean
+  white_label: boolean
+  monthly_price_cents: number | null
+  is_public: boolean
+  companies: number
 }
 
 export type PlatformCompanyRow = {
@@ -16,6 +32,9 @@ export type PlatformCompanyRow = {
   display_name: string
   legal_name: string | null
   subscription_status: string
+  /** Missing until the subscription plans migration is applied. */
+  plan_key?: string
+  plan_name?: string
   created_at: string
   suspended_at: string | null
   staff_count: number
@@ -55,13 +74,23 @@ export type PlatformCompanyDetail = {
   city: string | null
   state: string | null
   subscription_status: string
+  plan_key?: string
+  plan_name?: string
+  plan_max_staff?: number | null
   created_at: string
   suspended_at: string | null
   suspended_reason: string | null
   suspended_by_email: string | null
   project_number_prefix: string | null
   timezone: string | null
-  counts: { projects: number; clients: number; estimates: number; invoices: number }
+  counts: {
+    projects: number
+    clients: number
+    estimates: number
+    invoices: number
+    staff_seats?: number
+    pending_staff_invites?: number
+  }
   last_activity_at: string | null
   members: PlatformMember[]
   feature_overrides: Partial<Record<FeatureKey, boolean>>
@@ -121,16 +150,32 @@ export type CompanyFeatureRow = {
   switchedOn: boolean
   /** Turned on but blocked by a module it depends on. */
   blockedBy: FeatureKey[]
+  /** The company's plan does not include this module, so it stays off whatever the switch says. */
+  notInPlan: boolean
 }
 
 /** Every module an owner can switch for a company, in registry order, with its effective state. */
-export function companyFeatureRows(overrides: Partial<Record<FeatureKey, boolean>>): CompanyFeatureRow[] {
-  const effective: FeatureMap = resolveFeatures(overrides)
-  return FEATURES.filter(isSwitchable).map((feature) => {
-    const switchedOn = overrides[feature.key] ?? feature.defaultEnabled
+export function companyFeatureRows(
+  overrides: Partial<Record<FeatureKey, boolean>>,
+  plan?: Pick<PlatformPlan, 'all_features' | 'features'> | null,
+): CompanyFeatureRow[] {
+  const switchable = FEATURES.filter(isSwitchable)
+  const inPlan = (key: FeatureKey) => !plan || plan.all_features || plan.features.includes(key)
+  const masked: Partial<Record<FeatureKey, boolean>> = { ...overrides }
+  for (const f of switchable) if (!inPlan(f.key)) masked[f.key] = false
+  const effective: FeatureMap = resolveFeatures(masked)
+  return switchable.map((feature) => {
+    const notInPlan = !inPlan(feature.key)
+    const switchedOn = notInPlan ? false : (overrides[feature.key] ?? feature.defaultEnabled)
     const blockedBy = switchedOn ? feature.requires.filter((r) => !effective[r]) : []
-    return { feature, effective: effective[feature.key], switchedOn, blockedBy }
+    return { feature, effective: effective[feature.key], switchedOn, blockedBy, notInPlan }
   })
+}
+
+/** Plan name for a key, falling back to a readable version of the key. */
+export function planName(plans: Pick<PlatformPlan, 'key' | 'name'>[], key: string | null | undefined): string {
+  if (!key) return 'Unknown'
+  return plans.find((p) => p.key === key)?.name ?? key.charAt(0).toUpperCase() + key.slice(1).replaceAll('_', ' ')
 }
 
 const EVENT_LABELS: Record<string, string> = {
@@ -138,11 +183,18 @@ const EVENT_LABELS: Record<string, string> = {
   feature_disabled: 'Turned off',
   company_suspended: 'Suspended the company',
   company_reactivated: 'Reactivated the company',
+  plan_changed: 'Changed plan',
 }
 
 /** One readable line for an owner action, e.g. "Turned on Daily logs". */
 export function describeEvent(event: Pick<PlatformEvent, 'action' | 'details'>): string {
   const base = EVENT_LABELS[event.action] ?? event.action.replaceAll('_', ' ')
+  if (event.action === 'plan_changed') {
+    const from = typeof event.details?.from === 'string' ? planName([], event.details.from) : null
+    const to = typeof event.details?.to === 'string' ? planName([], event.details.to) : null
+    const note = typeof event.details?.note === 'string' ? event.details.note : null
+    return `${base}${from && to ? ` from ${from} to ${to}` : ''}${note ? `: ${note}` : ''}`
+  }
   const feature = typeof event.details?.feature === 'string' ? event.details.feature : null
   if (feature) {
     const label = FEATURES.find((f) => f.key === feature)?.label ?? feature

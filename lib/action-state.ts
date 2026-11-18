@@ -34,8 +34,10 @@ export function fromZodError(error: ZodError): ActionState {
 }
 
 /** Maps database errors to safe, human-readable messages. */
-export function friendlyDbError(error: { message?: string; code?: string } | null | undefined): string {
+export function friendlyDbError(error: { message?: string; code?: string; hint?: string } | null | undefined): string {
   if (!error) return 'Something went wrong. Please try again.'
+  // Plan limits are written for end users (for example "Upgrade to Pro to turn it on").
+  if ((error.hint === 'plan_upgrade_required' || error.hint === 'plan_seat_limit') && error.message) return `${error.message}.`
   if (error.code === '42501') return 'You do not have permission to perform this action.'
   if (error.code === '23505') return 'A record with these details already exists.'
   if (error.code === 'P0001' && error.message) return error.message
