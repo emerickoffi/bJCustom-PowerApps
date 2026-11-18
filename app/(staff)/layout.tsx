@@ -28,6 +28,7 @@ import { FloatingActionsProvider } from '@/components/app/floating-actions'
 import { DraftScopeProvider } from '@/components/shared/draft-scope'
 import { NavigationGuard } from '@/components/app/navigation-guard'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
+import { isPlatformAdmin } from '@/lib/platform'
 import {
   Breadcrumbs,
   NotificationBell,
@@ -85,10 +86,11 @@ async function loadNotifications(userId: string): Promise<HeaderNotification[]> 
  */
 export default async function StaffLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const session = await requireStaff()
-  const [cookieStore, notifications, features] = await Promise.all([
+  const [cookieStore, notifications, features, platformAdmin] = await Promise.all([
     cookies(),
     loadNotifications(session.userId),
     getOrgFeatures(session.organizationId),
+    isPlatformAdmin(),
   ])
   // Only pages whose content really filters by `?project=` keep the selection there; elsewhere picking a
   // project opens it. The owner dashboard is portfolio-wide and has no per-project filter.
@@ -165,6 +167,7 @@ export default async function StaffLayout({ children, modal }: { children: React
                   email={session.email}
                   roleLabel={ROLE_LABELS[session.role]}
                   profileHref="/profile"
+                  ownerConsoleHref={platformAdmin ? '/platform' : undefined}
                 />
               </div>
             </div>

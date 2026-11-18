@@ -27,6 +27,8 @@ export type SessionContext = {
   activationRequired: boolean
   activationExpired: boolean
   workspaces: Workspace[]
+  /** Workspaces Trefort has paused. They never become the current workspace and grant no access. */
+  suspendedWorkspaces: { organizationId: string; organizationName: string }[]
 }
 
 type MembershipRow = {
@@ -56,7 +58,13 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  const memberships = await loadMemberships(supabase, user.id)
+  const [allMemberships, suspendedRes] = await Promise.all([
+    loadMemberships(supabase, user.id),
+    supabase.rpc('my_suspended_workspaces'),
+  ])
+  const suspendedRows = (suspendedRes.data ?? []) as { organization_id: string; display_name: string }[]
+  const suspendedIds = new Set(suspendedRows.map((r) => r.organization_id))
+  const memberships = allMemberships.filter((m) => !suspendedIds.has(m.organization_id))
 
   const selectedOrg = (await cookies()).get(WORKSPACE_COOKIE)?.value
   const membership = memberships.find((m) => m.organization_id === selectedOrg) ?? memberships[0] ?? null
@@ -86,6 +94,7 @@ export const getSession = cache(async (): Promise<SessionContext | null> => {
       role: m.role,
       kind: m.role === 'client' ? 'homeowner' : 'staff',
     })),
+    suspendedWorkspaces: suspendedRows.map((r) => ({ organizationId: r.organization_id, organizationName: r.display_name })),
   }
 })
 

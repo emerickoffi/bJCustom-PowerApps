@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
+import { isPlatformAdmin } from '@/lib/platform'
 import { AuthShell } from '@/components/auth/auth-shell'
 
 export const metadata: Metadata = { title: 'No workspace access', robots: { index: false, follow: false } }
@@ -9,6 +11,37 @@ export default async function NoAccessPage() {
   const session = await getSession()
   if (!session) redirect('/auth/login')
   if (session.organizationId && session.role) redirect('/')
+  const platformAdmin = await isPlatformAdmin()
+  const paused = session.suspendedWorkspaces
+
+  const signOut = (
+    <form action="/auth/sign-out" method="post">
+      <button type="submit" className="font-medium text-primary underline-offset-4 hover:underline">
+        Sign out
+      </button>
+    </form>
+  )
+  const ownerLink = platformAdmin && (
+    <Link href="/platform" className="font-medium text-primary underline-offset-4 hover:underline">
+      Open the Trefort owner console
+    </Link>
+  )
+
+  if (paused.length > 0) {
+    const names = paused.map((w) => w.organizationName).join(', ')
+    return (
+      <AuthShell title="Workspace paused" description={`Access to ${names} is paused right now.`}>
+        <div className="flex flex-col gap-4 text-sm leading-relaxed text-muted-foreground">
+          <p>
+            {'Your account and all of the company’s projects, files and records are safe. Access comes back as soon as the workspace is reactivated.'}
+          </p>
+          <p>{'If you manage this company, contact Trefort support about your subscription.'}</p>
+          {ownerLink}
+          {signOut}
+        </div>
+      </AuthShell>
+    )
+  }
 
   return (
     <AuthShell
@@ -20,11 +53,8 @@ export default async function NoAccessPage() {
           {'Access is by invitation only. Ask your administrator to send an invitation to this email address, then open the invitation link they share with you.'}
         </p>
         <p>{'If you were invited with a different email, sign out and sign in with that address.'}</p>
-        <form action="/auth/sign-out" method="post">
-          <button type="submit" className="font-medium text-primary underline-offset-4 hover:underline">
-            Sign out
-          </button>
-        </form>
+        {ownerLink}
+        {signOut}
       </div>
     </AuthShell>
   )

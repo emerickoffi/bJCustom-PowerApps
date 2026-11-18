@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTransition } from 'react'
-import { Bell, ChevronRight, LayoutTemplate, LogOut, UserRound } from 'lucide-react'
+import { Bell, Building2, ChevronRight, LayoutTemplate, LogOut, UserRound } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -205,11 +205,14 @@ export function ProfileMenu({
   email,
   roleLabel,
   profileHref,
+  ownerConsoleHref,
 }: {
   name: string | null
   email: string
   roleLabel: string
   profileHref: string
+  /** Only passed for Trefort platform administrators. */
+  ownerConsoleHref?: string
 }) {
   return (
     <DropdownMenu>
@@ -240,6 +243,12 @@ export function ProfileMenu({
           <UserRound className="size-4" aria-hidden="true" />
           Profile
         </DropdownMenuItem>
+        {ownerConsoleHref && (
+          <DropdownMenuItem render={<Link href={ownerConsoleHref} />} className="gap-2 px-2.5 py-2">
+            <Building2 className="size-4" aria-hidden="true" />
+            Owner console
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <LayoutMenuGroup />
         <DropdownMenuSeparator />
