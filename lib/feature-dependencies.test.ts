@@ -5,11 +5,11 @@ import { activeDependents, canToggle, featureAvailability, missingPrerequisites,
 
 const def = (key: FeatureKey) => FEATURES.find((f) => f.key === key)!
 
-/** Keys in the live public.feature_registry() as of this audit (rfis is not yet applied there). */
+/** Keys in the live public.feature_registry() as of this audit (Nov 2026). */
 const DB_REGISTRY_KEYS: FeatureKey[] = [
   'consultation', 'schedule', 'estimates', 'walkthroughs', 'issues', 'warranty', 'portal', 'documents',
   'e_signatures', 'reports', 'invoices', 'payments', 'quickbooks', 'ai_assistant', 'daily_logs',
-  'subcontractors', 'client_updates', 'change_orders', 'rfis',
+  'subcontractors', 'client_updates', 'change_orders', 'rfis', 'project_photos',
 ]
 
 describe('feature registry accuracy', () => {
@@ -25,7 +25,7 @@ describe('feature registry accuracy', () => {
   })
 
   it('reflects shipped AI capabilities and keeps them off when the assistant is off', () => {
-    for (const k of ['ai_estimate_review', 'ai_voice_punch', 'ai_quote_analysis'] as FeatureKey[]) {
+    for (const k of ['ai_estimate_review', 'ai_voice_punch', 'ai_voice_daily_log', 'ai_quote_analysis'] as FeatureKey[]) {
       assert.equal(featureAvailability(def(k)), 'included', k)
     }
     assert.equal(featureAvailability(def('ai_schedule_advisor')), 'partial')

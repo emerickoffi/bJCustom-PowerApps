@@ -148,6 +148,7 @@ export function NewDailyLogDrawer({ projectId, projectName }: { projectId: strin
               defaults={blankDailyLogDefaults(options.today)}
               activities={options.activities}
               companies={options.companies}
+              voice={options.voice}
               maxDate={options.maxDate}
               drawer={{ onCancel: requestClose, onSaved, controlRef }}
             />

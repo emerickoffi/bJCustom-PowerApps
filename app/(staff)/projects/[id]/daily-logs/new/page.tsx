@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { ClipboardList } from 'lucide-react'
-import { getCrewCompanyOptions, getOrgToday, getScheduleActivityOptions, requireDailyLogProject } from '@/lib/daily-logs-data'
+import { getCrewCompanyOptions, isDailyLogVoiceEnabled, getOrgToday, getScheduleActivityOptions, requireDailyLogProject } from '@/lib/daily-logs-data'
 import { addDays, dailyLogsPath } from '@/lib/daily-logs'
 import { PageHeader } from '@/components/shared/page-header'
 import { DailyLogForm, type DailyLogFormDefaults } from '@/components/daily-logs/daily-log-form'
@@ -12,10 +12,11 @@ export default async function NewDailyLogPage({ params }: { params: Promise<{ id
   const { id } = await params
   const { session, project } = await requireDailyLogProject(id)
   if (project.archived_at) redirect(dailyLogsPath(project.id))
-  const [today, activities, companies] = await Promise.all([
+  const [today, activities, companies, voice] = await Promise.all([
     getOrgToday(session.organizationId),
     getScheduleActivityOptions(project.id),
     getCrewCompanyOptions(session.organizationId, project.id),
+    isDailyLogVoiceEnabled(session.organizationId),
   ])
 
   const defaults: DailyLogFormDefaults = {
@@ -42,7 +43,7 @@ export default async function NewDailyLogPage({ params }: { params: Promise<{ id
   return (
     <div className="mx-auto flex w-full max-w-[68rem] flex-col gap-6">
       <PageHeader title="New daily log" icon={ClipboardList} backHref={dailyLogsPath(project.id)} backLabel="Daily logs" />
-      <DailyLogForm projectId={project.id} defaults={defaults} activities={activities} companies={companies} maxDate={addDays(today, 1)} cancelHref={dailyLogsPath(project.id)} />
+      <DailyLogForm projectId={project.id} defaults={defaults} activities={activities} companies={companies} voice={voice} maxDate={addDays(today, 1)} cancelHref={dailyLogsPath(project.id)} />
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireStaff, type StaffSession } from '@/lib/session'
 import { getOrgFeatures, requireFeature } from '@/lib/features'
 import { signMediaPaths } from '@/lib/media'
+import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import { isDailyLogStatus, todayInTimeZone, type DailyLogStatus } from '@/lib/daily-logs'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -178,4 +179,11 @@ export async function getScheduleActivityOptions(projectId: string): Promise<Sch
     .order('planned_start', { ascending: true, nullsFirst: false })
     .limit(300)
   return (data ?? []) as ScheduleActivityOption[]
+}
+
+/** Voice drafting for daily logs shows only when the company has AI on and a provider is reachable. */
+export async function isDailyLogVoiceEnabled(organizationId: string): Promise<boolean> {
+  if (!getAssistantProviderConfig().configured) return false
+  const features = await getOrgFeatures(organizationId)
+  return Boolean(features.ai_assistant && features.daily_logs)
 }
