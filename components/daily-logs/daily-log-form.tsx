@@ -15,6 +15,8 @@ import { FormMessage, SubmitButton } from '@/components/shared/form-message'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PendingPhotoPicker } from '@/components/daily-logs/pending-photo-picker'
+import { VoiceDailyLogDraft } from '@/components/daily-logs/voice-daily-log-draft'
+import type { DailyLogVoiceCrew } from '@/lib/voice-daily-log'
 
 type CrewRow = {
   key: number
@@ -80,6 +82,8 @@ type FormProps = {
   cancelHref?: string
   /** Renders the same form for a right-side drawer: flat sections, scrolling body and a pinned footer. */
   drawer?: DailyLogFormDrawer
+  /** Offer voice drafting (company has AI on and a provider is configured). */
+  voice?: boolean
 }
 
 export function blankDailyLogDefaults(today: string): DailyLogFormDefaults {
@@ -172,7 +176,7 @@ export function DailyLogForm(props: FormProps) {
   )
 }
 
-function DailyLogFormBody({ projectId, defaults, activities, companies = [], maxDate, cancelHref, drawer, save }: FormProps & { save: ResilientSave }) {
+function DailyLogFormBody({ projectId, defaults, activities, companies = [], maxDate, cancelHref, drawer, voice, save }: FormProps & { save: ResilientSave }) {
   const flat = Boolean(drawer)
   const showCompany = companies.length > 0 || defaults.crews.some((c) => c.subcontractor_company_id)
   const { state, formAction: action, pending, formRef } = save
@@ -191,11 +195,35 @@ function DailyLogFormBody({ projectId, defaults, activities, companies = [], max
   }
   const [logDate, setLogDate] = useState(() => val('log_date'))
 
+  /** Voice crews replace untouched blank rows, then fill up to the crew limit. Returns how many were added. */
+  const addVoiceCrews = (voiceCrews: DailyLogVoiceCrew[]) => {
+    const kept = crews.filter((r) => r.trade.trim() || r.crew_size || r.hours_worked || r.notes.trim() || r.subcontractor_company_id)
+    const room = Math.max(0, DAILY_LOG_CREW_LIMIT - kept.length)
+    const added = voiceCrews.slice(0, room).map((c, i) => ({
+      key: nextKey + i,
+      trade: c.trade,
+      crew_size: c.crew_size,
+      hours_worked: c.hours_worked,
+      notes: c.notes,
+      subcontractor_company_id: c.subcontractor_company_id,
+    }))
+    if (!added.length) return 0
+    setCrews([...kept, ...added])
+    setNextKey((k) => k + added.length)
+    return added.length
+  }
+
   return (
     <form ref={formRef} action={action} className={flat ? 'flex flex-col' : 'flex flex-col gap-6'}>
       <input type="hidden" name="project_id" value={projectId} />
       {defaults.id && <input type="hidden" name="id" value={defaults.id} />}
       {defaults.version && <input type="hidden" name="version" value={defaults.version} />}
+
+      {voice && (
+        <div className={flat ? 'pb-2' : undefined}>
+          <VoiceDailyLogDraft projectId={projectId} formRef={formRef} onAddCrews={addVoiceCrews} disabled={pending} />
+        </div>
+      )}
 
       <FormSection flat={flat} title="Daily overview" icon={CloudSun} description="Date and the weather you observed on site. Weather is saved as entered and never looked up automatically.">
         <TextField

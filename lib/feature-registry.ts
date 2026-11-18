@@ -32,6 +32,7 @@ export type FeatureKey =
   | 'ai_warranty_assistance'
   | 'ai_quote_analysis'
   | 'ai_voice_punch'
+  | 'ai_voice_daily_log'
   | 'project_reports'
   | 'schedule_reports'
   | 'warranty_reports'
@@ -112,6 +113,7 @@ export const FEATURES: FeatureDefinition[] = [
   { key: 'ai_assistant', label: PRODUCT_BRAND.assistant.name, description: 'Ask questions about projects and get construction guidance. Drafts are always reviewed.', defaultEnabled: false, requires: [], group: 'AI & automation', available: true, lockWhenSetupRequired: true, setupNote: 'No AI provider is reachable here. Vercel deployments connect to AI Gateway automatically; elsewhere add AI_GATEWAY_API_KEY.' },
   { key: 'ai_estimate_review', label: 'AI estimate drafting', description: 'Drafts estimate line items in the assistant for you to review and save.', defaultEnabled: false, requires: ['estimates', 'ai_assistant'], group: 'AI & automation', available: true, includedWith: 'ai_assistant' },
   { key: 'ai_voice_punch', label: 'Voice punch list', description: 'Dictate an issue on site and review the drafted punch item before saving.', defaultEnabled: false, requires: ['ai_assistant'], group: 'AI & automation', available: true, includedWith: 'ai_assistant' },
+  { key: 'ai_voice_daily_log', label: 'Voice daily logs', description: 'Speak the day’s site report and review the drafted daily log before saving.', defaultEnabled: false, requires: ['daily_logs', 'ai_assistant'], group: 'AI & automation', available: true, includedWith: 'ai_assistant' },
   { key: 'ai_quote_analysis', label: 'AI quote comparison', description: 'Compares subcontractor quotes side by side and flags gaps.', defaultEnabled: false, requires: ['subcontractors', 'ai_assistant'], group: 'AI & automation', available: true, includedWith: 'ai_assistant' },
   { key: 'ai_schedule_advisor', label: 'AI schedule advisor', description: 'Identify scheduling gaps and suggest improvements.', defaultEnabled: false, requires: ['schedule', 'ai_assistant'], group: 'AI & automation', available: true, includedWith: 'ai_assistant', partial: true, partialNote: 'Today the assistant answers schedule questions and flags schedule risk in project health. A dedicated advisor is planned.' },
   { key: 'ai_warranty_assistance', label: 'AI warranty assistance', description: 'Summarize warranty records and help with claims. Decisions stay with your team.', defaultEnabled: false, requires: ['warranty', 'ai_assistant'], group: 'AI & automation', available: true, includedWith: 'ai_assistant', partial: true, partialNote: 'Today the assistant can read warranty records and answer questions. Claim drafting is planned.' },

@@ -25,7 +25,7 @@ describe('feature registry accuracy', () => {
   })
 
   it('reflects shipped AI capabilities and keeps them off when the assistant is off', () => {
-    for (const k of ['ai_estimate_review', 'ai_voice_punch', 'ai_quote_analysis'] as FeatureKey[]) {
+    for (const k of ['ai_estimate_review', 'ai_voice_punch', 'ai_voice_daily_log', 'ai_quote_analysis'] as FeatureKey[]) {
       assert.equal(featureAvailability(def(k)), 'included', k)
     }
     assert.equal(featureAvailability(def('ai_schedule_advisor')), 'partial')

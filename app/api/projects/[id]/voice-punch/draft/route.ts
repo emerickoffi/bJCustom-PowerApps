@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { generateText, Output } from 'ai'
 import { z } from 'zod'
-import { NO_STORE, authorizeVoiceRequest, isTimeout, voiceFail } from '@/lib/ai/voice-punch-server'
+import { NO_STORE, authorizeVoiceRequest, isTimeout, voiceFail } from '@/lib/ai/voice-server'
 import { getIssueReportOptions } from '@/lib/field-issues'
 import { VOICE_LIMITS, addDaysIso, buildVoiceDraft, isIsoDate, voiceDraftModelSchema, weekdayOf } from '@/lib/voice-punch'
 

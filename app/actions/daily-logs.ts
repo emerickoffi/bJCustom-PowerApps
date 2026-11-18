@@ -9,6 +9,7 @@ import { guardSaveSession, readSaveRequest, runTrackedSave } from '@/lib/save-re
 import {
   requireDailyLogProject,
   getCrewCompanyOptions,
+  isDailyLogVoiceEnabled,
   getOrgToday,
   getScheduleActivityOptions,
   type CrewCompanyOption,
@@ -209,6 +210,8 @@ export async function removeDailyLogPhotoAction(input: z.input<typeof photoRefSc
 
 export type NewDailyLogOptions = {
   projectName: string
+  /** Show voice drafting in the form. */
+  voice: boolean
   today: string
   maxDate: string
   activities: ScheduleActivityOption[]
@@ -220,10 +223,11 @@ export async function getNewDailyLogOptionsAction(projectId: string): Promise<{ 
   if (!z.uuid().safeParse(projectId).success) return { error: 'This project could not be found.' }
   const { session, project } = await requireDailyLogProject(projectId)
   if (project.archived_at) return { error: 'This project is archived; daily logs are read-only.' }
-  const [today, activities, companies] = await Promise.all([
+  const [today, activities, companies, voice] = await Promise.all([
     getOrgToday(session.organizationId),
     getScheduleActivityOptions(project.id),
     getCrewCompanyOptions(session.organizationId, project.id),
+    isDailyLogVoiceEnabled(session.organizationId),
   ])
-  return { options: { projectName: project.name, today, maxDate: addDays(today, 1), activities, companies } }
+  return { options: { projectName: project.name, today, maxDate: addDays(today, 1), activities, companies, voice } }
 }
