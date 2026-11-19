@@ -12,8 +12,17 @@ import { BackLink, PageHeader, pageLayout } from '@/components/shared/page-heade
 import { InvoiceDocument } from '@/components/invoices/invoice-document'
 import { InvoiceActions } from '@/components/invoices/invoice-actions'
 import { InvoicePayments } from '@/components/invoices/invoice-payments'
+import { SendInvoiceToQuickBooksButton } from '@/components/integrations/quickbooks-buttons'
+import { getOrgFeatures } from '@/lib/features'
 
 export const metadata: Metadata = { title: 'Invoice' }
+
+const SYNC_LABELS: Record<string, string> = {
+  not_synced: 'not sent yet',
+  synced: 'sent',
+  voided: 'voided in QuickBooks',
+  error: 'last send failed',
+}
 
 export default async function InvoicePage({
   params,
@@ -31,6 +40,7 @@ export default async function InvoicePage({
   const { invoice, lines, payments } = data
   const events = await getInvoiceEvents(id)
   const { canWrite: manager } = await getInvoiceAccess(session)
+  const features = await getOrgFeatures(session.organizationId)
 
   return (
     <div className={pageLayout('detail')}>
@@ -89,10 +99,19 @@ export default async function InvoicePage({
             )}
           </section>
 
-          <p className="text-xs text-muted-foreground">
-            Accounting sync: {invoice.accounting_sync_status === 'not_synced' ? 'Not synced' : invoice.accounting_sync_status}.
-            QuickBooks sending is not connected yet.
-          </p>
+          {features.quickbooks && (
+            <div className="flex flex-wrap items-center gap-3 print:hidden">
+              <p className="text-xs text-muted-foreground">
+                QuickBooks: {SYNC_LABELS[invoice.accounting_sync_status] ?? invoice.accounting_sync_status}
+              </p>
+              {manager && invoice.status !== 'draft' && (
+                <SendInvoiceToQuickBooksButton
+                  invoiceId={invoice.id}
+                  label={invoice.accounting_sync_status === 'synced' ? 'Sync payments to QuickBooks' : 'Send to QuickBooks'}
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -11,6 +11,7 @@ import { isMissingTableError } from '@/lib/subcontractors'
 import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { FeatureToggles } from '@/components/settings/feature-toggles'
 import { SlidersHorizontal as SlidersHorizontalIcon } from 'lucide-react'
+import { getQuickBooksStatus } from '@/lib/quickbooks'
 
 export const metadata: Metadata = { title: 'Feature management' }
 
@@ -68,6 +69,7 @@ export default async function FeaturesPage() {
       {plan && <PlanSummaryCard plan={plan} />}
       <FeatureToggles features={features} records={records} planLocks={planLocks} pendingSetup={{
           e_signatures: !getProviderConfig().configured,
+          quickbooks: !getQuickBooksStatus().credentialsConfigured,
           ai_assistant: !getAssistantProviderConfig().configured,
           ai_essentials: !getAssistantProviderConfig().configured || !registeredKeys.some((r) => r.feature_key === 'ai_essentials'),
           subcontractors: isMissingTableError(subcontractorProbe.error),

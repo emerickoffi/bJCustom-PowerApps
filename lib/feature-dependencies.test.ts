@@ -38,10 +38,14 @@ describe('feature registry accuracy', () => {
   })
 
   it('never enables a planned feature from a stored preference', () => {
-    const map = resolveFeatures({ consultation: true, payments: true, quickbooks: true } as never)
+    const map = resolveFeatures({ consultation: true, payments: true } as never)
     assert.equal(map.consultation, false)
     assert.equal(map.payments, false)
-    assert.equal(map.quickbooks, false)
+  })
+
+  it('lets QuickBooks follow its stored switch now that it is built', () => {
+    assert.equal(resolveFeatures({ quickbooks: true }).quickbooks, true)
+    assert.equal(resolveFeatures({ quickbooks: true, estimates: false }).quickbooks, false)
   })
 
   it('preserves stored company preferences for switchable features', () => {
