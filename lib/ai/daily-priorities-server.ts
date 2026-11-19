@@ -24,6 +24,7 @@ import {
   type PriorityScheduleGap,
 } from '@/lib/daily-priorities'
 import { COMMITTED_STAGES } from '@/lib/action-items'
+import { aiEssentialsEnabled } from '@/lib/feature-registry'
 
 type Features = Awaited<ReturnType<typeof getOrgFeatures>>
 
@@ -35,7 +36,7 @@ export type StoredBriefing = {
 }
 
 export function priorityAiAvailable(features: Features): boolean {
-  return Boolean(features.ai_assistant) && getAssistantProviderConfig().configured
+  return aiEssentialsEnabled(features) && getAssistantProviderConfig().configured
 }
 
 /**

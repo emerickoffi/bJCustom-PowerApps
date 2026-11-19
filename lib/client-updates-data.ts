@@ -6,6 +6,7 @@ import { canManage, requireStaff, type StaffSession } from '@/lib/session'
 import { requireFeature, getOrgFeatures } from '@/lib/features'
 import { signMediaPaths } from '@/lib/media'
 import type { ClientUpdatePhotoSource, ClientUpdateRow, ClientUpdateSourceType } from '@/lib/client-updates'
+import { aiEssentialsEnabled } from '@/lib/feature-registry'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -30,7 +31,7 @@ export const requireClientUpdateProject = cache(
       session,
       project: project as ClientUpdateProject,
       canEdit: canManage(session.role) && !project.archived_at,
-      aiAvailable: Boolean(features.ai_assistant),
+      aiAvailable: aiEssentialsEnabled(features),
     }
   },
 )

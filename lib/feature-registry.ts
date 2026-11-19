@@ -18,6 +18,7 @@ export type FeatureKey =
   | 'payments'
   | 'quickbooks'
   | 'ai_assistant'
+  | 'ai_essentials'
   | 'subcontractors'
   | 'client_updates'
   | 'rfis'
@@ -109,7 +110,8 @@ export const FEATURES: FeatureDefinition[] = [
   { key: 'payments', label: 'Online payments', description: 'Collect homeowner payments online.', defaultEnabled: false, requires: ['estimates'], group: 'Finance', available: false },
   { key: 'quickbooks', label: 'QuickBooks Online', description: 'Send approved estimates to QuickBooks.', defaultEnabled: false, requires: ['estimates'], group: 'Finance', available: false },
 
-  { key: 'ai_assistant', label: PRODUCT_BRAND.assistant.name, description: 'Ask questions about projects and get construction guidance. Drafts are always reviewed.', defaultEnabled: false, requires: [], group: 'AI & automation', available: true, lockWhenSetupRequired: true, setupNote: 'No AI provider is reachable here. Vercel deployments connect to AI Gateway automatically; elsewhere add AI_GATEWAY_API_KEY.' },
+  { key: 'ai_essentials', label: 'AI essentials', description: 'Daily priorities briefing, "Improve with AI" on RFIs, and drafted client updates. Every draft is reviewed before it goes anywhere.', defaultEnabled: false, requires: [], group: 'AI & automation', available: true, lockWhenSetupRequired: true, setupNote: 'No AI provider is reachable here. Vercel deployments connect to AI Gateway automatically; elsewhere add AI_GATEWAY_API_KEY.' },
+  { key: 'ai_assistant', label: PRODUCT_BRAND.assistant.name, description: 'Everything in AI essentials, plus the project chat assistant, voice punch items, subcontractor quote comparison and estimate drafting. Drafts are always reviewed.', defaultEnabled: false, requires: [], group: 'AI & automation', available: true, lockWhenSetupRequired: true, setupNote: 'No AI provider is reachable here. Vercel deployments connect to AI Gateway automatically; elsewhere add AI_GATEWAY_API_KEY.' },
   { key: 'ai_estimate_review', label: 'AI estimate drafting', description: 'Drafts estimate line items in the assistant for you to review and save.', defaultEnabled: false, requires: ['estimates', 'ai_assistant'], group: 'AI & automation', available: true, includedWith: 'ai_assistant' },
   { key: 'ai_voice_punch', label: 'Voice punch list', description: 'Dictate an issue on site and review the drafted punch item before saving.', defaultEnabled: false, requires: ['ai_assistant'], group: 'AI & automation', available: true, includedWith: 'ai_assistant' },
   { key: 'ai_quote_analysis', label: 'AI quote comparison', description: 'Compares subcontractor quotes side by side and flags gaps.', defaultEnabled: false, requires: ['subcontractors', 'ai_assistant'], group: 'AI & automation', available: true, includedWith: 'ai_assistant' },
@@ -143,4 +145,9 @@ export function resolveFeatures(overrides: Partial<Record<FeatureKey, boolean>>)
 
 export function featureLabel(key: FeatureKey) {
   return FEATURES.find((f) => f.key === key)?.label ?? key
+}
+
+/** The lighter AI tier (Pro and up). The full assistant includes it. */
+export function aiEssentialsEnabled(features: Partial<Record<FeatureKey, boolean>>): boolean {
+  return Boolean(features.ai_essentials || features.ai_assistant)
 }

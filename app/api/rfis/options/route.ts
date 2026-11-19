@@ -5,6 +5,7 @@ import { getOrgFeatures } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import { isRfiSetupError, rfiDbError, type RfiDocumentOption, type RfiProjectOption, type RfiResponderOption } from '@/lib/rfis'
+import { aiEssentialsEnabled } from '@/lib/feature-registry'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: NO_STORE })
@@ -86,6 +87,6 @@ export async function GET(request: Request) {
     ),
     documents: documentOptions,
     manager,
-    ai: Boolean(features.ai_assistant) && getAssistantProviderConfig().configured,
+    ai: aiEssentialsEnabled(features) && getAssistantProviderConfig().configured,
   })
 }

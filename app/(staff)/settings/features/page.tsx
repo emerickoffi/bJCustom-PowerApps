@@ -69,6 +69,7 @@ export default async function FeaturesPage() {
       <FeatureToggles features={features} records={records} planLocks={planLocks} pendingSetup={{
           e_signatures: !getProviderConfig().configured,
           ai_assistant: !getAssistantProviderConfig().configured,
+          ai_essentials: !getAssistantProviderConfig().configured || !registeredKeys.some((r) => r.feature_key === 'ai_essentials'),
           subcontractors: isMissingTableError(subcontractorProbe.error),
           client_updates: isMissingTableError(clientUpdatesProbe.error),
           change_orders: isMissingTableError(changeOrderTableProbe.error) || !changeOrdersRegistered,

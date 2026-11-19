@@ -24,7 +24,7 @@ export async function setFeatureAction(key: string, enabled: boolean): Promise<A
   const session = await requireAdmin()
   const parsed = z.enum(featureKeys).safeParse(key)
   if (!parsed.success) return { error: 'This feature cannot be changed yet.' }
-  if (enabled && parsed.data === 'ai_assistant' && !getAssistantProviderConfig().configured) {
+  if (enabled && (parsed.data === 'ai_assistant' || parsed.data === 'ai_essentials') && !getAssistantProviderConfig().configured) {
     return { error: `Connect an AI provider before turning on the ${PRODUCT_BRAND.assistant.name}.` }
   }
 
