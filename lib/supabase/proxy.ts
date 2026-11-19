@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // Provider webhooks carry no session; each route authenticates the sender itself (e.g. HMAC verification).
 // /offline is the service worker's no-signal page: it is cached at install and must not depend on a session.
-const PUBLIC_PREFIXES = ['/auth', '/invite/', '/api/webhooks/', '/offline']
+const PUBLIC_PREFIXES = ['/auth', '/invite/', '/api/webhooks/', '/offline', '/terms', '/privacy']
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })

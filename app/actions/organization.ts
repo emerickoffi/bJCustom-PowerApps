@@ -26,7 +26,7 @@ export async function createOrganizationAction(_prev: ActionState, formData: For
   if (!parsed.success) return fromZodError(parsed.error)
 
   const supabase = await createClient()
-  const { error } = await supabase.rpc('create_organization', {
+  const { data: newOrgId, error } = await supabase.rpc('create_organization', {
     p_display_name: parsed.data.display_name,
     p_legal_name: parsed.data.legal_name,
     p_phone: parsed.data.phone,
@@ -36,6 +36,20 @@ export async function createOrganizationAction(_prev: ActionState, formData: For
     p_project_prefix: parsed.data.project_prefix,
   })
   if (error) return { error: friendlyDbError(error) }
+
+  // Give the new company a complete sample job to explore. Best effort: a failure never blocks onboarding,
+  // and the Getting started checklist offers the same button.
+  // The welcome email is queued once per company and sent by the email worker when email is configured.
+  if (typeof newOrgId === 'string') {
+    const [sample, welcome] = await Promise.all([
+      supabase.rpc('load_sample_project', { p_org: newOrgId }),
+      supabase.rpc('queue_welcome_email', { p_org: newOrgId }),
+    ])
+    if (process.env.NODE_ENV !== 'production') {
+      if (sample.error) console.error('[onboarding] sample project', sample.error.message)
+      if (welcome.error) console.error('[onboarding] welcome email', welcome.error.message)
+    }
+  }
 
   redirect('/dashboard')
 }

@@ -84,6 +84,17 @@ export function InvitationSignUpForm({ token, email }: { token: string; email: s
         <Label htmlFor="invite-repeat">Confirm password</Label>
         <Input id="invite-repeat" type="password" autoComplete="new-password" required minLength={8} className="h-10" value={repeat} onChange={(e) => setRepeat(e.target.value)} />
       </div>
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        By creating an account you agree to the{' '}
+        <a href="/terms" target="_blank" rel="noreferrer" className="font-medium text-primary underline-offset-4 hover:underline">
+          Terms of Service
+        </a>{' '}
+        and{' '}
+        <a href="/privacy" target="_blank" rel="noreferrer" className="font-medium text-primary underline-offset-4 hover:underline">
+          Privacy Policy
+        </a>
+        .
+      </p>
       {error && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}

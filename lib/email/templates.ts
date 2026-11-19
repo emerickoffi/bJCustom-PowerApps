@@ -1,7 +1,7 @@
 import { absoluteAppLink, preferencesPathFor } from './links.ts'
 import { categoryLabel, isRequiredEmailCategory } from './categories.ts'
 
-export type OutboxTemplate = 'notification' | 'staff_invitation' | 'client_invitation' | 'portal_access'
+export type OutboxTemplate = 'notification' | 'staff_invitation' | 'client_invitation' | 'portal_access' | 'welcome'
 
 export type OutboxRow = {
   id: number
@@ -193,6 +193,38 @@ export function renderEmail(row: OutboxRow, appUrl: string): RenderResult {
         'Trefort will never email you a password.',
       ],
       footer: `Sent by Trefort on behalf of ${org}. Reply to this email if you think you received it in error.`,
+    })
+  }
+
+  if (row.template === 'welcome') {
+    const url = absoluteAppLink(appUrl, '/dashboard')
+    if (!url) return { ok: false, error: 'template_unsafe_link' }
+    const company = str(p.organization_name, 120) || 'your company'
+    const first = str(p.first_name, 60)
+    const trialEnds = formatDate(p.trial_ends_at)
+    return render(subjectLine([`Welcome to Trefort, ${first || company}`]), {
+      preheader: 'Your workspace is ready, with a sample project to explore.',
+      eyebrow: 'Trefort',
+      heading: first ? `Welcome, ${first}. Your workspace is ready.` : 'Your Trefort workspace is ready',
+      lines: [
+        `${company} is set up on Trefort${trialEnds ? `, with every module free until ${trialEnds}` : ''}. No credit card is needed during the trial.`,
+        'We added a sample project, the Harper Residence, so you can see a job in progress before you enter your own.',
+      ],
+      detail: [
+        'Getting started (about 15 minutes):',
+        '1. Open the sample project and look around: estimate, schedule, daily logs, change order and draws.',
+        '2. Add your logo and company details in Settings.',
+        '3. Turn on the modules your team uses.',
+        '4. Create your first real project.',
+        '5. Invite your project managers and field staff.',
+      ].join('\n'),
+      buttonLabel: 'Open your dashboard',
+      buttonUrl: url,
+      notes: [
+        'The checklist on your dashboard tracks these steps. You can archive the sample project any time.',
+        'Questions? Reply to this email and a person will answer.',
+      ],
+      footer: 'You received this because you created a company workspace on Trefort.',
     })
   }
 

@@ -16,9 +16,21 @@ const nextConfig = {
   deprecated: {
     looseRouteMatching: true,
   },
-  // The service worker must always be fetched fresh so a new version reaches phones on the next visit.
   async headers() {
     return [
+      // Baseline security headers for every page. Camera, microphone and location stay available to
+      // Trefort itself (jobsite photos, voice punch items, local weather) and are blocked for embedded frames.
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'" },
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()' },
+        ],
+      },
+      // The service worker must always be fetched fresh so a new version reaches phones on the next visit.
       {
         source: '/sw.js',
         headers: [

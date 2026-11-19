@@ -1,4 +1,5 @@
 import { TrefortLogo } from '@/components/brand/trefort-logo'
+import { LegalLinks } from '@/components/legal/legal-page'
 
 /** Login-only surface: solid sidebar teal, logo on teal, compact white card. */
 export function LoginShell({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,7 @@ export function LoginShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </div>
+      <LegalLinks className="mt-8 text-center text-xs text-white/80" />
     </main>
   )
 }
