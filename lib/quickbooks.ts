@@ -33,8 +33,9 @@ function apiBase(env: 'sandbox' | 'production') {
 }
 
 function credentials() {
-  const id = process.env.QUICKBOOKS_CLIENT_ID
-  const secret = process.env.QUICKBOOKS_CLIENT_SECRET
+  // Pasted values often carry a stray space or newline, which Intuit rejects as invalid_client.
+  const id = process.env.QUICKBOOKS_CLIENT_ID?.trim()
+  const secret = process.env.QUICKBOOKS_CLIENT_SECRET?.trim()
   return id && secret ? { id, secret } : null
 }
 
@@ -93,7 +94,8 @@ async function tokenRequest(body: Record<string, string>): Promise<TokenResponse
     cache: 'no-store',
   })
   if (!res.ok) {
-    const err = new Error(`QuickBooks token request failed (${res.status})`) as Error & { status?: number }
+    const detail = (await res.json().catch(() => null)) as { error?: string } | null
+    const err = new Error(`QuickBooks token request failed (${res.status}${detail?.error ? `: ${detail.error}` : ''})`) as Error & { status?: number }
     err.status = res.status
     throw err
   }
