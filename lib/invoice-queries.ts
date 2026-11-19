@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { billingLimits } from '@/lib/invoice-billing'
 import type { DrawMilestone, InvoiceStatus, PaymentMethod } from '@/lib/invoices'
 
 export type BillTo = {
@@ -166,16 +167,24 @@ export type BillableEstimate = {
   name: string
   estimate_number: string | null
   construction_total_cents: number
+  /** Approved change-order price adjustments that raise (or lower) the billing limit. */
+  change_order_cents: number
+  /** Estimate plus approved change orders: the most that can be billed in total. */
+  limit_cents: number
   billed_cents: number
+  remaining_cents: number
 }
 
-/** Approved estimates with how much has already been billed on non-draft, non-voided invoices. */
+/**
+ * Approved estimates with their billing limit (estimate + approved change orders) and how much has already been
+ * billed on non-draft, non-voided invoices. The database enforces the same limit when an invoice is issued.
+ */
 export async function listBillableEstimates(organizationId: string, excludeInvoiceId?: string) {
   const supabase = await createClient()
-  const [{ data: estimates }, { data: billed }] = await Promise.all([
+  const [{ data: estimates }, { data: billed }, { data: changeOrders }] = await Promise.all([
     supabase
       .from('estimates')
-      .select('id, project_id, name, estimate_number, construction_total_cents')
+      .select('id, project_id, family_id, revision, name, estimate_number, construction_total_cents')
       .eq('organization_id', organizationId)
       .eq('status', 'approved')
       .order('created_at', { ascending: false }),
@@ -185,13 +194,29 @@ export async function listBillableEstimates(organizationId: string, excludeInvoi
       .eq('organization_id', organizationId)
       .not('estimate_id', 'is', null)
       .not('status', 'in', '(draft,voided)'),
+    supabase.from('change_orders').select('project_id, status, price_adjustment_cents').eq('organization_id', organizationId).eq('status', 'approved'),
   ])
-  const billedBy = new Map<string, number>()
-  for (const row of billed ?? []) {
-    if (row.id === excludeInvoiceId || !row.estimate_id) continue
-    billedBy.set(row.estimate_id, (billedBy.get(row.estimate_id) ?? 0) + row.subtotal_cents)
-  }
-  return (estimates ?? []).map((e) => ({ ...e, billed_cents: billedBy.get(e.id) ?? 0 })) as BillableEstimate[]
+  const rows = estimates ?? []
+  const limits = billingLimits(
+    rows,
+    (billed ?? []).filter((b): b is { id: string; estimate_id: string; subtotal_cents: number } => Boolean(b.estimate_id)),
+    (changeOrders ?? []).map((c) => ({ ...c, price_adjustment_cents: c.price_adjustment_cents ?? 0 })),
+    excludeInvoiceId,
+  )
+  return rows.map((e) => {
+    const l = limits.get(e.id)!
+    return {
+      id: e.id,
+      project_id: e.project_id,
+      name: e.name,
+      estimate_number: e.estimate_number,
+      construction_total_cents: e.construction_total_cents,
+      change_order_cents: l.changeOrderCents,
+      limit_cents: l.limitCents,
+      billed_cents: l.billedCents,
+      remaining_cents: l.remainingCents,
+    }
+  }) as BillableEstimate[]
 }
 
 export function invoiceClientName(invoice: Pick<InvoiceRow, 'bill_to' | 'client'>) {
