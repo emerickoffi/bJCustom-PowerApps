@@ -71,6 +71,10 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
   const linkedIssues = ((issueLinks ?? []) as unknown as { created_from_issue: boolean; project_issues: { id: string; category: string; item_label: string } | null }[])
     .filter((l) => l.project_issues)
     .map((l) => ({ ...l.project_issues!, created_from_issue: l.created_from_issue }))
+  const rfiId = (co as { rfi_id?: string | null }).rfi_id ?? null
+  const { data: sourceRfi } = rfiId
+    ? await supabase.from('project_rfis').select('id, rfi_number, subject').eq('id', rfiId).maybeSingle()
+    : { data: null }
   const events = (rawEvents ?? []) as Event[]
   const people = await getPeopleNames([...events.map((e) => e.actor), co.created_by])
   const todayIso = (today as string | null) ?? new Date().toISOString().slice(0, 10)
@@ -257,6 +261,21 @@ export default async function ChangeOrderDetailPage({ params }: { params: Promis
               Builder cost is recalculated from the cost lines each time the change order is saved. Only approved change orders affect project financials.
             </p>
           </section>
+
+          {sourceRfi && (
+            <Surface aria-labelledby="co-rfi" className="p-5 md:p-5">
+              <SectionHeading id="co-rfi" title="Source question" />
+              <Link
+                href={`/projects/${id}/rfis?rfi=${sourceRfi.id}`}
+                className="flex flex-col gap-0.5 rounded-panel border p-3 text-sm hover:bg-muted/40"
+              >
+                <span className="font-medium text-foreground">
+                  {sourceRfi.rfi_number ? `RFI-${String(sourceRfi.rfi_number).padStart(3, '0')}` : 'Question'}: {sourceRfi.subject}
+                </span>
+                <span className="text-xs text-muted-foreground">This change order was drafted from this question.</span>
+              </Link>
+            </Surface>
+          )}
 
           {linkedIssues.length > 0 && (
             <Surface aria-labelledby="co-issues" className="p-5 md:p-5">

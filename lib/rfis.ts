@@ -83,11 +83,29 @@ export type RfiRecord = RfiListRow & {
   cycle: number
   row_version: number
   created_at: string
+  /** Manager's estimate of whether the answer changes cost. Null until someone records it. */
+  cost_impact: RfiCostImpact | null
+  schedule_impact_days: number | null
 }
+
+export const RFI_COST_IMPACTS = ['none', 'possible', 'yes'] as const
+export type RfiCostImpact = (typeof RFI_COST_IMPACTS)[number]
+export const RFI_COST_IMPACT_LABELS: Record<RfiCostImpact, string> = {
+  none: 'No cost impact',
+  possible: 'Possible cost impact',
+  yes: 'Changes the cost',
+}
+
+export function isRfiCostImpact(value: unknown): value is RfiCostImpact {
+  return typeof value === 'string' && (RFI_COST_IMPACTS as readonly string[]).includes(value)
+}
+
+/** A change order drafted from this question (staff with Change orders on only). */
+export type RfiChangeOrderLink = { id: string; number: number; co_number: string | null; title: string; status: string }
 
 export const RFI_LIST_COLUMNS =
   'id, rfi_number, status, priority, subject, responder_user_id, responder_name, responder_company, due_date, homeowner_shared, updated_at'
-export const RFI_COLUMNS = `${RFI_LIST_COLUMNS}, organization_id, project_id, question, location, document_version_id, document_label, created_by, created_by_name, sent_at, answered_at, closed_at, cycle, row_version, created_at`
+export const RFI_COLUMNS = `${RFI_LIST_COLUMNS}, organization_id, project_id, question, location, document_version_id, document_label, created_by, created_by_name, sent_at, answered_at, closed_at, cycle, row_version, created_at, cost_impact, schedule_impact_days`
 
 export type RfiResponse = {
   id: string
@@ -145,6 +163,10 @@ export type RfiDetail = {
   viewerId: string
   projectName: string | null
   today: string
+  /** Change orders drafted from this question. Empty for people who cannot see change orders. */
+  changeOrders: RfiChangeOrderLink[]
+  /** The viewer can draft change orders here: a manager, with Change orders switched on. */
+  canCreateChangeOrder: boolean
 }
 
 export type RfiResponderOption = {
@@ -339,6 +361,13 @@ export function rfiEventSummary(event: Pick<RfiEvent, 'event_type' | 'details'>)
       return 'Shared with the homeowner (read-only)'
     case 'unshared':
       return 'Homeowner sharing removed'
+    case 'impact_updated': {
+      const cost = isRfiCostImpact(d.cost_impact) ? RFI_COST_IMPACT_LABELS[d.cost_impact] : null
+      const days = typeof d.schedule_impact_days === 'number' ? `${d.schedule_impact_days} day${d.schedule_impact_days === 1 ? '' : 's'} schedule impact` : null
+      return ['Impact updated', [cost, days].filter(Boolean).join(', ')].filter(Boolean).join(': ')
+    }
+    case 'change_order_created':
+      return typeof d.change_order_number === 'number' ? `Change order #${d.change_order_number} drafted from this question` : 'Change order drafted from this question'
     case 'attachment_added':
       return text(d.file_name) ? `File added to the question: ${text(d.file_name)}` : 'File added to the question'
     default:
