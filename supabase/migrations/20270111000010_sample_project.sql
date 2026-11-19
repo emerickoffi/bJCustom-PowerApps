@@ -299,3 +299,36 @@ $$;
 
 revoke all on function public.queue_welcome_email(uuid) from public, anon;
 grant execute on function public.queue_welcome_email(uuid) to authenticated;
+
+-- New companies start with the field and money modules on, so a trial (and its sample project) shows the
+-- whole workflow. Only modules the company's plan includes are switched on; existing companies are unchanged,
+-- and admins can turn any of these off in Feature management. A failure here never blocks company creation.
+create or replace function public.after_organization_insert_default_modules()
+returns trigger
+language plpgsql
+security definer
+set search_path to ''
+as $$
+declare k text;
+begin
+  foreach k in array array['daily_logs', 'change_orders', 'invoices'] loop
+    if public.plan_includes_feature(new.id, k) then
+      begin
+        insert into public.organization_features (organization_id, feature_key, enabled)
+        values (new.id, k, true)
+        on conflict (organization_id, feature_key) do nothing;
+      exception when others then
+        raise warning 'default module % skipped for organization %: %', k, new.id, sqlerrm;
+      end;
+    end if;
+  end loop;
+  return new;
+end;
+$$;
+
+revoke all on function public.after_organization_insert_default_modules() from public, anon, authenticated;
+
+drop trigger if exists after_organization_insert_default_modules on public.organizations;
+create trigger after_organization_insert_default_modules
+  after insert on public.organizations
+  for each row execute function public.after_organization_insert_default_modules();

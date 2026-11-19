@@ -54,8 +54,8 @@ export function buildChecklist(input: GettingStartedInput): Checklist {
     },
     {
       id: 'modules',
-      title: 'Turn on the modules you use',
-      description: 'Daily logs, change orders, invoices, documents and more can be switched on or off for your team.',
+      title: 'Review the modules you use',
+      description: 'Daily logs, change orders and invoices are on. Turn on documents, e-signatures, photos and more, or switch off what you skip.',
       href: '/settings/features',
       cta: 'Choose modules',
       done: input.reviewedModules,

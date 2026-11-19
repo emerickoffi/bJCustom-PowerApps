@@ -214,7 +214,7 @@ export function renderEmail(row: OutboxRow, appUrl: string): RenderResult {
         'Getting started (about 15 minutes):',
         '1. Open the sample project and look around: estimate, schedule, daily logs, change order and draws.',
         '2. Add your logo and company details in Settings.',
-        '3. Turn on the modules your team uses.',
+        '3. Review which modules your team uses.',
         '4. Create your first real project.',
         '5. Invite your project managers and field staff.',
       ].join('\n'),
