@@ -2,7 +2,9 @@
 
 import { useRef, useState } from 'react'
 import useSWR from 'swr'
-import { AlertCircle, CircleCheck, Loader2, MapPin, MessageSquareReply, Paperclip, Pencil, RefreshCw, Undo2, UserRoundCog } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { AlertCircle, CircleCheck, FileDiff, Loader2, MapPin, MessageSquareReply, Paperclip, Pencil, RefreshCw, Undo2, UserRoundCog } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -20,7 +22,9 @@ import {
   amendRfiAction,
   answerRfiAction,
   commentRfiAction,
+  createChangeOrderFromRfiAction,
   reassignRfiAction,
+  setRfiImpactAction,
   setRfiHomeownerSharedAction,
   transitionRfiAction,
 } from '@/app/actions/rfis'
@@ -30,6 +34,8 @@ import {
   RFI_FILE_HELP,
   RFI_MAX_FILES,
   RFI_PRIORITIES,
+  RFI_COST_IMPACTS,
+  RFI_COST_IMPACT_LABELS,
   RFI_PRIORITY_LABELS,
   RFI_STATUS_HINTS,
   isRfiOverdue,
@@ -191,6 +197,8 @@ export function RfiDetailView({
       </PanelSection>
 
       {permissions.canEdit && <RequesterActions detail={detail} onChanged={onChanged} onEditDraft={onEditDraft} />}
+
+      {permissions.canManage && rfi.status !== 'draft' && <CostAndSchedule detail={detail} onChanged={onChanged} />}
 
       {permissions.participant && rfi.status !== 'draft' && <Comments detail={detail} onChanged={onChanged} />}
 
@@ -409,6 +417,116 @@ function AnswerForm({ rfi, onChanged }: { rfi: RfiRecord; onChanged: () => void 
         {action.pending ? 'Submitting…' : 'Submit answer'}
       </Button>
     </form>
+  )
+}
+
+const CHANGE_ORDER_STATUS_TEXT: Record<string, string> = {
+  draft: 'Draft',
+  internal_review: 'In review',
+  awaiting_homeowner: 'With homeowner',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  void: 'Void',
+}
+
+/**
+ * Managers only: whether the answer changes cost or time, and the change order that prices it. The change order
+ * is drafted from the question and its latest answer, so the scope and the reason travel with it.
+ */
+function CostAndSchedule({ detail, onChanged }: { detail: RfiDetail; onChanged: () => void }) {
+  const { rfi, changeOrders, canCreateChangeOrder } = detail
+  const router = useRouter()
+  const save = useAction(onChanged)
+  const create = useAction(() => {})
+  const [cost, setCost] = useState<string>(rfi.cost_impact ?? '')
+  const [days, setDays] = useState<string>(rfi.schedule_impact_days == null ? '' : String(rfi.schedule_impact_days))
+  const changed = cost !== (rfi.cost_impact ?? '') || days !== (rfi.schedule_impact_days == null ? '' : String(rfi.schedule_impact_days))
+  const live = changeOrders.filter((c) => c.status !== 'void')
+
+  return (
+    <PanelSection title="Cost and schedule impact">
+      <form
+        className="flex flex-col gap-3"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void save.run(() => setRfiImpactAction(rfi.project_id, rfi.id, cost, days)).then((ok) => ok && toast.success('Impact saved'))
+        }}
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FieldShell name="cost_impact" id={`rfi-cost-${rfi.id}`} label="Cost impact">
+            <NativeSelect id={`rfi-cost-${rfi.id}`} value={cost} onChange={(e) => setCost(e.target.value)} disabled={save.pending}>
+              <option value="">Not assessed</option>
+              {RFI_COST_IMPACTS.map((k) => (
+                <option key={k} value={k}>
+                  {RFI_COST_IMPACT_LABELS[k]}
+                </option>
+              ))}
+            </NativeSelect>
+          </FieldShell>
+          <TextField
+            name="schedule_impact_days"
+            id={`rfi-days-${rfi.id}`}
+            label="Schedule impact (days)"
+            inputMode="numeric"
+            value={days}
+            onChange={(e) => setDays(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
+            disabled={save.pending}
+            placeholder="0"
+          />
+        </div>
+        <ActionError failure={save.failure} onReload={onChanged} />
+        {changed && (
+          <Button type="submit" variant="outline" className="w-full sm:w-fit" disabled={save.pending}>
+            {save.pending && <Loader2 data-icon="inline-start" className="animate-spin" />}
+            {save.pending ? 'Saving…' : 'Save impact'}
+          </Button>
+        )}
+      </form>
+
+      {live.length > 0 ? (
+        <ul className="flex flex-col gap-2">
+          {live.map((c) => (
+            <li key={c.id}>
+              <Link
+                href={`/projects/${rfi.project_id}/change-orders/${c.id}`}
+                className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm hover:bg-muted/40"
+              >
+                <FileDiff className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-foreground">{`${c.co_number ?? `CO #${c.number}`}: ${c.title}`}</span>
+                  <span className="text-xs text-muted-foreground">{CHANGE_ORDER_STATUS_TEXT[c.status] ?? c.status}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : canCreateChangeOrder ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground">
+            If the answer adds work or cost, draft a change order. It starts with this question, the latest answer and the schedule
+            impact filled in.
+          </p>
+          <ActionError failure={create.failure} onReload={onChanged} />
+          <Button
+            type="button"
+            className="w-full sm:w-fit"
+            disabled={create.pending}
+            onClick={() =>
+              void create.run(async () => {
+                const result = await createChangeOrderFromRfiAction(rfi.project_id, rfi.id)
+                if (result.ok) router.push(result.href)
+                return result
+              })
+            }
+          >
+            {create.pending ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <FileDiff data-icon="inline-start" />}
+            {create.pending ? 'Creating…' : 'Create change order'}
+          </Button>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">Turn on Change orders in Feature management to draft one from this question.</p>
+      )}
+    </PanelSection>
   )
 }
 

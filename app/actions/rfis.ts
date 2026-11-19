@@ -13,6 +13,7 @@ import {
   RFI_MAX_FILE_BYTES,
   RFI_PRIORITIES,
   isRfiConflict,
+  isRfiCostImpact,
   rfiDbError,
   rfiFileType,
 } from '@/lib/rfis'
@@ -187,6 +188,36 @@ export async function setRfiHomeownerSharedAction(projectId: string, rfiId: stri
   refresh(projectId, rfiId)
   revalidatePath('/portal')
   return { ok: true }
+}
+
+/** Records the manager's cost and schedule impact on a question. Either may be cleared. */
+export async function setRfiImpactAction(projectId: string, rfiId: string, costImpact: string, scheduleDays: string): Promise<Result> {
+  await requireStaff()
+  if (!uuid.safeParse(rfiId).success) return { ok: false, error: 'Invalid request.' }
+  const cost = costImpact === '' ? null : isRfiCostImpact(costImpact) ? costImpact : undefined
+  if (cost === undefined) return { ok: false, error: 'Choose a cost impact.' }
+  const trimmed = scheduleDays.trim()
+  const days = trimmed === '' ? null : Number(trimmed)
+  if (days !== null && (!Number.isInteger(days) || days < 0 || days > 365)) {
+    return { ok: false, error: 'Enter schedule impact as whole days, from 0 to 365.' }
+  }
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('rfi_set_impact', { p_rfi: rfiId, p_cost_impact: cost, p_schedule_days: days })
+  if (error) return fail(error)
+  refresh(projectId, rfiId)
+  return { ok: true }
+}
+
+/** Drafts a change order from the question and its latest answer, or returns the one already drafted. */
+export async function createChangeOrderFromRfiAction(projectId: string, rfiId: string): Promise<Result<{ href: string }>> {
+  await requireStaff()
+  if (!uuid.safeParse(rfiId).success || !uuid.safeParse(projectId).success) return { ok: false, error: 'Invalid request.' }
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('create_change_order_from_rfi', { p_rfi: rfiId })
+  if (error || typeof data !== 'string') return fail(error)
+  refresh(projectId, rfiId)
+  revalidatePath(`/projects/${projectId}/change-orders`)
+  return { ok: true, href: `/projects/${projectId}/change-orders/${data}/edit` }
 }
 
 const fileSchema = z.object({

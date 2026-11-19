@@ -5,6 +5,7 @@ import {
   RFI_COLUMNS,
   isRfiStatus,
   type RfiAttachment,
+  type RfiChangeOrderLink,
   type RfiComment,
   type RfiDetail,
   type RfiEvent,
@@ -58,6 +59,18 @@ export async function loadRfiDetail(supabase: Supabase, rfiId: string, viewerId:
   ])
   if (responses.error || comments.error || events.error || attachments.error) return { state: 'error' }
 
+  // Only managers see the cost side. Row-level security also hides change orders from everyone else.
+  let changeOrders: RfiChangeOrderLink[] = []
+  let canCreateChangeOrder = false
+  if (canManage.data === true) {
+    const [linked, enabled] = await Promise.all([
+      supabase.from('change_orders').select('id, number, co_number, title, status').eq('rfi_id', rfiId).order('created_at', { ascending: true }),
+      supabase.rpc('is_feature_enabled', { p_org: rfi.organization_id, p_key: 'change_orders' }),
+    ])
+    changeOrders = (linked.data ?? []) as RfiChangeOrderLink[]
+    canCreateChangeOrder = enabled.data === true
+  }
+
   return {
     state: 'ready',
     detail: {
@@ -75,6 +88,8 @@ export async function loadRfiDetail(supabase: Supabase, rfiId: string, viewerId:
       viewerId,
       projectName: (project.data as { name: string } | null)?.name ?? null,
       today: todayIso(),
+      changeOrders,
+      canCreateChangeOrder,
     },
   }
 }

@@ -84,3 +84,13 @@ test('workflow messages pass through; raw database errors do not', () => {
   assert.equal(rfiDbError({ code: 'XX000', message: 'internal detail' }), 'Something went wrong. Please try again.')
   assert.match(rfiDbError({ code: 'PGRST202', message: 'function not found' }), /not set up/)
 })
+
+test('summarizes impact updates and change orders drafted from a question', () => {
+  assert.equal(
+    rfiEventSummary({ event_type: 'impact_updated', details: { cost_impact: 'yes', schedule_impact_days: 3 } }),
+    'Impact updated: Changes the cost, 3 days schedule impact',
+  )
+  assert.equal(rfiEventSummary({ event_type: 'impact_updated', details: { cost_impact: null, schedule_impact_days: 1 } }), 'Impact updated: 1 day schedule impact')
+  assert.equal(rfiEventSummary({ event_type: 'impact_updated', details: {} }), 'Impact updated')
+  assert.equal(rfiEventSummary({ event_type: 'change_order_created', details: { change_order_number: 4 } }), 'Change order #4 drafted from this question')
+})
