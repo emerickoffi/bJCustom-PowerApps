@@ -70,35 +70,75 @@ type Layout = {
   footer: string
 }
 
-function layoutHtml(l: Layout): string {
-  const lines = l.lines.map((line) => `<p style="margin:0 0 8px;font-size:15px;line-height:22px;color:#3f3a33">${escapeHtml(line)}</p>`).join('')
+const BRAND = {
+  teal: '#00788D',
+  tealDark: '#005f70',
+  orange: '#FFA500',
+  ink: '#17212b',
+  body: '#3a4652',
+  muted: '#66717c',
+  page: '#eef3f4',
+  panel: '#f3f7f8',
+  rule: '#e3e9ec',
+}
+
+/** Who runs Trefort, shown under every email. Kept in step with lib/legal.ts. */
+const OPERATOR = 'Neovel Technologies Group LLC'
+
+function layoutHtml(l: Layout, appUrl: string): string {
+  const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+  const lines = l.lines.map((line) => `<p style="margin:0 0 10px;font-size:15px;line-height:23px;color:${BRAND.body}">${escapeHtml(line)}</p>`).join('')
   const detail = l.detail
-    ? `<div style="margin:16px 0 0;padding:14px 16px;border-radius:10px;background:#f4f1ea;font-size:14px;line-height:21px;color:#3f3a33;white-space:pre-line">${escapeHtml(l.detail)}</div>`
+    ? `<div style="margin:18px 0 0;padding:16px 18px;border-radius:10px;background:${BRAND.panel};border-left:3px solid ${BRAND.teal};font-size:14px;line-height:22px;color:${BRAND.body};white-space:pre-line">${escapeHtml(l.detail)}</div>`
     : ''
-  const notes = l.notes.map((n) => `<p style="margin:0 0 6px;font-size:13px;line-height:19px;color:#6b645a">${escapeHtml(n)}</p>`).join('')
+  const notes = l.notes.map((n) => `<p style="margin:0 0 6px;font-size:13px;line-height:20px;color:${BRAND.muted}">${escapeHtml(n)}</p>`).join('')
+  const logo = `${appUrl}/branding/trefort-logo.png`
+  const terms = `${appUrl}/terms`
+  const privacy = `${appUrl}/privacy`
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${escapeHtml(l.heading)}</title></head>
-<body style="margin:0;padding:0;background:#efebe3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light"><title>${escapeHtml(l.heading)}</title></head>
+<body style="margin:0;padding:0;background:${BRAND.page};font-family:${font}">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(l.preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#efebe3"><tr><td align="center" style="padding:24px 12px">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:14px">
-<tr><td style="padding:24px 28px 0;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#7a6a4f">${escapeHtml(l.eyebrow)}</td></tr>
-<tr><td style="padding:8px 28px 0"><h1 style="margin:0 0 14px;font-size:21px;line-height:28px;color:#1f1c18">${escapeHtml(l.heading)}</h1>${lines}${detail}</td></tr>
-<tr><td style="padding:22px 28px 6px"><a href="${escapeHtml(l.buttonUrl)}" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#1f2a24;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none">${escapeHtml(l.buttonLabel)}</a></td></tr>
-<tr><td style="padding:10px 28px 22px">${notes}</td></tr>
-<tr><td style="padding:16px 28px 24px;border-top:1px solid #ece7dd;font-size:12px;line-height:18px;color:#8a8378">${escapeHtml(l.footer)}</td></tr>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.page}"><tr><td align="center" style="padding:28px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid ${BRAND.rule}">
+<tr><td style="background:${BRAND.teal};padding:22px 28px"><img src="${escapeHtml(logo)}" width="150" height="40" alt="Trefort" style="display:block;border:0;outline:none;width:150px;height:auto;color:#ffffff;font-size:22px;font-weight:700;font-family:${font}"></td></tr>
+<tr><td style="padding:26px 28px 0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${BRAND.tealDark}">${escapeHtml(l.eyebrow)}</td></tr>
+<tr><td style="padding:8px 28px 0"><h1 style="margin:0 0 14px;font-size:22px;line-height:29px;font-weight:700;color:${BRAND.ink}">${escapeHtml(l.heading)}</h1>${lines}${detail}</td></tr>
+<tr><td style="padding:24px 28px 8px"><a href="${escapeHtml(l.buttonUrl)}" style="display:inline-block;padding:13px 22px;border-radius:8px;background:${BRAND.orange};color:${BRAND.ink};font-size:15px;font-weight:700;text-decoration:none">${escapeHtml(l.buttonLabel)}</a></td></tr>
+<tr><td style="padding:12px 28px 24px">${notes}</td></tr>
+<tr><td style="padding:18px 28px 24px;border-top:1px solid ${BRAND.rule};font-size:12px;line-height:19px;color:${BRAND.muted}">
+<p style="margin:0 0 8px">${escapeHtml(l.footer)}</p>
+<p style="margin:0">Trefort is construction management software by ${escapeHtml(OPERATOR)}. <a href="${escapeHtml(terms)}" style="color:${BRAND.tealDark};text-decoration:underline">Terms</a> · <a href="${escapeHtml(privacy)}" style="color:${BRAND.tealDark};text-decoration:underline">Privacy</a></p>
+</td></tr>
 </table></td></tr></table></body></html>`
 }
 
 function layoutText(l: Layout): string {
-  return [l.eyebrow, '', l.heading, '', ...l.lines, ...(l.detail ? ['', l.detail] : []), '', `${l.buttonLabel}: ${l.buttonUrl}`, '', ...l.notes, '', '--', l.footer]
+  return [
+    'TREFORT',
+    '',
+    l.eyebrow,
+    '',
+    l.heading,
+    '',
+    ...l.lines,
+    ...(l.detail ? ['', l.detail] : []),
+    '',
+    `${l.buttonLabel}: ${l.buttonUrl}`,
+    '',
+    ...l.notes,
+    '',
+    '--',
+    l.footer,
+    `Trefort is construction management software by ${OPERATOR}.`,
+  ]
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
 }
 
-function render(subject: string, layout: Layout): RenderResult {
+function renderLayout(subject: string, layout: Layout, appUrl: string): RenderResult {
   if (!subject) return { ok: false, error: 'template_missing_subject' }
-  return { ok: true, email: { subject, html: layoutHtml(layout), text: layoutText(layout) } }
+  return { ok: true, email: { subject, html: layoutHtml(layout, appUrl), text: layoutText(layout) } }
 }
 
 function formatDate(value: unknown): string | null {
@@ -120,6 +160,7 @@ function notificationFooter(row: OutboxRow, appUrl: string, org: string, link: s
 }
 
 export function renderEmail(row: OutboxRow, appUrl: string): RenderResult {
+  const render = (subject: string, layout: Layout) => renderLayout(subject, layout, appUrl)
   const p = row.payload ?? {}
   const org = str(p.organization_name, 120) || 'Your builder'
 
