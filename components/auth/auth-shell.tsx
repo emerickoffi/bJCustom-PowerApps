@@ -1,4 +1,5 @@
 import type { AuthImage } from '@/lib/auth-image'
+import { LegalLinks } from '@/components/legal/legal-page'
 
 type AuthShellProps = {
   title: string
@@ -56,7 +57,10 @@ export function AuthShell({ title, description, image, children }: AuthShellProp
             <AuthHeading title={title} description={description} />
             {children}
           </div>
-          <footer className="mt-10 text-center text-xs text-muted-foreground">{'Trefort · Construction management'}</footer>
+          <footer className="mt-10 flex flex-col gap-1 text-center text-xs text-muted-foreground">
+            <span>{'Trefort · Construction management'}</span>
+            <LegalLinks />
+          </footer>
         </div>
       </main>
     )
@@ -70,7 +74,10 @@ export function AuthShell({ title, description, image, children }: AuthShellProp
           <AuthHeading title={title} description={description} />
           {children}
         </div>
-        <footer className="text-center text-xs text-muted-foreground">{'Trefort · Construction management'}</footer>
+        <footer className="flex flex-col gap-1 text-center text-xs text-muted-foreground">
+          <span>{'Trefort · Construction management'}</span>
+          <LegalLinks />
+        </footer>
       </div>
     </main>
   )

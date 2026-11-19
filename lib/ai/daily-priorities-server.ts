@@ -293,7 +293,6 @@ export async function generateBriefingSummaries(args: {
       system: SYSTEM_PROMPT,
       prompt: JSON.stringify({ items: toPromptCandidates(args.top) }),
       output: Output.object({ schema: briefingModelSchema }),
-      temperature: 0.2,
       maxOutputTokens: 1200,
       abortSignal: AbortSignal.timeout(PRIORITY_LIMITS.timeoutMs),
     })

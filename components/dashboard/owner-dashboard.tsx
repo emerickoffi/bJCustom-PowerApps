@@ -79,10 +79,13 @@ export async function OwnerDashboard({
   session,
   features,
   query,
+  gettingStarted = null,
 }: {
   session: Awaited<ReturnType<typeof requireStaff>>
   features: Awaited<ReturnType<typeof getOrgFeatures>>
   query: { actions?: string; agenda?: string; project?: string; tab?: string; jobs?: string }
+  /** Setup checklist for new companies; shown under the welcome header. */
+  gettingStarted?: ReactNode
 }) {
   const supabase = await createClient()
   const orgId = session.organizationId
@@ -619,6 +622,7 @@ export async function OwnerDashboard({
         actionsHref={show.attention ? '#action-center-heading' : '/actions'}
         weather={show.weather ? weatherWidget(false) : null}
       />
+      {gettingStarted}
       {scopeNote}
       <TabletHome
         initialTab={parseTabletTab(query.tab)}
@@ -657,6 +661,8 @@ export async function OwnerDashboard({
           }
         />
       </div>
+
+      {gettingStarted}
 
       <div className="flex flex-col gap-4">
         {kpiCards.size > 0 && (

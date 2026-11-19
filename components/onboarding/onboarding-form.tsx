@@ -41,6 +41,17 @@ export function OnboardingForm() {
         hint="Projects will be numbered like TF-1001."
         error={fe.project_prefix}
       />
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        By creating a workspace you agree to the{' '}
+        <a href="/terms" target="_blank" rel="noreferrer" className="font-medium text-primary underline-offset-4 hover:underline">
+          Terms of Service
+        </a>{' '}
+        and{' '}
+        <a href="/privacy" target="_blank" rel="noreferrer" className="font-medium text-primary underline-offset-4 hover:underline">
+          Privacy Policy
+        </a>
+        .
+      </p>
       <FormMessage state={state} />
       <SubmitButton pendingLabel="Creating workspace..." className="h-10">
         Create workspace
