@@ -17,6 +17,7 @@ describe('buildSettingsNav', () => {
         '/settings/proposal-templates',
         '/settings/selection-categories',
         '/settings/roles',
+        '/settings/support',
         '/billing',
       ],
     )

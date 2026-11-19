@@ -16,6 +16,7 @@ export function buildSettingsNav(features: { schedule?: boolean; estimates?: boo
         ]
       : []),
     { href: '/settings/roles', label: 'Roles & permissions' },
+    { href: '/settings/support', label: 'Support access' },
     { href: '/billing', label: 'Plan & billing' },
   ]
 }

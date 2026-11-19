@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 const ITEMS = [
   { href: '/platform', label: 'Companies', match: (p: string) => p === '/platform' || p.startsWith('/platform/companies') },
   { href: '/platform/users', label: 'Users', match: (p: string) => p.startsWith('/platform/users') },
+  { href: '/platform/support', label: 'Support', match: (p: string) => p.startsWith('/platform/support') },
 ]
 
 export function PlatformNav() {
