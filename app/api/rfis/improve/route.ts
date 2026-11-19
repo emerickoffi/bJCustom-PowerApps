@@ -5,6 +5,7 @@ import { getSession } from '@/lib/session'
 import { getOrgFeatures } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { ASSISTANT_LIMITS, getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
+import { aiEssentialsEnabled } from '@/lib/feature-registry'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
 
   const features = await getOrgFeatures(session.organizationId)
   if (!features.rfis) return fail(403, 'feature_off', 'Questions (RFIs) are turned off for this company.')
-  if (!features.ai_assistant) return fail(403, 'feature_off', 'AI features are turned off for your company.')
+  if (!aiEssentialsEnabled(features)) return fail(403, 'feature_off', 'AI features are turned off for your company.')
 
   const provider = getAssistantProviderConfig()
   if (!provider.configured) return fail(503, 'not_configured', 'AI drafting is not set up yet. An administrator needs to connect AI Gateway.')

@@ -181,7 +181,7 @@ export async function draftClientUpdateWithAiAction(
 ): Promise<AiDraftResult> {
   const check = await requireEditable(projectId)
   if ('error' in check) return { ok: false, error: check.error }
-  if (!check.ctx.aiAvailable) return { ok: false, error: 'The AI assistant is turned off for your company.' }
+  if (!check.ctx.aiAvailable) return { ok: false, error: 'AI features are turned off for your company.' }
   const provider = getAssistantProviderConfig()
   if (!provider.configured) return { ok: false, error: 'The AI assistant is not configured in this environment.' }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStart) || !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd) || periodEnd < periodStart || daysBetween(periodStart, periodEnd) > 62) {
