@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { hasStagedPhotos } from '@/lib/daily-log-pending-photos'
+import { hasStagedPhotos, takeStagedPhotos } from '@/lib/daily-log-pending-photos'
+import { useRouter } from 'next/navigation'
+import { dailyLogLabel } from '@/lib/field-outbox-shared'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { AlertTriangle, CalendarDays, Camera, ChevronDown, CloudSun, HardHat, Link2, ListChecks, Plus, Trash2, Truck, type LucideIcon } from 'lucide-react'
@@ -67,6 +69,8 @@ export type DailyLogFormControl = { isDirty: () => boolean; isSaving: () => bool
 export type DailyLogFormDrawer = {
   onCancel: () => void
   onSaved: (href: string) => void
+  /** Saved with no signal into the field outbox. */
+  onQueued?: () => void
   controlRef: React.RefObject<DailyLogFormControl | null>
 }
 
@@ -143,7 +147,14 @@ function defaultsFromEntries(base: DailyLogFormDefaults, entries: [string, strin
   return next
 }
 
+/** YYYY-MM-DD on this device. A form opened from the offline copy of an earlier day still allows today. */
+function deviceToday(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function DailyLogForm(props: FormProps) {
+  const router = useRouter()
   const save = useResilientSave({
     kind: 'daily_log',
     formType: 'daily_log',
@@ -152,8 +163,34 @@ export function DailyLogForm(props: FormProps) {
     baseRevision: props.defaults.version ? String(props.defaults.version) : null,
     action: saveDailyLogAction,
     onSaved: props.drawer?.onSaved,
+    offlineQueue: {
+      kind: 'daily_log',
+      label: dailyLogLabel,
+      photos: () =>
+        takeStagedPhotos(props.projectId).map((p) => ({
+          id: p.id,
+          blob: p.file,
+          fileName: p.file.name,
+          mimeType: p.file.type,
+          caption: p.caption.trim().slice(0, 300),
+        })),
+      onQueued: () => {
+        if (props.drawer?.onQueued) props.drawer.onQueued()
+        else if (!props.defaults.id) router.push(dailyLogsPath(props.projectId))
+      },
+    },
   })
-  const defaults = save.restored ? defaultsFromEntries(props.defaults, save.restored.entries) : props.defaults
+  const [maxDate, setMaxDate] = useState(props.maxDate)
+  const [stale, setStale] = useState(false)
+  useEffect(() => {
+    const today = deviceToday()
+    if (today > props.maxDate) {
+      setMaxDate(today)
+      if (!props.defaults.id && props.defaults.log_date < today) setStale(true)
+    }
+  }, [props.maxDate, props.defaults.id, props.defaults.log_date])
+  const base = stale ? { ...props.defaults, log_date: deviceToday() } : props.defaults
+  const defaults = save.restored ? defaultsFromEntries(base, save.restored.entries) : base
   const controlRef = props.drawer?.controlRef
   const { projectId } = props
   useEffect(() => {
@@ -167,7 +204,12 @@ export function DailyLogForm(props: FormProps) {
   return (
     <div className={props.drawer ? 'flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 pt-4 sm:px-6' : 'flex flex-col gap-4'}>
       <SaveBanners save={save} latestHref={props.defaults.id ? dailyLogPath(props.projectId, props.defaults.id) : undefined} />
-      <DailyLogFormBody key={save.restoreKey} {...props} defaults={defaults} save={save} />
+      {save.server === 'queued' && !props.drawer && props.defaults.id && (
+        <p role="status" className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground">
+          Saved on this phone. It uploads automatically when you are back online.
+        </p>
+      )}
+      <DailyLogFormBody key={`${save.restoreKey}-${stale}`} {...props} maxDate={maxDate} defaults={defaults} save={save} />
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { DAILY_LOG_PHOTO_LIMIT, DAILY_LOG_PHOTO_TYPES } from '@/lib/daily-logs'
 import {
   commitPendingPhotos,
   discardPendingPhotos,
+  onPendingPhotosTaken,
   stagePendingPhotos,
   uncommitPendingPhotos,
   type PendingDailyLogPhoto,
@@ -64,6 +65,17 @@ export function PendingPhotoPicker({
       items.map(({ id, file, caption }) => ({ id, file, caption })),
     )
   }, [items, projectId, logId])
+
+  // Saved offline: the photos now live in the field outbox, so the previews (and the leave warning) go away.
+  useEffect(
+    () =>
+      onPendingPhotosTaken((taken) => {
+        if (taken !== projectId) return
+        itemsRef.current.forEach((i) => URL.revokeObjectURL(i.url))
+        setItems([])
+      }),
+    [projectId],
+  )
 
   // Mark the batch for hand-off whenever this form submits (Save draft or the floating camera).
   useEffect(() => {
