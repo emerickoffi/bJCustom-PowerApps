@@ -23,7 +23,10 @@ type EstimateOption = {
   name: string
   estimate_number: string | null
   construction_total_cents: number
+  change_order_cents: number
+  limit_cents: number
   billed_cents: number
+  remaining_cents: number
 }
 
 export type InvoiceFormDefaults = {
@@ -79,7 +82,7 @@ export function InvoiceForm({
   const totals = useMemo(() => computeInvoiceTotals(lines, taxPercent), [lines, taxPercent])
   const projectEstimates = estimates.filter((e) => e.project_id === projectId)
   const estimate = projectEstimates.find((e) => e.id === estimateId)
-  const remaining = estimate ? estimate.construction_total_cents - estimate.billed_cents : null
+  const remaining = estimate ? estimate.remaining_cents : null
   const selectedProject = projects.find((p) => p.id === projectId)
 
   const updateLine = (index: number, patch: Partial<InvoiceLineInput>) =>
@@ -160,13 +163,18 @@ export function InvoiceForm({
               <option value="">Not linked to an estimate</option>
               {projectEstimates.map((e) => (
                 <option key={e.id} value={e.id}>
-                  {e.estimate_number ?? e.name} · {formatCentsExact(e.construction_total_cents)}
+                  {e.estimate_number ?? e.name} · {formatCentsExact(e.limit_cents)}
+                  {e.change_order_cents !== 0 ? ' incl. change orders' : ''}
                 </option>
               ))}
             </NativeSelect>
             <p className="text-xs text-muted-foreground">
               {estimate && remaining !== null
-                ? `${formatCentsExact(estimate.billed_cents)} already billed · ${formatCentsExact(remaining)} remaining. Issuing more than the remaining amount is blocked.`
+                ? `${
+                    estimate.change_order_cents !== 0
+                      ? `Contract ${formatCentsExact(estimate.limit_cents)} (estimate ${formatCentsExact(estimate.limit_cents - estimate.change_order_cents)} + approved change orders ${formatCentsExact(estimate.change_order_cents)}). `
+                      : ''
+                  }${formatCentsExact(estimate.billed_cents)} already billed · ${formatCentsExact(remaining)} remaining. Issuing more than the remaining amount is blocked.`
                 : projectId && projectEstimates.length === 0
                   ? 'This project has no approved estimate.'
                   : 'Optional. Keeps cumulative billing within the approved amount.'}
