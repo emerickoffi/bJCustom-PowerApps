@@ -7,7 +7,7 @@ import { OnboardingForm } from '@/components/onboarding/onboarding-form'
 
 export const metadata: Metadata = { title: 'Create your company', robots: { index: false, follow: false } }
 
-// A signed-in person with no workspace creates their company here and starts a 14-day Pro trial.
+// A signed-in person with no workspace creates their company here and starts a 14-day Business trial (every module).
 // Closed unless self sign-up is switched on; invited people never need this page.
 export default async function OnboardingPage() {
   const session = await getSession()
@@ -18,7 +18,7 @@ export default async function OnboardingPage() {
   return (
     <AuthShell
       title="Create your company"
-      description="Start a free 14-day trial of Trefort Pro. No credit card needed. Choose a plan any time before the trial ends."
+      description="Try every Trefort module free for 14 days, including the AI assistant. No credit card needed. Choose a plan any time before the trial ends."
     >
       <OnboardingForm />
     </AuthShell>
