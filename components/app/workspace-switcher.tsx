@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { ArrowLeftRight, Check, Loader2 } from 'lucide-react'
+import { ArrowLeftRight, Building2, Check, Loader2 } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,8 +25,20 @@ const KIND_LABEL = { staff: 'Staff workspace', homeowner: 'Homeowner portal' } a
 export function WorkspaceSwitcher({ workspaces, currentId }: { workspaces: WorkspaceOption[]; currentId: string | null }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  if (workspaces.length < 2) return null
   const current = workspaces.find((w) => w.organizationId === currentId) ?? workspaces[0]
+  if (!current) return null
+  // With one company there is nothing to switch to, but the name still tells people which company they are in.
+  if (workspaces.length < 2) {
+    return (
+      <span
+        className="hidden max-w-48 items-center gap-2 truncate px-2 text-sm font-medium text-muted-foreground md:flex"
+        title={current.organizationName}
+      >
+        <Building2 className="size-4 shrink-0" aria-hidden="true" />
+        <span className="truncate">{current.organizationName}</span>
+      </span>
+    )
+  }
 
   return (
     <DropdownMenu>
@@ -40,7 +52,7 @@ export function WorkspaceSwitcher({ workspaces, currentId }: { workspaces: Works
         ) : (
           <ArrowLeftRight className="size-4" aria-hidden="true" />
         )}
-        <span className="hidden md:inline">{KIND_LABEL[current.kind]}</span>
+        <span className="hidden max-w-48 truncate md:inline">{current.organizationName}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuGroup>

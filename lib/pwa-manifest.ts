@@ -22,5 +22,11 @@ export function buildManifest() {
     background_color: '#FFFFFF',
     theme_color: PRODUCT_BRAND.themeColor,
     icons: PWA_ICONS,
+    // Long-press the home-screen icon to jump straight to field work.
+    shortcuts: [
+      { name: 'My work', short_name: 'My work', url: '/my-work', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+      { name: 'Dashboard', short_name: 'Dashboard', url: '/dashboard', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+      { name: 'Schedule', short_name: 'Schedule', url: '/schedule', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+    ],
   }
 }

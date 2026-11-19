@@ -32,6 +32,7 @@ import { DraftScopeProvider } from '@/components/shared/draft-scope'
 import { NavigationGuard } from '@/components/app/navigation-guard'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import { isPlatformAdmin } from '@/lib/platform'
+import { FieldOutboxIndicator, FieldOutboxSync, OfflineBanner } from '@/components/app/field-outbox'
 import {
   Breadcrumbs,
   NotificationBell,
@@ -131,6 +132,7 @@ export default async function StaffLayout({ children, modal }: { children: React
       <FloatingCameraProvider>
       <LayoutModeProvider preference={layoutPreference}>
       <NavigationGuard />
+      <FieldOutboxSync />
       <div data-staff-shell className="flex min-h-svh bg-background">
         <div className="contents tablet:hidden">
           <Sidebar
@@ -168,6 +170,7 @@ export default async function StaffLayout({ children, modal }: { children: React
                 </div>
                 <QuickCreateMenu globalActions={globalQuickActions} jobScope={null} />
                 <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />
+                <FieldOutboxIndicator />
                 <NotificationBell items={notifications} emptyHref="/dashboard" />
                 <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
                 <ProfileMenu
@@ -184,6 +187,7 @@ export default async function StaffLayout({ children, modal }: { children: React
               Bottom padding keeps the shared assistant launcher clear of the last controls. The tablet shell adds
               the bottom navigation the launcher sits above. */}
           <main className="w-full min-w-0 flex-1 px-(--page-gutter-x) pt-(--page-gutter-top) pb-[calc(9rem+env(safe-area-inset-bottom))] tablet:pb-[calc(13rem+env(safe-area-inset-bottom))]">
+            <OfflineBanner />
             {billingNotice && (
               <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-panel border border-champagne/40 bg-champagne-soft px-4 py-2.5 text-sm text-champagne-foreground">
                 <span className="font-medium">{billingNotice}</span>

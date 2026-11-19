@@ -6,6 +6,8 @@ import { AlertTriangle, Check, CloudOff, HardDrive, Loader2, LogIn, RefreshCw, T
 import { reconcileSaveRequestAction, type ReconcileResult } from '@/app/actions/save-requests'
 import { initialActionState, type ActionState } from '@/lib/action-state'
 import { deleteDraft, getDraft, putDraft, type DeviceDraft } from '@/lib/device-drafts'
+import { putOutboxItem } from '@/lib/field-outbox'
+import type { OutboxKind, OutboxPhoto } from '@/lib/field-outbox-shared'
 import {
   draftKey,
   fingerprint,
@@ -22,7 +24,7 @@ import { useDraftIdentity } from '@/components/shared/draft-scope'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-export type ServerSaveState = 'idle' | 'saving' | 'confirming' | 'saved' | 'failed' | 'auth' | 'conflict'
+export type ServerSaveState = 'idle' | 'saving' | 'confirming' | 'saved' | 'failed' | 'auth' | 'conflict' | 'queued'
 export type DeviceSaveState = 'clean' | 'unsaved' | 'device' | 'unavailable'
 
 type Recovery = { draft: DeviceDraft; serverChanged: boolean; committedHref?: string }
@@ -34,6 +36,16 @@ const UNCONFIRMED =
 const UNCONFIRMED_LEGACY =
   "We couldn't confirm the save. Your entries are kept. Check the list for this record before saving again, so you don't create a copy."
 const NOT_RECEIVED = "The save didn't reach the server. Your entries are kept. Press Save to send it again. It won't create a duplicate."
+const QUEUED = 'Saved on this phone. It uploads automatically when you are back online. You can keep working.'
+
+/** Forms that can be saved with no signal: the entry joins the field outbox and is sent once the connection returns. */
+export type OfflineQueue = {
+  kind: OutboxKind
+  label: (entries: [string, string][]) => string
+  /** Photos picked on the form that should upload with it. */
+  photos?: () => OutboxPhoto[]
+  onQueued?: () => void
+}
 
 const firstValues = (entries: [string, string][]) => {
   const out: Record<string, string> = {}
@@ -76,10 +88,14 @@ export function useResilientSave(opts: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>
   /** Replaces the default navigation to the saved record, e.g. to close a drawer instead. */
   onSaved?: (href: string) => void
+  /** Lets this form be saved offline into the field outbox. */
+  offlineQueue?: OfflineQueue
 }) {
   const { kind, formType, projectId = null, recordId = null, baseRevision = null, action } = opts
   const onSavedRef = useRef(opts.onSaved)
   onSavedRef.current = opts.onSaved
+  const queueRef = useRef(opts.offlineQueue)
+  queueRef.current = opts.offlineQueue
   const identity = useDraftIdentity()
   const router = useRouter()
   const key = identity ? draftKey({ ...identity, formType, projectId, recordId }) : null
@@ -258,6 +274,43 @@ export function useResilientSave(opts: {
     }
   }, [server, reconcile, succeed])
 
+  /** Hands the entry to the field outbox. Returns null when this form or device can't queue (then the normal path runs). */
+  const queue = async (requestId: string, entries: [string, string][], values: Record<string, string>): Promise<ActionState | null> => {
+    const q = queueRef.current
+    if (!q || !identity || !projectId) return null
+    try {
+      const now = Date.now()
+      await putOutboxItem({
+        id: requestId,
+        userId: identity.userId,
+        orgId: identity.orgId,
+        kind: q.kind,
+        formType,
+        projectId,
+        recordId,
+        label: q.label(entries),
+        entries,
+        photos: q.photos?.() ?? [],
+        status: 'waiting',
+        attempts: 0,
+        lastError: null,
+        savedRecordId: null,
+        createdAt: now,
+        nextAttemptAt: now,
+      })
+    } catch {
+      return null
+    }
+    pendingRef.current = undefined
+    holdRef.current = true
+    if (key) await deleteDraft(key).catch(() => {})
+    setServer('queued')
+    setDevice('clean')
+    setNotice(null)
+    q.onQueued?.()
+    return { success: QUEUED, values }
+  }
+
   const submit = async (prev: ActionState, fd: FormData): Promise<ActionState> => {
     const entries = payloadEntries(fd.entries())
     const values = firstValues(entries)
@@ -271,6 +324,12 @@ export function useResilientSave(opts: {
     holdRef.current = false
     setRecovery(null)
     await persist(entries)
+
+    // No signal at all: don't make the crew wait on a request that can't leave the phone.
+    if (!navigator.onLine) {
+      const queued = await queue(requestId, entries, values)
+      if (queued) return queued
+    }
 
     const busy: ActionState = { error: 'This entry is already being saved in another tab. Wait for it to finish.', values }
     return withTabLock(key, busy, async () => {
@@ -317,6 +376,12 @@ export function useResilientSave(opts: {
         if (r.status === 'not_found') {
           setServer('failed')
           return { error: NOT_RECEIVED, values }
+        }
+        // The connection dropped mid-save (or the phone shows signal but nothing gets through). The outbox resends
+        // with the same request id, so it can't create a duplicate.
+        if (r.status === 'unknown') {
+          const queued = await queue(requestId, entries, values)
+          if (queued) return queued
         }
         setServer('confirming')
         return { error: r.status === 'unsupported' ? UNCONFIRMED_LEGACY : UNCONFIRMED, values }
@@ -373,6 +438,7 @@ const SERVER_LABELS: Record<Exclude<ServerSaveState, 'idle'>, string> = {
   failed: 'Save failed. Entries kept',
   auth: 'Sign in to continue',
   conflict: 'Conflict needs review',
+  queued: 'Saved on this phone. Uploads when online',
 }
 const DEVICE_LABELS: Record<Exclude<DeviceSaveState, 'clean'>, string> = {
   unsaved: 'Unsaved changes',
@@ -396,6 +462,8 @@ export function SaveStatus({ save, className }: { save: ResilientSave; className
       ? Loader2
       : server === 'saved'
         ? Check
+        : server === 'queued'
+          ? CloudOff
         : server === 'auth'
           ? LogIn
           : server === 'failed' || server === 'conflict' || server === 'confirming' || device === 'unavailable'

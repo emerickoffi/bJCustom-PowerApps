@@ -52,3 +52,20 @@ export function claimPendingPhotos(projectId: string, logId: string): PendingDai
   batch = null
   return current.items
 }
+
+const takenListeners = new Set<(projectId: string) => void>()
+
+/** The picker clears its previews when the outbox takes its photos. */
+export function onPendingPhotosTaken(listener: (projectId: string) => void): () => void {
+  takenListeners.add(listener)
+  return () => takenListeners.delete(listener)
+}
+
+/** Hands every staged photo for this project to the field outbox (offline save) and clears the batch. */
+export function takeStagedPhotos(projectId: string): PendingDailyLogPhoto[] {
+  const current = batch
+  if (!current || current.projectId !== projectId) return []
+  batch = null
+  for (const l of takenListeners) l(projectId)
+  return current.items
+}

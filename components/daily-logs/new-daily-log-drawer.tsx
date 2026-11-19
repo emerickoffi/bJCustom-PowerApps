@@ -131,9 +131,20 @@ export function NewDailyLogDrawer({ projectId, projectName }: { projectId: strin
         {loadError ? (
           <div className="flex flex-col items-start gap-3 px-5 py-6 text-sm sm:px-6" role="alert">
             <p className="text-destructive">{loadError}</p>
-            <Button type="button" variant="outline" size="sm" onClick={() => mutate()}>
-              Try again
-            </Button>
+            {typeof navigator !== 'undefined' && !navigator.onLine && (
+              <p className="text-muted-foreground">
+                You are offline. The full daily log page works without a signal if it was opened on this phone before.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => mutate()}>
+                Try again
+              </Button>
+              {/* A full page load lets the offline copy of the form open. */}
+              <a href={`/projects/${projectId}/daily-logs/new`} className="inline-flex h-8 items-center rounded-md px-3 text-sm font-medium text-primary underline-offset-4 hover:underline">
+                Open the full form
+              </a>
+            </div>
           </div>
         ) : !options ? (
           <div className="flex items-center gap-2 px-5 py-6 text-sm text-muted-foreground sm:px-6" role="status">
@@ -149,7 +160,15 @@ export function NewDailyLogDrawer({ projectId, projectName }: { projectId: strin
               activities={options.activities}
               companies={options.companies}
               maxDate={options.maxDate}
-              drawer={{ onCancel: requestClose, onSaved, controlRef }}
+              drawer={{
+                onCancel: requestClose,
+                onSaved,
+                controlRef,
+                onQueued: () => {
+                  close()
+                  toast.success('Saved on this phone. The daily log uploads when you are back online.')
+                },
+              }}
             />
           )
         )}
