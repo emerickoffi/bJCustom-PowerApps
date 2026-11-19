@@ -3,23 +3,19 @@ import type { QuickBooksStatus } from '@/lib/quickbooks'
 import { quickBooksStatusLabel } from '@/lib/quickbooks'
 
 export function QuickBooksPanel({
-  estimateStatus,
   status,
   moduleEnabled,
   canConfigure,
 }: {
-  estimateStatus: string
+  estimateStatus?: string
   status: QuickBooksStatus
   moduleEnabled: boolean
   canConfigure: boolean
 }) {
-  const approved = estimateStatus === 'approved'
   const connected = status.connected && moduleEnabled
-  const reason = !approved
-    ? 'Available after approval.'
-    : connected
-      ? 'Ready to send to QuickBooks.'
-      : `Connect QuickBooks first. ${quickBooksStatusLabel(status)}.`
+  const reason = connected
+    ? 'QuickBooks receives the invoices you issue from this estimate, not the estimate itself.'
+    : `Connect QuickBooks first. ${quickBooksStatusLabel(status)}.`
 
   return (
     <section aria-labelledby="qbo-panel-heading" className="surface flex flex-col gap-2 p-4">
@@ -32,14 +28,6 @@ export function QuickBooksPanel({
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <button
-          type="button"
-          disabled
-          aria-describedby="qbo-send-reason"
-          className="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground disabled:cursor-not-allowed"
-        >
-          Send to QuickBooks
-        </button>
         <span id="qbo-send-reason" className="text-xs text-muted-foreground">
           {reason}
         </span>

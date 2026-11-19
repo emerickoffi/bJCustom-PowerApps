@@ -243,7 +243,7 @@ export default async function EstimateDetailPage({
             {manager && (
               <QuickBooksPanel
                 estimateStatus={estimate.status}
-                status={getQuickBooksStatus()}
+                status={getQuickBooksStatus(features.quickbooks)}
                 moduleEnabled={features.quickbooks}
                 canConfigure={session.role === 'org_admin'}
               />
