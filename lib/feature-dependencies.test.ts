@@ -38,9 +38,13 @@ describe('feature registry accuracy', () => {
   })
 
   it('never enables a planned feature from a stored preference', () => {
-    const map = resolveFeatures({ consultation: true, payments: true } as never)
+    const map = resolveFeatures({ consultation: true } as never)
     assert.equal(map.consultation, false)
-    assert.equal(map.payments, false)
+  })
+
+  it('lets online payments follow their stored switch now that they are built', () => {
+    assert.equal(resolveFeatures({ payments: true }).payments, true)
+    assert.equal(resolveFeatures({ payments: true, estimates: false }).payments, false)
   })
 
   it('lets QuickBooks follow its stored switch now that it is built', () => {
