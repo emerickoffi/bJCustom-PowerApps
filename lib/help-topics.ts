@@ -53,6 +53,31 @@ const RULES: Rule[] = [
   },
   {
     area: 'staff',
+    match: /^\/reports\/job-costing(\/|$)/,
+    topic: {
+      title: 'Job costing',
+      tips: [
+        'Each job uses the same numbers as its Financials tab. Click a job to see where they come from.',
+        'Projected final cost is cost to date plus what is still committed or expected. Jobs heading over budget are listed first.',
+        'A job without an approved estimate has no budget yet, so it is left out of the totals.',
+        'Turn this report on or off in Settings → Feature management.',
+      ],
+    },
+  },
+  {
+    area: 'staff',
+    match: /^\/exports(\/|$)/,
+    topic: {
+      title: 'Data exports',
+      tips: [
+        'Each download is a CSV file that opens in Excel, Google Sheets or Numbers.',
+        'Files include everything in Trefort today, including archived records.',
+        'Only administrators can download exports. Turn them on or off in Settings → Feature management.',
+      ],
+    },
+  },
+  {
+    area: 'staff',
     match: /\/(invoices|change-orders)(\/|$)/,
     topic: {
       title: 'Invoices and change orders',

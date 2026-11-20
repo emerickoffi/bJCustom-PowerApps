@@ -9,7 +9,7 @@ const def = (key: FeatureKey) => FEATURES.find((f) => f.key === key)!
 const DB_REGISTRY_KEYS: FeatureKey[] = [
   'consultation', 'schedule', 'estimates', 'walkthroughs', 'issues', 'warranty', 'portal', 'documents',
   'e_signatures', 'reports', 'invoices', 'payments', 'quickbooks', 'ai_assistant', 'ai_essentials', 'daily_logs', 'time_tracking',
-  'subcontractors', 'client_updates', 'change_orders', 'rfis', 'project_photos',
+  'subcontractors', 'client_updates', 'change_orders', 'rfis', 'project_photos', 'project_reports', 'data_exports',
 ]
 
 describe('feature registry accuracy', () => {
