@@ -7,7 +7,7 @@ const def = (key: FeatureKey) => FEATURES.find((f) => f.key === key)!
 
 /** Keys in the live public.feature_registry() as of this audit (rfis is not yet applied there). */
 const DB_REGISTRY_KEYS: FeatureKey[] = [
-  'consultation', 'schedule', 'estimates', 'walkthroughs', 'issues', 'warranty', 'portal', 'documents',
+  'schedule', 'estimates', 'walkthroughs', 'issues', 'warranty', 'portal', 'documents',
   'e_signatures', 'reports', 'invoices', 'payments', 'quickbooks', 'ai_assistant', 'ai_essentials', 'daily_logs', 'time_tracking',
   'subcontractors', 'client_updates', 'change_orders', 'rfis', 'project_photos', 'project_reports', 'data_exports',
   'schedule_reports', 'warranty_reports',
@@ -38,9 +38,9 @@ describe('feature registry accuracy', () => {
     assert.equal(on.ai_quote_analysis, false, 'quote comparison also needs Subcontractors')
   })
 
-  it('never enables a planned feature from a stored preference', () => {
-    const map = resolveFeatures({ consultation: true } as never)
-    assert.equal(map.consultation, false)
+  it('ignores a stored preference for a module that no longer exists', () => {
+    const map = resolveFeatures({ consultation: true } as never) as Record<string, boolean | undefined>
+    assert.ok(!map.consultation)
   })
 
   it('lets online payments follow their stored switch now that they are built', () => {
@@ -111,8 +111,9 @@ describe('setup locks', () => {
   })
 
   it('shows nothing for planned features and never offers a switch', () => {
-    assert.equal(featureAvailability(def('consultation')), 'planned')
-    assert.equal(canToggle(FEATURES, resolveFeatures({}), def('consultation')), false)
-    assert.equal(rowMessage(FEATURES, resolveFeatures({}), def('consultation'), featureLabel), null)
+    const planned = { ...def('rfis'), available: false, lockWhenSetupRequired: undefined, setupNote: undefined }
+    assert.equal(featureAvailability(planned), 'planned')
+    assert.equal(canToggle(FEATURES, resolveFeatures({}), planned), false)
+    assert.equal(rowMessage(FEATURES, resolveFeatures({}), planned, featureLabel), null)
   })
 })
