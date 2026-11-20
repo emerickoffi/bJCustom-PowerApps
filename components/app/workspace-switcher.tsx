@@ -59,19 +59,20 @@ export function CompanyBlock({
   const current = workspaces.find((w) => w.organizationId === currentId) ?? workspaces[0]
   if (!current) return null
   const switchable = workspaces.length > 1
+  // Just the company name: the role is already next to your avatar in the header.
   const body = (
     <>
-      <CompanyAvatar name={current.organizationName} logoUrl={logoUrl} />
-      {!collapsed && (
-        <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
-          <span className="truncate text-sm font-semibold text-sidebar-foreground">{current.organizationName}</span>
-          <span className="truncate text-xs text-sidebar-muted">{current.roleLabel}</span>
+      {collapsed ? (
+        <CompanyAvatar name={current.organizationName} />
+      ) : (
+        <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold tracking-wide text-sidebar-foreground">
+          {current.organizationName}
         </span>
       )}
       {!collapsed && switchable && (pending ? <Loader2 className="size-4 shrink-0 animate-spin text-sidebar-muted" aria-hidden="true" /> : <ChevronsUpDown className="size-4 shrink-0 text-sidebar-muted" aria-hidden="true" />)}
     </>
   )
-  const frame = cn('flex w-full min-w-0 items-center gap-3 rounded-nav', collapsed ? 'justify-center p-1.5' : 'px-3 py-2.5')
+  const frame = cn('flex w-full min-w-0 items-center gap-3 rounded-nav', collapsed ? 'justify-center p-1.5' : 'px-3 py-2')
 
   if (!switchable) {
     return (
