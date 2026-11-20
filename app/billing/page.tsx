@@ -1,11 +1,12 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowLeft, CreditCard, TriangleAlert } from 'lucide-react'
+import { ArrowLeft, CreditCard, Tag, TriangleAlert } from 'lucide-react'
 import { requireStaff } from '@/lib/session'
 import { getOrgBilling, getPublicPlans } from '@/lib/billing'
 import { billingAccess, trialDaysLeft } from '@/lib/billing-shared'
 import { getStripe, stripeMode } from '@/lib/stripe'
 import { syncSubscription } from '@/lib/stripe-sync'
+import { clearPendingCoupon, getCompanyDiscount } from '@/lib/billing-discounts'
 import { formatDate } from '@/lib/format'
 import { TrefortLogo } from '@/components/brand/trefort-logo'
 import { PlanChooser } from '@/components/billing/plan-chooser'
@@ -34,6 +35,8 @@ async function applyCheckout(checkoutId: string, organizationId: string): Promis
     if (checkout.client_reference_id !== organizationId || !checkout.subscription) return false
     const id = typeof checkout.subscription === 'string' ? checkout.subscription : checkout.subscription.id
     await syncSubscription(await stripe.subscriptions.retrieve(id))
+    const customer = typeof checkout.customer === 'string' ? checkout.customer : checkout.customer?.id
+    if (customer) await clearPendingCoupon(stripe, customer).catch(() => undefined)
     return true
   } catch (error) {
     console.error('[billing] could not apply checkout', error)
@@ -47,7 +50,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const isAdmin = session.role === 'org_admin'
   const justPaid = isAdmin && checkout && checkout !== 'cancelled' ? await applyCheckout(checkout, session.organizationId) : false
 
-  const [billing, plans] = await Promise.all([getOrgBilling(session.organizationId), getPublicPlans()])
+  const [billing, plans, discount] = await Promise.all([
+    getOrgBilling(session.organizationId),
+    getPublicPlans(),
+    getCompanyDiscount(session.organizationId),
+  ])
   const access = billing ? billingAccess(billing) : { state: 'ok' as const, reason: null }
   const blocked = access.state === 'blocked'
   const companyName = session.workspaces.find((w) => w.organizationId === session.organizationId)?.organizationName ?? 'Your company'
@@ -129,6 +136,16 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                         ? 'Every module is included and this company is never billed.'
                         : 'No payment method on file yet.'}
                 </p>
+                {discount && (
+                  <p className="mt-1 flex items-center gap-1.5 font-medium text-primary">
+                    <Tag className="size-4 shrink-0" aria-hidden="true" />
+                    {discount.pending
+                      ? `Discount: ${discount.label}, applied when you choose a plan.`
+                      : discount.endsAt
+                        ? `Discount: ${discount.label} (until ${formatDate(discount.endsAt)}).`
+                        : `Discount: ${discount.label}.`}
+                  </p>
+                )}
               </div>
             </div>
             {isAdmin && billing.has_subscription && (

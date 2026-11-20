@@ -12,6 +12,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { CompanyFeatureSwitches } from '@/components/platform/company-feature-switches'
 import { CompanySuspension } from '@/components/platform/company-suspension'
 import { CompanyPlanPicker } from '@/components/platform/company-plan-picker'
+import { CompanyDiscountPicker } from '@/components/platform/company-discount'
+import { getCompanyDiscount, listCouponOptions } from '@/lib/billing-discounts'
+import { getStripe } from '@/lib/stripe'
 
 export const metadata: Metadata = { title: 'Company' }
 
@@ -34,7 +37,13 @@ export default async function PlatformCompanyPage({ params }: { params: Promise<
   const session = await requirePlatformAdmin()
   const { id } = await params
   if (!UUID.test(id)) notFound()
-  const [company, plans, billing] = await Promise.all([loadPlatformCompany(id), loadPlatformPlans(), loadPlatformCompanyBilling(id)])
+  const [company, plans, billing, discount, coupons] = await Promise.all([
+    loadPlatformCompany(id),
+    loadPlatformPlans(),
+    loadPlatformCompanyBilling(id),
+    getCompanyDiscount(id),
+    listCouponOptions(),
+  ])
   if (!company) notFound()
   const plan = plans.find((p) => p.key === company.plan_key) ?? null
 
@@ -117,6 +126,17 @@ export default async function PlatformCompanyPage({ params }: { params: Promise<
             </CardHeader>
             <CardContent>
               <CompanyPlanPicker key={company.plan_key} organizationId={company.id} currentPlan={company.plan_key} plans={plans} />
+            </CardContent>
+          </Card>
+        )}
+        {getStripe() && company.subscription_status !== 'internal' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Discount</CardTitle>
+              <CardDescription>Give this company a lower price. Applied in Stripe and shown on their Billing page.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CompanyDiscountPicker key={discount?.couponId ?? 'none'} organizationId={company.id} current={discount} coupons={coupons} />
             </CardContent>
           </Card>
         )}

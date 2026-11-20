@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getOrgBilling, getPublicPlans } from '@/lib/billing'
 import { ensurePortalConfiguration, ensurePrice, getStripe } from '@/lib/stripe'
 import { syncSubscription } from '@/lib/stripe-sync'
+import { PENDING_COUPON_KEY, validCoupon } from '@/lib/billing-discounts'
 import { requestOrigin } from '@/lib/invitations'
 import type { ActionState } from '@/lib/action-state'
 
@@ -81,13 +82,18 @@ export async function choosePlanAction(plan: string, interval: string): Promise<
     const trialEnd = billing.trial_ends_at ? Math.floor(Date.parse(billing.trial_ends_at) / 1000) : null
     const keepTrial = billing.subscription_status === 'trialing' && trialEnd && trialEnd - Date.now() / 1000 > 48 * 3600
 
+    // A discount Trefort saved for this company is applied automatically; otherwise customers can enter a promo code.
+    // (Stripe allows one or the other on a checkout page, not both.)
+    const customer = await stripe.customers.retrieve(customerId)
+    const savedCoupon = customer.deleted ? null : await validCoupon(stripe, customer.metadata?.[PENDING_COUPON_KEY])
+
     const origin = await requestOrigin()
     const checkout = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
       client_reference_id: org.id,
       line_items: [{ price: priceId, quantity: 1 }],
-      allow_promotion_codes: true,
+      ...(savedCoupon ? { discounts: [{ coupon: savedCoupon.id }] } : { allow_promotion_codes: true }),
       billing_address_collection: 'auto',
       metadata: { organization_id: org.id },
       subscription_data: { metadata: { organization_id: org.id }, ...(keepTrial ? { trial_end: trialEnd! } : {}) },

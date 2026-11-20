@@ -1,6 +1,7 @@
 import type Stripe from 'stripe'
 import { getStripe } from '@/lib/stripe'
 import { syncSubscription } from '@/lib/stripe-sync'
+import { clearPendingCoupon } from '@/lib/billing-discounts'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { applyAccountUpdate, applyCheckoutEvent, applyRefund } from '@/lib/stripe-connect'
 
@@ -73,6 +74,9 @@ export async function POST(request: Request) {
       if (session.mode === 'subscription' && session.subscription) {
         const id = typeof session.subscription === 'string' ? session.subscription : session.subscription.id
         organizationId = await syncSubscription(await stripe.subscriptions.retrieve(id))
+        // A discount saved before checkout now lives on the subscription.
+        const customer = typeof session.customer === 'string' ? session.customer : session.customer?.id
+        if (customer) await clearPendingCoupon(stripe, customer)
       }
     } else if (event.type === 'invoice.payment_failed' || event.type === 'invoice.paid') {
       const invoice = event.data.object as Stripe.Invoice
