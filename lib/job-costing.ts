@@ -5,7 +5,7 @@
  * - Original / revised cost budget: lib/financials.ts baseline (single approved estimate) + approved change-order cost lines.
  * - Contract revenue: approved estimate construction total + approved change-order price adjustments.
  * - Committed: commitments in `approved` status (and the billed portion of `closed` ones).
- * - Actual incurred: vendor bills in `approved` status. Drafts and voided bills never count.
+ * - Actual incurred: vendor bills in `approved` status plus approved crew time (labor). Drafts and voided bills never count.
  * - Paid to vendors: non-reversed vendor payments on approved bills. Payments never add cost.
  * - Homeowner billed / collected: existing invoices (issued, partially_paid, paid) and their paid_cents.
  */
@@ -43,6 +43,8 @@ export type CostTrackingInput = {
   bills: { id: string; category: string; status: string; amount_cents: number }[]
   payments: { bill_id: string; amount_cents: number; reversed: boolean }[]
   forecasts: { category: string; etc_cents: number }[]
+  /** Approved crew time, already priced at each person's labor rate (time tracking). Counts as actual cost. */
+  labor?: { category: string; cost_cents: number }[]
 }
 
 export type JobCostInput = {
@@ -78,6 +80,8 @@ export type JobCostSummary = {
   revisedCostCents: number | null
   committedCents: number | null
   actualCents: number | null
+  /** Part of actual cost that is approved crew time. */
+  laborCents: number | null
   paidToVendorsCents: number | null
   payableCents: number | null
   etcCents: number | null
@@ -139,6 +143,7 @@ export function summarizeJobCost(input: JobCostInput): JobCostSummary {
   const actual = new Map<string, number>()
   const paid = new Map<string, number>()
   const etc = new Map<string, number>()
+  const labor = new Map<string, number>()
 
   if (costTracking) {
     for (const c of costTracking.commitments) {
@@ -161,6 +166,10 @@ export function summarizeJobCost(input: JobCostInput): JobCostSummary {
       if (p.reversed) continue
       const category = approvedBills.get(p.bill_id)
       if (category !== undefined) add(paid, category, p.amount_cents)
+    }
+    for (const l of costTracking.labor ?? []) {
+      add(actual, l.category, l.cost_cents)
+      add(labor, l.category, l.cost_cents)
     }
     for (const f of costTracking.forecasts) etc.set(f.category, f.etc_cents)
   }
@@ -259,6 +268,7 @@ export function summarizeJobCost(input: JobCostInput): JobCostSummary {
     revisedCostCents,
     committedCents,
     actualCents,
+    laborCents: costTracking ? [...labor.values()].reduce((t, c) => t + c, 0) : null,
     paidToVendorsCents,
     payableCents: actualCents !== null && paidToVendorsCents !== null ? actualCents - paidToVendorsCents : null,
     etcCents,

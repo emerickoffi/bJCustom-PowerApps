@@ -10,6 +10,7 @@ import {
   Calculator,
   ChevronDown,
   ClipboardList,
+  Clock,
   FileText,
   FolderKanban,
   HardHat,
@@ -43,6 +44,7 @@ export const ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   'change-orders': Repeat,
   documents: FileText,
   'daily-logs': ClipboardList,
+  time: Clock,
   invoices: Receipt,
   organization: Building2,
 }

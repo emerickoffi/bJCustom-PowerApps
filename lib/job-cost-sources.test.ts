@@ -52,6 +52,10 @@ function fixture(established: boolean): SourceInput {
         { id: 'pay3', bill_id: 'b2', amount_cents: 6_000_00, reversed: false, date: '2026-10-16', method: 'check', reference: '1002' },
         { id: 'pay4', bill_id: 'b4', amount_cents: 1_00, reversed: false, date: '2026-10-16', method: 'cash', reference: null },
       ],
+      labor: [
+        { category: 'Drywall', cost_cents: 2_250_00, minutes: 3000 },
+        { category: 'Painting', cost_cents: 900_00, minutes: 1200 },
+      ],
     },
   }
 }
@@ -76,6 +80,7 @@ function toJobCostInput(s: SourceInput): JobCostInput {
       bills: t.bills.map((b) => ({ id: b.id, category: b.category, status: b.status, amount_cents: b.amount_cents })),
       payments: t.payments,
       forecasts: [],
+      labor: t.labor?.map((l) => ({ category: l.category, cost_cents: l.cost_cents })),
     },
   }
 }
@@ -122,4 +127,10 @@ test('payments never add to actual cost', () => {
   const { sources } = assertReconciles(fixture(true))
   assert.equal(sumCents(sources.Framing.actual), 12_000_00)
   assert.equal(sumCents(sources.Framing.paid), 12_000_00)
+})
+
+test('approved crew time appears as an actual-cost source and reconciles', () => {
+  const { sources } = assertReconciles(fixture(true))
+  assert.equal(sumCents(sources.Drywall.actual), 2_250_00)
+  assert.equal(sources.Drywall.actual[0].reference, 'Crew time')
 })

@@ -8,7 +8,7 @@ const def = (key: FeatureKey) => FEATURES.find((f) => f.key === key)!
 /** Keys in the live public.feature_registry() as of this audit (rfis is not yet applied there). */
 const DB_REGISTRY_KEYS: FeatureKey[] = [
   'consultation', 'schedule', 'estimates', 'walkthroughs', 'issues', 'warranty', 'portal', 'documents',
-  'e_signatures', 'reports', 'invoices', 'payments', 'quickbooks', 'ai_assistant', 'ai_essentials', 'daily_logs',
+  'e_signatures', 'reports', 'invoices', 'payments', 'quickbooks', 'ai_assistant', 'ai_essentials', 'daily_logs', 'time_tracking',
   'subcontractors', 'client_updates', 'change_orders', 'rfis', 'project_photos',
 ]
 

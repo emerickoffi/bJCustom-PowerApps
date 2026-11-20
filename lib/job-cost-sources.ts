@@ -49,6 +49,8 @@ export type SourceInput = {
     commitments: { id: string; category: string; status: string; amount_cents: number; vendor: string; description: string; type: string; date: string }[]
     bills: { id: string; commitment_id: string | null; category: string; status: string; amount_cents: number; vendor: string; number: string | null; description: string; date: string }[]
     payments: { id: string; bill_id: string; amount_cents: number; reversed: boolean; date: string; method: string; reference: string | null }[]
+    /** Approved crew time per cost code (time tracking). */
+    labor?: { category: string; cost_cents: number; minutes: number }[]
   } | null
 }
 
@@ -131,6 +133,19 @@ export function buildCategorySources(input: SourceInput): Record<string, Categor
       } else {
         at(b.category).excluded.actual.push({ ...row, reason: b.status === 'draft' ? 'Draft, awaiting approval' : 'Voided' })
       }
+    }
+    for (const l of t.labor ?? []) {
+      const hours = (l.minutes / 60).toFixed(1)
+      at(l.category).actual.push({
+        id: `labor-${l.category}`,
+        reference: 'Crew time',
+        description: `${hours} approved hours at each person's labor rate`,
+        vendor: null,
+        date: null,
+        status: 'approved',
+        amountCents: l.cost_cents,
+        href: '/time/review?status=approved',
+      })
     }
     for (const p of t.payments) {
       const bill = approvedBills.get(p.bill_id)

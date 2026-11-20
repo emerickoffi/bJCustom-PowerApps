@@ -177,3 +177,18 @@ test('estimate categories map onto the cost-code catalog, unknown labels fall ba
   assert.equal(costCodeForCategory('Countertops'), '11000')
   assert.equal(costCodeForCategory('Something legacy'), '19000')
 })
+
+test('approved crew time counts as actual cost in its cost code', () => {
+  const s = summarizeJobCost(
+    input({
+      costTracking: tracking({
+        bills: [{ id: 'b1', category: 'Framing', status: 'approved', amount_cents: 10_000_00 }],
+        labor: [{ category: 'Framing', cost_cents: 3_600_00 }],
+      }),
+    }),
+  )
+  const framing = s.groups.flatMap((g) => g.categories).find((c) => c.category === 'Framing')
+  assert.equal(framing?.actualCents, 13_600_00)
+  assert.equal(s.actualCents, 13_600_00)
+  assert.equal(s.laborCents, 3_600_00)
+})
