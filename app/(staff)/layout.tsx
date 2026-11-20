@@ -147,7 +147,8 @@ export default async function StaffLayout({ children, modal }: { children: React
         <div className="flex min-w-0 flex-1 flex-col">
           <header data-app-header className="sticky top-0 z-30 border-b border-[#D6DDE5] bg-white pt-[env(safe-area-inset-top)] shadow-[0_1px_2px_rgba(23,77,50,0.04)]">
             <div className="flex h-14 min-w-0 items-center gap-2 pl-[max(var(--page-gutter-x),env(safe-area-inset-left))] pr-[max(var(--page-gutter-x),env(safe-area-inset-right))] sm:h-16 sm:gap-3">
-              <div className="contents tablet:hidden">
+              {/* Phones use the bottom bar's More instead of a second menu. */}
+              <div className="contents max-[599.98px]:hidden tablet:hidden">
                 <MobileNav items={items} openGroup={openGroup} />
               </div>
               <Link
@@ -169,7 +170,10 @@ export default async function StaffLayout({ children, modal }: { children: React
                   />
                   <ProjectToolsHeaderSlot />
                 </div>
-                <QuickCreateMenu globalActions={globalQuickActions} jobScope={null} />
+                {/* On phones and tablets the floating launcher already offers these create actions. */}
+                <div className="contents max-[599.98px]:hidden tablet:hidden">
+                  <QuickCreateMenu globalActions={globalQuickActions} jobScope={null} />
+                </div>
                 <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />
                 <FieldOutboxIndicator />
                 <HelpButton area="staff" canGrantSupport={session.role === 'org_admin'} />

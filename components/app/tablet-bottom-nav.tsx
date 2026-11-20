@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { CalendarDays, ClipboardList, FolderKanban, House, Menu, type LucideIcon } from 'lucide-react'
+import { CalendarDays, ClipboardList, Clock, FolderKanban, House, Menu, NotebookPen, type LucideIcon } from 'lucide-react'
 import { AppNav } from '@/components/app/app-nav'
-import { bottomNavTabs, isTabActive, type BottomTabKey } from '@/lib/bottom-nav'
+import { bottomNavTabs, isTabActive, phoneNavTabs, type BottomTab, type BottomTabKey } from '@/lib/bottom-nav'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import type { NavGroup, NavItem } from '@/lib/navigation'
 import { cn } from '@/lib/utils'
@@ -20,11 +20,27 @@ const TAB_ICONS: Record<BottomTabKey, LucideIcon> = {
   projects: FolderKanban,
   'my-work': ClipboardList,
   schedule: CalendarDays,
+  'daily-logs': NotebookPen,
+  time: Clock,
+}
+
+/** Same breakpoint as the nav's own `max-[599.98px]` class, so the More list matches the tabs on screen. */
+const PHONE_QUERY = '(max-width: 599.98px)'
+function subscribePhone(onChange: () => void) {
+  const mql = window.matchMedia(PHONE_QUERY)
+  mql.addEventListener('change', onChange)
+  return () => mql.removeEventListener('change', onChange)
+}
+function useIsPhone(): boolean {
+  return useSyncExternalStore(subscribePhone, () => window.matchMedia(PHONE_QUERY).matches, () => false)
 }
 
 /**
- * Phone and tablet primary navigation: Home, Projects, My Work and Schedule (when the role can open them), More.
- * Everything else the role can reach is in More, built from the same permission-filtered list as the sidebar.
+ * Phone and tablet primary navigation, then More.
+ * - Phones are field-first: Home, Daily Logs, Time, Projects (see phoneNavTabs).
+ * - Tablets: the same with one more slot: Home, Projects, Daily Logs, Time, Schedule (see bottomNavTabs).
+ * Both rows are rendered and CSS shows the right one on first paint. Everything else the role can reach is in More,
+ * built from the same permission-filtered list as the sidebar.
  */
 export function TabletBottomNav({
   items,
@@ -39,13 +55,43 @@ export function TabletBottomNav({
   const [moreOpen, setMoreOpen] = useState(false)
   const isActive = (href: string) => isTabActive(pathname, href)
 
-  const primary = bottomNavTabs(
-    items.map((i) => i.href),
-    homeHref,
-  ).map((tab) => ({ ...tab, Icon: TAB_ICONS[tab.key] }))
-  const primaryHrefs = new Set(primary.map((p) => p.href))
+  const isPhone = useIsPhone()
+  const hrefs = items.map((i) => i.href)
+  const withIcons = (tabs: BottomTab[]) => tabs.map((tab) => ({ ...tab, Icon: TAB_ICONS[tab.key] }))
+  const phoneTabs = withIcons(phoneNavTabs(hrefs, homeHref))
+  const tabletTabs = withIcons(bottomNavTabs(hrefs, homeHref))
+  const shown = isPhone ? phoneTabs : tabletTabs
+  const primaryHrefs = new Set(shown.map((p) => p.href))
   const moreItems = items.filter((i) => !primaryHrefs.has(i.href))
-  const moreActive = !primary.some((p) => isActive(p.href)) && moreItems.some((i) => isActive(i.href))
+  const moreActive = !shown.some((p) => isActive(p.href)) && moreItems.some((i) => isActive(i.href))
+
+  const row = (tabs: typeof shown, className: string) => (
+    <ul className={cn('mx-auto max-w-xl items-stretch gap-1 px-3 py-1.5', className)}>
+      {tabs.map(({ href, label, Icon }) => {
+        const active = isActive(href)
+        return (
+          <li key={href} className="flex flex-1">
+            <Link href={href} aria-current={active ? 'page' : undefined} className={cn(tabClass, active ? activeClass : idleClass)}>
+              <Icon className="size-5" aria-hidden="true" />
+              {label}
+            </Link>
+          </li>
+        )
+      })}
+      <li className="flex flex-1">
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={moreOpen}
+          className={cn(tabClass, moreActive ? activeClass : idleClass)}
+        >
+          <Menu className="size-5" aria-hidden="true" />
+          More
+        </button>
+      </li>
+    </ul>
+  )
 
   return (
     <nav
@@ -53,31 +99,8 @@ export function TabletBottomNav({
       aria-label="Primary"
       className="fixed inset-x-0 bottom-0 z-30 hidden max-[599.98px]:block border-t border-[#D6DDE5] bg-white/95 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] shadow-[0_-1px_2px_rgba(23,77,50,0.04)] backdrop-blur tablet:block print:hidden"
     >
-      <ul className="mx-auto flex max-w-xl items-stretch gap-1 px-3 py-1.5">
-        {primary.map(({ href, label, Icon }) => {
-          const active = isActive(href)
-          return (
-            <li key={href} className="flex flex-1">
-              <Link href={href} aria-current={active ? 'page' : undefined} className={cn(tabClass, active ? activeClass : idleClass)}>
-                <Icon className="size-5" aria-hidden="true" />
-                {label}
-              </Link>
-            </li>
-          )
-        })}
-        <li className="flex flex-1">
-          <button
-            type="button"
-            onClick={() => setMoreOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={moreOpen}
-            className={cn(tabClass, moreActive ? activeClass : idleClass)}
-          >
-            <Menu className="size-5" aria-hidden="true" />
-            More
-          </button>
-        </li>
-      </ul>
+      {row(phoneTabs, 'flex min-[600px]:hidden')}
+      {row(tabletTabs, 'hidden min-[600px]:flex')}
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent side="right" className="w-[min(22rem,85vw)] gap-0 p-0">
           <SheetHeader className="border-b px-4 py-4">
