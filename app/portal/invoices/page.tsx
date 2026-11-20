@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
+import { portalProjectsById } from '@/lib/invoice-queries'
 import type { InvoiceRow } from '@/lib/invoice-queries'
 import { balanceCents } from '@/lib/invoices'
 import { formatCentsExact } from '@/lib/estimates'
@@ -20,13 +21,16 @@ export default async function PortalInvoicesPage() {
   // RLS returns only issued, published invoices on projects this homeowner is linked to.
   const { data } = await supabase
     .from('invoices')
-    .select('id, invoice_number, title, due_date, total_cents, paid_cents, status, project:projects(name)')
+    .select('id, invoice_number, title, due_date, total_cents, paid_cents, status, project_id, project:projects(name)')
     .neq('status', 'draft')
     .order('invoice_date', { ascending: false })
   const invoices = (data ?? []) as unknown as (Pick<
     InvoiceRow,
     'id' | 'invoice_number' | 'title' | 'due_date' | 'total_cents' | 'paid_cents' | 'status'
-  > & { project: { name: string } | null })[]
+  > & { project_id: string; project: { name: string } | null })[]
+  // The projects join is blocked for homeowners; fill names from their portal projects.
+  const portalProjects = await portalProjectsById()
+  for (const inv of invoices) if (!inv.project) inv.project = portalProjects.get(inv.project_id) ?? null
   const owed = invoices.reduce((sum, i) => sum + balanceCents(i), 0)
 
   return (
