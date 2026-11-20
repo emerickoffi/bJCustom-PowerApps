@@ -13,6 +13,24 @@ import { includeOptionalActivityAction, initializeScheduleAction } from '@/app/a
 import { isCoverKind, isCoverPathForOrg } from '@/lib/project-cover'
 import { MEDIA_BUCKET } from '@/lib/walkthroughs'
 import { assignPrimaryClient, checkAssignableClient } from '@/lib/project-client-assignment'
+import { getStaffMembers } from '@/lib/queries'
+import {
+  PROJECT_IMPORT_FIELDS,
+  RECORD_IMPORT_MAX_ROWS,
+  cleanImportRows,
+  matchClient,
+  normEmail,
+  normalizeImportDate,
+  normalizeProjectStatus,
+  normalizeProjectType,
+  projectKey,
+  type CheckedImportRow,
+  type ClientRef,
+  type ImportOutcome,
+  type ImportPreview,
+  type ImportRowInput,
+  type ImportRowResult,
+} from '@/lib/record-import'
 
 const uuid = z.uuid()
 
@@ -354,4 +372,158 @@ export async function removeProjectMemberAction(projectId: string, memberId: str
 
   revalidatePath(`/projects/${projectId}`)
   return { success: 'Team member removed.' }
+}
+
+// ───────── CSV import ─────────
+
+type ProjectImportContext = {
+  clients: ClientRef[]
+  managers: Map<string, string>
+  existingKeys: Set<string>
+}
+
+async function loadProjectImportContext(organizationId: string): Promise<ProjectImportContext | { error: string }> {
+  const supabase = await createClient()
+  const [clients, projects, managers] = await Promise.all([
+    supabase.from('clients').select('id, first_name, last_name, email, company_name').eq('organization_id', organizationId).is('archived_at', null).limit(10000),
+    supabase.from('projects').select('name, address_line1').eq('organization_id', organizationId).limit(10000),
+    getStaffMembers(organizationId, ['org_admin', 'project_manager']),
+  ])
+  if (clients.error) return { error: friendlyDbError(clients.error) }
+  if (projects.error) return { error: friendlyDbError(projects.error) }
+  return {
+    clients: (clients.data ?? []) as ClientRef[],
+    managers: new Map(managers.filter((m) => m.email).map((m) => [normEmail(m.email), m.user_id])),
+    existingKeys: new Set((projects.data ?? []).map((p) => projectKey(p.name as string, (p.address_line1 as string) ?? ''))),
+  }
+}
+
+/** The form values a row maps to, or the problems that stop it. Status and client are resolved here. */
+function resolveProjectRow(row: ImportRowInput, ctx: ProjectImportContext) {
+  const errors: string[] = []
+  const v = row.values
+
+  const status = normalizeProjectStatus(v.status)
+  if (status === 'completed') errors.push('Status: import finished jobs as Substantially Complete, then complete them in Trefort')
+  else if (!status) errors.push(`Status: "${v.status}" is not a Trefort status`)
+  const type = normalizeProjectType(v.project_type)
+  if (!type) errors.push('Project Type: use New Custom Home, Renovation, Addition, Remodel or Other')
+  const start = normalizeImportDate(v.proposed_start_date)
+  if (start === null) errors.push('Start Date: use a date like 2026-09-01 or 9/1/2026')
+  const end = normalizeImportDate(v.target_completion_date)
+  if (end === null) errors.push('Completion Date: use a date like 2027-06-30 or 6/30/2027')
+
+  let clientId = ''
+  const client = matchClient(ctx.clients, v.client_email, v.client_name)
+  if (client && 'error' in client) errors.push(client.error)
+  else if (client) clientId = client.id
+
+  let managerId = ''
+  if (v.project_manager_email) {
+    managerId = ctx.managers.get(normEmail(v.project_manager_email)) ?? ''
+    if (!managerId) errors.push(`Project Manager Email: ${v.project_manager_email} is not an administrator or project manager here`)
+  }
+
+  const formValues = {
+    name: v.name,
+    primary_client_id: clientId,
+    project_type: type ?? 'other',
+    description: v.description,
+    address_line1: v.address_line1,
+    address_line2: v.address_line2,
+    city: v.city,
+    state: v.state,
+    postal_code: v.postal_code,
+    lot: v.lot,
+    block: v.block,
+    phase: '',
+    community: v.community,
+    legal_description: '',
+    estimated_budget: v.estimated_budget,
+    proposed_start_date: start ?? '',
+    target_completion_date: end ?? '',
+    project_manager_id: managerId,
+    internal_notes: v.internal_notes,
+    planned_business_days: '',
+  }
+  const parsed = projectSchema.safeParse(formValues)
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const key = issue.path[0] === 'estimated_budget' ? 'estimated_budget' : String(issue.path[0])
+      const label = PROJECT_IMPORT_FIELDS.find((f) => f.key === key)?.label ?? key
+      errors.push(`${label}: ${issue.message}`)
+    }
+  }
+  return { errors, parsed: parsed.success ? parsed.data : null, status: status && status !== 'completed' ? status : null, linked: Boolean(clientId) }
+}
+
+function checkProjectImportRows(rows: ImportRowInput[], ctx: ProjectImportContext): CheckedImportRow[] {
+  const seen = new Set<string>()
+  return rows.map((row) => {
+    const { errors, linked } = resolveProjectRow(row, ctx)
+    const key = projectKey(row.values.name, row.values.address_line1)
+    const skip = ctx.existingKeys.has(key) ? 'A project with this name and address already exists' : seen.has(key) ? 'Same project as an earlier row' : null
+    seen.add(key)
+    return { ...row, errors, skip, note: !errors.length && !linked ? 'No client linked; you can assign one later' : undefined }
+  })
+}
+
+export async function previewProjectImportAction(rows: unknown): Promise<ImportPreview> {
+  const session = await requireManager()
+  const clean = cleanImportRows(PROJECT_IMPORT_FIELDS, rows)
+  if (!clean) return { ok: false, error: `Import up to ${RECORD_IMPORT_MAX_ROWS} projects at a time.` }
+  const ctx = await loadProjectImportContext(session.organizationId)
+  if ('error' in ctx) return { ok: false, error: ctx.error }
+  return { ok: true, rows: checkProjectImportRows(clean, ctx) }
+}
+
+/**
+ * Creates each ready project on its own, with the same validation as the New project form. Imported jobs keep the
+ * status from the file (anything but Completed), since they are already under way. Schedules are not created here.
+ */
+export async function importProjectsAction(rows: unknown): Promise<ImportOutcome> {
+  const session = await requireManager()
+  const clean = cleanImportRows(PROJECT_IMPORT_FIELDS, rows)
+  if (!clean) return { ok: false, error: `Import up to ${RECORD_IMPORT_MAX_ROWS} projects at a time.` }
+  const ctx = await loadProjectImportContext(session.organizationId)
+  if ('error' in ctx) return { ok: false, error: ctx.error }
+
+  const supabase = await createClient()
+  const checked = checkProjectImportRows(clean, ctx)
+  const results: ImportRowResult[] = []
+  for (const row of checked) {
+    if (row.errors.length) {
+      results.push({ line: row.line, status: 'failed', message: row.errors.join('; ') })
+      continue
+    }
+    if (row.skip) {
+      results.push({ line: row.line, status: 'skipped', message: row.skip })
+      continue
+    }
+    const { parsed, status } = resolveProjectRow(row, ctx)
+    if (!parsed || !status) {
+      results.push({ line: row.line, status: 'failed', message: 'Could not be checked' })
+      continue
+    }
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({
+        ...toProjectRow(parsed),
+        status,
+        organization_id: session.organizationId,
+        created_by: session.userId,
+        updated_by: session.userId,
+        project_number: 'pending',
+      })
+      .select('id')
+      .single()
+    if (error || !data) results.push({ line: row.line, status: 'failed', message: friendlyDbError(error) })
+    else {
+      ctx.existingKeys.add(projectKey(row.values.name, row.values.address_line1))
+      results.push({ line: row.line, status: 'created', id: data.id, message: row.note })
+    }
+  }
+  revalidatePath('/projects')
+  revalidatePath('/dashboard')
+  return { ok: true, results }
 }

@@ -26,7 +26,7 @@ import {
   totalPages,
   type SortOrder,
 } from '@/lib/directory'
-import { FolderKanban, Home, Plus, UserRound, FolderKanban as FolderKanbanIcon } from 'lucide-react'
+import { FolderKanban, Home, Plus, UserRound, FolderKanban as FolderKanbanIcon, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -192,10 +192,16 @@ export default async function ProjectsPage({
         title="Projects"
         actions={
           manager && (
-            <Button size="lg" render={<Link href="/projects/new" />} nativeButton={false}>
-              <Plus data-icon="inline-start" />
-              New project
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="lg" variant="outline" render={<Link href="/projects/import" />} nativeButton={false}>
+                <FileUp data-icon="inline-start" />
+                Import
+              </Button>
+              <Button size="lg" render={<Link href="/projects/new" />} nativeButton={false}>
+                <Plus data-icon="inline-start" />
+                New project
+              </Button>
+            </div>
           )
         }
       />

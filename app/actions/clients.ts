@@ -15,6 +15,18 @@ import { findPossibleDuplicates, type DuplicateReason } from '@/lib/project-home
 import { formatClientOptionDetail, formatClientOptionLabel } from '@/lib/client-options'
 import { assignPrimaryClient, checkUnassignedProject } from '@/lib/project-client-assignment'
 import type { ClientMailingAddress } from '@/components/projects/project-form'
+import {
+  CLIENT_IMPORT_FIELDS,
+  RECORD_IMPORT_MAX_ROWS,
+  cleanImportRows,
+  normEmail,
+  normalizeClientStatus,
+  type CheckedImportRow,
+  type ImportOutcome,
+  type ImportPreview,
+  type ImportRowInput,
+  type ImportRowResult,
+} from '@/lib/record-import'
 
 const uuid = z.uuid()
 const UNAVAILABLE_RELATIONSHIP =
@@ -522,4 +534,104 @@ export async function inviteClientToPortalAction(clientId: string): Promise<Acti
   return {
     success: `Portal invitation created. Ask ${client.email} to sign up with that address to access the homeowner portal.`,
   }
+}
+
+// ───────── CSV import ─────────
+
+/**
+ * Checks client rows before import: the same validation as the New client form, plus duplicates. A row whose email or
+ * phone matches an existing client (or an earlier row) is skipped, never merged, so re-running an import is safe.
+ */
+async function checkClientImportRows(organizationId: string, rows: ImportRowInput[]): Promise<CheckedImportRow[] | { error: string }> {
+  const supabase = await createClient()
+  const { data: existing, error } = await supabase
+    .from('clients')
+    .select('id, first_name, last_name, email, phone, alternate_phone')
+    .eq('organization_id', organizationId)
+    .limit(10000)
+  if (error) return { error: friendlyDbError(error) }
+
+  const seenEmails = new Set<string>()
+  const seenPhones = new Set<string>()
+  const digitsOnly = (v: string) => v.replace(/\D/g, '')
+  return rows.map((row) => {
+    const errors: string[] = []
+    const status = normalizeClientStatus(row.values.status)
+    if (!status) errors.push('Status: use Lead, Active, Inactive or Archived')
+    const parsed = clientSchema.safeParse({
+      ...row.values,
+      middle_name: '',
+      country: 'United States',
+      preferred_communication: 'any',
+      status: status ?? 'active',
+    })
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        const label = CLIENT_IMPORT_FIELDS.find((f) => f.key === issue.path[0])?.label ?? String(issue.path[0])
+        errors.push(`${label}: ${issue.message}`)
+      }
+    }
+
+    let skip: string | null = null
+    const matches = findPossibleDuplicates(
+      {
+        first_name: row.values.first_name,
+        last_name: row.values.last_name,
+        email: row.values.email || null,
+        phone: row.values.phone || null,
+        alternate_phone: row.values.alternate_phone || null,
+      },
+      existing ?? [],
+    ).filter((m) => m.reasons.includes('email') || m.reasons.includes('phone'))
+    if (matches.length) skip = `Already a client (same ${matches[0].reasons.includes('email') ? 'email' : 'phone'})`
+    const email = normEmail(row.values.email)
+    const phones = [row.values.phone, row.values.alternate_phone].map(digitsOnly).filter((p) => p.length >= 7)
+    if (!skip && email && seenEmails.has(email)) skip = 'Same email as an earlier row'
+    if (!skip && phones.some((p) => seenPhones.has(p))) skip = 'Same phone as an earlier row'
+    if (email) seenEmails.add(email)
+    for (const p of phones) seenPhones.add(p)
+    return { ...row, errors, skip }
+  })
+}
+
+export async function previewClientImportAction(rows: unknown): Promise<ImportPreview> {
+  const auth = await getClientCreator()
+  if ('error' in auth) return { ok: false, error: auth.error }
+  const clean = cleanImportRows(CLIENT_IMPORT_FIELDS, rows)
+  if (!clean) return { ok: false, error: `Import up to ${RECORD_IMPORT_MAX_ROWS} clients at a time.` }
+  const checked = await checkClientImportRows(auth.creator.organizationId, clean)
+  return 'error' in checked ? { ok: false, error: checked.error } : { ok: true, rows: checked }
+}
+
+/** Saves each ready row on its own (the same path as the New client form), so one bad row never blocks the rest. */
+export async function importClientsAction(rows: unknown): Promise<ImportOutcome> {
+  const auth = await getClientCreator()
+  if ('error' in auth) return { ok: false, error: auth.error }
+  const clean = cleanImportRows(CLIENT_IMPORT_FIELDS, rows)
+  if (!clean) return { ok: false, error: `Import up to ${RECORD_IMPORT_MAX_ROWS} clients at a time.` }
+  const checked = await checkClientImportRows(auth.creator.organizationId, clean)
+  if ('error' in checked) return { ok: false, error: checked.error }
+
+  const results: ImportRowResult[] = []
+  for (const row of checked) {
+    if (row.errors.length) {
+      results.push({ line: row.line, status: 'failed', message: row.errors.join('; ') })
+      continue
+    }
+    if (row.skip) {
+      results.push({ line: row.line, status: 'skipped', message: row.skip })
+      continue
+    }
+    const saved = await saveNewClient(auth.creator, {
+      ...row.values,
+      middle_name: '',
+      country: 'United States',
+      preferred_communication: 'any',
+      status: normalizeClientStatus(row.values.status) ?? 'active',
+    })
+    if (saved.ok) results.push({ line: row.line, status: 'created', id: saved.id })
+    else results.push({ line: row.line, status: 'failed', message: saved.state.error ?? 'Could not be saved' })
+  }
+  revalidatePath('/clients')
+  return { ok: true, results }
 }

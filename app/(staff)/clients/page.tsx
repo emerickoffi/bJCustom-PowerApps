@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { Plus, Users, Users as UsersIcon } from 'lucide-react'
+import { Plus, Users, Users as UsersIcon, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { requireStaff, canManage } from '@/lib/session'
 import { createClient } from '@/lib/supabase/server'
@@ -224,10 +224,16 @@ export default async function ClientsPage({
         title="Clients"
         actions={
           manager && (
-            <Button size="lg" render={<Link href="/clients/new" />} nativeButton={false}>
-              <Plus data-icon="inline-start" />
-              Add client
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="lg" variant="outline" render={<Link href="/clients/import" />} nativeButton={false}>
+                <FileUp data-icon="inline-start" />
+                Import
+              </Button>
+              <Button size="lg" render={<Link href="/clients/new" />} nativeButton={false}>
+                <Plus data-icon="inline-start" />
+                Add client
+              </Button>
+            </div>
           )
         }
       />
