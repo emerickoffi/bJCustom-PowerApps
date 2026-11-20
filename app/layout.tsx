@@ -4,6 +4,7 @@ import { Inter, Source_Serif_4 } from 'next/font/google'
 import Script from 'next/script'
 import { Toaster } from '@/components/ui/sonner'
 import { ServiceWorkerRegister } from '@/components/app/service-worker-register'
+import { NativeShell } from '@/components/app/native-shell'
 import { PRODUCT_BRAND } from '@/lib/product-brand'
 import './globals.css'
 
@@ -76,6 +77,7 @@ export default function RootLayout({
         {children}
         <Toaster position="top-right" />
         <ServiceWorkerRegister />
+        <NativeShell />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

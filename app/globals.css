@@ -476,3 +476,11 @@ body:has([data-slot='dialog-overlay'], [data-slot='sheet-overlay'], [data-slot='
     display: none;
   }
 }
+
+/* iPhone app (App Store rules): purchase and plan-change controls live on the web only. */
+html[data-native='ios'] [data-store-hidden] {
+  display: none !important;
+}
+html:not([data-native='ios']) [data-store-only] {
+  display: none !important;
+}

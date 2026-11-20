@@ -131,12 +131,23 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                 </p>
               </div>
             </div>
-            {isAdmin && billing.has_subscription && <ManageBillingButton />}
+            {isAdmin && billing.has_subscription && (
+              <div data-store-hidden>
+                <ManageBillingButton />
+              </div>
+            )}
           </section>
         )}
 
         {isAdmin && billing && billing.subscription_status !== 'internal' && plans.length > 0 && (
-          <section aria-labelledby="plans-heading" className="flex flex-col gap-4">
+          <p data-store-only className="text-sm text-muted-foreground">
+            To choose or change your plan, sign in to Trefort in a web browser on your computer.
+          </p>
+        )}
+
+        {isAdmin && billing && billing.subscription_status !== 'internal' && plans.length > 0 && (
+          // App Store rules: no purchase buttons inside the iPhone app. Hidden there by CSS (see globals.css).
+          <section data-store-hidden aria-labelledby="plans-heading" className="flex flex-col gap-4">
             <h2 id="plans-heading" className="text-lg font-semibold text-foreground">
               {billing.has_subscription && !blocked ? 'Change plan' : 'Choose a plan'}
             </h2>
