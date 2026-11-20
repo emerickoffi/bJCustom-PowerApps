@@ -202,7 +202,8 @@ export function ProjectNav({
     event.preventDefault()
     const params = new URLSearchParams(window.location.search)
     params.set('details', 'open')
-    window.history.replaceState(window.history.state, '', `${pathname}?${params.toString()}`)
+    // null (not Next's own state) so the router updates useSearchParams and the drawer opens.
+    window.history.replaceState(null, '', `${pathname}?${params.toString()}`)
   }
 
   return (
