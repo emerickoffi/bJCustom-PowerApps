@@ -1,0 +1,71 @@
+# Cloud builds for the Trefort store apps (no Mac needed).
+# Connect this GitHub repo at codemagic.io, then add the signing items named below. See docs/mobile-apps.md.
+
+workflows:
+  android-release:
+    name: Trefort for Android
+    instance_type: linux_x2
+    max_build_duration: 45
+    environment:
+      node: 22
+      java: 21
+      android_signing:
+        - trefort_upload_key            # Codemagic → Team → Code signing → Android keystores
+      groups:
+        - google_play                   # GCLOUD_SERVICE_ACCOUNT_CREDENTIALS (Play Console service account JSON)
+    triggering:
+      events: [tag]
+      tag_patterns:
+        - pattern: 'mobile-v*'
+    scripts:
+      - name: Install
+        script: corepack enable && pnpm install --frozen-lockfile
+      - name: Sync native project
+        script: npx cap sync android
+      - name: Build app bundle
+        script: cd android && ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/bundle/release/*.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
+
+  ios-release:
+    name: Trefort for iPhone
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: Trefort App Store Connect   # API key added in Codemagic → Team → Integrations
+    environment:
+      node: 22
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.trefortpro.app
+      vars:
+        APP_STORE_APPLE_ID: 0                         # replace with the app's Apple ID from App Store Connect
+    triggering:
+      events: [tag]
+      tag_patterns:
+        - pattern: 'mobile-v*'
+    scripts:
+      - name: Install
+        script: corepack enable && pnpm install --frozen-lockfile
+      - name: Sync native project
+        script: npx cap sync ios
+      - name: Code signing
+        script: xcode-project use-profiles
+      - name: Build number
+        script: |
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          cd ios/App && agvtool new-version -all $((LATEST + 1))
+      - name: Build
+        script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
