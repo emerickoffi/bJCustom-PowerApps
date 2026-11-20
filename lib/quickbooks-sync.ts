@@ -1,5 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { QuickBooksError, quickBooksClient } from '@/lib/quickbooks'
 import {
@@ -55,8 +56,13 @@ async function ensureCustomer(orgId: string, qbo: Client, clientId: string, clie
  * Sends one issued invoice to QuickBooks (creating the customer if needed), then its payments.
  * Already-sent invoices are not re-sent; voided invoices are voided in QuickBooks; reversed payments are deleted.
  */
-export async function syncInvoiceToQuickBooks(orgId: string, invoiceId: string): Promise<SyncResult> {
-  const supabase = await createClient()
+export async function syncInvoiceToQuickBooks(
+  orgId: string,
+  invoiceId: string,
+  opts: { db?: SupabaseClient } = {},
+): Promise<SyncResult> {
+  // Signed-in staff use their own (RLS) client; background jobs pass the service client, always scoped by orgId.
+  const supabase = opts.db ?? (await createClient())
   const { data: inv } = await supabase
     .from('invoices')
     .select(`id, organization_id, client_id, invoice_number, title, invoice_date, due_date, status, tax_cents, total_cents, notes,
@@ -183,4 +189,24 @@ export async function syncAllInvoicesToQuickBooks(orgId: string): Promise<SyncRe
   }
   if (errors.length && !ok) return { ok: false, error: errors[0] }
   return { ok: true, message: `${ok} invoice${ok === 1 ? '' : 's'} up to date in QuickBooks${errors.length ? `; ${errors.length} need attention (${errors[0]})` : ''}.` }
+}
+
+/**
+ * Background sync after a payment changes (online payment, refund, recorded or reversed payment, void).
+ * Does nothing unless QuickBooks is turned on and connected for the company. Never throws: errors are saved on the
+ * connection (shown in Settings → Integrations) and on the invoice's sync status.
+ */
+export async function autoSyncInvoiceToQuickBooks(orgId: string, invoiceId: string): Promise<void> {
+  try {
+    const admin = createAdminClient()
+    const [{ data: conn }, { data: enabled }] = await Promise.all([
+      admin.from('quickbooks_connections').select('status').eq('organization_id', orgId).maybeSingle(),
+      admin.rpc('is_feature_enabled', { p_org: orgId, p_key: 'quickbooks' }),
+    ])
+    if (!conn || conn.status === 'needs_reauth' || enabled !== true) return
+    const result = await syncInvoiceToQuickBooks(orgId, invoiceId, { db: admin })
+    if (!result.ok) console.warn('[quickbooks] auto-sync skipped', { invoiceId, error: result.error })
+  } catch (err) {
+    console.error('[quickbooks] auto-sync failed', { invoiceId, message: err instanceof Error ? err.message : String(err) })
+  }
 }

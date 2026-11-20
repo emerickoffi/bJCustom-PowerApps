@@ -237,16 +237,21 @@ export async function createInvoiceCheckout(opts: {
 const intentId = (pi: string | Stripe.PaymentIntent | null) => (pi ? (typeof pi === 'string' ? pi : pi.id) : null)
 
 /** Webhook handler for Checkout events on a builder's account. Returns the organization id for the ledger. */
-export async function applyCheckoutEvent(type: string, session: Stripe.Checkout.Session): Promise<string | null> {
+export async function applyCheckoutEvent(
+  type: string,
+  session: Stripe.Checkout.Session,
+): Promise<{ organizationId: string; invoiceId: string; paid: boolean } | null> {
   const sessionRow = session.metadata?.trefort_session_id
   if (!sessionRow || session.mode !== 'payment') return null
   const admin = createAdminClient()
-  const { data: row } = await admin.from('online_payment_sessions').select('id, organization_id, status').eq('id', sessionRow).maybeSingle()
+  const { data: row } = await admin.from('online_payment_sessions').select('id, organization_id, invoice_id, status').eq('id', sessionRow).maybeSingle()
   if (!row) return null
   const pi = intentId(session.payment_intent)
   const now = new Date().toISOString()
+  const paid =
+    (type === 'checkout.session.completed' && session.payment_status === 'paid') || type === 'checkout.session.async_payment_succeeded'
 
-  if ((type === 'checkout.session.completed' && session.payment_status === 'paid') || type === 'checkout.session.async_payment_succeeded') {
+  if (paid) {
     if (!pi) throw new Error('Paid checkout without a payment intent')
     const { error } = await admin.rpc('record_online_invoice_payment', { p_session: row.id, p_payment_intent: pi })
     if (error) throw new Error(`record_online_invoice_payment failed: ${error.message}`)
@@ -264,13 +269,16 @@ export async function applyCheckoutEvent(type: string, session: Stripe.Checkout.
   } else if (type === 'checkout.session.expired') {
     await admin.from('online_payment_sessions').update({ status: 'expired', updated_at: now }).eq('id', row.id).eq('status', 'open')
   }
-  return row.organization_id as string
+  return { organizationId: row.organization_id as string, invoiceId: row.invoice_id as string, paid }
 }
 
 /** Webhook: a full refund issued in the builder's Stripe dashboard reverses the payment on the invoice. */
-export async function applyRefund(charge: Stripe.Charge): Promise<void> {
+export async function applyRefund(charge: Stripe.Charge): Promise<{ organizationId: string; invoiceId: string } | null> {
   const pi = intentId(charge.payment_intent)
-  if (!pi || !charge.refunded) return
-  const { error } = await createAdminClient().rpc('reverse_online_invoice_payment', { p_payment_intent: pi, p_reason: 'Refunded in Stripe' })
+  if (!pi || !charge.refunded) return null
+  const admin = createAdminClient()
+  const { error } = await admin.rpc('reverse_online_invoice_payment', { p_payment_intent: pi, p_reason: 'Refunded in Stripe' })
   if (error) throw new Error(`reverse_online_invoice_payment failed: ${error.message}`)
+  const { data } = await admin.from('invoice_payments').select('organization_id, invoice_id').eq('stripe_payment_intent_id', pi).maybeSingle()
+  return data ? { organizationId: data.organization_id as string, invoiceId: data.invoice_id as string } : null
 }
