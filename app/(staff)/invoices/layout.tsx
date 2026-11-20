@@ -1,9 +1,10 @@
 import { Archive } from 'lucide-react'
-import { requireStaff } from '@/lib/session'
+import { requireManager } from '@/lib/session'
 import { getInvoiceAccess } from '@/lib/invoice-access'
 
+/** Invoices are for administrators and project managers; Builder Staff are sent to their dashboard. */
 export default async function InvoicesLayout({ children }: { children: React.ReactNode }) {
-  const session = await requireStaff()
+  const session = await requireManager()
   const { archive } = await getInvoiceAccess(session)
   return (
     <div className="flex flex-col gap-6">

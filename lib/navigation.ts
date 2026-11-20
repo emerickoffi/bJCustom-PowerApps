@@ -42,7 +42,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: '/daily-logs', label: 'Daily Logs', icon: 'daily-logs', roles: ['org_admin', 'project_manager', 'builder_staff'], feature: 'daily_logs', group: 'workspace' },
   { href: '/time', label: 'Time', icon: 'time', roles: ['org_admin', 'project_manager', 'builder_staff'], feature: 'time_tracking', group: 'workspace' },
   { href: '/estimates', label: 'Estimates', icon: 'estimates', feature: 'estimates', group: 'financials' },
-  { href: '/invoices', label: 'Invoices', icon: 'invoices', feature: 'invoices', group: 'financials' },
+  { href: '/invoices', label: 'Invoices', icon: 'invoices', roles: ['org_admin', 'project_manager'], feature: 'invoices', group: 'financials' },
   { href: '/change-orders', label: 'Change Orders', icon: 'change-orders', roles: ['org_admin', 'project_manager'], feature: 'change_orders', group: 'financials' },
   { href: '/documents', label: 'Documents', icon: 'documents', feature: 'documents', group: 'services' },
   { href: '/warranty', label: 'Warranty', icon: 'warranty', feature: 'warranty', group: 'services' },
