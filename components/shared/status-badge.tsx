@@ -10,7 +10,7 @@ const TONE: Record<Tone, { pill: string; dot: string }> = {
   info: { pill: 'bg-info/8 text-info ring-info/15', dot: 'bg-info' },
   sage: { pill: 'bg-sage text-primary ring-primary/10', dot: 'bg-primary/60' },
   primary: { pill: 'bg-primary/10 text-primary ring-primary/15', dot: 'bg-primary' },
-  solid: { pill: 'bg-primary text-primary-foreground ring-primary', dot: 'bg-champagne' },
+  solid: { pill: 'bg-primary text-primary-foreground ring-primary', dot: 'bg-primary-foreground/85' },
   warning: { pill: 'bg-champagne-soft text-warning ring-warning/15', dot: 'bg-warning' },
   danger: { pill: 'bg-destructive/8 text-destructive ring-destructive/15', dot: 'bg-destructive' },
   champagne: { pill: 'bg-champagne-soft text-champagne-foreground ring-champagne/25', dot: 'bg-champagne' },

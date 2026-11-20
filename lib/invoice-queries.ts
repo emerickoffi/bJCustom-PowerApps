@@ -134,12 +134,52 @@ export async function listInvoicesResult(organizationId: string) {
   return { invoices, failed: false }
 }
 
+type PortalProjectRow = {
+  id: string
+  name: string
+  project_number: string | null
+  address_line1: string | null
+  city: string | null
+  state: string | null
+  postal_code: string | null
+}
+
+/**
+ * Homeowners cannot read the projects table directly (RLS), so the `project:projects(...)` join comes back null for
+ * them. Their projects are available through get_portal_projects(); use it to fill in name, number and address.
+ * Returns an empty map for staff (they already get the join).
+ */
+export async function portalProjectsById(): Promise<Map<string, PortalProjectRow>> {
+  const supabase = await createClient()
+  const { data } = await supabase.rpc('get_portal_projects')
+  return new Map(((data ?? []) as PortalProjectRow[]).map((p) => [p.id, p]))
+}
+
+export function portalProjectForInvoice(p: PortalProjectRow | undefined) {
+  if (!p) return null
+  return {
+    id: p.id,
+    name: p.name,
+    project_number: p.project_number,
+    address_line1: p.address_line1,
+    address_line2: null,
+    city: p.city,
+    state: p.state,
+    postal_code: p.postal_code,
+  }
+}
+
 export async function getInvoice(id: string, organizationId?: string) {
   const supabase = await createClient()
   let query = supabase.from('invoices').select(INVOICE_SELECT).eq('id', id)
   if (organizationId) query = query.eq('organization_id', organizationId)
   const { data: invoice } = await query.maybeSingle()
   if (!invoice) return null
+  const row = invoice as InvoiceRow & { project_id?: string | null }
+  if (!row.project && row.project_id) {
+    const project = portalProjectForInvoice((await portalProjectsById()).get(row.project_id))
+    if (project) (row as { project: unknown }).project = project
+  }
   const [lines, payments] = await Promise.all([
     supabase.from('invoice_line_items').select('*').eq('invoice_id', id).order('position'),
     supabase.from('invoice_payments').select('*').eq('invoice_id', id).order('payment_date').order('created_at'),
