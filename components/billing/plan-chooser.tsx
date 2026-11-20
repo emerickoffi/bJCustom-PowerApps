@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 const HIGHLIGHTS: Record<string, string[]> = {
-  starter: ['Schedule, estimates and selections', 'Walkthroughs, punch list and warranty', 'Homeowner portal', 'Daily logs and project photos'],
-  pro: ['Everything in Starter', 'Documents and e-signatures', 'Change orders, RFIs and invoices', 'Subcontractors and client updates', 'Time tracking and schedule report', 'AI essentials: daily briefing, RFI wording help, drafted client updates'],
+  starter: ['Up to 5 team members', 'Schedule, estimates and selections', 'Daily logs, photos and time tracking', 'Change orders, invoices and progress draws', 'Documents, walkthroughs, punch list and warranty', 'Homeowner portal'],
+  pro: ['Everything in Starter', 'Up to 20 team members', 'E-signatures and RFIs', 'Subcontractor portal and client updates', 'Schedule report', 'AI essentials: daily briefing, RFI wording help, drafted client updates'],
   business: ['Everything in Pro', 'Unlimited team members', 'Full AI assistant: project chat, voice punch items, quote comparison, estimate drafting', 'Online payments and QuickBooks (coming soon)', 'Job costing, warranty report and data exports'],
 }
 
