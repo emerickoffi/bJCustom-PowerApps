@@ -68,7 +68,7 @@ export default async function JobCostingReportPage({ searchParams }: { searchPar
     <div className={pageLayout('workspace', 'gap-4 md:gap-5')}>
       <PageHeader
         icon={ChartColumn}
-        title="Job Costing"
+        title="Job Costing" backHref="/reports" backLabel="Reports"
         actions={
           rows.length > 0 && (
             <Button variant="outline" render={<a href={`/api/reports/job-costing?scope=${scope}`} download />} nativeButton={false}>
@@ -223,7 +223,7 @@ export default async function JobCostingReportPage({ searchParams }: { searchPar
               <>
                 {' '}
                 Need the raw records? Go to{' '}
-                <Link href="/exports" className="underline">
+                <Link href="/reports/exports" className="underline">
                   Data Exports
                 </Link>
                 .

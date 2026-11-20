@@ -24,9 +24,6 @@ import {
   Users,
   UsersRound,
   ChartColumn,
-  Download,
-  CalendarClock,
-  ShieldAlert,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -50,10 +47,7 @@ export const ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   'daily-logs': ClipboardList,
   time: Clock,
   invoices: Receipt,
-  'job-costing': ChartColumn,
-  exports: Download,
-  'schedule-report': CalendarClock,
-  'warranty-report': ShieldAlert,
+  reports: ChartColumn,
   organization: Building2,
 }
 

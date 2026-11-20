@@ -7,6 +7,8 @@ export type NavItem = {
   icon: string
   roles?: OrgRole[]
   feature?: FeatureKey
+  /** Shown when any of these modules is on (each optionally limited to some roles). */
+  anyFeature?: { key: FeatureKey; roles?: OrgRole[] }[]
   group?: NavGroup
 }
 
@@ -35,22 +37,26 @@ export const NAV_GROUPS: { key: NavGroup; label: string }[] = [
 export const PRIMARY_NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard', group: 'workspace' },
   { href: '/projects', label: 'Projects', icon: 'projects', group: 'workspace' },
-  { href: '/clients', label: 'Clients', icon: 'clients', group: 'workspace' },
+  { href: '/clients', label: 'Clients', icon: 'clients', roles: ['org_admin', 'project_manager'], group: 'workspace' },
   { href: '/contacts', label: 'Contacts', icon: 'contacts', roles: ['org_admin', 'project_manager'], group: 'people' },
   { href: '/subcontractors', label: 'Subcontractors', icon: 'subcontractors', roles: ['org_admin', 'project_manager'], feature: 'subcontractors', group: 'people' },
   { href: '/schedule', label: 'Schedule', icon: 'schedule', feature: 'schedule', group: 'workspace' },
   { href: '/daily-logs', label: 'Daily Logs', icon: 'daily-logs', roles: ['org_admin', 'project_manager', 'builder_staff'], feature: 'daily_logs', group: 'workspace' },
   { href: '/time', label: 'Time', icon: 'time', roles: ['org_admin', 'project_manager', 'builder_staff'], feature: 'time_tracking', group: 'workspace' },
-  { href: '/estimates', label: 'Estimates', icon: 'estimates', feature: 'estimates', group: 'financials' },
-  { href: '/invoices', label: 'Invoices', icon: 'invoices', feature: 'invoices', group: 'financials' },
+  {
+    href: '/reports',
+    label: 'Reports',
+    icon: 'reports',
+    roles: ['org_admin', 'project_manager'],
+    anyFeature: [{ key: 'project_reports' }, { key: 'schedule_reports' }, { key: 'warranty_reports' }, { key: 'data_exports', roles: ['org_admin'] }],
+    group: 'workspace',
+  },
+  { href: '/estimates', label: 'Estimates', icon: 'estimates', roles: ['org_admin', 'project_manager'], feature: 'estimates', group: 'financials' },
+  { href: '/invoices', label: 'Invoices', icon: 'invoices', roles: ['org_admin', 'project_manager'], feature: 'invoices', group: 'financials' },
   { href: '/change-orders', label: 'Change Orders', icon: 'change-orders', roles: ['org_admin', 'project_manager'], feature: 'change_orders', group: 'financials' },
-  { href: '/reports/job-costing', label: 'Job Costing', icon: 'job-costing', roles: ['org_admin', 'project_manager'], feature: 'project_reports', group: 'financials' },
-  { href: '/documents', label: 'Documents', icon: 'documents', feature: 'documents', group: 'services' },
-  { href: '/warranty', label: 'Warranty', icon: 'warranty', feature: 'warranty', group: 'services' },
-  { href: '/reports/schedule', label: 'Schedule Report', icon: 'schedule-report', roles: ['org_admin', 'project_manager'], feature: 'schedule_reports', group: 'services' },
-  { href: '/reports/warranty', label: 'Warranty Report', icon: 'warranty-report', roles: ['org_admin', 'project_manager'], feature: 'warranty_reports', group: 'services' },
+  { href: '/documents', label: 'Documents', icon: 'documents', roles: ['org_admin', 'project_manager'], feature: 'documents', group: 'services' },
+  { href: '/warranty', label: 'Warranty', icon: 'warranty', roles: ['org_admin', 'project_manager'], feature: 'warranty', group: 'services' },
   { href: '/team', label: 'Users & Access', icon: 'team', roles: ['org_admin'], group: 'people' },
-  { href: '/exports', label: 'Data Exports', icon: 'exports', roles: ['org_admin'], feature: 'data_exports', group: 'admin' },
   { href: '/settings', label: 'Settings', icon: 'settings', roles: ['org_admin'], group: 'admin' },
 ]
 
@@ -89,11 +95,17 @@ function priorityRank(href: string): number {
   return rank === -1 ? PROJECT_MANAGER_PRIORITY.length : rank
 }
 
-/** Presentation only: which items to show and in what order. Access is still enforced by each page and by RLS. */
+/**
+ * Presentation only: which items to show and in what order. Access is still enforced by each page and by RLS.
+ * Builder Staff get a field-only menu (Dashboard, Projects, Schedule, Daily Logs, Time). Office areas like Clients,
+ * Estimates, Documents and Warranty stay reachable inside each project they work on.
+ */
 export function navForRole(role: OrgRole | null, features?: FeatureMap): NavItem[] {
   const items = [MY_WORK_NAV, ...PRIMARY_NAV].filter(
     (item) =>
-      (!item.roles || (role && item.roles.includes(role))) && (!item.feature || !features || features[item.feature]),
+      (!item.roles || (role && item.roles.includes(role))) &&
+      (!item.feature || !features || features[item.feature]) &&
+      (!item.anyFeature || !features || item.anyFeature.some((f) => features[f.key] && (!f.roles || (role && f.roles.includes(role))))),
   )
   if (role !== 'project_manager') return items
   return items

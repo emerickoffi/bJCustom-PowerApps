@@ -38,7 +38,7 @@ export default async function ScheduleReportPage({ searchParams }: { searchParam
     <div className={pageLayout('workspace', 'gap-4 md:gap-5')}>
       <PageHeader
         icon={CalendarClock}
-        title="Schedule Report"
+        title="Schedule Report" backHref="/reports" backLabel="Reports"
         actions={
           <div className="flex flex-wrap items-center gap-2 print:hidden">
             <Button variant="outline" render={<a href={`/api/reports/schedule?weeks=${weeks}`} download />} nativeButton={false}>
