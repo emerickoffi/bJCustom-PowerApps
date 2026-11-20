@@ -1,4 +1,4 @@
--- Job costing report and data exports (Business plan).
+-- Job costing report and data exports (Business plan, off by default).
 -- Two new switchable modules. Both only read records each user can already see through RLS; nothing new is stored.
 --   project_reports: company-wide job costing report (every job's budget, cost and profit on one page)
 --   data_exports:    one-click CSV downloads of company records (administrators only)
@@ -44,27 +44,5 @@ update public.subscription_plans
 set features = array_append(features, 'data_exports'), updated_at = now()
 where key = 'business' and not ('data_exports' = any (features));
 
--- New companies (who start on the Business trial) get both switched on; they can turn them off in Feature management.
-create or replace function public.after_organization_insert_default_modules()
-returns trigger
-language plpgsql
-security definer
-set search_path to ''
-as $$
-declare k text;
-begin
-  foreach k in array array['daily_logs', 'change_orders', 'invoices', 'ai_essentials', 'ai_assistant', 'time_tracking',
-                           'project_reports', 'data_exports'] loop
-    if public.plan_includes_feature(new.id, k) then
-      begin
-        insert into public.organization_features (organization_id, feature_key, enabled)
-        values (new.id, k, true)
-        on conflict (organization_id, feature_key) do nothing;
-      exception when others then
-        raise warning 'default module % skipped for organization %: %', k, new.id, sqlerrm;
-      end;
-    end if;
-  end loop;
-  return new;
-end;
-$$;
+-- Both start switched off for every company, new and existing, to keep the app simple on day one.
+-- Administrators turn them on in Settings -> Feature management when they need them.
