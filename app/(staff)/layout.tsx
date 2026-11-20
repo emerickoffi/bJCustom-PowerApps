@@ -142,6 +142,9 @@ export default async function StaffLayout({ children, modal }: { children: React
             homeHref={homeHref}
             defaultMode={sidebarMode}
             openGroup={openGroup}
+            workspaces={workspaces}
+            currentWorkspaceId={session.organizationId}
+            companyLogoUrl={session.brand.logoUrl || undefined}
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
@@ -174,7 +177,10 @@ export default async function StaffLayout({ children, modal }: { children: React
                 <div className="contents max-[599.98px]:hidden tablet:hidden">
                   <QuickCreateMenu globalActions={globalQuickActions} jobScope={null} />
                 </div>
-                <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />
+                {/* The sidebar shows the company on desktop; without it (tablets, phones) switching stays in the header. */}
+                <div className="contents lg:hidden tablet:contents">
+                  <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />
+                </div>
                 <FieldOutboxIndicator />
                 <HelpButton area="staff" canGrantSupport={session.role === 'org_admin'} />
                 <NotificationBell items={notifications} emptyHref="/dashboard" />
@@ -183,6 +189,7 @@ export default async function StaffLayout({ children, modal }: { children: React
                   name={session.fullName}
                   email={session.email}
                   roleLabel={ROLE_LABELS[session.role]}
+                  companyName={session.brand.displayName}
                   profileHref="/profile"
                   ownerConsoleHref={platformAdmin ? '/platform' : undefined}
                 />
