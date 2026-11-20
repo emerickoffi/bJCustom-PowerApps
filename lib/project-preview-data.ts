@@ -230,7 +230,7 @@ async function loadSubcontractors(
     supabase
       .from('business_person_projects')
       .select(
-        'person_id, project_role, person:business_people(first_name, last_name), via:business_person_companies!person_company_id(company:business_companies(company_name, subcontractor_company_id))',
+        'person_id, project_role, person:business_people(first_name, last_name), via:business_person_companies!business_person_projects_organization_id_person_company_id_fkey(company:business_companies(company_name, subcontractor_company_id))',
       )
       .eq('organization_id', organizationId)
       .eq('project_id', projectId)
