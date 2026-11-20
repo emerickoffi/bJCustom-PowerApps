@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { ArrowLeftRight, Check, ChevronsUpDown, Loader2 } from 'lucide-react'
+import { ArrowLeftRight, Building2, Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +33,10 @@ export function CompanyCrumb({ workspaces, currentId }: { workspaces: WorkspaceO
   if (!current) return null
   const switchable = workspaces.length > 1
   const label = (
-    <span className="max-w-56 truncate text-sm font-semibold tracking-wide text-foreground">{current.organizationName}</span>
+    <span className="flex min-w-0 items-center gap-2">
+      <Building2 className="size-[18px] shrink-0 text-[#006773]" aria-hidden="true" />
+      <span className="max-w-56 truncate text-base font-bold tracking-wide text-foreground">{current.organizationName}</span>
+    </span>
   )
   const divider = <span className="mx-3 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 
