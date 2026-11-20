@@ -74,7 +74,14 @@ export async function startOnboarding(opts: { organizationId: string; userId: st
     const { data: org } = await admin.from('organizations').select('display_name, email, website, phone').eq('id', opts.organizationId).single()
     const account = await stripe.accounts.create(
       {
-        type: 'express',
+        // Stripe now requires controller properties instead of the legacy `type`. The builder pays Stripe's fees,
+        // Stripe covers fraud losses and collects identity requirements, and the builder gets the Express dashboard.
+        controller: {
+          fees: { payer: 'account' },
+          losses: { payments: 'stripe' },
+          requirement_collection: 'stripe',
+          stripe_dashboard: { type: 'express' },
+        },
         country: 'US',
         email: org?.email ?? undefined,
         business_profile: {
@@ -90,7 +97,7 @@ export async function startOnboarding(opts: { organizationId: string; userId: st
         },
         metadata: { organization_id: opts.organizationId },
       },
-      { idempotencyKey: `trefort-connect-${opts.organizationId}` },
+      { idempotencyKey: `trefort-connect-v2-${opts.organizationId}` },
     )
     const { error } = await admin.from('organization_payment_accounts').insert({
       organization_id: opts.organizationId,
