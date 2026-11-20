@@ -271,3 +271,71 @@ export function renderEmail(row: OutboxRow, appUrl: string): RenderResult {
 
   return { ok: false, error: 'template_unknown' }
 }
+
+// ───────── Help requests (sent directly, not through the outbox) ─────────
+
+export type SupportTicketEmailInput = {
+  reference: string
+  subject: string
+  message: string
+  requesterName: string | null
+  requesterEmail: string
+  requesterRole: string | null
+  organizationName: string | null
+  projectName: string | null
+  pagePath: string | null
+  browser: string | null
+  lastError: string | null
+  supportAccessMinutes: number | null
+  responsePromise: string
+}
+
+/** The email to Trefort's support inbox, and the receipt for the person who asked. */
+export function renderSupportTicketEmails(
+  t: SupportTicketEmailInput,
+  appUrl: string,
+): { toSupport: RenderResult; receipt: RenderResult } {
+  const who = t.requesterName ? `${t.requesterName} (${t.requesterEmail})` : t.requesterEmail
+  const details = [
+    `From: ${who}`,
+    t.organizationName ? `Company: ${t.organizationName}${t.requesterRole ? ` · ${t.requesterRole.replace(/_/g, ' ')}` : ''}` : 'Company: not signed in',
+    t.projectName ? `Project: ${t.projectName}` : '',
+    t.pagePath ? `Page: ${t.pagePath}` : '',
+    t.browser ? `Browser: ${t.browser}` : '',
+    t.supportAccessMinutes ? `Support access: granted for ${t.supportAccessMinutes} minutes (read-only)` : '',
+  ].filter(Boolean)
+
+  const toSupport = renderLayout(subjectLine([`[${t.reference}]`, t.subject]), {
+    preheader: multiline(t.message, 140),
+    eyebrow: `Help request ${t.reference}`,
+    heading: str(t.subject, 140),
+    lines: details,
+    detail: [multiline(t.message, 4000), t.lastError ? `\nLast error they saw:\n${multiline(t.lastError, 1000)}` : '']
+      .filter(Boolean)
+      .join('\n'),
+    buttonLabel: 'Open in owner console',
+    buttonUrl: `${appUrl}/platform/support`,
+    notes: ['Reply to this email to answer them directly.'],
+    footer: 'Sent from the Help button in Trefort.',
+  }, appUrl)
+
+  const receipt = renderLayout(subjectLine([`We got your help request (${t.reference})`]), {
+    preheader: t.responsePromise,
+    eyebrow: 'Trefort support',
+    heading: 'We got your help request',
+    lines: [
+      `Your request number is ${t.reference}. ${t.responsePromise}`,
+      t.supportAccessMinutes
+        ? `You let support view ${t.projectName ?? 'your project'} read-only for ${t.supportAccessMinutes} minutes. You can revoke it under Settings → Support access.`
+        : '',
+      'Reply to this email if you want to add anything.',
+    ].filter(Boolean),
+    detail: `${str(t.subject, 140)}\n\n${multiline(t.message, 1200)}`,
+    buttonLabel: 'Open Trefort',
+    buttonUrl: appUrl,
+    notes: ['Trefort will never ask for your password by email.'],
+    footer: 'You are receiving this because you sent a help request from Trefort.',
+  }, appUrl)
+
+  return { toSupport, receipt }
+}
