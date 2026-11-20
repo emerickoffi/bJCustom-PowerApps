@@ -10,8 +10,8 @@ import { cn } from '@/lib/utils'
 
 const HIGHLIGHTS: Record<string, string[]> = {
   starter: ['Schedule, estimates and selections', 'Walkthroughs, punch list and warranty', 'Homeowner portal', 'Daily logs and project photos'],
-  pro: ['Everything in Starter', 'Documents and e-signatures', 'Change orders, RFIs and invoices', 'Subcontractors and client updates', 'AI essentials: daily briefing, RFI wording help, drafted client updates'],
-  business: ['Everything in Pro', 'Unlimited team members', 'Full AI assistant: project chat, voice punch items, quote comparison, estimate drafting', 'Online payments and QuickBooks (coming soon)'],
+  pro: ['Everything in Starter', 'Documents and e-signatures', 'Change orders, RFIs and invoices', 'Subcontractors and client updates', 'Time tracking and schedule report', 'AI essentials: daily briefing, RFI wording help, drafted client updates'],
+  business: ['Everything in Pro', 'Unlimited team members', 'Full AI assistant: project chat, voice punch items, quote comparison, estimate drafting', 'Online payments and QuickBooks (coming soon)', 'Job costing, warranty report and data exports'],
 }
 
 export function PlanChooser({

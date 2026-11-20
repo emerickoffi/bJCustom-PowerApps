@@ -66,6 +66,30 @@ const RULES: Rule[] = [
   },
   {
     area: 'staff',
+    match: /^\/reports\/schedule(\/|$)/,
+    topic: {
+      title: 'Schedule report',
+      tips: [
+        'Behind schedule lists activities marked delayed or past their planned finish, most days late first.',
+        'Coming up only shows activities with planned dates. Add dates on each project schedule to see them here.',
+        'Use Print for the weekly meeting. The menus are left off the printout.',
+      ],
+    },
+  },
+  {
+    area: 'staff',
+    match: /^\/reports\/warranty(\/|$)/,
+    topic: {
+      title: 'Warranty report',
+      tips: [
+        'A claim is flagged when the homeowner has had no update in more than 14 days.',
+        'Click a home to open its warranty and update the claim.',
+        'Export downloads the same lists as spreadsheets.',
+      ],
+    },
+  },
+  {
+    area: 'staff',
     match: /^\/exports(\/|$)/,
     topic: {
       title: 'Data exports',
