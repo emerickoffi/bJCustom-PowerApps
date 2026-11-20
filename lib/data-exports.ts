@@ -237,3 +237,16 @@ export function jobCostingCsv(rows: JobCostReportRow[]): string {
     ]),
   )
 }
+
+export function scheduleReportCsv(report: {
+  late: { project_name: string; name: string; phase: string; status: string; planned_start: string | null; planned_end: string | null; who: string[]; daysLate: number | null; delay_reason: string | null }[]
+  weeks: { label: string; items: { project_name: string; name: string; phase: string; status: string; planned_start: string | null; planned_end: string | null; who: string[]; percent_complete: number }[] }[]
+}): string {
+  const rows: Cell[][] = [
+    ...report.late.map((a) => ['Behind schedule', a.project_name, a.name, a.phase, a.status, a.planned_start ?? '', a.planned_end ?? '', a.daysLate, a.who.join('; '), a.delay_reason ?? '']),
+    ...report.weeks.flatMap((w) =>
+      w.items.map((a) => [w.label, a.project_name, a.name, a.phase, a.status, a.planned_start ?? '', a.planned_end ?? '', null, a.who.join('; '), '']),
+    ),
+  ]
+  return csv(['Section', 'Job', 'Activity', 'Phase', 'Status', 'Planned Start', 'Planned Finish', 'Days Late', 'Who', 'Delay Reason'], rows)
+}

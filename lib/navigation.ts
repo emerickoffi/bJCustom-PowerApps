@@ -47,6 +47,8 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: '/reports/job-costing', label: 'Job Costing', icon: 'job-costing', roles: ['org_admin', 'project_manager'], feature: 'project_reports', group: 'financials' },
   { href: '/documents', label: 'Documents', icon: 'documents', feature: 'documents', group: 'services' },
   { href: '/warranty', label: 'Warranty', icon: 'warranty', feature: 'warranty', group: 'services' },
+  { href: '/reports/schedule', label: 'Schedule Report', icon: 'schedule-report', roles: ['org_admin', 'project_manager'], feature: 'schedule_reports', group: 'services' },
+  { href: '/reports/warranty', label: 'Warranty Report', icon: 'warranty-report', roles: ['org_admin', 'project_manager'], feature: 'warranty_reports', group: 'services' },
   { href: '/team', label: 'Users & Access', icon: 'team', roles: ['org_admin'], group: 'people' },
   { href: '/exports', label: 'Data Exports', icon: 'exports', roles: ['org_admin'], feature: 'data_exports', group: 'admin' },
   { href: '/settings', label: 'Settings', icon: 'settings', roles: ['org_admin'], group: 'admin' },
