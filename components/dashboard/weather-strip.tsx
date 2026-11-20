@@ -12,6 +12,7 @@ import {
   LocateFixed,
   MapPin,
   RefreshCw,
+  ChevronDown,
   Snowflake,
   Sun,
   TriangleAlert,
@@ -247,7 +248,7 @@ export function WeatherStrip({
       ? ['weather', 'device', geo.lat, geo.lon]
       : null
 
-  const { data, error, isLoading, isValidating, mutate } = useSWR(key, fetchWeather, {
+  const { data, error, isLoading, mutate } = useSWR(key, fetchWeather, {
     revalidateOnFocus: false,
     dedupingInterval: 10 * 60 * 1000,
     refreshInterval: 30 * 60 * 1000,
@@ -292,25 +293,30 @@ export function WeatherStrip({
 
   const geoFailure: GeoFailure | null =
     geo.status === 'denied' || geo.status === 'unavailable' || geo.status === 'timeout' ? geo.status : null
-  const busy = isValidating || geo.status === 'locating'
   const placeOption = lastFixed?.mode === 'place' ? lastFixed.query : null
 
-  const selector = (
-    <label className="flex h-10 min-w-0 cursor-pointer items-center gap-1.5 rounded-md border border-[#80C5CC] bg-[#E6F5F6] pl-2.5 text-xs font-medium text-[#006773] transition-colors hover:bg-[#CCECEF] has-[select:focus-visible]:ring-2 has-[select:focus-visible]:ring-[#006773] has-[select:focus-visible]:ring-offset-1">
+  const choiceLabel =
+    choice.mode === 'device' ? 'My location' : choice.mode === 'place' ? choice.query : (project?.name ?? 'Jobsite')
+
+  /**
+   * The place name is the menu: "Near Cedar Hill, TX ▾". A native select sits invisibly over the text so the list of
+   * jobsites stays a real, accessible menu on every device.
+   */
+  const selectorFor = (label: string) => (
+    <label className="relative inline-flex h-10 min-w-0 cursor-pointer items-center gap-1 rounded-md px-1.5 text-sm text-muted-foreground transition-colors hover:bg-[#E6F5F6] hover:text-[#006773] has-[select:focus-visible]:ring-2 has-[select:focus-visible]:ring-[#006773]">
       <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
-      <span className="sr-only">Weather location (does not change the project or work filters)</span>
+      <span className="max-w-[14rem] truncate">{label}</span>
+      <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
+      <span className="sr-only">Change weather location (does not change the project or work filters)</span>
       <select
         value={choice.mode === 'device' ? 'device' : fixedValue(choice)}
         onChange={(e) => onSelect(e.target.value)}
-        className={cn(
-          'h-full min-w-0 cursor-pointer truncate rounded-r-md bg-transparent pr-2 text-xs font-medium text-[#006773] outline-none',
-          compact ? 'max-w-[14rem]' : 'max-w-[12rem]',
-        )}
+        className="absolute inset-0 size-full cursor-pointer opacity-0"
       >
         <option value="device">My location</option>
         {placeOption && <option value={`place:${placeOption}`}>{placeOption}</option>}
         {locations.length > 0 && (
-          <optgroup label="Active projects">
+          <optgroup label="Project sites">
             {locations.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.hasAddress ? l.name : `${l.name} (no jobsite address)`}
@@ -318,10 +324,11 @@ export function WeatherStrip({
             ))}
           </optgroup>
         )}
-        <option value={CHOOSE_PLACE}>City or ZIP code{'\u2026'}</option>
+        <option value={CHOOSE_PLACE}>Enter city or ZIP{'\u2026'}</option>
       </select>
     </label>
   )
+  const selector = selectorFor(choiceLabel)
 
   const chooser = (
     <LocationChooser
@@ -355,19 +362,7 @@ export function WeatherStrip({
     </button>
   )
 
-  const refreshButton = (
-    <button
-      type="button"
-      onClick={refresh}
-      disabled={busy}
-      aria-label={usingDevice ? 'Refresh location and weather' : 'Refresh weather'}
-      className="flex size-10 shrink-0 items-center justify-center rounded-md text-[#006773] transition-colors hover:bg-[#E6F5F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006773] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-    >
-      <RefreshCw className={cn('size-4', busy && 'animate-spin motion-reduce:animate-none')} aria-hidden="true" />
-    </button>
-  )
-
-  const shell = 'flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-[#D6DDE5] bg-card px-3 py-1.5'
+  const shell = 'flex flex-wrap items-center gap-x-1 gap-y-1 rounded-xl border border-[#D6DDE5] bg-card px-2 py-0.5'
   const savedNote = savedUnavailable ? (
     <p className="w-full text-xs text-muted-foreground">Your saved jobsite is no longer active or available.</p>
   ) : null
@@ -530,7 +525,6 @@ export function WeatherStrip({
           <Icon className={cn('size-5 shrink-0', ICON_TONE[kind])} aria-hidden="true" />
           <span className="font-bold tabular-nums text-[#17212B]">{current ? deg(current.temperatureF) : '\u2014'}</span>
           <span className="max-w-[10rem] truncate text-foreground">{condition}</span>
-          <span className="max-w-[12rem] truncate text-xs text-muted-foreground">{data.locationLabel}</span>
           {!compact && (
             <span className="text-xs text-muted-foreground">
               {'Rain '}
@@ -548,9 +542,11 @@ export function WeatherStrip({
         </DialogTrigger>
         <ForecastDialog data={data} now={{ condition, rain, wind, observed: observedLabel }} />
       </Dialog>
+      <span className="text-muted-foreground" aria-hidden="true">
+        ·
+      </span>
+      {selectorFor(showingFallback || choice.mode !== 'device' ? choiceLabel : data.locationLabel)}
       {fallbackNote}
-      {selector}
-      {refreshButton}
       {chooser}
     </div>
   )
