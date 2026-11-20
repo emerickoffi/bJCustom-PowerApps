@@ -13,7 +13,7 @@ export default async function PortalInvoicePage({ params }: { params: Promise<{ 
   const { id } = await params
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
   const session = await getSession()
-  if (!session) redirect('/sign-in')
+  if (!session) redirect(`/auth/login?next=${encodeURIComponent(`/portal/invoices/${id}`)}`)
   const data = await getInvoice(id)
   if (!data || data.invoice.status === 'draft') notFound()
 

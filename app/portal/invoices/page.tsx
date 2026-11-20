@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: 'Invoices' }
 
 export default async function PortalInvoicesPage() {
   const session = await getSession()
-  if (!session) redirect('/sign-in')
+  if (!session) redirect(`/auth/login?next=${encodeURIComponent('/portal/invoices')}`)
   const supabase = await createClient()
   // RLS returns only issued, published invoices on projects this homeowner is linked to.
   const { data } = await supabase

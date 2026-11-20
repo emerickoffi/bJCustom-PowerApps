@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getPeopleNames } from '@/lib/people'
 import { StaffReportsPanel, type StaffReport } from '@/components/reports/staff-reports-panel'
 
 export async function StaffReportsSection({
@@ -21,9 +22,12 @@ export async function StaffReportsSection({
   const [acks, signoffs] = ids.length
     ? await Promise.all([
         supabase.from('report_acknowledgments').select('report_id, signer_name, decision, comment, created_at').in('report_id', ids).order('created_at', { ascending: false }),
-        supabase.from('report_builder_signoffs').select('report_id, decision, comment, created_at, reviewer:profiles(full_name)').in('report_id', ids).order('created_at', { ascending: false }),
+        supabase.from('report_builder_signoffs').select('report_id, decision, comment, created_at, reviewer_id').in('report_id', ids).order('created_at', { ascending: false }),
       ])
     : [{ data: [] }, { data: [] }]
+
+  // reviewer_id points at auth.users, which the API cannot embed, so names come from profiles separately.
+  const reviewerNames = await getPeopleNames((signoffs.data ?? []).map((s) => (s as { reviewer_id?: string | null }).reviewer_id))
 
   const list: StaffReport[] = (reports ?? []).map((r) => ({
     ...r,
@@ -34,7 +38,7 @@ export async function StaffReportsSection({
         decision: s.decision as 'verified' | 'rejected',
         comment: s.comment,
         created_at: s.created_at,
-        reviewer: (s.reviewer as unknown as { full_name: string | null } | null)?.full_name ?? 'Builder',
+        reviewer: reviewerNames[(s as { reviewer_id?: string | null }).reviewer_id ?? ''] ?? 'Builder',
       })),
   }))
 

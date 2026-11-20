@@ -78,7 +78,7 @@ export async function loadProjectBills(projectId: string): Promise<ProjectBillsD
     supabase
       .from('vendor_bills')
       .select(
-        'id, vendor_name, bill_number, bill_date, due_date, description, notes, amount_cents, cost_category, status, commitment_id, attachment_document_id, created_at, approved_at, voided_at, void_reason, project_documents(id, name, project_document_versions(id, version_number))',
+        'id, vendor_name, bill_number, bill_date, due_date, description, notes, amount_cents, cost_category, status, commitment_id, attachment_document_id, created_at, approved_at, voided_at, void_reason, project_documents(id, name, project_document_versions!project_document_versions_document_id_fkey(id, version_number))',
       )
       .eq('project_id', projectId)
       .order('bill_date', { ascending: false })

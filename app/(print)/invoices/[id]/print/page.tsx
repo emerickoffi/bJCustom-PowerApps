@@ -21,7 +21,8 @@ export default async function PrintInvoicePage({
   const { id } = await params
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
   const session = await getSession()
-  if (!session?.organizationId) redirect('/sign-in')
+  if (!session) redirect(`/auth/login?next=${encodeURIComponent(`/invoices/${id}/print`)}`)
+  if (!session.organizationId) redirect('/no-access')
   const features = await getOrgFeatures(session.organizationId)
   if (!features.invoices && session.role !== 'org_admin') notFound()
   // RLS limits homeowners to their own published invoices; staff see their organization's.
