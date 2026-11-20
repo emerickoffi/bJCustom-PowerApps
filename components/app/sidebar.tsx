@@ -81,7 +81,7 @@ export function Sidebar({
                 <img
                   src={companyLogoUrl}
                   alt={companyName ?? ''}
-                  className={cn('rounded-md bg-white object-contain', collapsed ? 'size-8 p-0.5' : 'h-11 w-full max-w-48 px-2 py-1')}
+                  className={cn('object-contain object-left', collapsed ? 'size-8 rounded-md object-center' : 'h-10 w-full max-w-44')}
                 />
               ) : collapsed ? (
                 <TrefortMark priority />
