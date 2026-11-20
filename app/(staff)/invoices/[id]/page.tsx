@@ -14,6 +14,8 @@ import { InvoiceActions } from '@/components/invoices/invoice-actions'
 import { InvoicePayments } from '@/components/invoices/invoice-payments'
 import { SendInvoiceToQuickBooksButton } from '@/components/integrations/quickbooks-buttons'
 import { getOrgFeatures } from '@/lib/features'
+import { listInvoiceSessions } from '@/lib/stripe-connect'
+import { formatMoney } from '@/lib/financials'
 
 export const metadata: Metadata = { title: 'Invoice' }
 
@@ -41,6 +43,7 @@ export default async function InvoicePage({
   const events = await getInvoiceEvents(id)
   const { canWrite: manager } = await getInvoiceAccess(session)
   const features = await getOrgFeatures(session.organizationId)
+  const onlineSessions = features.payments ? (await listInvoiceSessions(id)).filter((x) => ['processing', 'needs_review', 'failed'].includes(x.status)).slice(0, 5) : []
 
   return (
     <div className={pageLayout('detail')}>
@@ -98,6 +101,19 @@ export default async function InvoicePage({
               </ol>
             )}
           </section>
+
+          {onlineSessions.length > 0 && (
+            <ul className="flex flex-col gap-2 print:hidden" aria-label="Online payments">
+              {onlineSessions.map((o) => (
+                <li key={o.id} className={`rounded-xl px-4 py-3 text-sm text-foreground ${o.status === 'needs_review' ? 'bg-destructive/10' : 'bg-champagne-soft'}`}>
+                  {o.status === 'processing' && `A ${formatMoney(o.amount_cents)} bank transfer from the homeowner is processing. It's recorded here automatically when it clears (usually 3–5 business days).`}
+                  {o.status === 'failed' && `A ${formatMoney(o.amount_cents)} bank transfer from the homeowner failed${o.failure_message ? `: ${o.failure_message}` : '.'} They can try again from the portal.`}
+                  {o.status === 'needs_review' &&
+                    `The homeowner paid ${formatMoney(o.amount_cents)} online, but it couldn't be applied because the invoice changed (${o.failure_message ?? 'voided or already paid'}). Record it by hand or refund it from Stripe (Settings → Integrations).`}
+                </li>
+              ))}
+            </ul>
+          )}
 
           {features.quickbooks && (
             <div className="flex flex-wrap items-center gap-3 print:hidden">

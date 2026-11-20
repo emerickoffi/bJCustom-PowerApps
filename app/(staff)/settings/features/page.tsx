@@ -12,6 +12,7 @@ import { PageHeader, pageLayout } from '@/components/shared/page-header'
 import { FeatureToggles } from '@/components/settings/feature-toggles'
 import { SlidersHorizontal as SlidersHorizontalIcon } from 'lucide-react'
 import { getQuickBooksStatus } from '@/lib/quickbooks'
+import { getStripe } from '@/lib/stripe'
 
 export const metadata: Metadata = { title: 'Feature management' }
 
@@ -71,6 +72,7 @@ export default async function FeaturesPage() {
           e_signatures: !getProviderConfig().configured,
           quickbooks: !getQuickBooksStatus().credentialsConfigured,
           time_tracking: !registeredKeys.some((r) => r.feature_key === 'time_tracking'),
+          payments: !getStripe(),
           ai_assistant: !getAssistantProviderConfig().configured,
           ai_essentials: !getAssistantProviderConfig().configured || !registeredKeys.some((r) => r.feature_key === 'ai_essentials'),
           subcontractors: isMissingTableError(subcontractorProbe.error),

@@ -47,7 +47,13 @@ export const DRAW_MILESTONE_LABELS: Record<DrawMilestone, string> = {
 export const PAYMENT_METHODS = ['check', 'ach', 'wire', 'cash', 'card_offline', 'financing', 'other'] as const
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number]
 
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+/** Recorded automatically when a homeowner pays through the portal (Stripe). Not offered on the manual form. */
+export const ONLINE_PAYMENT_METHODS = ['online_card', 'online_ach'] as const
+export type OnlinePaymentMethod = (typeof ONLINE_PAYMENT_METHODS)[number]
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod | OnlinePaymentMethod, string> = {
+  online_card: 'Card (paid online)',
+  online_ach: 'Bank transfer (paid online)',
   check: 'Check',
   ach: 'ACH / bank transfer',
   wire: 'Wire',
