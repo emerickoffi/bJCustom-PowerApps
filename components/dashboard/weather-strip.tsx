@@ -362,7 +362,7 @@ export function WeatherStrip({
     </button>
   )
 
-  const shell = 'flex flex-wrap items-center gap-x-1 gap-y-1 rounded-xl border border-[#D6DDE5] bg-card px-2 py-0.5'
+  const shell = 'flex flex-wrap items-center gap-x-1 gap-y-1'
   const savedNote = savedUnavailable ? (
     <p className="w-full text-xs text-muted-foreground">Your saved jobsite is no longer active or available.</p>
   ) : null
