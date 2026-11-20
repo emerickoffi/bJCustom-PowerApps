@@ -170,8 +170,8 @@ export default async function StaffLayout({ children, modal }: { children: React
                   />
                   <ProjectToolsHeaderSlot />
                 </div>
-                {/* On phones the floating launcher already offers these create actions. */}
-                <div className="contents max-[599.98px]:hidden">
+                {/* On phones and tablets the floating launcher already offers these create actions. */}
+                <div className="contents max-[599.98px]:hidden tablet:hidden">
                   <QuickCreateMenu globalActions={globalQuickActions} jobScope={null} />
                 </div>
                 <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />

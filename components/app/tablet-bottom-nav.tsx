@@ -38,7 +38,7 @@ function useIsPhone(): boolean {
 /**
  * Phone and tablet primary navigation, then More.
  * - Phones are field-first: Home, Daily Logs, Time, Projects (see phoneNavTabs).
- * - Tablets: Home, Projects, My Work and Schedule (when the role can open them).
+ * - Tablets: the same with one more slot: Home, Projects, Daily Logs, Time, Schedule (see bottomNavTabs).
  * Both rows are rendered and CSS shows the right one on first paint. Everything else the role can reach is in More,
  * built from the same permission-filtered list as the sidebar.
  */

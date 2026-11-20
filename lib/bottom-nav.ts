@@ -2,17 +2,33 @@ export type BottomTabKey = 'home' | 'projects' | 'my-work' | 'schedule' | 'daily
 export type BottomTab = { key: BottomTabKey; href: string; label: string }
 
 /**
- * Primary tabs for the phone and tablet bottom navigation: Home, Projects, then My Work and Schedule when the
- * role can open them. Everything else stays in More, so the bar never shows a route the role cannot reach.
+ * Tablet tabs: the phone's field-first set with one more slot. Home (My Work for project managers), Projects,
+ * Daily Logs, Time, Schedule; My Work fills in when a field module is off. At most five, plus More.
  */
 export function bottomNavTabs(availableHrefs: readonly string[], homeHref: string): BottomTab[] {
-  const has = (href: string) => availableHrefs.includes(href)
-  const tabs: BottomTab[] = [
-    { key: 'home', href: homeHref, label: 'Home' },
-    { key: 'projects', href: '/projects', label: 'Projects' },
-  ]
-  if (has('/my-work') && homeHref !== '/my-work') tabs.push({ key: 'my-work', href: '/my-work', label: 'My Work' })
-  if (has('/schedule')) tabs.push({ key: 'schedule', href: '/schedule', label: 'Schedule' })
+  return fieldTabs(availableHrefs, homeHref, ['projects', 'daily-logs', 'time', 'schedule', 'my-work'], 5)
+}
+
+const CANDIDATES: Record<Exclude<BottomTabKey, 'home'>, BottomTab> = {
+  'daily-logs': { key: 'daily-logs', href: '/daily-logs', label: 'Daily Logs' },
+  time: { key: 'time', href: '/time', label: 'Time' },
+  projects: { key: 'projects', href: '/projects', label: 'Projects' },
+  'my-work': { key: 'my-work', href: '/my-work', label: 'My Work' },
+  schedule: { key: 'schedule', href: '/schedule', label: 'Schedule' },
+}
+
+function fieldTabs(
+  availableHrefs: readonly string[],
+  homeHref: string,
+  order: Exclude<BottomTabKey, 'home'>[],
+  max: number,
+): BottomTab[] {
+  const tabs: BottomTab[] = [{ key: 'home', href: homeHref, label: homeHref === '/my-work' ? 'My Work' : 'Home' }]
+  for (const key of order) {
+    if (tabs.length >= max) break
+    const tab = CANDIDATES[key]
+    if (tab.href !== homeHref && availableHrefs.includes(tab.href)) tabs.push(tab)
+  }
   return tabs
 }
 
@@ -21,20 +37,7 @@ export function bottomNavTabs(availableHrefs: readonly string[], homeHref: strin
  * without the field modules fall back to My Work and Schedule. At most four, plus More; the rest lives in More.
  */
 export function phoneNavTabs(availableHrefs: readonly string[], homeHref: string): BottomTab[] {
-  const has = (href: string) => availableHrefs.includes(href)
-  const tabs: BottomTab[] = [{ key: 'home', href: homeHref, label: homeHref === '/my-work' ? 'My Work' : 'Home' }]
-  const candidates: BottomTab[] = [
-    { key: 'daily-logs', href: '/daily-logs', label: 'Daily Logs' },
-    { key: 'time', href: '/time', label: 'Time' },
-    { key: 'projects', href: '/projects', label: 'Projects' },
-    { key: 'my-work', href: '/my-work', label: 'My Work' },
-    { key: 'schedule', href: '/schedule', label: 'Schedule' },
-  ]
-  for (const tab of candidates) {
-    if (tabs.length >= 4) break
-    if (tab.href !== homeHref && has(tab.href)) tabs.push(tab)
-  }
-  return tabs
+  return fieldTabs(availableHrefs, homeHref, ['daily-logs', 'time', 'projects', 'my-work', 'schedule'], 4)
 }
 
 export function isTabActive(pathname: string, href: string): boolean {

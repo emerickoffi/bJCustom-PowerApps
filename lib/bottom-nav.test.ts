@@ -4,8 +4,11 @@ import { bottomNavTabs, isTabActive, phoneNavTabs } from './bottom-nav.ts'
 
 const labels = (hrefs: string[], home = '/dashboard') => bottomNavTabs(hrefs, home).map((t) => t.label)
 
-test('project managers get Home, Projects, My Work and Schedule', () => {
-  assert.deepEqual(labels(['/dashboard', '/projects', '/my-work', '/schedule', '/estimates']), ['Home', 'Projects', 'My Work', 'Schedule'])
+test('tablets get field tools plus Schedule', () => {
+  const crew = ['/dashboard', '/projects', '/schedule', '/daily-logs', '/time', '/estimates']
+  assert.deepEqual(labels(crew), ['Home', 'Projects', 'Daily Logs', 'Time', 'Schedule'])
+  const pm = ['/my-work', '/projects', '/schedule', '/daily-logs', '/time']
+  assert.deepEqual(labels(pm, '/my-work'), ['My Work', 'Projects', 'Daily Logs', 'Time', 'Schedule'])
 })
 
 test('tabs a role cannot open are left out', () => {
@@ -13,8 +16,9 @@ test('tabs a role cannot open are left out', () => {
   assert.deepEqual(labels(['/dashboard', '/projects', '/schedule']), ['Home', 'Projects', 'Schedule'])
 })
 
-test('My Work is not repeated when it is already the home page', () => {
-  assert.deepEqual(labels(['/my-work', '/projects'], '/my-work'), ['Home', 'Projects'])
+test('My Work fills in when field modules are off, and is not repeated as home', () => {
+  assert.deepEqual(labels(['/dashboard', '/projects', '/my-work', '/schedule']), ['Home', 'Projects', 'Schedule', 'My Work'])
+  assert.deepEqual(labels(['/my-work', '/projects'], '/my-work'), ['My Work', 'Projects'])
 })
 
 test('a tab is active on its own page and nested pages only', () => {
