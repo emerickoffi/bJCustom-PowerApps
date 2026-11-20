@@ -9,6 +9,7 @@ import { TrefortLogo, TrefortMark } from '@/components/brand/trefort-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { NavGroup, NavItem } from '@/lib/navigation'
 import { SIDEBAR_COOKIE, type SidebarMode } from '@/lib/sidebar'
+import { CompanyBlock, type WorkspaceOption } from '@/components/app/workspace-switcher'
 
 const DESKTOP_QUERY = '(min-width: 80rem)'
 
@@ -18,7 +19,13 @@ export function Sidebar({
   homeHref = '/dashboard',
   defaultMode,
   openGroup,
+  workspaces = [],
+  currentWorkspaceId = null,
+  companyLogoUrl,
 }: {
+  workspaces?: WorkspaceOption[]
+  currentWorkspaceId?: string | null
+  companyLogoUrl?: string
   items: NavItem[]
   homeLabel: string
   homeHref?: string
@@ -74,6 +81,11 @@ export function Sidebar({
               {collapsed ? <TrefortMark priority /> : <TrefortLogo priority />}
             </Link>
           </div>
+          {workspaces.length > 0 && (
+            <div className={cn('shrink-0 border-b border-sidebar-border', collapsed ? 'px-2 py-2' : 'px-3 py-2')}>
+              <CompanyBlock workspaces={workspaces} currentId={currentWorkspaceId} logoUrl={companyLogoUrl} collapsed={collapsed} />
+            </div>
+          )}
           <div className={cn('flex-1 overflow-y-auto overflow-x-hidden py-6', collapsed ? 'px-3' : 'px-4')}>
             <AppNav items={items} collapsed={collapsed} openGroup={openGroup} />
           </div>

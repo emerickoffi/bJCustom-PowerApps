@@ -204,12 +204,15 @@ export function ProfileMenu({
   name,
   email,
   roleLabel,
+  companyName,
   profileHref,
   ownerConsoleHref,
 }: {
   name: string | null
   email: string
   roleLabel: string
+  /** Shown in the menu so phones and tablets (no sidebar) still say which company you're in. */
+  companyName?: string
   profileHref: string
   /** Only passed for Trefort platform administrators. */
   ownerConsoleHref?: string
@@ -236,6 +239,7 @@ export function ProfileMenu({
           <DropdownMenuLabel className="flex flex-col gap-0.5 px-2.5 py-2">
             <span className="truncate text-sm font-semibold text-foreground">{name || 'Your account'}</span>
             <span className="truncate text-xs font-normal text-muted-foreground">{email}</span>
+            {companyName && <span className="truncate text-xs font-normal text-muted-foreground">{`${roleLabel} · ${companyName}`}</span>}
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
