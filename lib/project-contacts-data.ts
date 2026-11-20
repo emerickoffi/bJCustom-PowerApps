@@ -65,7 +65,7 @@ export async function loadProjectContacts(supabase: Supabase, organizationId: st
     supabase
       .from('business_person_projects')
       .select(
-        'id, person_id, project_role, status, started_at, ended_at, person:business_people(first_name, last_name, email, primary_phone, secondary_phone, status), via:business_person_companies!person_company_id(company:business_companies(company_name))',
+        'id, person_id, project_role, status, started_at, ended_at, person:business_people(first_name, last_name, email, primary_phone, secondary_phone, status), via:business_person_companies!business_person_projects_organization_id_person_company_id_fkey(company:business_companies(company_name))',
       )
       .eq('organization_id', organizationId)
       .eq('project_id', projectId)

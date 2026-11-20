@@ -346,7 +346,9 @@ export function ProjectListMap({ rows, canEdit }: { rows: ListMapRow[]; canEdit:
             </div>
           )}
         </div>
-        <div className={cn('relative min-h-0 xl:block', pane === 'map' ? 'block' : 'hidden')}>
+        {/* isolate keeps the map's z-[1000] legend and preview card inside this pane, so drawers and dialogs
+            (z-50) always sit above them. */}
+        <div className={cn('relative isolate min-h-0 xl:block', pane === 'map' ? 'block' : 'hidden')}>
           {mapBody}
           {pinned > 0 && !error && (
             <div className="pointer-events-none absolute inset-x-3 top-3 z-[1000] flex justify-end">
