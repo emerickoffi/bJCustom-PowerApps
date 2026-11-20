@@ -71,7 +71,9 @@ export default async function ProjectsPage({
   const page = parsePage(params.page)
   const urlView = parseView(params.view)
   const cookieJar = await cookies()
-  const initialView = urlView ?? parseView(cookieJar.get(DIRECTORY_VIEW_COOKIE.projects)?.value)
+  // Cards and Table are remembered; the map is opened on purpose each time, so Projects never starts half-map.
+  const rememberedView = parseView(cookieJar.get(DIRECTORY_VIEW_COOKIE.projects)?.value)
+  const initialView = urlView ?? (rememberedView === 'map' ? null : rememberedView)
   const optionalColumns = parseProjectColumns(cookieJar.get(PROJECT_COLUMNS_COOKIE)?.value)
 
   const supabase = await createClient()
