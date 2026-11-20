@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
@@ -8,17 +8,24 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
  * Holds the less-frequent project metadata, status changes and history so the Overview stays scannable.
  * It has no button of its own: "Project details" in the project facts row opens it from every tab by
  * adding `?details=open`, and closing removes the flag so a refresh or a remembered tab doesn't reopen it.
+ *
+ * The URL is changed with `history.replaceState(null, …)`: passing Next's own history state instead makes the router
+ * treat the change as internal and skip updating useSearchParams, which left the drawer stuck open.
+ * Local state closes the sheet immediately; the URL keeps it in step with back/forward and refresh.
  */
 export function ProjectDetailsDrawer({ projectName, children }: { projectName: string; children: ReactNode }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const open = searchParams.get('details') === 'open'
+  const urlOpen = searchParams.get('details') === 'open'
+  const [open, setOpen] = useState(urlOpen)
+  useEffect(() => setOpen(urlOpen), [urlOpen])
 
   const close = () => {
+    setOpen(false)
     const params = new URLSearchParams(searchParams.toString())
     params.delete('details')
     const query = params.toString()
-    window.history.replaceState(window.history.state, '', `${pathname}${query ? `?${query}` : ''}${window.location.hash}`)
+    window.history.replaceState(null, '', `${pathname}${query ? `?${query}` : ''}${window.location.hash}`)
   }
 
   return (
