@@ -110,3 +110,39 @@ export async function loadSupportView(
   if (error || !data) return { error: error?.message ?? 'This support access is not available.' }
   return { view: data as SupportView }
 }
+
+// ───────── Help requests (owner console) ─────────
+
+export type PlatformHelpRequest = {
+  id: string
+  reference: string
+  status: 'open' | 'closed'
+  area: 'staff' | 'portal' | 'sub' | 'public'
+  subject: string
+  message: string
+  requester_name: string | null
+  requester_email: string
+  requester_role: string | null
+  page_path: string | null
+  user_agent: string | null
+  last_error: string | null
+  context: { browser?: string | null } | null
+  email_status: 'pending' | 'sent' | 'failed' | 'not_configured'
+  created_at: string
+  closed_at: string | null
+  closed_by_email: string | null
+  organization_id: string | null
+  organization_name: string | null
+  project_id: string | null
+  project_name: string | null
+  project_number: string | null
+  support_access_grant_id: string | null
+  support_access_open: boolean
+}
+
+/** Null when the help requests migration has not been applied or the call failed. */
+export async function loadPlatformHelpRequests(status: 'open' | 'closed' | 'all'): Promise<PlatformHelpRequest[] | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('platform_list_support_tickets', { p_status: status, p_limit: 150 })
+  return error ? null : ((data ?? []) as PlatformHelpRequest[])
+}

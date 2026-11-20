@@ -34,3 +34,32 @@ describe('welcome email', () => {
     assert.doesNotMatch(r.email.text, /free until/)
   })
 })
+
+describe('help request emails', async () => {
+  const { renderSupportTicketEmails } = await import('./templates.ts')
+  const base = {
+    reference: 'HELP-1042',
+    subject: 'Cannot save estimate',
+    message: 'It spins and fails <script>alert(1)</script>',
+    requesterName: 'Pat PM',
+    requesterEmail: 'pat@builder.com',
+    requesterRole: 'project_manager',
+    organizationName: 'Builder A',
+    projectName: 'Oak St',
+    pagePath: '/projects/x/estimates/y',
+    browser: 'Chrome on Mac',
+    lastError: 'Something went wrong. Please try again.',
+    supportAccessMinutes: 60,
+    responsePromise: 'We reply within 1 business day.',
+  }
+  it('puts the ticket number in the subject and escapes what people typed', () => {
+    const { toSupport, receipt } = renderSupportTicketEmails(base, 'https://app.trefortpro.com')
+    assert.ok(toSupport.ok && receipt.ok)
+    if (!toSupport.ok || !receipt.ok) return
+    assert.equal(toSupport.email.subject, '[HELP-1042] Cannot save estimate')
+    assert.ok(!toSupport.email.html.includes('<script>'))
+    assert.ok(toSupport.email.text.includes('Last error they saw'))
+    assert.ok(toSupport.email.text.includes('Support access: granted for 60 minutes'))
+    assert.ok(receipt.email.subject.includes('HELP-1042'))
+  })
+})

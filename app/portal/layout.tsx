@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { HelpButton } from '@/components/help/help-button'
 import { redirect } from 'next/navigation'
 import { LogOut, UserRound } from 'lucide-react'
 import { getSession } from '@/lib/session'
@@ -35,6 +36,7 @@ export default async function PortalLayout({ children }: { children: React.React
                   kind: w.kind,
                 }))}
               />
+              <HelpButton area="portal" />
               <Link
                 href="/portal/profile"
                 className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-muted-foreground transition-colors hover:bg-sage/60 hover:text-primary sm:min-h-0 sm:min-w-0"

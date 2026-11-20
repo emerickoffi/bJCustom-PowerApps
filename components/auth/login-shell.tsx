@@ -1,10 +1,12 @@
 import { TrefortLogo } from '@/components/brand/trefort-logo'
 import { LegalLinks } from '@/components/legal/legal-page'
+import { HelpButton } from '@/components/help/help-button'
 
 /** Login-only surface: solid sidebar teal, logo on teal, compact white card. */
 export function LoginShell({ children }: { children: React.ReactNode }) {
   return (
     <main data-login-shell className="flex min-h-svh flex-col items-center overflow-x-hidden bg-[#00788d] px-4 py-10 sm:py-16">
+      <HelpButton area="public" variant="floating" tone="dark" />
       <div className="my-auto flex w-full max-w-[400px] flex-col items-center gap-8 sm:gap-10">
         <div className="flex flex-col items-center gap-3">
           <TrefortLogo priority className="w-64 sm:w-80" />

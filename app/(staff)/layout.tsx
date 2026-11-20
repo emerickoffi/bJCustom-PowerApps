@@ -32,6 +32,7 @@ import { DraftScopeProvider } from '@/components/shared/draft-scope'
 import { NavigationGuard } from '@/components/app/navigation-guard'
 import { getAssistantProviderConfig } from '@/lib/ai/assistant-provider'
 import { isPlatformAdmin } from '@/lib/platform'
+import { HelpButton } from '@/components/help/help-button'
 import { FieldOutboxIndicator, FieldOutboxSync, OfflineBanner } from '@/components/app/field-outbox'
 import {
   Breadcrumbs,
@@ -171,6 +172,7 @@ export default async function StaffLayout({ children, modal }: { children: React
                 <QuickCreateMenu globalActions={globalQuickActions} jobScope={null} />
                 <WorkspaceSwitcher workspaces={workspaces} currentId={session.organizationId} />
                 <FieldOutboxIndicator />
+                <HelpButton area="staff" canGrantSupport={session.role === 'org_admin'} />
                 <NotificationBell items={notifications} emptyHref="/dashboard" />
                 <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
                 <ProfileMenu

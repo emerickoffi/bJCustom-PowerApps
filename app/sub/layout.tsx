@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { HardHat, LogOut } from 'lucide-react'
 import { getSubcontractorSession } from '@/lib/subcontractor-session'
 import { FloatingCameraProvider } from '@/components/camera/floating-camera'
+import { HelpButton } from '@/components/help/help-button'
 
 export const metadata: Metadata = {
   title: 'Subcontractor workspace',
@@ -27,6 +28,8 @@ export default async function SubLayout({ children }: { children: React.ReactNod
               <span className="truncate text-xs text-muted-foreground">{session.fullName}</span>
             </span>
           </Link>
+          <div className="flex items-center gap-1">
+            <HelpButton area="sub" />
           <form action="/auth/sign-out" method="post">
             <button
               type="submit"
@@ -36,6 +39,7 @@ export default async function SubLayout({ children }: { children: React.ReactNod
               <span className="sr-only sm:not-sr-only">Sign out</span>
             </button>
           </form>
+          </div>
         </div>
       </header>
       <FloatingCameraProvider>

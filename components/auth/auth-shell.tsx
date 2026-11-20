@@ -1,5 +1,6 @@
 import type { AuthImage } from '@/lib/auth-image'
 import { LegalLinks } from '@/components/legal/legal-page'
+import { HelpButton } from '@/components/help/help-button'
 
 type AuthShellProps = {
   title: string
@@ -50,6 +51,7 @@ export function AuthShell({ title, description, image, children }: AuthShellProp
   if (image) {
     return (
       <main className="flex min-h-svh bg-card">
+        <HelpButton area="public" variant="floating" tone="light" />
         <ImagePanel image={image} />
         <div className="flex min-h-svh flex-1 flex-col items-center px-5 py-10 sm:px-10 lg:w-2/5 lg:px-12">
           <div className="my-auto flex w-full max-w-[420px] flex-col">
@@ -68,6 +70,7 @@ export function AuthShell({ title, description, image, children }: AuthShellProp
 
   return (
     <main className="flex min-h-svh flex-col items-center bg-background px-4 py-10 sm:py-16">
+      <HelpButton area="public" variant="floating" tone="light" />
       <div className="my-auto flex w-full max-w-[420px] flex-col gap-6">
         <Wordmark className="text-center text-3xl text-foreground" />
         <div className="rounded-[8px] border bg-card p-6 shadow-sm sm:p-8">
