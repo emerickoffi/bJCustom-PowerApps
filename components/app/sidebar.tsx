@@ -9,7 +9,6 @@ import { TrefortLogo, TrefortMark } from '@/components/brand/trefort-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { NavGroup, NavItem } from '@/lib/navigation'
 import { SIDEBAR_COOKIE, type SidebarMode } from '@/lib/sidebar'
-import { CompanyBlock, type WorkspaceOption } from '@/components/app/workspace-switcher'
 
 const DESKTOP_QUERY = '(min-width: 80rem)'
 
@@ -19,12 +18,11 @@ export function Sidebar({
   homeHref = '/dashboard',
   defaultMode,
   openGroup,
-  workspaces = [],
-  currentWorkspaceId = null,
+  companyName,
   companyLogoUrl,
 }: {
-  workspaces?: WorkspaceOption[]
-  currentWorkspaceId?: string | null
+  /** The builder's own logo replaces Trefort's at the top when uploaded (Trefort is credited at the bottom). */
+  companyName?: string
   companyLogoUrl?: string
   items: NavItem[]
   homeLabel: string
@@ -66,7 +64,7 @@ export function Sidebar({
         <div key={String(collapsed)} className={cn('flex min-h-0 flex-1 flex-col', className)}>
           <div
             className={cn(
-              'flex h-24 shrink-0 items-center bg-[#00788d]',
+              'flex h-14 shrink-0 items-center bg-[#00788d] sm:h-16',
               collapsed ? 'justify-center px-2' : 'px-5',
             )}
           >
@@ -75,20 +73,29 @@ export function Sidebar({
               aria-label={homeLabel}
               className={cn(
                 'block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#00788d]',
-                collapsed ? 'w-9' : 'w-48 max-w-full',
+                collapsed ? 'w-8' : companyLogoUrl ? 'w-full' : 'w-36 max-w-full',
               )}
             >
-              {collapsed ? <TrefortMark priority /> : <TrefortLogo priority />}
+              {companyLogoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- builders host their logo anywhere
+                <img
+                  src={companyLogoUrl}
+                  alt={companyName ?? ''}
+                  className={cn('rounded-md bg-white object-contain', collapsed ? 'size-8 p-0.5' : 'h-11 w-full max-w-48 px-2 py-1')}
+                />
+              ) : collapsed ? (
+                <TrefortMark priority />
+              ) : (
+                <TrefortLogo priority />
+              )}
             </Link>
           </div>
-          {workspaces.length > 0 && (
-            <div className={cn('shrink-0 border-b border-sidebar-border', collapsed ? 'px-2 py-2' : 'px-3 py-2')}>
-              <CompanyBlock workspaces={workspaces} currentId={currentWorkspaceId} logoUrl={companyLogoUrl} collapsed={collapsed} />
-            </div>
-          )}
           <div className={cn('flex-1 overflow-y-auto overflow-x-hidden py-6', collapsed ? 'px-3' : 'px-4')}>
             <AppNav items={items} collapsed={collapsed} openGroup={openGroup} />
           </div>
+          {companyLogoUrl && !collapsed && (
+            <p className="shrink-0 px-6 pb-2 text-[11px] font-medium uppercase tracking-wider text-sidebar-muted">Powered by Trefort</p>
+          )}
           <div className={cn('border-t border-sidebar-border', collapsed ? 'flex justify-center px-3 py-3' : 'p-4 py-3')}>
             {collapsed ? (
               <Tooltip>

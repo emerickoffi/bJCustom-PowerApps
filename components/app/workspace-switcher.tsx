@@ -22,110 +22,77 @@ export type WorkspaceOption = {
 
 const KIND_LABEL = { staff: 'Staff workspace', homeowner: 'Homeowner portal' } as const
 
-function initialsOf(name: string) {
-  const words = name.replace(/\b(llc|inc|co|corp|ltd)\.?$/i, '').trim().split(/\s+/).filter(Boolean)
-  return ((words[0]?.[0] ?? '') + (words[1]?.[0] ?? '')).toUpperCase() || '·'
-}
-
-function CompanyAvatar({ name, logoUrl, className }: { name: string; logoUrl?: string; className?: string }) {
-  if (logoUrl) {
-    // eslint-disable-next-line @next/next/no-img-element -- company logos live on any host the builder chose
-    return <img src={logoUrl} alt="" className={cn('size-8 shrink-0 rounded-md bg-white object-contain p-0.5', className)} />
-  }
-  return (
-    <span aria-hidden="true" className={cn('flex size-8 shrink-0 items-center justify-center rounded-md bg-[#E8F3F5] text-xs font-semibold text-[#00788d]', className)}>
-      {initialsOf(name)}
-    </span>
-  )
-}
-
 /**
- * Sidebar: which company you are working in (top left, under the Trefort logo). Opens the workspace switcher when
- * the person belongs to more than one company.
+ * Header, before the breadcrumbs: which company you are working in ("TREFORT | Dashboard > Projects").
+ * Opens "Switch company" when the person belongs to more than one.
  */
-export function CompanyBlock({
-  workspaces,
-  currentId,
-  logoUrl,
-  collapsed = false,
-}: {
-  workspaces: WorkspaceOption[]
-  currentId: string | null
-  logoUrl?: string
-  collapsed?: boolean
-}) {
+export function CompanyCrumb({ workspaces, currentId }: { workspaces: WorkspaceOption[]; currentId: string | null }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const current = workspaces.find((w) => w.organizationId === currentId) ?? workspaces[0]
   if (!current) return null
   const switchable = workspaces.length > 1
-  // Just the company name: the role is already next to your avatar in the header.
-  const body = (
-    <>
-      {collapsed ? (
-        <CompanyAvatar name={current.organizationName} />
-      ) : (
-        <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold tracking-wide text-sidebar-foreground">
-          {current.organizationName}
-        </span>
-      )}
-      {!collapsed && switchable && (pending ? <Loader2 className="size-4 shrink-0 animate-spin text-sidebar-muted" aria-hidden="true" /> : <ChevronsUpDown className="size-4 shrink-0 text-sidebar-muted" aria-hidden="true" />)}
-    </>
+  const label = (
+    <span className="max-w-56 truncate text-sm font-semibold tracking-wide text-foreground">{current.organizationName}</span>
   )
-  const frame = cn('flex w-full min-w-0 items-center gap-3 rounded-nav', collapsed ? 'justify-center p-1.5' : 'px-3 py-2')
+  const divider = <span className="mx-3 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 
   if (!switchable) {
     return (
-      <div className={frame} title={collapsed ? current.organizationName : undefined}>
-        {body}
-        {collapsed && <span className="sr-only">{current.organizationName}</span>}
-      </div>
+      <span className="flex min-w-0 shrink-0 items-center">
+        {label}
+        {divider}
+      </span>
     )
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className={cn(frame, 'transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:opacity-60')}
-        disabled={pending}
-        aria-label={`Switch company. Current: ${current.organizationName}`}
-      >
-        {body}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side={collapsed ? 'right' : 'bottom'} className="w-72">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Switch company</DropdownMenuLabel>
-          {workspaces.map((w) => {
-            const active = w.organizationId === current.organizationId
-            return (
-              <DropdownMenuItem
-                key={w.organizationId}
-                disabled={active || pending}
-                className="items-start gap-3 px-2.5 py-2"
-                onClick={() => {
-                  setError(null)
-                  startTransition(async () => {
-                    const result = await switchWorkspace(w.organizationId)
-                    if (result?.error) setError(result.error)
-                  })
-                }}
-              >
-                <Check className={cn('mt-0.5 size-4 shrink-0 text-primary', !active && 'invisible')} aria-hidden="true" />
-                <span className="flex min-w-0 flex-col">
-                  <span className="truncate text-sm font-medium text-foreground">{w.organizationName}</span>
-                  <span className="truncate text-xs text-muted-foreground">{`${KIND_LABEL[w.kind]} · ${w.roleLabel}`}</span>
-                </span>
-              </DropdownMenuItem>
-            )
-          })}
-        </DropdownMenuGroup>
-        {error && (
-          <p role="alert" className="px-2.5 py-2 text-xs text-destructive">
-            {error}
-          </p>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <span className="flex min-w-0 shrink-0 items-center">
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className="-mx-2 flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-sage/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+          disabled={pending}
+          aria-label={`Switch company. Current: ${current.organizationName}`}
+        >
+          {label}
+          {pending ? <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" /> : <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-72">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Switch company</DropdownMenuLabel>
+            {workspaces.map((w) => {
+              const active = w.organizationId === current.organizationId
+              return (
+                <DropdownMenuItem
+                  key={w.organizationId}
+                  disabled={active || pending}
+                  className="items-start gap-3 px-2.5 py-2"
+                  onClick={() => {
+                    setError(null)
+                    startTransition(async () => {
+                      const result = await switchWorkspace(w.organizationId)
+                      if (result?.error) setError(result.error)
+                    })
+                  }}
+                >
+                  <Check className={cn('mt-0.5 size-4 shrink-0 text-primary', !active && 'invisible')} aria-hidden="true" />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm font-medium text-foreground">{w.organizationName}</span>
+                    <span className="truncate text-xs text-muted-foreground">{`${KIND_LABEL[w.kind]} · ${w.roleLabel}`}</span>
+                  </span>
+                </DropdownMenuItem>
+              )
+            })}
+          </DropdownMenuGroup>
+          {error && (
+            <p role="alert" className="px-2.5 py-2 text-xs text-destructive">
+              {error}
+            </p>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {divider}
+    </span>
   )
 }
 

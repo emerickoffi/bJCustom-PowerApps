@@ -11,7 +11,7 @@ import { buildGlobalQuickActions, buildProjectPickerActions } from '@/lib/quick-
 import { dashboardKeyForRole } from '@/lib/dashboard-layout'
 import type { ProjectFilterRoute } from '@/lib/route-job'
 import { landingPathForRole, NAV_OPEN_GROUP_COOKIE, navForRole, parseOpenNavGroup } from '@/lib/navigation'
-import { WorkspaceSwitcher } from '@/components/app/workspace-switcher'
+import { CompanyCrumb, WorkspaceSwitcher } from '@/components/app/workspace-switcher'
 import { getOrgFeatures } from '@/lib/features'
 import { createClient } from '@/lib/supabase/server'
 import { ROLE_LABELS } from '@/lib/domain'
@@ -142,8 +142,7 @@ export default async function StaffLayout({ children, modal }: { children: React
             homeHref={homeHref}
             defaultMode={sidebarMode}
             openGroup={openGroup}
-            workspaces={workspaces}
-            currentWorkspaceId={session.organizationId}
+            companyName={session.brand.displayName}
             companyLogoUrl={session.brand.logoUrl || undefined}
           />
         </div>
@@ -161,8 +160,11 @@ export default async function StaffLayout({ children, modal }: { children: React
               >
                 <TrefortLogo priority />
               </Link>
-              <div className="hidden min-w-0 flex-1 lg:block tablet:hidden">
-                <Breadcrumbs rootHref="/dashboard" rootLabel="Dashboard" />
+              <div className="hidden min-w-0 flex-1 items-center lg:flex tablet:hidden">
+                <CompanyCrumb workspaces={workspaces} currentId={session.organizationId} />
+                <div className="min-w-0 flex-1">
+                  <Breadcrumbs rootHref="/dashboard" rootLabel="Dashboard" />
+                </div>
               </div>
               <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
                 <div className="flex min-w-0 items-center md:mr-2 md:rounded-surface md:bg-[#E8F3F5] md:p-1.5 lg:mr-3">
