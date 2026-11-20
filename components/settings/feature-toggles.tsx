@@ -30,6 +30,7 @@ import {
 import {
   FEATURES,
   featureLabel,
+  isSwitchable,
   type FeatureDefinition,
   type FeatureGroup,
   type FeatureKey,
@@ -65,9 +66,23 @@ export function FeatureToggles({
   planLocks?: PlanLocks
 }) {
   const defs = FEATURES.map((f) => (pendingSetup[f.key] ? { ...f, setupRequired: true } : f))
+  // Only real switches are listed. Always-on basics get one line, planned modules are not shown, and features that follow
+  // another module's switch are named on that module's row.
+  const rows = defs.filter(isSwitchable)
+  const includes = new Map<FeatureKey, string[]>()
+  for (const f of defs) {
+    if (f.includedWith && f.available) includes.set(f.includedWith, [...(includes.get(f.includedWith) ?? []), f.label])
+  }
+  const alwaysOn = defs.filter((f) => f.core).map((f) => f.label.toLowerCase())
   return (
     <div className="flex flex-col gap-6">
-      {GROUPS.map(({ name: group, icon: Icon, note }) => (
+      {alwaysOn.length > 0 && (
+        <p className="flex items-start gap-2 text-sm text-muted-foreground">
+          <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          Always on: {alwaysOn.join(', ')}.
+        </p>
+      )}
+      {GROUPS.filter(({ name }) => rows.some((f) => f.group === name)).map(({ name: group, icon: Icon, note }) => (
         <section key={group} aria-labelledby={`group-${group}`} className="flex flex-col gap-2">
           <div className="flex flex-col gap-0.5">
             <h2 id={`group-${group}`} className="flex items-center gap-2 type-section-title text-foreground">
@@ -77,8 +92,8 @@ export function FeatureToggles({
             {note && <p className="text-xs text-muted-foreground">{note}</p>}
           </div>
           <ul className="surface divide-y">
-            {defs.filter((f) => f.group === group).map((f) => (
-              <FeatureRow key={f.key} feature={f} defs={defs} features={features} records={records} planLock={planLocks[f.key]} />
+            {rows.filter((f) => f.group === group).map((f) => (
+              <FeatureRow key={f.key} feature={f} defs={defs} features={features} records={records} planLock={planLocks[f.key]} includes={includes.get(f.key)} />
             ))}
           </ul>
         </section>
@@ -100,12 +115,15 @@ function FeatureRow({
   features,
   records,
   planLock,
+  includes,
 }: {
   feature: FeatureDefinition
   defs: FeatureDefinition[]
   features: FeatureMap
   records: Records
   planLock?: { plan: string | null; message: string }
+  /** Features that follow this module's switch. */
+  includes?: string[]
 }) {
   const [pending, startTransition] = useTransition()
   const [optimistic, setOptimistic] = useState<boolean | null>(null)
@@ -169,6 +187,7 @@ function FeatureRow({
         <p className={cn('text-sm text-muted-foreground', availability === 'planned' && 'text-muted-foreground/80')}>
           {feature.description}
         </p>
+        {includes && includes.length > 0 && <p className="text-xs text-muted-foreground">Includes {includes.join(', ')}.</p>}
         {planLock && switchable && (
           <p id={`${id}-plan`} className="flex items-start gap-1.5 text-xs font-medium text-champagne-foreground">
             <Lock className="mt-px size-3.5 shrink-0" aria-hidden="true" />

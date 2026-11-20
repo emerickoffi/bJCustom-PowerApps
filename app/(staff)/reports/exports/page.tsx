@@ -17,7 +17,7 @@ export default async function DataExportsPage() {
 
   return (
     <div className={pageLayout('form', 'gap-4 md:gap-5')}>
-      <PageHeader icon={Download} title="Data Exports" />
+      <PageHeader icon={Download} title="Data Exports" backHref="/reports" backLabel="Reports" />
       <p className="text-sm text-muted-foreground">
         Download your records as spreadsheets that open in Excel, Google Sheets or Numbers. Each file has everything in Trefort
         today, including archived records.

@@ -90,7 +90,7 @@ const RULES: Rule[] = [
   },
   {
     area: 'staff',
-    match: /^\/exports(\/|$)/,
+    match: /^\/reports\/exports(\/|$)/,
     topic: {
       title: 'Data exports',
       tips: [

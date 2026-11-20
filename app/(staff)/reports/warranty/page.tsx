@@ -78,7 +78,7 @@ export default async function WarrantyReportPage() {
     <div className={pageLayout('workspace', 'gap-4 md:gap-5')}>
       <PageHeader
         icon={ShieldCheck}
-        title="Warranty Report"
+        title="Warranty Report" backHref="/reports" backLabel="Reports"
         actions={
           <div className="flex flex-wrap items-center gap-2 print:hidden">
             <WarrantyExportMenu />

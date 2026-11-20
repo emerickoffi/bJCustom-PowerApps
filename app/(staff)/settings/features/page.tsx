@@ -80,6 +80,10 @@ export default async function FeaturesPage() {
           change_orders: isMissingTableError(changeOrderTableProbe.error) || !changeOrdersRegistered,
           rfis: isMissingTableError(rfiTableProbe.error) || !registeredKeys.some((r) => r.feature_key === 'rfis'),
           project_photos: isMissingTableError(photosTableProbe.error) || !registeredKeys.some((r) => r.feature_key === 'project_photos'),
+          project_reports: !registeredKeys.some((r) => r.feature_key === 'project_reports'),
+          data_exports: !registeredKeys.some((r) => r.feature_key === 'data_exports'),
+          schedule_reports: !registeredKeys.some((r) => r.feature_key === 'schedule_reports'),
+          warranty_reports: !registeredKeys.some((r) => r.feature_key === 'warranty_reports'),
         }}
       />
     </div>
