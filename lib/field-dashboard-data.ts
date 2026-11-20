@@ -106,7 +106,7 @@ export async function loadFieldDashboard(
     supabase
       .from('projects')
       .select(
-        'status, archived_at, proposed_start_date, target_completion_date, completion_date, clients:primary_client_id(first_name, last_name, phone, email), manager:project_manager_id(full_name, phone, email)',
+        'status, archived_at, proposed_start_date, target_completion_date, completion_date, project_manager_id, clients:primary_client_id(first_name, last_name, phone, email)',
       )
       .eq('id', job.id)
       .eq('organization_id', orgId)
@@ -153,11 +153,17 @@ export async function loadFieldDashboard(
         proposed_start_date: string | null
         target_completion_date: string | null
         completion_date: string | null
+        project_manager_id: string | null
         clients: Person | null
-        manager: Person | null
       }
     | null
   if (!project) return empty
+
+  // project_manager_id points at auth.users, which the API cannot embed, so the profile is read on its own.
+  const { data: managerProfile } = project.project_manager_id
+    ? await supabase.from('profiles').select('full_name, phone, email').eq('id', project.project_manager_id).maybeSingle()
+    : { data: null }
+  const pm = managerProfile as Person | null
 
   const canViewInternal = Boolean(internalRes.data)
   const homeowner: JobContact | null = project.clients
@@ -168,8 +174,8 @@ export async function loadFieldDashboard(
         email: project.clients.email,
       }
     : null
-  const managerContact: JobContact | null = project.manager?.full_name
-    ? { role: 'Project manager', name: project.manager.full_name, phone: project.manager.phone, email: project.manager.email }
+  const managerContact: JobContact | null = pm?.full_name
+    ? { role: 'Project manager', name: pm.full_name, phone: pm.phone, email: pm.email }
     : null
   const contacts = [managerContact, homeowner].filter((c): c is JobContact => Boolean(c && (c.phone || c.email)))
 

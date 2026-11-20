@@ -56,7 +56,7 @@ export async function GET(request: Request) {
   } else if (report === 'expiring') {
     const { data, error } = await supabase
       .from('warranty_milestones')
-      .select('coverage_name, due_on, project_warranties!inner(stage, projects(name, project_number))')
+      .select('coverage_name, due_on, project_warranties!warranty_milestones_warranty_id_fkey!inner(stage, projects(name, project_number))')
       .is('reached_at', null)
       .gte('due_on', todayIso)
       .lte('due_on', addDaysIso(todayIso, EXPIRING_WINDOW_DAYS))

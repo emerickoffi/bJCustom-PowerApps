@@ -53,11 +53,16 @@ function Section({ id, title, entries, empty }: { id: string; title: string; ent
 export default async function SubWorkspacePage() {
   const session = await requireSubcontractor()
   const supabase = await createClient()
-  const [work, corrections, quotes] = await Promise.all([
+  const [work, corrections, quotes, questions] = await Promise.all([
     supabase.rpc('sub_assigned_work'),
     supabase.rpc('sub_correction_requests'),
     supabase.rpc('sub_quote_requests'),
+    supabase.rpc('my_assigned_rfis'),
   ])
+  // Like quote requests, questions are optional here: a load failure only hides the count.
+  const questionsToAnswer = questions.error
+    ? 0
+    : ((questions.data ?? []) as { status: string }[]).filter((q) => q.status === 'open').length
   // Quote requests are optional here: if they cannot be loaded, the link still works and simply shows no count.
   const quotesToAnswer = quotes.error
     ? 0
@@ -121,6 +126,21 @@ export default async function SubWorkspacePage() {
           {quotesToAnswer > 0 && (
             <span className="rounded-badge border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">
               {quotesToAnswer === 1 ? '1 needs a response' : `${quotesToAnswer} need a response`}
+            </span>
+          )}
+          <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+        </span>
+      </Link>
+
+      <Link
+        href="/sub/questions"
+        className="flex min-h-11 items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:bg-sage/30"
+      >
+        Questions from builders (RFIs)
+        <span className="flex shrink-0 items-center gap-2">
+          {questionsToAnswer > 0 && (
+            <span className="rounded-badge border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">
+              {questionsToAnswer === 1 ? '1 needs an answer' : `${questionsToAnswer} need an answer`}
             </span>
           )}
           <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
