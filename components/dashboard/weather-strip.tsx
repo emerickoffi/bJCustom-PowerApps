@@ -39,6 +39,7 @@ import {
   type WeatherResult,
 } from '@/lib/weather'
 import { cn } from '@/lib/utils'
+import { JobsiteWeatherAlerts } from '@/components/dashboard/jobsite-weather-alerts'
 
 export type WeatherLocation = { id: string; name: string; hasAddress: boolean }
 
@@ -547,6 +548,7 @@ export function WeatherStrip({
       </span>
       {selectorFor(showingFallback || choice.mode !== 'device' ? choiceLabel : data.locationLabel)}
       {fallbackNote}
+      <JobsiteWeatherAlerts />
       {chooser}
     </div>
   )
