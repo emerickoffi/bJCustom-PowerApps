@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -9,6 +10,7 @@ import { getOrgFeatures } from '@/lib/features'
 import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/lib/action-state'
 import { DRAW_MILESTONES, PAYMENT_METHODS, dollarsToCents } from '@/lib/invoices'
 import { SAVE_REQUEST_FIELD } from '@/lib/save-requests'
+import { autoSyncInvoiceToQuickBooks } from '@/lib/quickbooks-sync'
 
 const uuid = z.uuid()
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date')
@@ -138,11 +140,18 @@ export async function saveInvoiceDraft(_prev: ActionState, formData: FormData): 
 
 type Result = { error?: string; success?: string }
 
-async function runRpc(fn: string, args: Record<string, unknown>, invoiceId: string, success: string): Promise<Result> {
-  await requireInvoiceManager()
+async function runRpc(
+  fn: string,
+  args: Record<string, unknown>,
+  invoiceId: string,
+  success: string,
+  opts: { syncQuickBooks?: boolean } = {},
+): Promise<Result> {
+  const session = await requireInvoiceManager()
   const supabase = await createClient()
   const { error } = await supabase.rpc(fn, args)
   if (error) return { error: friendlyDbError(error) }
+  if (opts.syncQuickBooks) after(() => autoSyncInvoiceToQuickBooks(session.organizationId, invoiceId))
   revalidateInvoice(invoiceId)
   return { success }
 }
@@ -171,14 +180,14 @@ export async function voidInvoice(invoiceId: string, reason: string): Promise<Re
   if (!uuid.safeParse(invoiceId).success) return { error: 'Invoice not found.' }
   const trimmed = reason.trim()
   if (trimmed.length < 3 || trimmed.length > 1000) return { error: 'Enter a reason for voiding (3–1000 characters).' }
-  return runRpc('void_invoice', { p_invoice: invoiceId, p_reason: trimmed }, invoiceId, 'Invoice voided.')
+  return runRpc('void_invoice', { p_invoice: invoiceId, p_reason: trimmed }, invoiceId, 'Invoice voided.', { syncQuickBooks: true })
 }
 
 export async function reversePayment(invoiceId: string, paymentId: string, reason: string): Promise<Result> {
   if (!uuid.safeParse(invoiceId).success || !uuid.safeParse(paymentId).success) return { error: 'Payment not found.' }
   const trimmed = reason.trim()
   if (trimmed.length < 3 || trimmed.length > 1000) return { error: 'Enter a reason for the reversal (3–1000 characters).' }
-  return runRpc('reverse_invoice_payment', { p_payment: paymentId, p_reason: trimmed }, invoiceId, 'Payment reversed.')
+  return runRpc('reverse_invoice_payment', { p_payment: paymentId, p_reason: trimmed }, invoiceId, 'Payment reversed.', { syncQuickBooks: true })
 }
 
 export async function deleteDraftInvoice(invoiceId: string): Promise<Result> {
@@ -240,6 +249,7 @@ export async function recordPayment(_prev: ActionState, formData: FormData): Pro
     return { error: friendlyDbError(error), values }
   }
   if (!data) return { error: 'We could not confirm the payment. Press Record payment again; it will not be recorded twice.', values }
+  if (!data.replayed) after(() => autoSyncInvoiceToQuickBooks(session.organizationId, parsed.data.invoice_id))
   revalidateInvoice(parsed.data.invoice_id)
   return { success: data.replayed ? 'This payment was already recorded. No duplicate was created.' : 'Payment recorded.' }
 }

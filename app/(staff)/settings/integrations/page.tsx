@@ -74,7 +74,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
               QuickBooks Online
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Send issued invoices and the payments you record to QuickBooks, so your books match what you billed.
+              Send issued invoices to QuickBooks. When a payment is made online, recorded, refunded or reversed, the invoice and its payments update in QuickBooks automatically.
               Customers are created or matched by name.
             </p>
           </div>

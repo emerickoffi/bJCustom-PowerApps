@@ -3,7 +3,9 @@ import { getStripe } from '@/lib/stripe'
 import { syncSubscription } from '@/lib/stripe-sync'
 import { clearPendingCoupon } from '@/lib/billing-discounts'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { after } from 'next/server'
 import { applyAccountUpdate, applyCheckoutEvent, applyRefund } from '@/lib/stripe-connect'
+import { autoSyncInvoiceToQuickBooks } from '@/lib/quickbooks-sync'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -55,15 +57,20 @@ export async function POST(request: Request) {
   if (seen) return Response.json({ received: true, duplicate: true })
 
   let organizationId: string | null = null
+  // Invoice whose payments changed: mirrored to QuickBooks after the response is sent.
+  let syncInvoice: { organizationId: string; invoiceId: string } | null = null
   try {
     if (event.account) {
       // A builder's own Stripe account: homeowner invoice payments.
       if (CONNECT_CHECKOUT_EVENTS.has(event.type)) {
-        organizationId = await applyCheckoutEvent(event.type, event.data.object as Stripe.Checkout.Session)
+        const applied = await applyCheckoutEvent(event.type, event.data.object as Stripe.Checkout.Session)
+        organizationId = applied?.organizationId ?? null
+        if (applied?.paid) syncInvoice = applied
       } else if (event.type === 'account.updated') {
         await applyAccountUpdate(event.data.object as Stripe.Account)
       } else if (event.type === 'charge.refunded') {
-        await applyRefund(event.data.object as Stripe.Charge)
+        syncInvoice = await applyRefund(event.data.object as Stripe.Charge)
+        organizationId = syncInvoice?.organizationId ?? null
       } else {
         return Response.json({ received: true, ignored: true })
       }
@@ -94,5 +101,9 @@ export async function POST(request: Request) {
   }
 
   await admin.from('stripe_events').insert({ id: event.id, type: event.type, organization_id: organizationId })
+  if (syncInvoice) {
+    const target = syncInvoice
+    after(() => autoSyncInvoiceToQuickBooks(target.organizationId, target.invoiceId))
+  }
   return Response.json({ received: true })
 }
