@@ -39,8 +39,8 @@ export const LAUNCHER_LABELS: Record<string, string> = {
   'global:contact': 'Add contact',
   'global:subcontractor': 'Add subcontractor',
   'ctx:schedule': 'Add activity',
-  'global:rfi': 'Ask question',
-  'ctx:rfi': 'Ask question',
+  'global:rfi': 'Ask a question (RFI)',
+  'ctx:rfi': 'Ask a question (RFI)',
 }
 
 const PROJECT_ROUTE = /^\/projects\/([^/]+)(\/.*)?$/
