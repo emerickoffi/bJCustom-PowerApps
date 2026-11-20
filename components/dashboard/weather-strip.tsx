@@ -80,7 +80,7 @@ type WeatherKey =
   | readonly ['weather', 'place', string]
   | readonly ['weather', 'device', number, number]
 
-/** Shown inside the location chooser only; the strip itself just says "Location unavailable". */
+/** Shown inside the location chooser only; the strip itself just shows a "Choose location ▾" menu. */
 const GEO_REASONS: Record<GeoFailure, string> = {
   denied: 'Location access is blocked for this site in your browser settings.',
   unavailable: 'This device could not provide a location.',
@@ -303,8 +303,13 @@ export function WeatherStrip({
    * The place name is the menu: "Near Cedar Hill, TX ▾". A native select sits invisibly over the text so the list of
    * jobsites stays a real, accessible menu on every device.
    */
-  const selectorFor = (label: string) => (
-    <label className="relative inline-flex h-10 min-w-0 cursor-pointer items-center gap-1 rounded-md px-1.5 text-sm text-muted-foreground transition-colors hover:bg-[#E6F5F6] hover:text-[#006773] has-[select:focus-visible]:ring-2 has-[select:focus-visible]:ring-[#006773]">
+  const selectorFor = (label: string, accent = false) => (
+    <label
+      className={cn(
+        'relative inline-flex h-10 min-w-0 cursor-pointer items-center gap-1 rounded-md px-1.5 text-sm transition-colors hover:bg-[#E6F5F6] hover:text-[#006773] has-[select:focus-visible]:ring-2 has-[select:focus-visible]:ring-[#006773]',
+        accent ? 'font-medium text-[#006773]' : 'text-muted-foreground',
+      )}
+    >
       <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
       <span className="max-w-[14rem] truncate">{label}</span>
       <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
@@ -446,14 +451,13 @@ export function WeatherStrip({
       )
     }
     if (geoFailure) {
+      // One control, not three: the menu itself reads "Choose location ▾" and lists jobsites + city/ZIP entry.
       return (
         <div className={shell}>
-          <MapPin className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span role="status" className="text-xs font-medium text-foreground">
-            Location unavailable
+          <span role="status" className="sr-only">
+            Your location is unavailable on this device.
           </span>
-          {chooseButton('Choose location')}
-          {selector}
+          {selectorFor('Choose location', true)}
           {savedNote}
           {chooser}
         </div>
@@ -506,14 +510,10 @@ export function WeatherStrip({
       Use my location
     </button>
   ) : geoFailure ? (
-    <button
-      type="button"
-      onClick={() => setChooserOpen(true)}
-      className="inline-flex h-10 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-[#E6F5F6] hover:text-[#006773] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006773]"
-    >
-      <span role="status">Location unavailable</span>
-      <span className="font-medium text-[#006773] underline underline-offset-2">Choose location</span>
-    </button>
+    // The menu already shows the place being used; this only tells screen readers why.
+    <span role="status" className="sr-only">
+      Your location is unavailable, showing {choiceLabel === 'My location' ? 'your last location' : choiceLabel}.
+    </span>
   ) : null
 
   return (
