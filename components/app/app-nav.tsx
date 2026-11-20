@@ -23,6 +23,8 @@ import {
   ShieldCheck,
   Users,
   UsersRound,
+  ChartColumn,
+  Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -46,6 +48,8 @@ export const ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   'daily-logs': ClipboardList,
   time: Clock,
   invoices: Receipt,
+  'job-costing': ChartColumn,
+  exports: Download,
   organization: Building2,
 }
 
