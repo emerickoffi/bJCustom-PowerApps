@@ -184,6 +184,8 @@ const EVENT_LABELS: Record<string, string> = {
   company_suspended: 'Suspended the company',
   company_reactivated: 'Reactivated the company',
   plan_changed: 'Changed plan',
+  discount_applied: 'Applied discount',
+  discount_removed: 'Removed the discount',
 }
 
 /** One readable line for an owner action, e.g. "Turned on Daily logs". */
@@ -195,6 +197,7 @@ export function describeEvent(event: Pick<PlatformEvent, 'action' | 'details'>):
     const note = typeof event.details?.note === 'string' ? event.details.note : null
     return `${base}${from && to ? ` from ${from} to ${to}` : ''}${note ? `: ${note}` : ''}`
   }
+  if (event.action === 'discount_applied' && typeof event.details?.discount === 'string') return `${base}: ${event.details.discount}`
   const feature = typeof event.details?.feature === 'string' ? event.details.feature : null
   if (feature) {
     const label = FEATURES.find((f) => f.key === feature)?.label ?? feature
