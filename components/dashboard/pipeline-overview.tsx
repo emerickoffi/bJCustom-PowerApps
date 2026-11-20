@@ -57,7 +57,7 @@ export function PipelineOverview({ counts }: { counts: Partial<Record<ProjectSta
         </dl>
       </div>
 
-      <div className="h-px bg-border/80" aria-hidden="true" />
+      <div className="-mx-5 h-px bg-border/80" aria-hidden="true" />
 
       {total === 0 && <p className="text-sm text-muted-foreground">No projects yet.</p>}
 
