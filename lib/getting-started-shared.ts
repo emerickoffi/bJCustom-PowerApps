@@ -55,7 +55,7 @@ export function buildChecklist(input: GettingStartedInput): Checklist {
     {
       id: 'modules',
       title: 'Review the modules you use',
-      description: 'You start with the basics. Turn on change orders, invoices, time tracking or documents when you need them, and switch off what you skip.',
+      description: 'You start with the basics. Turn on change orders, invoices, documents or time tracking when you need them, and switch off what you skip.',
       href: '/settings/features',
       cta: 'Choose modules',
       done: input.reviewedModules,
