@@ -4,6 +4,7 @@ import { resolveBaseline, summarizeBudget, type Baseline, type BaselineCandidate
 import { summarizeJobCost, type CostTrackingInput, type JobCostSummary } from '@/lib/job-costing'
 import { buildCategorySources, PENDING_CHANGE_STATUSES, type CategorySources, type SourceInput } from '@/lib/job-cost-sources'
 import { isMissingTableError } from '@/lib/subcontractors'
+import { getApprovedLabor } from '@/lib/time-tracking-data'
 
 export type ProjectFinancials = {
   baseline: Baseline
@@ -18,11 +19,12 @@ const n = (v: unknown) => Number(v ?? 0)
 /** Loads cost-tracking records; returns null when the job-costing migration is not installed in this environment. */
 async function loadCostTracking(projectId: string): Promise<{ input: CostTrackingInput; records: NonNullable<SourceInput['costTracking']> } | null> {
   const supabase = await createClient()
-  const [commitments, bills, payments, forecasts] = await Promise.all([
+  const [commitments, bills, payments, forecasts, labor] = await Promise.all([
     supabase.from('project_commitments').select('id, cost_category, status, amount_cents, vendor_name, description, commitment_type, effective_date').eq('project_id', projectId),
     supabase.from('vendor_bills').select('id, commitment_id, cost_category, status, amount_cents, vendor_name, bill_number, description, bill_date').eq('project_id', projectId),
     supabase.from('vendor_payments').select('id, bill_id, amount_cents, reversed_at, payment_date, method, reference').eq('project_id', projectId),
     supabase.from('project_cost_forecasts').select('cost_category, etc_cents').eq('project_id', projectId),
+    getApprovedLabor(projectId),
   ])
   const results = [commitments, bills, payments, forecasts]
   if (results.some((r) => isMissingTableError(r.error))) return null
@@ -45,6 +47,7 @@ async function loadCostTracking(projectId: string): Promise<{ input: CostTrackin
     bills: (bills.data ?? []).map((b) => ({ id: b.id, category: b.cost_category, status: b.status, amount_cents: n(b.amount_cents) })),
     payments: (payments.data ?? []).map((p) => ({ bill_id: p.bill_id, amount_cents: n(p.amount_cents), reversed: p.reversed_at !== null })),
     forecasts: (forecasts.data ?? []).map((f) => ({ category: f.cost_category, etc_cents: n(f.etc_cents) })),
+    labor: (labor ?? []).map((l) => ({ category: l.category, cost_cents: l.cost_cents })),
   }
   const records: NonNullable<SourceInput['costTracking']> = {
     commitments: (commitments.data ?? []).map((c) => ({
@@ -77,6 +80,7 @@ async function loadCostTracking(projectId: string): Promise<{ input: CostTrackin
       method: p.method,
       reference: p.reference,
     })),
+    labor: labor ?? [],
   }
   return { input, records }
 }
