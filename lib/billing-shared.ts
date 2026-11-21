@@ -71,6 +71,39 @@ export function formatPlanPrice(cents: number | null, interval: BillingInterval)
   return `${amount}/${interval === 'month' ? 'mo' : 'yr'}`
 }
 
+/**
+ * How a plan price is shown on the billing page. Yearly plans are quoted per month, the way the website quotes
+ * them ("$179/mo, billed annually"), with the yearly total and the saving against paying monthly.
+ */
+export function describePlanPrice(
+  plan: Pick<PlanPrice, 'monthly_price_cents' | 'yearly_price_cents'>,
+  interval: BillingInterval,
+): { headline: string; note: string | null } {
+  if (interval === 'month') {
+    return { headline: formatPlanPrice(plan.monthly_price_cents, 'month'), note: plan.monthly_price_cents === null ? null : 'Billed monthly' }
+  }
+  const yearly = plan.yearly_price_cents
+  if (yearly === null) return { headline: formatPlanPrice(null, 'year'), note: null }
+  const perMonth = Math.round(yearly / 12)
+  const saving = plan.monthly_price_cents === null ? 0 : plan.monthly_price_cents * 12 - yearly
+  const total = formatPlanPrice(yearly, 'year')
+  return {
+    headline: formatPlanPrice(perMonth, 'month'),
+    note: saving > 0 ? `Billed annually (${total}), save ${formatPlanPrice(saving, 'year').replace('/yr', '')}` : `Billed annually (${total})`,
+  }
+}
+
+/** The largest yearly saving across plans, as a whole percent, for the billing toggle ("save up to 12%"). */
+export function maxYearlySavingPercent(plans: Pick<PlanPrice, 'monthly_price_cents' | 'yearly_price_cents'>[]): number {
+  let best = 0
+  for (const p of plans) {
+    if (p.monthly_price_cents && p.yearly_price_cents) {
+      best = Math.max(best, Math.floor((1 - p.yearly_price_cents / (p.monthly_price_cents * 12)) * 100))
+    }
+  }
+  return best
+}
+
 /** Stripe price lookup keys, one per plan and interval, e.g. trefort_pro_month. */
 export function priceLookupKey(planKey: string, interval: BillingInterval): string {
   return `trefort_${planKey}_${interval}`
