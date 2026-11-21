@@ -65,7 +65,7 @@ begin
              and status = 'approved' and price_adjustment_cents > 0;
           if v_label is null then raise exception 'Only approved change orders that add to the price can be billed'; end if;
         elsif v_type = 'time_entry' then
-          select 'crew time' into v_label from public.time_entries
+          select 'This crew time' into v_label from public.time_entries
            where id = v_id and project_id = v_inv.project_id and organization_id = v_inv.organization_id and status = 'approved';
           if v_label is null then raise exception 'Only approved crew time on this project can be billed'; end if;
         else
@@ -77,7 +77,7 @@ begin
          where s.source_type = v_type and s.source_id = v_id and s.invoice_id <> p_invoice and i.status <> 'voided'
          limit 1;
         if v_other is not null then
-          raise exception '% is already billed on %', initcap(v_label), v_other;
+          raise exception '% is already billed on %', v_label, v_other;
         end if;
 
         begin
