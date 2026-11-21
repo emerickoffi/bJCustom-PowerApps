@@ -73,11 +73,17 @@ export const INVOICE_EVENT_LABELS: Record<string, string> = {
   voided: 'Voided',
 }
 
+export type InvoiceLineSource = { type: 'change_order' | 'time_entry'; id: string }
+
 export type InvoiceLineInput = {
   description: string
   quantity: string
   unitRate: string
   taxable: boolean
+  /** Approved change orders or crew time this line bills ("Add from"). Prevents billing the same item twice. */
+  sources?: InvoiceLineSource[]
+  /** Short note shown under the line, e.g. "From CO-003" or "From 6 time entries". */
+  sourceLabel?: string
 }
 
 /** Parses a dollar string into integer cents without floating-point arithmetic. */
