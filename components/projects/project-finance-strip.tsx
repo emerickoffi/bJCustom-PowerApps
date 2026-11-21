@@ -3,7 +3,8 @@ import { ArrowRight, Wallet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatCentsExact } from '@/lib/estimates'
 import { formatCents } from '@/lib/format'
-import { balanceCents, isOverdue, type InvoiceStatus } from '@/lib/invoices'
+import type { InvoiceStatus } from '@/lib/invoices'
+import { summarizeContractPrice } from '@/lib/contract-price'
 import { latestApprovedEstimate } from '@/components/estimates/project-estimates-panel'
 import { cn } from '@/lib/utils'
 import { BUDGET_VARIANCE_HELP, describeBudgetVariance } from '@/lib/budget-variance-display'
@@ -20,11 +21,16 @@ type Figure = {
 }
 
 type EstimateRow = { id: string; status: string; construction_total_cents: number; decision_at: string | null; estimate_number: string; revision: number }
-type InvoiceRow = { status: InvoiceStatus; total_cents: number; paid_cents: number; due_date: string }
+type InvoiceRow = { status: InvoiceStatus; subtotal_cents: number | null; total_cents: number; paid_cents: number; due_date: string }
+type ChangeOrderRow = { status: string; price_adjustment_cents: number | null }
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+const signed = (cents: number) => `${cents < 0 ? '−' : '+'}${formatCentsExact(Math.abs(cents))}`
 
 /**
- * One compact row of headline money figures. Uses the same rules as the Estimates and Invoices panels
- * (latest approved revision; issued and partially paid invoices) so the numbers always agree with them.
+ * The homeowner's price at a glance, the way builders talk about it: contract price (approved estimate + approved
+ * change orders), what is left to bill, what is still owed, and how it compares to the target budget.
+ * Uses the same rules as invoice billing limits, so it always agrees with the New invoice screen.
  */
 export async function ProjectFinanceStrip({
   projectId,
@@ -41,77 +47,105 @@ export async function ProjectFinanceStrip({
 }) {
   if (!showEstimates && !showInvoices) return null
   const supabase = await createClient()
-  const [estRes, invRes] = await Promise.all([
+  const [estRes, coRes, invRes, selRes] = await Promise.all([
     showEstimates
       ? supabase.from('estimates').select('id, status, construction_total_cents, decision_at, estimate_number, revision').eq('project_id', projectId)
       : Promise.resolve({ data: [] as EstimateRow[], error: null }),
+    showEstimates
+      ? supabase.from('change_orders').select('status, price_adjustment_cents').eq('project_id', projectId)
+      : Promise.resolve({ data: [] as ChangeOrderRow[], error: null }),
     showInvoices
-      ? supabase.from('invoices').select('status, total_cents, paid_cents, due_date').eq('project_id', projectId)
+      ? supabase.from('invoices').select('status, subtotal_cents, total_cents, paid_cents, due_date').eq('project_id', projectId)
       : Promise.resolve({ data: [] as InvoiceRow[], error: null }),
+    supabase.from('selections').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'change_order_required'),
   ])
 
+  const approved = estRes.error ? undefined : latestApprovedEstimate((estRes.data ?? []) as EstimateRow[])
+  const s = summarizeContractPrice({
+    estimateCents: approved ? approved.construction_total_cents : null,
+    changeOrders: coRes.error ? [] : ((coRes.data ?? []) as ChangeOrderRow[]),
+    invoices: invRes.error ? [] : ((invRes.data ?? []) as InvoiceRow[]),
+    selectionsNeedingChangeOrder: selRes.error ? 0 : (selRes.count ?? 0),
+    today: new Date().toISOString().slice(0, 10),
+  })
+
   const estimatesHref = `/projects/${projectId}/estimates`
+  const changeOrdersHref = `/projects/${projectId}/change-orders`
   const invoicesHref = financialsHref ? `${financialsHref}?view=invoices` : '/invoices'
-  const hasBudget = budgetCents !== null
-  const figures: Figure[] = [
-    {
-      key: 'budget',
-      label: 'Project budget',
-      value: hasBudget ? formatCentsExact(budgetCents) : 'Not set',
-      unavailable: !hasBudget,
-      href: financialsHref ?? estimatesHref,
-    },
-  ]
+  const figures: Figure[] = []
 
   if (showEstimates) {
-    const approved = estRes.error ? undefined : latestApprovedEstimate((estRes.data ?? []) as EstimateRow[])
-    const variance = approved && hasBudget ? approved.construction_total_cents - budgetCents : null
-    figures.push(
-      {
-        key: 'approved',
-        label: 'Approved estimate',
-        value: estRes.error ? 'Unavailable' : approved ? formatCentsExact(approved.construction_total_cents) : 'None approved',
-        unavailable: Boolean(estRes.error) || !approved,
-        note: approved ? `${approved.estimate_number} rev ${approved.revision}` : undefined,
-        href: approved ? `/estimates/${approved.id}` : estimatesHref,
-      },
-      {
-        key: 'variance',
-        label: 'Budget variance',
-        value: estRes.error ? 'Unavailable' : variance === null ? 'Not available' : `${variance > 0 ? '+' : ''}${formatCentsExact(variance)}`,
-        unavailable: Boolean(estRes.error) || variance === null,
-        ...describeBudgetVariance(variance, Boolean(estRes.error)),
-        title: variance !== null ? BUDGET_VARIANCE_HELP : undefined,
-        href: estimatesHref,
-      },
-    )
+    const failed = Boolean(estRes.error || coRes.error)
+    figures.push({
+      key: 'contract',
+      label: 'Contract price',
+      value: failed ? 'Unavailable' : s.contractCents === null ? 'No approved estimate' : formatCentsExact(s.contractCents),
+      unavailable: failed || s.contractCents === null,
+      note:
+        s.contractCents === null || failed
+          ? undefined
+          : s.approvedChangeCount
+            ? `Estimate ${formatCentsExact(s.originalCents)} ${signed(s.approvedChangeCents)} in ${plural(s.approvedChangeCount, 'change order')}`
+            : 'Approved estimate · no change orders yet',
+      href: s.approvedChangeCount ? changeOrdersHref : approved ? `/estimates/${approved.id}` : estimatesHref,
+      title: 'Approved estimate plus approved change orders. This is what the homeowner has agreed to pay, before tax.',
+    })
   }
 
   if (showInvoices) {
-    const active = ((invRes.data ?? []) as InvoiceRow[]).filter((i) => i.status !== 'draft' && i.status !== 'voided')
-    const outstanding = active.reduce((sum, i) => sum + balanceCents(i), 0)
-    const invoiced = active.reduce((sum, i) => sum + i.total_cents, 0)
-    const overdue = active.filter((i) => isOverdue(i))
-    const overdueCents = overdue.reduce((sum, i) => sum + balanceCents(i), 0)
-    figures.push(
-      {
-        key: 'outstanding',
-        label: 'Outstanding invoices',
-        value: invRes.error ? 'Unavailable' : formatCents(outstanding),
-        unavailable: Boolean(invRes.error),
-        note: invRes.error ? undefined : active.length ? `${formatCents(invoiced)} invoiced` : 'Nothing invoiced yet',
+    const failed = Boolean(invRes.error)
+    if (showEstimates) {
+      figures.push({
+        key: 'left',
+        label: 'Left to bill',
+        value: failed ? 'Unavailable' : s.leftToBillCents === null ? 'Not available' : formatCentsExact(s.leftToBillCents),
+        unavailable: failed || s.leftToBillCents === null,
+        tone: !failed && s.leftToBillCents !== null && s.leftToBillCents < 0 ? 'danger' : undefined,
+        note: failed ? undefined : `${formatCentsExact(s.billedCents)} billed so far`,
         href: invoicesHref,
-      },
-      {
-        key: 'overdue',
-        label: 'Overdue invoices',
-        value: invRes.error ? 'Unavailable' : String(overdue.length),
-        unavailable: Boolean(invRes.error),
-        tone: !invRes.error && overdue.length > 0 ? 'danger' : undefined,
-        note: invRes.error ? undefined : overdue.length ? `${formatCents(overdueCents)} past due` : 'None overdue',
-        href: invoicesHref,
-      },
-    )
+      })
+    }
+    figures.push({
+      key: 'balance',
+      label: 'Balance due',
+      value: failed ? 'Unavailable' : formatCents(s.balanceDueCents),
+      unavailable: failed,
+      tone: !failed && s.overdueCount > 0 ? 'danger' : undefined,
+      note: failed
+        ? undefined
+        : s.overdueCount
+          ? `${formatCents(s.overdueCents)} overdue on ${plural(s.overdueCount, 'invoice')}`
+          : `${formatCents(s.paidCents)} paid`,
+      href: invoicesHref,
+    })
+  }
+
+  const hasBudget = budgetCents !== null
+  const variance = s.contractCents !== null && hasBudget ? s.contractCents - budgetCents : null
+  figures.push({
+    key: 'budget',
+    label: 'Target budget',
+    value: hasBudget ? formatCentsExact(budgetCents) : 'Not set',
+    unavailable: !hasBudget,
+    ...(showEstimates ? describeBudgetVariance(variance, Boolean(estRes.error)) : {}),
+    title: variance !== null ? BUDGET_VARIANCE_HELP : undefined,
+    href: financialsHref ?? estimatesHref,
+  })
+
+  const heads: { key: string; text: string; href: string }[] = []
+  if (showEstimates && s.pendingChangeCount) {
+    heads.push({
+      key: 'pending',
+      text: `${plural(s.pendingChangeCount, 'change order')} waiting for approval (${signed(s.pendingChangeCents)}). Not in the contract price yet.`,
+      href: changeOrdersHref,
+    })
+  }
+  if (s.selectionsNeedingChangeOrder) {
+    heads.push({
+      key: 'selections',
+      text: `${plural(s.selectionsNeedingChangeOrder, 'selection')} over allowance ${s.selectionsNeedingChangeOrder === 1 ? 'needs' : 'need'} a change order.`,
+      href: `/projects/${projectId}/selections`,
+    })
   }
 
   return (
@@ -119,7 +153,7 @@ export async function ProjectFinanceStrip({
       <div className="flex items-center justify-between gap-3">
         <h2 id="finance-summary-heading" className="flex items-center gap-2 type-section-title text-foreground">
           <Wallet className="size-4 text-primary" aria-hidden="true" />
-          Financial summary
+          Contract and billing
         </h2>
         {financialsHref && (
           <Link
@@ -131,7 +165,7 @@ export async function ProjectFinanceStrip({
           </Link>
         )}
       </div>
-      <ul className={cn('grid grid-cols-2 gap-2', figures.length >= 3 && 'md:grid-cols-3', figures.length >= 5 && 'xl:grid-cols-5')}>
+      <ul className={cn('grid grid-cols-2 gap-2', figures.length >= 4 && 'lg:grid-cols-4', figures.length === 3 && 'md:grid-cols-3')}>
         {figures.map((f) => (
           <li key={f.key} className="min-w-0">
             <Link
@@ -157,6 +191,17 @@ export async function ProjectFinanceStrip({
           </li>
         ))}
       </ul>
+      {heads.length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {heads.map((h) => (
+            <li key={h.key}>
+              <Link href={h.href} className="text-sm text-[#8A4B08] underline-offset-4 hover:underline">
+                {h.text}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   )
 }

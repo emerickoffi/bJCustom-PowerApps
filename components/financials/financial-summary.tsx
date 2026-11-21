@@ -28,7 +28,7 @@ export function FinancialSummary({ summary, showProfit }: { summary: JobCostSumm
     { label: 'Original cost budget', value: summary.originalCostCents, missing: noBudget, hint: 'Approved estimate direct cost, allowances and contingency. Markup excluded.' },
     { label: 'Revised cost budget', value: summary.revisedCostCents, missing: noBudget, hint: 'Original budget plus approved change-order costs.' },
     { label: 'Committed', value: summary.committedCents, missing: notSetUp, hint: 'Approved subcontracts and purchase commitments. Not actual cost.' },
-    { label: 'Actual cost', value: summary.actualCents, missing: notSetUp, hint: 'Approved vendor bills only.' },
+    { label: 'Actual cost', value: summary.actualCents, missing: notSetUp, hint: 'Approved vendor bills plus approved crew time.' },
     { label: 'Paid to vendors', value: summary.paidToVendorsCents, missing: notSetUp, hint: 'Recorded vendor payments, net of reversals.' },
     { label: 'Vendor payables', value: summary.payableCents, missing: notSetUp, hint: 'Approved bills not yet paid.' },
     { label: 'Estimate to complete', value: summary.etcCents, missing: tracking ? insufficient : notSetUp, hint: 'Forecast final cost minus actual cost.' },
@@ -37,7 +37,7 @@ export function FinancialSummary({ summary, showProfit }: { summary: JobCostSumm
   ]
 
   const revenue: Metric[] = [
-    { label: 'Contract revenue', value: summary.contractRevenueCents, missing: noBudget, hint: 'Approved estimate construction total plus approved change-order prices.' },
+    { label: 'Contract price', value: summary.contractRevenueCents, missing: noBudget, hint: 'Approved estimate plus approved change orders, before tax. What the homeowner has agreed to pay.' },
     { label: 'Billed to homeowner', value: summary.billedCents, missing: '', hint: 'Issued invoices. Drafts and voided invoices excluded.' },
     { label: 'Collected', value: summary.collectedCents, missing: '', hint: 'Payments recorded on invoices.' },
     { label: 'Homeowner balance', value: summary.homeownerOutstandingCents, missing: '', hint: 'Billed but not yet collected.' },
@@ -89,7 +89,7 @@ export function FinancialSummary({ summary, showProfit }: { summary: JobCostSumm
                 value: summary.grossProfitCents,
                 missing: summary.budgetEstablished && !tracking ? notSetUp : insufficient,
                 tone: 'negative-bad',
-                hint: 'Contract revenue minus forecast final cost.',
+                hint: 'Contract price minus forecast final cost.',
               }}
             />
             <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4">

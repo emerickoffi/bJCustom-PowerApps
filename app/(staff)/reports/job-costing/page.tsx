@@ -105,7 +105,7 @@ export default async function JobCostingReportPage({ searchParams }: { searchPar
       ) : (
         <>
           <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Card label="Contract value" value={money(totals.contractCents)} hint="Approved estimates plus approved change orders." />
+            <Card label="Contract price" value={money(totals.contractCents)} hint="Approved estimates plus approved change orders, before tax." />
             <Card label="Cost to date" value={money(totals.costToDateCents)} hint="Approved vendor bills and approved crew time." />
             <Card
               label="Projected profit"

@@ -172,7 +172,7 @@ export function InvoiceForm({
               {estimate && remaining !== null
                 ? `${
                     estimate.change_order_cents !== 0
-                      ? `Contract ${formatCentsExact(estimate.limit_cents)} (estimate ${formatCentsExact(estimate.limit_cents - estimate.change_order_cents)} + approved change orders ${formatCentsExact(estimate.change_order_cents)}). `
+                      ? `Contract price ${formatCentsExact(estimate.limit_cents)} (estimate ${formatCentsExact(estimate.limit_cents - estimate.change_order_cents)} + approved change orders ${formatCentsExact(estimate.change_order_cents)}). `
                       : ''
                   }${formatCentsExact(estimate.billed_cents)} already billed · ${formatCentsExact(remaining)} remaining. Issuing more than the remaining amount is blocked.`
                 : projectId && projectEstimates.length === 0

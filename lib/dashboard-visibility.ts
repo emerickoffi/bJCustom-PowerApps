@@ -34,7 +34,7 @@ export const DASHBOARD_VISIBILITY_ITEMS = [
   {
     id: 'card_contract',
     kind: 'card',
-    label: 'Contract Value',
+    label: 'Contract Price',
     records: 'Shown once at least one active project has an approved contract value.',
     attention: null,
   },
