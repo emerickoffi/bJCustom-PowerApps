@@ -17,7 +17,12 @@ export const COVER_MIME_EXTENSIONS: Record<string, string> = {
 export const COVER_ACCEPT = Object.keys(COVER_MIME_EXTENSIONS).join(',')
 
 /** `site_photo` is the automatic fallback: the latest walkthrough photo when no cover was chosen. */
-export type ProjectCover = { url: string; kind: CoverKind | 'site_photo' | null }
+export type ProjectCover = {
+  url: string
+  kind: CoverKind | 'site_photo' | null
+  /** Small square version for map pins; see app/api/projects/[id]/thumb. */
+  thumbUrl?: string
+}
 
 export function isCoverKind(value: unknown): value is CoverKind {
   return typeof value === 'string' && (COVER_KINDS as readonly string[]).includes(value)

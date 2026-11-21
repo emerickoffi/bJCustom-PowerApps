@@ -1,7 +1,10 @@
 import 'server-only'
+import { createHash } from 'node:crypto'
 import { createClient } from '@/lib/supabase/server'
 import { signMediaPaths } from '@/lib/media'
 import { isCoverKind, type ProjectCover } from '@/lib/project-cover'
+
+type Supabase = Awaited<ReturnType<typeof createClient>>
 
 type Row = { storage_path: string; walkthroughs: { project_id: string } | { project_id: string }[] | null }
 
@@ -10,9 +13,35 @@ type Row = { storage_path: string; walkthroughs: { project_id: string } | { proj
  * otherwise the latest real site photo from walkthrough uploads.
  */
 export async function getProjectCoverPhotos(projectIds: string[]): Promise<Map<string, ProjectCover>> {
+  const supabase = await createClient()
+  const chosen = await resolveProjectCoverPaths(supabase, projectIds)
+  const signed = await signMediaPaths([...chosen.values()].map((c) => c.path))
+  const result = new Map<string, ProjectCover>()
+  for (const [projectId, { path, kind }] of chosen) {
+    const url = signed.get(path)
+    if (url) result.set(projectId, { url, kind, thumbUrl: coverThumbUrl(projectId, path) })
+  }
+  return result
+}
+
+/**
+ * Small square version of the cover for map pins. The version in the address changes whenever the cover image
+ * changes, so browsers can cache each thumbnail for good.
+ */
+export function coverThumbUrl(projectId: string, path: string): string {
+  return `/api/projects/${projectId}/thumb?v=${createHash('sha1').update(path).digest('hex').slice(0, 12)}`
+}
+
+/**
+ * Which image is each project's cover, as storage paths, read as the signed-in user: the chosen cover when set,
+ * otherwise the latest walkthrough photo. Row-level security decides which projects come back.
+ */
+export async function resolveProjectCoverPaths(
+  supabase: Supabase,
+  projectIds: string[],
+): Promise<Map<string, { path: string; kind: ProjectCover['kind'] }>> {
   const ids = [...new Set(projectIds)]
   if (!ids.length) return new Map()
-  const supabase = await createClient()
 
   const chosen = new Map<string, { path: string; kind: ProjectCover['kind'] }>()
   const { data: covers } = await supabase
@@ -41,11 +70,5 @@ export async function getProjectCoverPhotos(projectIds: string[]): Promise<Map<s
     }
   }
 
-  const signed = await signMediaPaths([...chosen.values()].map((c) => c.path))
-  const result = new Map<string, ProjectCover>()
-  for (const [projectId, { path, kind }] of chosen) {
-    const url = signed.get(path)
-    if (url) result.set(projectId, { url, kind })
-  }
-  return result
+  return chosen
 }
