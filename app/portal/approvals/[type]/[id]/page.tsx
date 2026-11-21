@@ -86,7 +86,7 @@ function ChangeOrderBody({ doc }: { doc: ChangeOrderApprovalDetail }) {
             {c.approved_changes_cents !== 0 && (
               <SummaryRow label="Approved changes so far" value={formatSignedCents(c.approved_changes_cents, formatCentsExact)} />
             )}
-            <SummaryRow label="Contract if approved" value={formatCentsExact((c.current_cents ?? 0) + doc.amount_cents)} strong />
+            <SummaryRow label="New contract price if approved" value={formatCentsExact((c.current_cents ?? 0) + doc.amount_cents)} strong />
           </>
         )}
       </dl>

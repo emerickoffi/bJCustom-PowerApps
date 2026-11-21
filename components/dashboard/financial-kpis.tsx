@@ -124,7 +124,7 @@ export function FinancialKpis({
     card_approval: (
       <KpiCard label="Awaiting Your Approval" icon={ClipboardCheck} tone="approval" {...approval} href={approval.href ?? '/actions?category=approvals'} />
     ),
-    card_contract: <KpiCard label="Contract Value" icon={FileText} tone="contract" {...contract} href="/estimates?status=approved" />,
+    card_contract: <KpiCard label="Contract Price" icon={FileText} tone="contract" {...contract} href="/estimates?status=approved" />,
     card_schedule: <KpiCard label="Schedule Risk" icon={TriangleAlert} tone="schedule" {...schedule} href={schedule.href ?? '/schedule'} />,
     card_receivables: <KpiCard label="Receivables" icon={Coins} tone="receivables" {...ar} href={ar.href ?? '/invoices'} />,
   }
