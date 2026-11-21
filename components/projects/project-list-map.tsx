@@ -29,6 +29,8 @@ export type ListMapRow = {
   address: string | null
   nextAction: string | null
   behindSchedule: boolean
+  /** Small cover photo for the map pin; null shows the colored dot. */
+  thumbUrl: string | null
 }
 
 type LocationsResponse = { locations: ProjectLocation[] }
@@ -244,7 +246,9 @@ export function ProjectListMap({ rows, canEdit }: { rows: ListMapRow[]; canEdit:
     () =>
       rows.flatMap((r) => {
         const l = locations.get(r.id)
-        return l?.state === 'ok' ? [{ id: r.id, lat: l.lat, lng: l.lng, tone: tones.get(r.id)!, title: r.name }] : []
+        return l?.state === 'ok'
+          ? [{ id: r.id, lat: l.lat, lng: l.lng, tone: tones.get(r.id)!, title: r.name, thumbUrl: r.thumbUrl }]
+          : []
       }),
     [rows, locations, tones],
   )

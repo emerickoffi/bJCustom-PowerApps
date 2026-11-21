@@ -263,6 +263,7 @@ export default async function ProjectsPage({
                   address: siteAddressLine(row),
                   nextAction: action.kind === 'unavailable' ? null : action.title,
                   behindSchedule: row.details.behindSchedule,
+                  thumbUrl: photos.get(row.id)?.thumbUrl ?? null,
                 }
               })}
             />
