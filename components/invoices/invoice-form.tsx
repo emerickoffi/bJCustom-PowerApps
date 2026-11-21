@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TextField, TextAreaField, NativeSelect, FormSection } from '@/components/shared/form-field'
 import { saveInvoiceDraft } from '@/app/actions/invoices'
+import { AddFromDialog } from '@/components/invoices/add-from-dialog'
 import { initialActionState } from '@/lib/action-state'
 import { SmartFormLayout, useSmartForm } from '@/components/shared/smart-form'
 import { formatCentsExact } from '@/lib/estimates'
@@ -128,6 +129,8 @@ export function InvoiceForm({
               onChange={(e) => {
                 setProjectId(e.target.value)
                 setEstimateId('')
+                // Items billed from another project can't stay on this invoice.
+                setLines((prev) => prev.map((l) => ({ description: l.description, quantity: l.quantity, unitRate: l.unitRate, taxable: l.taxable })))
               }}
               aria-invalid={fe.project_id ? true : undefined}
               required
@@ -281,6 +284,7 @@ export function InvoiceForm({
                   placeholder="Framing labor and materials"
                   className="min-w-0"
                 />
+                {line.sourceLabel && <span className="text-xs text-[#006773]">{line.sourceLabel}</span>}
               </div>
               <div className="flex min-w-0 flex-col gap-1">
                 <label htmlFor={`line-${i}-quantity`} className="text-xs font-medium text-muted-foreground lg:sr-only">
@@ -335,6 +339,13 @@ export function InvoiceForm({
               <Plus data-icon="inline-start" />
               Add line
             </Button>
+            <AddFromDialog
+              projectId={projectId}
+              invoiceId={defaults.id ?? null}
+              linkedToEstimate={Boolean(estimate)}
+              usedSourceIds={new Set(lines.flatMap((l) => (l.sources ?? []).map((src) => `${src.type}:${src.id}`)))}
+              onAdd={(added) => setLines((prev) => [...prev.filter((l) => l.description || l.unitRate), ...added])}
+            />
             {estimate && remaining !== null && remaining > 0 && (
               <Button
                 type="button"
@@ -390,7 +401,7 @@ export function InvoiceForm({
         </div>
       </FormSection>
 
-      <FormSection flat={flat} title="Payment details" description="Shown to the homeowner. Payments are recorded by staff; no card processing happens here.">
+      <FormSection flat={flat} title="Payment details" description="Shown to the homeowner. When online payments are on, they can also pay by card or bank transfer from the portal.">
         <div className="grid gap-5 sm:col-span-2">
           <TextField
             name="payment_terms"

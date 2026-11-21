@@ -11,6 +11,7 @@ import { fromZodError, friendlyDbError, formValues, type ActionState } from '@/l
 import { DRAW_MILESTONES, PAYMENT_METHODS, dollarsToCents } from '@/lib/invoices'
 import { SAVE_REQUEST_FIELD } from '@/lib/save-requests'
 import { autoSyncInvoiceToQuickBooks } from '@/lib/quickbooks-sync'
+import { listBillableSources } from '@/lib/invoice-sources-data'
 
 const uuid = z.uuid()
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date')
@@ -29,6 +30,11 @@ const lineSchema = z.object({
     .refine((v) => /^\d{1,7}(\.\d{1,3})?$/.test(v) && Number(v) > 0, 'Quantity must be a positive number'),
   unitRate: z.string().trim(),
   taxable: z.boolean(),
+  sources: z
+    .array(z.object({ type: z.enum(['change_order', 'time_entry']), id: z.string().uuid() }))
+    .max(1000)
+    .optional(),
+  sourceLabel: z.string().max(200).optional(),
 })
 
 const draftSchema = z
@@ -88,7 +94,13 @@ export async function saveInvoiceDraft(_prev: ActionState, formData: FormData): 
   for (const line of linesParsed.data) {
     const rate = dollarsToCents(line.unitRate)
     if (rate === null) return { error: `"${line.description}" needs a rate like 1250.00`, values }
-    lines.push({ description: line.description, quantity: line.quantity, unit_rate_cents: rate, taxable: line.taxable })
+    lines.push({
+      description: line.description,
+      quantity: line.quantity,
+      unit_rate_cents: rate,
+      taxable: line.taxable,
+      ...(line.sources?.length ? { sources: line.sources } : {}),
+    })
   }
 
   const supabase = await createClient()
@@ -252,4 +264,14 @@ export async function recordPayment(_prev: ActionState, formData: FormData): Pro
   if (!data.replayed) after(() => autoSyncInvoiceToQuickBooks(session.organizationId, parsed.data.invoice_id))
   revalidateInvoice(parsed.data.invoice_id)
   return { success: data.replayed ? 'This payment was already recorded. No duplicate was created.' : 'Payment recorded.' }
+}
+
+/** Add from: approved change orders and crew time on a project that can go on this invoice. */
+export async function getBillableSourcesAction(projectId: string, invoiceId: string | null) {
+  const session = await requireInvoiceManager()
+  const id = z.string().uuid()
+  if (!id.safeParse(projectId).success || (invoiceId && !id.safeParse(invoiceId).success)) {
+    return { changeOrders: [], time: [], names: [], available: false }
+  }
+  return listBillableSources(session.organizationId, projectId, invoiceId)
 }
