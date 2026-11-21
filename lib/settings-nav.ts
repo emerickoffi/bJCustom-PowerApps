@@ -2,7 +2,7 @@ export type SettingsNavItem = { href: string; label: string }
 
 export const SETTINGS_ROOT = '/settings'
 
-export function buildSettingsNav(features: { schedule?: boolean; estimates?: boolean }): SettingsNavItem[] {
+export function buildSettingsNav(features: { schedule?: boolean; estimates?: boolean; warranty?: boolean }): SettingsNavItem[] {
   return [
     { href: SETTINGS_ROOT, label: 'Company profile' },
     { href: '/settings/integrations', label: 'Integrations' },
@@ -15,6 +15,7 @@ export function buildSettingsNav(features: { schedule?: boolean; estimates?: boo
           { href: '/settings/selection-categories', label: 'Selection categories' },
         ]
       : []),
+    ...(features.warranty ? [{ href: '/settings/warranty', label: 'Warranty' }] : []),
     { href: '/settings/roles', label: 'Roles & permissions' },
     { href: '/settings/support', label: 'Support access' },
     { href: '/billing', label: 'Plan & billing' },

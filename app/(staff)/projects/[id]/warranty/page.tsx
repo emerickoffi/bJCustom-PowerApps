@@ -22,6 +22,8 @@ import { ArchiveWarrantyButton } from '@/components/warranty/run-warranty-button
 import { CorrectCompletionForm, EnrollWarrantyForm, FollowupForm } from '@/components/warranty/warranty-forms'
 import { WARRANTY_STAGE_LABELS, type WarrantyStage } from '@/components/warranty/stage'
 import { CoverageTimeline, type TimelineMilestone } from '@/components/warranty/coverage-timeline'
+import { ProjectWarrantyPicker } from '@/components/warranty/project-warranty-picker'
+import { getWarrantyTemplateOptions } from '@/lib/warranty-templates-data'
 
 export const metadata: Metadata = { title: 'Project warranty' }
 
@@ -55,6 +57,16 @@ export default async function ProjectWarrantyPage({
     supabase.rpc('org_today', { p_org: session.organizationId }),
   ])
   if (!project) notFound()
+  // Which warranty this home will get (column added by the custom-warranties update; undefined until then).
+  const [{ data: planned, error: plannedError }, warrantyOptions] = !warranty && project.status !== 'completed'
+    ? await Promise.all([
+        supabase.from('projects').select('warranty_template_id').eq('id', id).maybeSingle(),
+        getWarrantyTemplateOptions(session.organizationId),
+      ])
+    : [{ data: null, error: null }, [] as Awaited<ReturnType<typeof getWarrantyTemplateOptions>>]
+  const plannedTemplate: string | null | undefined = plannedError
+    ? undefined
+    : ((planned as { warranty_template_id: string | null } | null)?.warranty_template_id ?? null)
   const todayIso = (today as string | null) ?? new Date().toISOString().slice(0, 10)
 
   const { data: staffMembers } = await supabase
@@ -134,9 +146,14 @@ export default async function ProjectWarrantyPage({
       {!warranty && (
         <section className="surface flex flex-col gap-4 p-5">
           {project.status !== 'completed' ? (
-            <p className="text-sm text-muted-foreground">
-              This project is not Completed yet. Its warranty will begin on the official completion date.
-            </p>
+            <>
+              <p className="text-sm text-muted-foreground">
+                This project is not Completed yet. Its warranty will begin on the official completion date.
+              </p>
+              {canManage(session.role) && warrantyOptions.length > 1 && plannedTemplate !== undefined && (
+                <ProjectWarrantyPicker projectId={id} options={warrantyOptions} value={plannedTemplate} />
+              )}
+            </>
           ) : isAdmin ? (
             <>
               <p className="text-sm text-muted-foreground">

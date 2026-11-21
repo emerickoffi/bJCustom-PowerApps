@@ -2,7 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildSettingsNav, getActiveSettingsHref } from './settings-nav.ts'
 
-const all = buildSettingsNav({ schedule: true, estimates: true })
+const all = buildSettingsNav({ schedule: true, estimates: true, warranty: true })
 
 describe('buildSettingsNav', () => {
   it('keeps every existing settings route when all modules are on', () => {
@@ -16,6 +16,7 @@ describe('buildSettingsNav', () => {
         '/settings/templates',
         '/settings/proposal-templates',
         '/settings/selection-categories',
+        '/settings/warranty',
         '/settings/roles',
         '/settings/support',
         '/billing',
@@ -28,6 +29,7 @@ describe('buildSettingsNav', () => {
     assert.ok(!hrefs.includes('/settings/templates'))
     assert.ok(!hrefs.includes('/settings/proposal-templates'))
     assert.ok(!hrefs.includes('/settings/selection-categories'))
+    assert.ok(!hrefs.includes('/settings/warranty'))
     assert.ok(hrefs.includes('/settings/roles'))
   })
 })
