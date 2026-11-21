@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Check } from 'lucide-react'
 import { choosePlanAction } from '@/app/actions/billing'
-import { formatPlanPrice, type BillingInterval, type PlanPrice } from '@/lib/billing-shared'
+import { describePlanPrice, maxYearlySavingPercent, type BillingInterval, type PlanPrice } from '@/lib/billing-shared'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -29,6 +29,7 @@ export function PlanChooser({
   disabled?: boolean
 }) {
   const [interval, setInterval] = useState<BillingInterval>(currentInterval ?? 'month')
+  const yearlySaving = maxYearlySavingPercent(plans)
   const [pendingPlan, setPendingPlan] = useState<string | null>(null)
   const [, startTransition] = useTransition()
 
@@ -57,7 +58,7 @@ export function PlanChooser({
               interval === i ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
             )}
           >
-            {i === 'month' ? 'Monthly' : 'Yearly · 2 months free'}
+            {i === 'month' ? 'Monthly' : yearlySaving > 0 ? `Yearly · save up to ${yearlySaving}%` : 'Yearly'}
           </button>
         ))}
       </div>
@@ -78,7 +79,12 @@ export function PlanChooser({
                 </div>
                 {plan.tagline && <p className="text-sm text-muted-foreground">{plan.tagline}</p>}
               </div>
-              <p className="text-2xl font-semibold tabular-nums text-foreground">{formatPlanPrice(cents, interval)}</p>
+              <div className="flex flex-col gap-0.5">
+                <p className="text-2xl font-semibold tabular-nums text-foreground">{describePlanPrice(plan, interval).headline}</p>
+                {describePlanPrice(plan, interval).note && (
+                  <p className="text-xs text-muted-foreground">{describePlanPrice(plan, interval).note}</p>
+                )}
+              </div>
               <ul className="flex flex-1 flex-col gap-1.5 text-sm text-foreground">
                 <li className="flex gap-2">
                   <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />

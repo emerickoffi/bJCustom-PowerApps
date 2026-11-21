@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { billingAccess, formatPlanPrice, normalizeStripeStatus, parsePriceLookupKey, priceLookupKey, trialDaysLeft } from './billing-shared.ts'
+import { billingAccess, describePlanPrice, formatPlanPrice, maxYearlySavingPercent, normalizeStripeStatus, parsePriceLookupKey, priceLookupKey, trialDaysLeft } from './billing-shared.ts'
 
 const NOW = Date.parse('2026-11-17T12:00:00Z')
 const inDays = (d: number) => new Date(NOW + d * 86_400_000).toISOString()
@@ -44,5 +44,22 @@ describe('prices', () => {
   it('normalizes unknown Stripe statuses to incomplete', () => {
     assert.equal(normalizeStripeStatus('active'), 'active')
     assert.equal(normalizeStripeStatus('weird'), 'incomplete')
+  })
+})
+
+describe('annual prices', () => {
+  const plans = [
+    { monthly_price_cents: 9900, yearly_price_cents: 106800 },
+    { monthly_price_cents: 19900, yearly_price_cents: 214800 },
+    { monthly_price_cents: 39900, yearly_price_cents: 418800 },
+  ]
+  it('quotes yearly plans per month with the yearly total and saving', () => {
+    assert.deepEqual(describePlanPrice(plans[0], 'year'), { headline: '$89/mo', note: 'Billed annually ($1,068/yr), save $120' })
+    assert.deepEqual(describePlanPrice(plans[1], 'year'), { headline: '$179/mo', note: 'Billed annually ($2,148/yr), save $240' })
+    assert.deepEqual(describePlanPrice(plans[2], 'year'), { headline: '$349/mo', note: 'Billed annually ($4,188/yr), save $600' })
+    assert.deepEqual(describePlanPrice(plans[1], 'month'), { headline: '$199/mo', note: 'Billed monthly' })
+  })
+  it('reports the best yearly saving for the toggle', () => {
+    assert.equal(maxYearlySavingPercent(plans), 12)
   })
 })
